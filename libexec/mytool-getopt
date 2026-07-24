@@ -1,0 +1,310 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+getopt_output=''
+getopt_consumed='0'
+
+### Write a parser error.
+###
+### Arguments
+###
+### * message - The error message.
+getopt::write-error() {
+  local message="${1}"
+
+  printf 'mytool-getopt: %s\n' "${message}" >&2
+}
+
+### Append an option token to the parser output.
+###
+### Arguments
+###
+### * option - The option token.
+getopt::append-option() {
+  local option="${1}"
+
+  getopt_output="${getopt_output} ${option}"
+}
+
+### Append a shell-quoted value to the parser output.
+###
+### Arguments
+###
+### * value - The option value.
+getopt::append-value() {
+  local value="${1}"
+  local quoted=''
+  local character=''
+
+  while [[ -n "${value}" ]]; do
+    character="${value%"${value#?}"}"
+    value="${value#?}"
+    if [[ "${character}" == "'" ]]; then
+      quoted+="'\\''"
+      continue
+    fi
+    quoted+="${character}"
+  done
+
+  getopt_output="${getopt_output} '${quoted}'"
+}
+
+### Find the kind of a long option.
+###
+### Arguments
+###
+### * spec - The comma-separated option specification.
+### * name - The option name.
+getopt::long-kind() {
+  local spec="${1}"
+  local name="${2}"
+
+  case ",${spec}," in
+    *,"${name}":,*)
+      printf 'value\n'
+      ;;
+    *,"${name}",*)
+      printf 'boolean\n'
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+### Find the kind of a short option.
+###
+### Arguments
+###
+### * spec - The short option specification.
+### * name - The one-character option name.
+getopt::short-kind() {
+  local spec="${1}"
+  local name="${2}"
+
+  case "${spec}" in
+    *"${name}:"*)
+      printf 'value\n'
+      ;;
+    *"${name}"*)
+      printf 'boolean\n'
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+### Parse one long option.
+###
+### Arguments
+###
+### * spec - The long option specification.
+### * token - The current option token.
+### * next - The following argument.
+### * remaining - The number of following arguments.
+getopt::parse-long() {
+  local spec="${1}"
+  local token="${2}"
+  local next="${3-}"
+  local remaining="${4}"
+  local name="${token#--}"
+  local value=''
+  local inline='0'
+  local kind=''
+
+  getopt_consumed='0'
+  if [[ "${name}" == *=* ]]; then
+    value="${name#*=}"
+    name="${name%%=*}"
+    inline='1'
+  fi
+
+  kind="$(getopt::long-kind "${spec}" "${name}")" || {
+    getopt::write-error "unknown option: --${name}"
+    return 1
+  }
+
+  if [[ "${kind}" == 'boolean' && "${inline}" -eq 1 ]]; then
+    getopt::write-error "option does not take a value: --${name}"
+    return 1
+  fi
+
+  getopt::append-option "--${name}"
+  if [[ "${kind}" == 'boolean' ]]; then
+    return 0
+  fi
+
+  if [[ "${inline}" -eq 0 && "${remaining}" -eq 0 ]]; then
+    getopt::write-error "option needs a value: --${name}"
+    return 1
+  fi
+
+  if [[ "${inline}" -eq 0 ]]; then
+    value="${next}"
+    getopt_consumed='1'
+  fi
+
+  getopt::append-value "${value}"
+}
+
+### Parse one short option cluster.
+###
+### Arguments
+###
+### * spec - The short option specification.
+### * token - The current option token.
+### * next - The following argument.
+### * remaining - The number of following arguments.
+getopt::parse-short() {
+  local spec="${1}"
+  local token="${2}"
+  local next="${3-}"
+  local remaining="${4}"
+  local cluster="${token#-}"
+  local name=''
+  local kind=''
+  local value=''
+
+  getopt_consumed='0'
+  while [[ -n "${cluster}" ]]; do
+    name="${cluster%"${cluster#?}"}"
+    cluster="${cluster#?}"
+    kind="$(getopt::short-kind "${spec}" "${name}")" || {
+      getopt::write-error "unknown option: -${name}"
+      return 1
+    }
+    getopt::append-option "-${name}"
+
+    if [[ "${kind}" == 'boolean' ]]; then
+      continue
+    fi
+
+    if [[ -n "${cluster}" ]]; then
+      value="${cluster}"
+      cluster=''
+    elif [[ "${remaining}" -gt 0 ]]; then
+      value="${next}"
+      getopt_consumed='1'
+    else
+      getopt::write-error "option needs a value: -${name}"
+      return 1
+    fi
+    getopt::append-value "${value}"
+  done
+}
+
+### Parse command arguments into enhanced getopt output.
+###
+### Arguments
+###
+### * short-spec - The short option specification.
+### * long-spec - The long option specification.
+### * arguments - The command arguments.
+getopt::parse() {
+  local short_spec="${1}"
+  local long_spec="${2}"
+  local token=''
+
+  shift 2
+  while (($# > 0)); do
+    token="${1}"
+    shift
+
+    case "${token}" in
+      --)
+        getopt::append-option '--'
+        while (($# > 0)); do
+          getopt::append-value "${1}"
+          shift
+        done
+        printf '%s\n' "${getopt_output}"
+        return 0
+        ;;
+      --?*)
+        getopt::parse-long "${long_spec}" "${token}" "${1-}" "$#"
+        if [[ "${getopt_consumed}" -eq 1 ]]; then
+          shift
+        fi
+        ;;
+      -?*)
+        getopt::parse-short "${short_spec}" "${token}" "${1-}" "$#"
+        if [[ "${getopt_consumed}" -eq 1 ]]; then
+          shift
+        fi
+        ;;
+      *)
+        getopt::append-option '--'
+        getopt::append-value "${token}"
+        while (($# > 0)); do
+          getopt::append-value "${1}"
+          shift
+        done
+        printf '%s\n' "${getopt_output}"
+        return 0
+        ;;
+    esac
+  done
+
+  getopt::append-option '--'
+  printf '%s\n' "${getopt_output}"
+}
+
+### Read getopt configuration and parse the remaining arguments.
+###
+### Arguments
+###
+### * arguments - The getopt configuration and command arguments.
+main() {
+  local short_spec=''
+  local long_spec=''
+
+  while (($# > 0)); do
+    case "${1}" in
+      -o)
+        [[ "$#" -ge 2 ]] || {
+          getopt::write-error 'the -o option needs a value'
+          return 1
+        }
+        short_spec="${2}"
+        shift 2
+        ;;
+      -o?*)
+        short_spec="${1#-o}"
+        shift
+        ;;
+      -l)
+        [[ "$#" -ge 2 ]] || {
+          getopt::write-error 'the -l option needs a value'
+          return 1
+        }
+        long_spec="${2}"
+        shift 2
+        ;;
+      -l?*)
+        long_spec="${1#-l}"
+        shift
+        ;;
+      --)
+        shift
+        break
+        ;;
+      -*)
+        getopt::write-error "unsupported parser option: ${1}"
+        return 1
+        ;;
+      *)
+        short_spec="${1}"
+        shift
+        break
+        ;;
+    esac
+  done
+
+  getopt::parse "${short_spec}" "${long_spec}" "$@"
+}
+
+main "$@"

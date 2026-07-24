@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+project_root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
+readonly project_root
+
+### Visit each project shell file.
+###
+### Arguments
+###
+### * command - The command to run for each file.
+lint::visit-files() {
+  local command="${1}"
+  local file=''
+  local status='0'
+
+  while IFS= read -u 3 -r -d '' file; do
+    "${command}" "${file}" || status='1'
+  done 3< <(
+    find \
+      "${project_root}/bin" \
+      "${project_root}/libexec" \
+      "${project_root}/src" \
+      "${project_root}/test" \
+      "${project_root}/vendor/shflags/shflags" \
+      -type f \
+      \( -name '*.sh' -o -name '*.bash' -o -name '*.bats' -o -name 'mytool' -o -name 'mytool-getopt' -o -name 'test' -o -name 'lint' -o -name 'check' -o -name 'shflags' \) \
+      -print0
+  )
+
+  return "${status}"
+}
+
+### Check the syntax of one shell file.
+###
+### Arguments
+###
+### * file - The shell file.
+lint::check-syntax() {
+  local file="${1}"
+
+  if [[ "${file}" == *.bats ]]; then
+    return 0
+  fi
+
+  bash -n "${file}"
+}
+
+### Run ShellCheck for one shell file.
+###
+### Arguments
+###
+### * file - The shell file.
+lint::check-shell() {
+  local file="${1}"
+
+  if [[ "${file}" == *.bats || "${file}" == */vendor/* ]]; then
+    return 0
+  fi
+
+  shellcheck --external-sources "${file}"
+}
+
+### Run every static check.
+###
+### Arguments
+###
+### This function takes no arguments.
+main() {
+  if ! command -v shellcheck >/dev/null 2>&1; then
+    printf 'lint: shellcheck is required.\n' >&2
+    return 69
+  fi
+
+  lint::visit-files lint::check-syntax
+  lint::visit-files lint::check-shell
+  git -C "${project_root}" diff --check
+}
+
+main "$@"

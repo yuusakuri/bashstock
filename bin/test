@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+project_root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
+readonly project_root
+readonly bats_command="${project_root}/vendor/bats-core/bin/bats"
+
+if [[ ! -x "${bats_command}" ]]; then
+  printf 'test: Run git submodule update --init --recursive first.\n' >&2
+  exit 69
+fi
+
+exec "${bats_command}" "${project_root}/test"
