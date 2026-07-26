@@ -13,9 +13,7 @@ FLAGS_GETOPT_CMD='mytool-getopt'
 export FLAGS_GETOPT_CMD
 
 source "${project_root}/src/settings/settings.sh"
-source "${project_root}/src/text/text.sh"
 source "${project_root}/src/output/output.sh"
-source "${project_root}/src/greeting/greeting.sh"
 source "${project_root}/vendor/shflags/shflags"
 source "${project_root}/src/cli/cli.sh"
 
