@@ -18,7 +18,7 @@
 | `json` | 1 | `json::require-present` |
 | `file` | 10 | `file::contains-match`、`file::verify-sha256`、`file::append-text`、`file::append-text-as-root`、`file::replace-text`、`file::replace-text-as-root`、`file::replace-text-in-files`、`file::replace-text-in-files-as-root`、`file::replace-or-append-text`、`file::replace-or-append-text-as-root` |
 | `path` | 1 | `path::change-owner-recursively-as-root` |
-| `user` | 6 | `user::current-name`、`user::current-primary-group`、`user::is-root`、`user::exists`、`user::create-system-as-root`、`user::create-login-as-root` |
+| `user` | 6 | `user::name`、`user::primary-group`、`user::is-root`、`user::exists`、`user::create-system-as-root`、`user::create-login-as-root` |
 | `aws` | 14 | IMDS、EC2、Auto Scalingの任意モジュールに、利用頻度の高い14関数を配置します。 |
 | 合計 | 43 | 一般基盤29関数と任意AWSモジュール14関数を採用します。 |
 
@@ -96,8 +96,8 @@
 
 | 参照元 | 本プロジェクトの関数 | 引数 | 機能 | Bash 3.2での実装規則と必須テスト |
 |---|---|---|---|---|
-| `os_get_current_users_name` | `user::current-name` | なし | 現在のプロセスを実行する実効利用者の名前を標準出力へ書きます。 | `id -un`を使用します。一般利用者、root、空でない出力、引数過多、`id`の失敗を確認します。 |
-| `os_get_current_users_group` | `user::current-primary-group` | なし | 現在のプロセスを実行する実効利用者のプライマリーグループ名を標準出力へ書きます。 | `id -gn`を使用します。一般利用者、root、空でない出力、引数過多、`id`の失敗を確認します。 |
+| `os_get_current_users_name` | `user::name` | なし | 現在のプロセスを実行する実効利用者の名前を標準出力へ書きます。 | `id -un`を使用します。一般利用者、root、空でない出力、引数過多、`id`の失敗を確認します。 |
+| `os_get_current_users_group` | `user::primary-group` | なし | 現在のプロセスを実行する実効利用者のプライマリーグループ名を標準出力へ書きます。 | `id -gn`を使用します。一般利用者、root、空でない出力、引数過多、`id`の失敗を確認します。 |
 | `os_user_is_root_or_sudo` | `user::is-root` | なし | 現在のプロセスの実効利用者IDが0なら終了状態0、それ以外は1を返します。標準出力と標準エラー出力へは書きません。 | Bash 3.2の`EUID`を数値として比較します。root、一般利用者、`sudo`の呼び出し元を示す環境変数だけがある状態、引数過多を確認します。 |
 | `os_user_exists` | `user::exists` | `NAME` | OS上に`NAME`と完全一致する利用者が存在すれば終了状態0、存在しなければ1を返します。標準出力と標準エラー出力へは書きません。 | `id`を使用し、名前をコマンドまたはオプションとして評価しません。現在の利用者、root、存在しない名前、空文字、ハイフンで始まる値、空白、改行、引数過多を確認します。 |
 | `os_create_user` | `user::create-system-as-root` | `NAME` | パスの所有者として使用できる、ログイン不能なローカルシステムアカウントを管理者権限で作成します。既存の利用者名は終了状態73を返します。 | macOSでは役割アカウント、UbuntuとFedoraではシステムアカウントとして作成します。パスワード、管理者グループ、Secure Token、ホームディレクトリを付与しません。正常作成、既存名、不正名、認証拒否、OS別コマンド失敗を確認します。 |
@@ -168,10 +168,10 @@ AWS CLIの`--query`と`--output`を使用し、利用者の値をJMESPath式ま�
 |---|---|---|---|
 | `aws_describe_asg` | `aws::auto-scaling-group` | `NAME REGION` | 指定Auto Scaling GroupをAWS CLIのJSON形式で出力します。存在しない場合は終了状態1を返します。 |
 | `aws_describe_instances_in_asg` | `aws::instances-in-auto-scaling-group` | `NAME REGION` | 指定Auto Scaling Groupに属する待機中または実行中のEC2インスタンスをJSON形式で出力します。 |
-| `aws_wrapper_get_asg_name` | `aws::current-auto-scaling-group-name` | `TIMEOUT_SECONDS INTERVAL_SECONDS` | 現在のEC2インスタンスの`aws:autoscaling:groupName`タグを取得し、Auto Scaling Group名を出力します。 |
+| `aws_wrapper_get_asg_name` | `aws::auto-scaling-group-name` | `TIMEOUT_SECONDS INTERVAL_SECONDS` | 現在のEC2インスタンスの`aws:autoscaling:groupName`タグを取得し、Auto Scaling Group名を出力します。 |
 | `aws_wrapper_get_asg_size` | `aws::auto-scaling-group-size` | `NAME REGION` | 指定Auto Scaling Groupの希望容量を0以上の整数で出力します。 |
 
-`aws::current-auto-scaling-group-name`は`aws::wait-for-instance-tag`を使用します。待機関数は最大試行回数ではなく、0より大きい待機上限秒と確認間隔秒を受け取ります。`time::elapsed-milliseconds`を使用し、システム日時が変化しても待機時間が逆行しないようにします。待機上限へ達した場合は終了状態75を返します。関数は`exit`を呼び出さず、認証情報、トークン、AWS CLIの応答本文をログへ書きません。
+`aws::auto-scaling-group-name`は`aws::wait-for-instance-tag`を使用します。待機関数は最大試行回数ではなく、0より大きい待機上限秒と確認間隔秒を受け取ります。`time::elapsed-milliseconds`を使用し、システム日時が変化しても待機時間が逆行しないようにします。待機上限へ達した場合は終了状態75を返します。関数は`exit`を呼び出さず、認証情報、トークン、AWS CLIの応答本文をログへ書きません。
 
 AWS関数のテストはAWS CLIとHTTP処理を固定応答のアダプターへ置き換え、実際のAWSアカウント、認証情報、IMDSへ接続しません。成功、対象なし、ページ分割、APIエラー、認証エラー、タイムアウト、空値、メタデータパスの不正を確認します。
 
