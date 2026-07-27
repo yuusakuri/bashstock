@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# todo: Keep these fixed values aligned with the product requirements.
+# Product identity values.
 # shellcheck disable=SC2034
 readonly MYTOOL_NAME='mytool'
 # shellcheck disable=SC2034

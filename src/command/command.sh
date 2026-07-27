@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+command::exists() {
+  if [[ "$#" -ne 1 || -z "$1" || "$1" == -* ]] || core::__has-newline "$1"; then
+    return 64
+  fi
+
+  command -v "$1" >/dev/null 2>&1
+}
+
+command::require() {
+  if [[ "$#" -ne 1 ]]; then
+    return 64
+  fi
+
+  if command::exists "$1"; then
+    return 0
+  fi
+
+  local status="$?"
+  if [[ "${status}" -eq 64 ]]; then
+    return 64
+  fi
+
+  core::__error "Required command is unavailable: $1"
+  return 69
+}
+
+command::run-as-root() {
+  if [[ "$#" -lt 1 || -z "$1" ]]; then
+    return 64
+  fi
+
+  if [[ "${EUID}" -eq 0 ]]; then
+    command "$@"
+    return "$?"
+  fi
+
+  if ! command -v sudo >/dev/null 2>&1; then
+    core::__error 'sudo is required for this operation.'
+    return 69
+  fi
+
+  if ! sudo -v; then
+    return 77
+  fi
+  sudo -- "$@"
+}

@@ -52,7 +52,7 @@ jobs:
 
     steps:
       - name: Install dependencies
-        run: dnf install --assumeyes git perl perl-POSIX perl-Time-HiRes ShellCheck
+        run: dnf install --assumeyes git perl perl-JSON-PP perl-POSIX perl-Time-HiRes ShellCheck
 
       - name: Check out the repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
