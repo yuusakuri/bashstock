@@ -2,7 +2,7 @@
 
 ## 対象
 
-この文書は、bash-commons v1.0.0の公開関数88個を対象とします。本プロジェクトはbash-commons全体を実行時依存として読み込まず、選定した振る舞いを一般基盤28関数と任意AWSモジュール24関数の合計52関数としてBash 3.2互換で実装します。
+この文書は、bash-commons v1.0.0の公開関数88個を対象とします。本プロジェクトはbash-commons全体を実行時依存として読み込まず、選定した振る舞いを一般基盤29関数と任意AWSモジュール24関数の合計53関数としてBash 3.2互換で実装します。
 
 参照対象は、v1.0.0のタグが指すコミット`953e675d1a279ddd62b338dc3fc8e6c39baa0c61`です。参照元のライセンスはApache License 2.0です。本プロジェクトは参照元のコードを複製せず、関数の責務を本プロジェクトの名前空間、引数規則、終了状態、安全性、対応環境に合わせて実装します。
 
@@ -18,9 +18,9 @@
 | `json` | 1 | `json::require-present` |
 | `file` | 10 | `file::contains-match`、`file::verify-sha256`、`file::append-text`、`file::append-text-as-root`、`file::replace-text`、`file::replace-text-as-root`、`file::replace-text-in-files`、`file::replace-text-in-files-as-root`、`file::replace-or-append-text`、`file::replace-or-append-text-as-root` |
 | `path` | 1 | `path::change-owner-recursively-as-root` |
-| `user` | 5 | `user::current-name`、`user::current-primary-group`、`user::is-root`、`user::exists`、`user::create-system-as-root` |
+| `user` | 6 | `user::current-name`、`user::current-primary-group`、`user::is-root`、`user::exists`、`user::create-system-as-root`、`user::create-login-as-root` |
 | `aws` | 24 | IMDS、EC2、Auto Scalingの任意モジュールに24関数を配置します。 |
-| 合計 | 52 | 一般基盤28関数と任意AWSモジュール24関数を採用します。 |
+| 合計 | 53 | 一般基盤29関数と任意AWSモジュール24関数を採用します。 |
 
 ## 共通規則
 
@@ -30,7 +30,7 @@
 
 すべての関数は、macOSの標準Bash 3.2、Ubuntu 18.04以降、Fedoraで同じ引数、出力形式、終了状態を使用します。GNU版とBSD版で異なるコマンドのオプションは公開契約に含めません。
 
-## 採用する52関数
+## 採用する53関数
 
 ### ログ
 
@@ -101,8 +101,13 @@
 | `os_user_is_root_or_sudo` | `user::is-root` | なし | 現在のプロセスの実効利用者IDが0なら終了状態0、それ以外は1を返します。標準出力と標準エラー出力へは書きません。 | Bash 3.2の`EUID`を数値として比較します。root、一般利用者、`sudo`の呼び出し元を示す環境変数だけがある状態、引数過多を確認します。 |
 | `os_user_exists` | `user::exists` | `NAME` | OS上に`NAME`と完全一致する利用者が存在すれば終了状態0、存在しなければ1を返します。標準出力と標準エラー出力へは書きません。 | `id`を使用し、名前をコマンドまたはオプションとして評価しません。現在の利用者、root、存在しない名前、空文字、ハイフンで始まる値、空白、改行、引数過多を確認します。 |
 | `os_create_user` | `user::create-system-as-root` | `NAME` | パスの所有者として使用できる、ログイン不能なローカルシステムアカウントを管理者権限で作成します。既存の利用者名は終了状態73を返します。 | macOSでは役割アカウント、UbuntuとFedoraではシステムアカウントとして作成します。パスワード、管理者グループ、Secure Token、ホームディレクトリを付与しません。正常作成、既存名、不正名、認証拒否、OS別コマンド失敗を確認します。 |
+| `os_create_user` | `user::create-login-as-root` | `NAME FULL_NAME` | 人がログインするためのローカル一般利用者を管理者権限で作成し、OS標準のホームディレクトリ、`/bin/bash`、対話入力したパスワードを設定します。管理者権限は付与しません。 | パスワードは引数、環境変数、標準入力へ渡さず、制御端末上のOS標準パスワード入力だけで設定します。正常作成、既存名、不正名、ホーム作成、パスワード不一致、入力中断、非対話実行、認証拒否、作成後の失敗と復元を確認します。 |
 
-`user::is-root`は実効利用者IDだけを判定します。`SUDO_USER`などの環境変数が設定されていても、実効利用者IDが0でなければ終了状態1を返します。利用者名を受け取る関数は、空文字、改行を含む値、ハイフンで始まる値を終了状態64として扱います。`user::create-system-as-root`の`NAME`は、macOSの役割アカウントとLinuxのシステムアカウントで共通して使用できる`_[a-z][a-z0-9_-]*`形式に限定します。ログイン可能な一般利用者の作成は、パスワード、Secure Token、管理者権限、ホームディレクトリの要件が製品ごとに異なるため、この関数では行いません。
+`user::is-root`は実効利用者IDだけを判定します。`SUDO_USER`などの環境変数が設定されていても、実効利用者IDが0でなければ終了状態1を返します。利用者名を受け取る関数は、空文字、改行を含む値、ハイフンで始まる値を終了状態64として扱います。
+
+`user::create-system-as-root`は、サービス実行とファイル所有のためのアカウントを作成します。`NAME`は、macOSの役割アカウントとLinuxのシステムアカウントで共通して使用できる`_[a-z][a-z0-9_-]*`形式に限定します。このアカウントは人のログインに使用できません。
+
+`user::create-login-as-root`は、人がログインするための一般利用者を作成します。`NAME`は`[a-z][a-z0-9_-]*`形式、`FULL_NAME`は空でなく、改行、コロン、制御文字を含まない文字列とします。macOSではホームを`/Users/NAME`、UbuntuとFedoraでは`/home/NAME`に作成します。パスワード設定に失敗した場合は、同じ関数呼び出しで作成した利用者とホームディレクトリを削除して元の状態へ戻します。復元にも失敗した場合は終了状態74を返し、残った利用者名とホームディレクトリを標準エラー出力へ書きます。macOSのSecure TokenとFileVault解除権限は、この関数の契約に含めません。
 
 ### 管理者実行とOS別実装
 
@@ -115,11 +120,11 @@
 
 公開関数はOSに関係なく一つの名前と契約を持ちます。内部のプラットフォーム読み込み処理は`system::operating-system`とLinuxの`/etc/os-release`を確認し、macOS、Ubuntu、Fedoraの実装ファイルから一つだけを読み込みます。各実装ファイルは同じ内部プロバイダー関数を定義し、公開関数が共通の入力検査を行った後で呼び出します。未対応のOSや必要な管理コマンドがない環境では終了状態69を返します。
 
-| 内部プロバイダー | システムアカウント作成 | 再帰的な所有者変更 |
-|---|---|---|
-| macOS | `sysadminctl`の役割アカウントを使用し、UIDを450から499、ホームを`/var/empty`、シェルを`/usr/bin/false`の範囲で設定します。 | BSD版の`find`と`chown -h`を使用し、別のファイルシステムとリンク先へ進みません。 |
-| Ubuntu | `useradd --system --no-create-home`を使用し、ホームを`/nonexistent`、シェルを`/usr/sbin/nologin`に設定します。 | GNU版の`find`と`chown --no-dereference`を使用し、別のファイルシステムとリンク先へ進みません。 |
-| Fedora | `useradd --system --no-create-home`を使用し、ホームを`/nonexistent`、シェルを`/usr/sbin/nologin`に設定します。 | GNU版の`find`と`chown --no-dereference`を使用し、別のファイルシステムとリンク先へ進みません。 |
+| 内部プロバイダー | システムアカウント作成 | ログイン用アカウント作成 | 再帰的な所有者変更 |
+|---|---|---|---|
+| macOS | `sysadminctl`の役割アカウントを使用し、UIDを450から499、ホームを`/var/empty`、シェルを`/usr/bin/false`の範囲で設定します。 | `sysadminctl`で一般利用者とホームを作成し、制御端末からパスワードを設定します。管理者グループとSecure Tokenは付与しません。 | BSD版の`find`と`chown -h`を使用し、別のファイルシステムとリンク先へ進みません。 |
+| Ubuntu | `useradd --system --no-create-home`を使用し、ホームを`/nonexistent`、シェルを`/usr/sbin/nologin`に設定します。 | `useradd --create-home`で一般利用者を作成し、`passwd`で制御端末からパスワードを設定します。 | GNU版の`find`と`chown --no-dereference`を使用し、別のファイルシステムとリンク先へ進みません。 |
+| Fedora | `useradd --system --no-create-home`を使用し、ホームを`/nonexistent`、シェルを`/usr/sbin/nologin`に設定します。 | `useradd --create-home`で一般利用者を作成し、`passwd`で制御端末からパスワードを設定します。 | GNU版の`find`と`chown --no-dereference`を使用し、別のファイルシステムとリンク先へ進みません。 |
 
 ### AWS任意モジュール
 
@@ -182,9 +187,9 @@ AWS関数のテストはAWS CLIとHTTP処理を固定応答のアダプターへ
 
 | 環境 | 必須条件 |
 |---|---|
-| macOS | Apple Silicon上の標準Bash 3.2で、一般基盤28関数とmacOS用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
-| Ubuntu | Ubuntu 18.04以降のBashで、一般基盤28関数とUbuntu用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
-| Fedora | FedoraのBashで、一般基盤28関数とFedora用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
+| macOS | Apple Silicon上の標準Bash 3.2で、一般基盤29関数とmacOS用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
+| Ubuntu | Ubuntu 18.04以降のBashで、一般基盤29関数とUbuntu用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
+| Fedora | FedoraのBashで、一般基盤29関数とFedora用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
 | AWS任意モジュール | 24関数について、IMDSとAWS CLIを固定応答へ置き換え、macOS、Ubuntu、Fedoraで同じ出力、終了状態、待機規則になることを確認します。 |
 | 安全性 | コマンド置換、単一引用符、二重引用符、バックスラッシュ、パターン記号、空白、改行を含む入力を実行しないことを確認します。 |
 | 状態保持 | 関数の成功後と失敗後に、現在のディレクトリ、`IFS`、ロケール、シェルオプションが変わらないことを確認します。 |
