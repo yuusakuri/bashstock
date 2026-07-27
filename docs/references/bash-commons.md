@@ -8,14 +8,15 @@
 
 ## 選定結果
 
-| 分類 | 関数数 | 本プロジェクトの関数 |
+| 名前空間 | 関数数 | 本プロジェクトの関数 |
 |---|---:|---|
-| ログ | 3 | `log::info`、`log::warn`、`log::error` |
-| 入力検査 | 5 | `validation::require-command`、`validation::require-non-empty`、`validation::require-empty`、`validation::require-one-of`、`validation::require-exactly-one` |
-| 配列 | 1 | `array::prepend-to-each` |
-| 文字列 | 1 | `string::slice` |
-| ファイル | 2 | `file::contains-match`、`file::verify-sha256` |
-| 利用者 | 4 | `user::current-name`、`user::current-primary-group`、`user::is-root`、`user::exists` |
+| `log` | 3 | `log::info`、`log::warn`、`log::error` |
+| `command` | 1 | `command::require` |
+| `option` | 1 | `option::require-exactly-one` |
+| `array` | 1 | `array::prepend-to-each` |
+| `string` | 4 | `string::require-non-empty`、`string::require-empty`、`string::require-one-of`、`string::slice` |
+| `file` | 2 | `file::contains-match`、`file::verify-sha256` |
+| `user` | 4 | `user::current-name`、`user::current-primary-group`、`user::is-root`、`user::exists` |
 | 合計 | 16 | 16個の公開関数を採用します。 |
 
 ## 共通規則
@@ -40,17 +41,17 @@
 
 参照元の`log`は、三つのログ関数に共通する内部処理として参照します。任意のログレベルを受け取る公開関数にはしません。
 
-### 入力検査
+### 必須条件の検査
 
 | 参照元 | 本プロジェクトの関数 | 引数 | 機能 | Bash 3.2での実装規則と必須テスト |
 |---|---|---|---|---|
-| `assert_is_installed` | `validation::require-command` | `COMMAND` | コマンドを現在の実行環境から解決できることを検査します。解決できない場合は診断を書き、終了状態69を返します。 | `command::exists`を使用し、入力を実行しません。外部コマンド、組み込み、関数、未知の名前、空文字、引数過多を確認します。 |
-| `assert_not_empty` | `validation::require-non-empty` | `NAME VALUE` | `VALUE`が空でないことを検査します。空の場合は`NAME`を含む診断を書き、終了状態64を返します。 | `[[ -n ]]`を使用し、値を診断へ出力しません。通常値、空文字、空白、改行、空の名前、引数の不足と過多を確認します。 |
-| `assert_empty` | `validation::require-empty` | `NAME VALUE` | `VALUE`が空であることを検査します。空でない場合は`NAME`を含む診断を書き、終了状態64を返します。 | `[[ -z ]]`を使用し、値を診断へ出力しません。空文字、通常値、空白、改行、空の名前、引数の不足と過多を確認します。 |
-| `assert_value_in_list` | `validation::require-one-of` | `NAME VALUE ALLOWED...` | `VALUE`が一つ以上の`ALLOWED`のいずれかと完全一致することを検査します。一致しない場合は診断を書き、終了状態64を返します。 | `array::contains`を使用し、配列名の間接参照とパターン比較を使用しません。先頭と末尾の一致、不一致、空値、空の許可値、重複、空白、パターン記号、許可値なしを確認します。 |
-| `assert_exactly_one_of` | `validation::require-exactly-one` | `NAME VALUE [NAME VALUE]...` | 二組以上の名前と値を受け取り、空でない値が一つだけであることを検査します。条件を満たさない場合は候補名を含む診断を書き、終了状態64を返します。 | 位置引数を二つずつ処理し、配列名の間接参照を使用しません。一つだけ設定、すべて空、複数設定、空白値、空の名前、奇数個の引数、一組だけ、引数なしを確認します。 |
+| `assert_is_installed` | `command::require` | `COMMAND` | コマンドを現在の実行環境から解決できることを検査します。解決できない場合は診断を書き、終了状態69を返します。 | `command::exists`を使用し、入力を実行しません。外部コマンド、組み込み、関数、未知の名前、空文字、引数過多を確認します。 |
+| `assert_not_empty` | `string::require-non-empty` | `NAME VALUE` | `VALUE`が空でないことを検査します。空の場合は`NAME`を含む診断を書き、終了状態64を返します。 | `[[ -n ]]`を使用し、値を診断へ出力しません。通常値、空文字、空白、改行、空の名前、引数の不足と過多を確認します。 |
+| `assert_empty` | `string::require-empty` | `NAME VALUE` | `VALUE`が空であることを検査します。空でない場合は`NAME`を含む診断を書き、終了状態64を返します。 | `[[ -z ]]`を使用し、値を診断へ出力しません。空文字、通常値、空白、改行、空の名前、引数の不足と過多を確認します。 |
+| `assert_value_in_list` | `string::require-one-of` | `NAME VALUE ALLOWED...` | `VALUE`が一つ以上の`ALLOWED`のいずれかと完全一致することを検査します。一致しない場合は診断を書き、終了状態64を返します。 | `array::contains`を使用し、配列名の間接参照とパターン比較を使用しません。先頭と末尾の一致、不一致、空値、空の許可値、重複、空白、パターン記号、許可値なしを確認します。 |
+| `assert_exactly_one_of` | `option::require-exactly-one` | `NAME VALUE [NAME VALUE]...` | 二組以上のオプション名と値を受け取り、空でない値が一つだけであることを検査します。条件を満たさない場合は候補名を含む診断を書き、終了状態64を返します。 | 位置引数を二つずつ処理し、配列名の間接参照を使用しません。一つだけ設定、すべて空、複数設定、空白値、空の名前、奇数個の引数、一組だけ、引数なしを確認します。 |
 
-入力検査関数は、条件を満たす場合に出力せず、終了状態0を返します。関数は`exit`を呼び出しません。呼び出し側は終了状態を返すか、製品の規則に従って処理を継続します。`NAME`は空でない一行の表示名とし、改行を含む場合は終了状態64を返します。
+必須条件を検査する関数は、対象を表す`command`、`string`、`option`名前空間に置きます。条件を満たす場合は出力せず、終了状態0を返します。関数は`exit`を呼び出しません。呼び出し側は終了状態を返すか、製品の規則に従って処理を継続します。`NAME`は空でない一行の表示名とし、改行を含む場合は終了状態64を返します。
 
 ### 配列
 
