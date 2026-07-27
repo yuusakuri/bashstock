@@ -1,6 +1,6 @@
 # modern-bash-cli
 
-このリポジトリは、macOSとLinuxで同じ動作をするBash製CLIの基盤です。引数解析、ヘルプ、バージョン、入力エラー、テスト、静的検査、継続的インテグレーションを提供します。
+このリポジトリは、Apple Siliconを含むmacOS、Ubuntu 18.04以降、Fedoraで同じ動作をするBash製CLIの基盤です。引数解析、ヘルプ、バージョン、入力エラー、テスト、静的検査、継続的インテグレーションを提供します。
 
 ## 特徴
 
@@ -20,6 +20,7 @@
 | 用途 | 条件 |
 |---|---|
 | 実行 | Bash 3.2以上 |
+| 対応OS | Apple Siliconを含むmacOS、Ubuntu 18.04以降、Fedora |
 | 取得 | Git |
 | テスト | Gitサブモジュール内のBats-core |
 | 静的検査 | ShellCheck |
