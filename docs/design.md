@@ -131,7 +131,7 @@ shFlagsの文字列代入は、Bashの`printf -v`を使用します。利用者�
 
 shFlagsは実行時に必要なため、ソースとライセンスを`vendor/shflags`へ格納します。安全な代入処理の差分は`vendor/shflags/PATCHES.md`に記録します。
 
-時間関数は、OSごとに異なる`date`コマンドの機能へ依存しません。実行環境のPerl、`Time::HiRes`、`POSIX`を内部時計アダプターから使用し、単調時計、Unix時刻、UTC日時をmacOS、Ubuntu、Fedoraで同じ形式にします。時間関数は実行時に依存モジュールを検査し、利用できない場合は終了状態69を返します。
+時間関数は、OSごとに異なる`date`コマンドの機能へ依存しません。実行環境のPerl、`Time::HiRes`、`POSIX`を内部時計アダプターから使用し、単調時計、Unix時刻、UTC日時、UTCオフセットを含むローカル日時をmacOS、Ubuntu、Fedoraで同じ形式にします。時間関数は実行時に依存モジュールを検査し、利用できない場合は終了状態69を返します。
 
 Bats-coreは開発時だけ必要なため、Gitサブモジュールとして`vendor/bats-core`へ格納します。GitのコミットIDが依存バージョンを固定します。
 
