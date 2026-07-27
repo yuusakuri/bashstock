@@ -29,13 +29,41 @@ jobs:
 
       - name: Install ShellCheck on macOS
         if: runner.os == 'macOS'
-        run: brew install shellcheck
+        run: brew install perl shellcheck
 
       - name: Install ShellCheck on Linux
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --yes shellcheck
+          sudo apt-get install --yes libtime-hires-perl perl shellcheck
+
+      - name: Verify the time provider
+        run: perl -MTime::HiRes -MPOSIX -e 1
+
+      - name: Run all checks
+        run: ./bin/check
+
+  check-fedora:
+    name: Check on Fedora 44
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: fedora:44
+
+    steps:
+      - name: Install dependencies
+        run: dnf install --assumeyes git perl perl-POSIX perl-Time-HiRes ShellCheck
+
+      - name: Check out the repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          submodules: recursive
+
+      - name: Trust the checked-out repository
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Verify the time provider
+        run: perl -MTime::HiRes -MPOSIX -e 1
 
       - name: Run all checks
         run: ./bin/check
