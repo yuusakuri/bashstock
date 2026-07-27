@@ -2,7 +2,7 @@
 
 ## 対象
 
-この文書は、bash-commons v1.0.0の公開関数88個を対象とします。本プロジェクトはbash-commons全体を実行時依存として読み込まず、選定した振る舞いを一般基盤29関数と任意AWSモジュール24関数の合計53関数としてBash 3.2互換で実装します。
+この文書は、bash-commons v1.0.0の公開関数88個を対象とします。本プロジェクトはbash-commons全体を実行時依存として読み込まず、選定した振る舞いを一般基盤29関数と利用頻度の高い任意AWSモジュール14関数の合計43関数としてBash 3.2互換で実装します。
 
 参照対象は、v1.0.0のタグが指すコミット`953e675d1a279ddd62b338dc3fc8e6c39baa0c61`です。参照元のライセンスはApache License 2.0です。本プロジェクトは参照元のコードを複製せず、関数の責務を本プロジェクトの名前空間、引数規則、終了状態、安全性、対応環境に合わせて実装します。
 
@@ -19,8 +19,8 @@
 | `file` | 10 | `file::contains-match`、`file::verify-sha256`、`file::append-text`、`file::append-text-as-root`、`file::replace-text`、`file::replace-text-as-root`、`file::replace-text-in-files`、`file::replace-text-in-files-as-root`、`file::replace-or-append-text`、`file::replace-or-append-text-as-root` |
 | `path` | 1 | `path::change-owner-recursively-as-root` |
 | `user` | 6 | `user::current-name`、`user::current-primary-group`、`user::is-root`、`user::exists`、`user::create-system-as-root`、`user::create-login-as-root` |
-| `aws` | 24 | IMDS、EC2、Auto Scalingの任意モジュールに24関数を配置します。 |
-| 合計 | 53 | 一般基盤29関数と任意AWSモジュール24関数を採用します。 |
+| `aws` | 14 | IMDS、EC2、Auto Scalingの任意モジュールに、利用頻度の高い14関数を配置します。 |
+| 合計 | 43 | 一般基盤29関数と任意AWSモジュール14関数を採用します。 |
 
 ## 共通規則
 
@@ -30,7 +30,7 @@
 
 すべての関数は、macOSの標準Bash 3.2、Ubuntu 18.04以降、Fedoraで同じ引数、出力形式、終了状態を使用します。GNU版とBSD版で異なるコマンドのオプションは公開契約に含めません。
 
-## 採用する53関数
+## 採用する43関数
 
 ### ログ
 
@@ -137,13 +137,13 @@ AWS関数は一般基盤の起動時に読み込みません。製品は使用�
 | 参照元 | 本プロジェクトの関数 | 引数 | 機能 |
 |---|---|---|---|
 | `assert_is_ec2_instance` | `aws::is-ec2-instance` | なし | IMDSv2トークンを取得できれば終了状態0、取得できなければ1を返します。出力は行いません。 |
+| `aws_lookup_path_in_instance_metadata_v2`、`ec2_metadata_http_get` | `aws::instance-metadata` | `PATH` | IMDSv2から指定したメタデータパスの値を取得します。パスが存在しない場合は終了状態1を返します。 |
 | `aws_get_instance_id` | `aws::instance-id` | なし | 現在のEC2インスタンスIDを出力します。 |
 | `aws_get_instance_region` | `aws::instance-region` | なし | インスタンス識別文書から現在のAWSリージョンを出力します。 |
 | `aws_get_ec2_instance_availability_zone` | `aws::instance-availability-zone` | なし | 現在のアベイラビリティーゾーンを出力します。 |
 | `aws_get_instance_private_ip` | `aws::instance-private-ip` | なし | 現在のEC2インスタンスのプライマリー非公開IPv4アドレスを出力します。 |
-| `aws_get_instance_public_ip` | `aws::instance-public-ip` | なし | 現在のEC2インスタンスの公開IPv4アドレスを出力します。割り当てがない場合は終了状態1を返します。 |
-| `aws_get_instance_private_hostname` | `aws::instance-private-host-name` | なし | 現在のEC2インスタンスの非公開ホスト名を出力します。 |
-| `aws_get_instance_public_hostname` | `aws::instance-public-host-name` | なし | 現在のEC2インスタンスの公開ホスト名を出力します。割り当てがない場合は終了状態1を返します。 |
+
+`aws::instance-metadata`の`PATH`は、先頭と末尾に斜線を含まず、空でないパス要素を斜線で連結した形式とします。`.`、`..`、クエリー、フラグメント、制御文字を拒否します。公開IPアドレスやホスト名など、専用関数に含まれない値は、この関数へIMDSのパスを明示して取得します。
 
 内部IMDSアダプターは、`/latest/api/token`から有効期間60秒のトークンを取得し、同じ関数呼び出し内だけで使用します。HTTPプロキシを使用せず、接続と処理のタイムアウトを設定します。HTTPエラー、空の応答、不正なJSON、タイムアウトを区別し、利用できない実行環境は69、一時的な通信失敗は75を返します。
 
@@ -155,14 +155,10 @@ AWS関数は一般基盤の起動時に読み込みません。製品は使用�
 |---|---|---|---|
 | `aws_get_instance_tags` | `aws::instance-tags` | `INSTANCE_ID REGION` | 指定EC2インスタンスの全タグをAWS CLIのJSON形式で出力します。 |
 | `aws_get_instance_tag_val` | `aws::instance-tag` | `INSTANCE_ID REGION KEY` | 指定EC2インスタンスのタグ値を出力します。タグがない場合は終了状態1を返します。 |
-| `aws_wrapper_wait_for_instance_tags` | `aws::wait-for-instance-tags` | `INSTANCE_ID REGION TIMEOUT_SECONDS INTERVAL_SECONDS` | 一つ以上のタグを取得できるまで待ち、全タグをJSON形式で出力します。 |
 | `aws_wrapper_get_instance_tag` | `aws::wait-for-instance-tag` | `INSTANCE_ID REGION KEY TIMEOUT_SECONDS INTERVAL_SECONDS` | 指定タグを取得できるまで待ち、タグ値を出力します。 |
-| `aws_get_enis_for_instance` | `aws::network-interfaces-for-instance` | `INSTANCE_ID REGION` | 指定EC2インスタンスへ接続されたElastic Network InterfaceをJSON形式で出力します。 |
-| `aws_get_enis_for_tag` | `aws::network-interfaces-for-tag` | `KEY VALUE REGION` | 指定タグを持つElastic Network InterfaceをJSON形式で出力します。 |
 | `aws_get_instances_with_tag` | `aws::instances-with-tag` | `KEY VALUE REGION` | 指定タグを持つ待機中または実行中のEC2インスタンスをJSON形式で出力します。 |
-| `aws_wrapper_get_ips_with_tag` | `aws::instance-ips-with-tag` | `KEY VALUE REGION ADDRESS_KIND` | 指定タグを持つインスタンスのIPアドレスを一件ずつ出力します。`ADDRESS_KIND`は`private`または`public`です。 |
 
-AWS CLIの`--query`と`--output`を使用し、利用者の値をJMESPath式またはシェルコードへ連結しません。タグ、インスタンス、ネットワークインターフェースの応答順序は公開契約に含めず、複数値を返す関数は識別子の昇順に整列して一件ずつ出力します。
+AWS CLIの`--query`と`--output`を使用し、利用者の値をJMESPath式またはシェルコードへ連結しません。タグとインスタンスの応答順序は公開契約に含めません。ENI検索やIPアドレス一覧などの限定的な処理は、`aws::instances-with-tag`のJSONを製品側で処理します。
 
 #### Auto Scaling
 
@@ -174,14 +170,10 @@ AWS CLIの`--query`と`--output`を使用し、利用者の値をJMESPath式ま�
 | `aws_describe_instances_in_asg` | `aws::instances-in-auto-scaling-group` | `NAME REGION` | 指定Auto Scaling Groupに属する待機中または実行中のEC2インスタンスをJSON形式で出力します。 |
 | `aws_wrapper_get_asg_name` | `aws::current-auto-scaling-group-name` | `TIMEOUT_SECONDS INTERVAL_SECONDS` | 現在のEC2インスタンスの`aws:autoscaling:groupName`タグを取得し、Auto Scaling Group名を出力します。 |
 | `aws_wrapper_get_asg_size` | `aws::auto-scaling-group-size` | `NAME REGION` | 指定Auto Scaling Groupの希望容量を0以上の整数で出力します。 |
-| `aws_wrapper_wait_for_instances_in_asg` | `aws::wait-for-auto-scaling-group-instances` | `NAME REGION TIMEOUT_SECONDS INTERVAL_SECONDS` | 待機中または実行中のインスタンス数が希望容量に達するまで待ち、対象インスタンスをJSON形式で出力します。 |
-| `aws_wrapper_get_ips_in_asg` | `aws::auto-scaling-group-ips` | `NAME REGION ADDRESS_KIND TIMEOUT_SECONDS INTERVAL_SECONDS` | 希望容量に達したインスタンスのIPアドレスを一件ずつ出力します。`ADDRESS_KIND`は`private`または`public`です。 |
-| `aws_wrapper_get_hostnames_in_asg` | `aws::auto-scaling-group-host-names` | `NAME REGION ADDRESS_KIND TIMEOUT_SECONDS INTERVAL_SECONDS` | 希望容量に達したインスタンスのホスト名を一件ずつ出力します。`ADDRESS_KIND`は`private`または`public`です。 |
-| `aws_wrapper_get_asg_rally_point` | `aws::auto-scaling-group-coordinator-host-name` | `NAME REGION ADDRESS_KIND TIMEOUT_SECONDS INTERVAL_SECONDS` | 起動日時が最も早く、同時刻ではインスタンスIDが辞書順で最初のインスタンスを調整役として選び、そのホスト名を出力します。 |
 
-待機関数は最大試行回数ではなく、0より大きい待機上限秒と確認間隔秒を受け取ります。`time::elapsed-milliseconds`を使用し、システム日時が変化しても待機時間が逆行しないようにします。待機上限へ達した場合は終了状態75を返します。関数は`exit`を呼び出さず、認証情報、トークン、AWS CLIの応答本文をログへ書きません。
+`aws::current-auto-scaling-group-name`は`aws::wait-for-instance-tag`を使用します。待機関数は最大試行回数ではなく、0より大きい待機上限秒と確認間隔秒を受け取ります。`time::elapsed-milliseconds`を使用し、システム日時が変化しても待機時間が逆行しないようにします。待機上限へ達した場合は終了状態75を返します。関数は`exit`を呼び出さず、認証情報、トークン、AWS CLIの応答本文をログへ書きません。
 
-AWS関数のテストはAWS CLIとHTTP処理を固定応答のアダプターへ置き換え、実際のAWSアカウント、認証情報、IMDSへ接続しません。成功、対象なし、ページ分割、APIエラー、認証エラー、タイムアウト、空値、並び順、公開アドレスなしを確認します。
+AWS関数のテストはAWS CLIとHTTP処理を固定応答のアダプターへ置き換え、実際のAWSアカウント、認証情報、IMDSへ接続しません。成功、対象なし、ページ分割、APIエラー、認証エラー、タイムアウト、空値、メタデータパスの不正を確認します。
 
 ## 対応環境の検証
 
@@ -190,6 +182,6 @@ AWS関数のテストはAWS CLIとHTTP処理を固定応答のアダプターへ
 | macOS | Apple Silicon上の標準Bash 3.2で、一般基盤29関数とmacOS用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
 | Ubuntu | Ubuntu 18.04以降のBashで、一般基盤29関数とUbuntu用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
 | Fedora | FedoraのBashで、一般基盤29関数とFedora用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
-| AWS任意モジュール | 24関数について、IMDSとAWS CLIを固定応答へ置き換え、macOS、Ubuntu、Fedoraで同じ出力、終了状態、待機規則になることを確認します。 |
+| AWS任意モジュール | 14関数について、IMDSとAWS CLIを固定応答へ置き換え、macOS、Ubuntu、Fedoraで同じ出力、終了状態、待機規則になることを確認します。 |
 | 安全性 | コマンド置換、単一引用符、二重引用符、バックスラッシュ、パターン記号、空白、改行を含む入力を実行しないことを確認します。 |
 | 状態保持 | 関数の成功後と失敗後に、現在のディレクトリ、`IFS`、ロケール、シェルオプションが変わらないことを確認します。 |
