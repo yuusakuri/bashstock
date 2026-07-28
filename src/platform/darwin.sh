@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2234
 
+### Create a non-login macOS role account.
 platform::__create-system-user() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -21,6 +22,7 @@ platform::__create-system-user() {
   return 73
 }
 
+### Create a macOS login account and roll it back after password failure.
 platform::__create-login-user() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -42,6 +44,7 @@ platform::__create-login-user() {
   return 73
 }
 
+### Change ownership recursively without crossing macOS mount points.
 platform::__change-owner-recursively() {
   if [[ "$#" -lt 2 || "$#" -gt 3 ]]; then
     return 64

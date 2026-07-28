@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2234
 
+### Test whether a value is an unsigned decimal integer.
 number::__is-non-negative-integer() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -9,6 +10,7 @@ number::__is-non-negative-integer() {
   ( [[ "$1" =~ ^[0-9]+$ ]] )
 }
 
+### Test whether a value is a positive unsigned decimal integer.
 number::__is-positive-integer() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -17,6 +19,7 @@ number::__is-positive-integer() {
   ( [[ "$1" =~ ^[1-9][0-9]*$ ]] )
 }
 
+### Test whether an unsigned decimal integer does not exceed a maximum.
 number::__is-non-negative-integer-at-most() {
   if [[ "$#" -ne 2 ]] ||
     ! number::__is-non-negative-integer "$1" ||
@@ -40,6 +43,7 @@ number::__is-non-negative-integer-at-most() {
   return 0
 }
 
+### Test whether a positive decimal integer does not exceed a maximum.
 number::__is-positive-integer-at-most() {
   if [[ "$#" -ne 2 ]] || ! number::__is-positive-integer "$1"; then
     return 64
@@ -48,6 +52,7 @@ number::__is-positive-integer-at-most() {
   number::__is-non-negative-integer-at-most "$1" "$2"
 }
 
+### Test whether a value is a signed or unsigned decimal integer.
 number::is-integer() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -56,6 +61,7 @@ number::is-integer() {
   ( [[ "$1" =~ ^[+-]?[0-9]+$ ]] )
 }
 
+### Test whether a value is a signed or unsigned decimal fraction.
 number::is-decimal() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -64,6 +70,7 @@ number::is-decimal() {
   ( [[ "$1" =~ ^[+-]?([0-9]+\.[0-9]*|\.[0-9]+)$ ]] )
 }
 
+### Test whether a value is a decimal integer or fraction.
 number::is-number() {
   if [[ "$#" -ne 1 ]]; then
     return 64

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+### Write one command-prefixed diagnostic to standard error.
 console::__write-error() {
   if [[ "$#" -ne 1 ]]; then
     return 64

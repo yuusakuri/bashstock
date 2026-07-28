@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+### Write the identifier of the supported operating-system provider.
 platform::__identifier() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -37,14 +38,17 @@ platform::__identifier() {
   printf 'unknown\n'
 }
 
+### Return unavailable until an operating-system provider defines user creation.
 platform::__create-system-user() {
   return 69
 }
 
+### Return unavailable until an operating-system provider defines login creation.
 platform::__create-login-user() {
   return 69
 }
 
+### Return unavailable until an operating-system provider defines ownership changes.
 platform::__change-owner-recursively() {
   return 69
 }

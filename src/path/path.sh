@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+### Write the lexical directory portion of a path.
 path::directory-name() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -29,6 +30,7 @@ path::directory-name() {
   printf '%s\n' "${path}"
 }
 
+### Write the final component of a path with an optional suffix removed.
 path::base-name() {
   if [[ "$#" -lt 1 || "$#" -gt 2 ]]; then
     return 64
@@ -57,6 +59,7 @@ path::base-name() {
   printf '%s\n' "${name}"
 }
 
+### Test whether a path names a directory.
 path::is-directory() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -64,6 +67,7 @@ path::is-directory() {
   [[ -d "$1" ]]
 }
 
+### Test whether a path names an empty directory.
 path::is-empty-directory() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -80,6 +84,7 @@ path::is-empty-directory() {
   )
 }
 
+### Test whether the current user may execute a path.
 path::is-executable() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -87,6 +92,7 @@ path::is-executable() {
   [[ -x "$1" ]]
 }
 
+### Test whether a path names an executable regular file.
 path::is-executable-file() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -94,6 +100,7 @@ path::is-executable-file() {
   [[ -f "$1" && -x "$1" ]]
 }
 
+### Test whether a path names a regular file.
 path::is-regular-file() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -101,6 +108,7 @@ path::is-regular-file() {
   [[ -f "$1" ]]
 }
 
+### Test whether a path names a symbolic link.
 path::is-symbolic-link() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -108,6 +116,7 @@ path::is-symbolic-link() {
   [[ -L "$1" ]]
 }
 
+### Test whether the current user may read a path.
 path::is-readable() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -115,6 +124,7 @@ path::is-readable() {
   [[ -r "$1" ]]
 }
 
+### Test whether the current user may write a path.
 path::is-writable() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -122,6 +132,7 @@ path::is-writable() {
   [[ -w "$1" ]]
 }
 
+### Write the extension of the final path component.
 path::extension() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -150,6 +161,7 @@ path::extension() {
   esac
 }
 
+### Normalize a path lexically without accessing the file system.
 path::normalize() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -212,6 +224,7 @@ path::normalize() {
   printf '%s\n' "${result}"
 }
 
+### Write the lexical relative path from one path to another.
 path::relative() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -293,6 +306,7 @@ path::relative() {
   printf '%s\n' "${result}"
 }
 
+### Write the absolute configuration-home directory.
 path::config-home() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -314,6 +328,7 @@ path::config-home() {
   printf '%s/.config\n' "${HOME%/}"
 }
 
+### Change directory ownership recursively through the root helper.
 path::change-owner-recursively-as-root() {
   if [[ "$#" -lt 2 || "$#" -gt 3 ]]; then
     return 64

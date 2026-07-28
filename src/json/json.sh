@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+### Require a named JSON-derived value to be neither empty nor null.
 json::require-present() {
   if [[ "$#" -ne 2 ]] || ! string::__require-non-empty-line "$1"; then
     return 64

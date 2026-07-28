@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+### Test whether the remaining arguments contain the expected value.
 array::contains() {
   if [[ "$#" -lt 1 ]]; then
     return 64
@@ -18,6 +19,7 @@ array::contains() {
   return 1
 }
 
+### Write the arguments in reverse order, one value per line.
 array::reverse() {
   local values=("$@")
   local index=''
@@ -30,10 +32,12 @@ array::reverse() {
   done
 }
 
+### Write the number of arguments.
 array::length() {
   printf '%s\n' "$#"
 }
 
+### Write the first argument when one is available.
 array::first() {
   if [[ "$#" -eq 0 ]]; then
     return 1
@@ -45,6 +49,7 @@ array::first() {
   printf '%s\n' "$1"
 }
 
+### Write the last argument when one is available.
 array::last() {
   if [[ "$#" -eq 0 ]]; then
     return 1
@@ -61,6 +66,7 @@ array::last() {
   printf '%s\n' "${value}"
 }
 
+### Write each distinct argument once in its original order.
 array::unique() {
   local seen=()
   local value=''
@@ -87,6 +93,7 @@ array::unique() {
   done
 }
 
+### Prefix every value and write one result per line.
 array::prepend-to-each() {
   if [[ "$#" -lt 1 ]] || ! string::__require-one-line "$1"; then
     return 64

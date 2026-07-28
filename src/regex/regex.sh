@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+### Test a value against a Bash POSIX extended regular expression.
 regex::is-match() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -22,6 +23,7 @@ regex::is-match() {
   return 1
 }
 
+### Write one capture group from a Bash POSIX extended regular expression.
 regex::capture-group() {
   if [[ "$#" -ne 3 ]] ||
     ! number::__is-non-negative-integer-at-most "$3" 2147483647; then
@@ -54,6 +56,7 @@ regex::capture-group() {
   )
 }
 
+### Write all capture groups from a Bash POSIX extended regular expression.
 regex::capture-groups() {
   if [[ "$#" -ne 2 ]]; then
     return 64

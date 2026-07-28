@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+### Test whether a command name resolves in the current environment.
 command::exists() {
   if [[ "$#" -ne 1 || -z "$1" || "$1" == -* ]] ||
     ! string::__require-one-line "$1"; then
@@ -9,6 +10,7 @@ command::exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+### Require a command name to resolve in the current environment.
 command::require() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -27,6 +29,7 @@ command::require() {
   return 69
 }
 
+### Run a command directly as root or through validated sudo access.
 command::run-as-root() {
   if [[ "$#" -lt 1 || -z "$1" ]]; then
     return 64

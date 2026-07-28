@@ -64,6 +64,44 @@ lint::check-shell() {
   shellcheck --external-sources "${file}"
 }
 
+### Check that every production function has an adjacent Doc comment.
+###
+### Arguments
+###
+### This function takes no arguments.
+lint::check-doc-comments() {
+  local file=''
+  local status='0'
+
+  while IFS= read -r -d '' file; do
+    awk '
+      /^[[:space:]]*[[:alnum:]_:.-]+\(\)[[:space:]]*\{/ {
+        if (previous !~ /^[[:space:]]*###/) {
+          printf "%s:%d: function lacks an adjacent Doc comment: %s\n",
+            FILENAME, FNR, $0 > "/dev/stderr"
+          failed = 1
+        }
+      }
+      NF {
+        previous = $0
+      }
+      END {
+        exit failed
+      }
+    ' "${file}" || status='1'
+  done < <(
+    find \
+      "${project_root}/bin" \
+      "${project_root}/libexec" \
+      "${project_root}/src" \
+      -type f \
+      \( -name '*.sh' -o -name '*.bash' -o -name 'bashstock' -o -name 'bashstock-getopt' -o -name 'bashstock-root' -o -name 'lint' -o -name 'check' \) \
+      -print0
+  )
+
+  return "${status}"
+}
+
 ### Run every static check.
 ###
 ### Arguments
@@ -77,6 +115,7 @@ main() {
 
   lint::visit-files lint::check-syntax
   lint::visit-files lint::check-shell
+  lint::check-doc-comments
   git -C "${project_root}" diff --check
 }
 

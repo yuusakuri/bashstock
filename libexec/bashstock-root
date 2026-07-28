@@ -14,6 +14,7 @@ readonly BASHSTOCK_ROOT
 source "${project_root}/src/settings/settings.sh"
 source "${project_root}/src/library.sh"
 
+### Dispatch one validated privileged operation.
 main() {
   if [[ "${EUID}" -ne 0 || "$#" -lt 1 ]]; then
     return 77

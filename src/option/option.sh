@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+### Require exactly one named option value to be non-empty.
 option::require-single() {
   if [[ "$#" -lt 4 ]] || (($# % 2 != 0)); then
     return 64

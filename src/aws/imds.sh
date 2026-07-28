@@ -5,6 +5,7 @@ if ! declare -F aws::__require-value >/dev/null 2>&1; then
   source "${BASHSTOCK_ROOT}/src/aws/aws.sh"
 fi
 
+### Request one IMDSv2 session token.
 aws::__imds-token() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -25,6 +26,7 @@ aws::__imds-token() {
   printf '%s\n' "${token}"
 }
 
+### Read one metadata path with an IMDSv2 token.
 aws::__imds-get() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -74,6 +76,7 @@ aws::__imds-get() {
   return "${status}"
 }
 
+### Read the EC2 instance identity document with an IMDSv2 token.
 aws::__imds-document() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -90,6 +93,7 @@ aws::__imds-document() {
     return 75
 }
 
+### Test whether IMDSv2 is available for the current instance.
 aws::is-ec2-instance() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -97,6 +101,7 @@ aws::is-ec2-instance() {
   aws::__imds-token >/dev/null 2>&1 || return 1
 }
 
+### Write one validated EC2 instance metadata value.
 aws::instance-metadata() {
   if [[ "$#" -ne 1 || -z "$1" || "$1" == /* || "$1" == */ ||
     "$1" == *'//'* || "$1" == *'?'* || "$1" == *'#'* ||
@@ -125,11 +130,13 @@ aws::instance-metadata() {
   aws::__imds-get "$1" "${token}"
 }
 
+### Write the current EC2 instance identifier.
 aws::instance-id() {
   [[ "$#" -eq 0 ]] || return 64
   aws::instance-metadata instance-id
 }
 
+### Write the current EC2 instance region.
 aws::instance-region() {
   [[ "$#" -eq 0 ]] || return 64
 
@@ -148,11 +155,13 @@ aws::instance-region() {
     ' 2>/dev/null
 }
 
+### Write the current EC2 instance availability zone.
 aws::instance-availability-zone() {
   [[ "$#" -eq 0 ]] || return 64
   aws::instance-metadata placement/availability-zone
 }
 
+### Write the current EC2 instance private IPv4 address.
 aws::instance-private-ip() {
   [[ "$#" -eq 0 ]] || return 64
   aws::instance-metadata local-ipv4

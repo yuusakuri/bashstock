@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+### Write the normalized operating-system family.
 system::operating-system() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -18,6 +19,7 @@ system::operating-system() {
   esac
 }
 
+### Write the current host name.
 system::host-name() {
   if [[ "$#" -ne 0 ]]; then
     return 64

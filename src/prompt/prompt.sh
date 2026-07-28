@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2119,SC2120
 
+### Read one line from standard input and preserve a final partial line.
 prompt::__read-line() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -18,6 +19,7 @@ prompt::__read-line() {
   return 66
 }
 
+### Read and normalize a yes-or-no answer.
 prompt::confirm() {
   if [[ "$#" -lt 1 || "$#" -gt 2 ]] ||
     ! string::__require-one-line "$1"; then
@@ -54,6 +56,7 @@ prompt::confirm() {
   esac
 }
 
+### Read one line and substitute a default only for empty input.
 prompt::read-line-with-default() {
   if [[ "$#" -ne 2 ]] || ! string::__require-one-line "$1"; then
     return 64
@@ -68,6 +71,7 @@ prompt::read-line-with-default() {
   printf '%s\n' "${value}"
 }
 
+### Read and normalize a yes, no, or cancel answer.
 prompt::confirm-or-cancel() {
   if [[ "$#" -lt 1 || "$#" -gt 2 ]] ||
     ! string::__require-one-line "$1"; then
@@ -111,6 +115,7 @@ prompt::confirm-or-cancel() {
   esac
 }
 
+### Display indexed choices and write the selected value.
 prompt::select-one() {
   if [[ "$#" -lt 2 ]] || ! string::__require-one-line "$1"; then
     return 64

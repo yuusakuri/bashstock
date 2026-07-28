@@ -4,6 +4,7 @@ if ! declare -F aws::__require-value >/dev/null 2>&1; then
   source "${BASHSTOCK_ROOT}/src/aws/aws.sh"
 fi
 
+### Write all tags for one EC2 instance.
 aws::instance-tags() {
   if [[ "$#" -ne 2 ]] || ! aws::__require-value "$1" || ! aws::__require-value "$2"; then
     return 64
@@ -13,6 +14,7 @@ aws::instance-tags() {
     --region "$2" --output json
 }
 
+### Write one EC2 instance tag value.
 aws::instance-tag() {
   if [[ "$#" -ne 3 ]] ||
     ! aws::__require-value "$1" ||
@@ -41,6 +43,7 @@ aws::instance-tag() {
     ' -- "$3" 2>/dev/null
 }
 
+### Wait for one EC2 instance tag to become available.
 aws::wait-for-instance-tag() {
   if [[ "$#" -ne 5 ]] ||
     ! aws::__require-value "$1" ||
@@ -85,6 +88,7 @@ aws::wait-for-instance-tag() {
   done
 }
 
+### Write EC2 instances that have a requested tag.
 aws::instances-with-tag() {
   if [[ "$#" -ne 3 ]] ||
     ! aws::__require-value "$1" ||

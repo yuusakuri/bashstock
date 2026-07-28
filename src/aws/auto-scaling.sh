@@ -10,6 +10,7 @@ if ! declare -F aws::instance-tag >/dev/null 2>&1; then
   source "${BASHSTOCK_ROOT}/src/aws/ec2.sh"
 fi
 
+### Write the Auto Scaling group that contains an EC2 instance.
 aws::auto-scaling-group() {
   if [[ "$#" -ne 2 ]] || ! aws::__require-value "$1" || ! aws::__require-value "$2"; then
     return 64
@@ -29,6 +30,7 @@ aws::auto-scaling-group() {
   printf '%s\n' "${result}"
 }
 
+### Write running or pending instances in an Auto Scaling group.
 aws::instances-in-auto-scaling-group() {
   if [[ "$#" -ne 2 ]] || ! aws::__require-value "$1" || ! aws::__require-value "$2"; then
     return 64
@@ -70,6 +72,7 @@ aws::instances-in-auto-scaling-group() {
     --region "$2" --output json
 }
 
+### Write the current instance's Auto Scaling group name.
 aws::auto-scaling-group-name() {
   if [[ "$#" -ne 2 ]] ||
     ! number::__is-positive-integer-at-most "$1" 2147483647 ||
@@ -85,6 +88,7 @@ aws::auto-scaling-group-name() {
     "${instance_id}" "${region}" 'aws:autoscaling:groupName' "$1" "$2"
 }
 
+### Write the desired capacity of an Auto Scaling group.
 aws::auto-scaling-group-size() {
   if [[ "$#" -ne 2 ]] || ! aws::__require-value "$1" || ! aws::__require-value "$2"; then
     return 64

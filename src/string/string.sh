@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2119,SC2120,SC2233,SC2234
 
+### Require one argument that contains no newline.
 string::__require-one-line() {
   if [[ "$#" -ne 1 || "$1" == *$'\n'* ]]; then
     return 64
   fi
 }
 
+### Require one non-empty argument that contains no newline.
 string::__require-non-empty-line() {
   if [[ "$#" -ne 1 || -z "$1" ]]; then
     return 64
@@ -15,6 +17,7 @@ string::__require-non-empty-line() {
   string::__require-one-line "$1"
 }
 
+### Require the current locale to use UTF-8.
 string::__require-utf8-locale() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -40,6 +43,7 @@ string::__require-utf8-locale() {
   esac
 }
 
+### Remove leading and trailing whitespace.
 string::trim() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -68,6 +72,7 @@ string::trim() {
   printf '%s\n' "${value}"
 }
 
+### Trim whitespace and collapse each interior run to one ASCII space.
 string::collapse-whitespace() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -95,6 +100,7 @@ string::collapse-whitespace() {
   printf '%s\n' "${result}"
 }
 
+### Split a value by a non-empty literal delimiter and preserve empty fields.
 string::split() {
   if [[ "$#" -ne 2 || -z "$2" ]] ||
     ! string::__require-one-line "$1" ||
@@ -114,6 +120,7 @@ string::split() {
   printf '%s\n' "${value}"
 }
 
+### Translate ASCII letter case according to the requested mode.
 string::__translate-ascii() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -162,6 +169,7 @@ string::__translate-ascii() {
   printf '%s\n' "${result}"
 }
 
+### Convert ASCII uppercase letters to lowercase.
 string::lower() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -169,6 +177,7 @@ string::lower() {
   string::__translate-ascii "$1" lower
 }
 
+### Convert ASCII lowercase letters to uppercase.
 string::upper() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -176,6 +185,7 @@ string::upper() {
   string::__translate-ascii "$1" upper
 }
 
+### Swap the case of every ASCII letter.
 string::swap-case() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -183,6 +193,7 @@ string::swap-case() {
   string::__translate-ascii "$1" swap
 }
 
+### Convert the first ASCII letter to lowercase when applicable.
 string::lower-first() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -197,6 +208,7 @@ string::lower-first() {
   printf '%s%s\n' "${first}" "${1:1}"
 }
 
+### Convert the first ASCII letter to uppercase when applicable.
 string::upper-first() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -211,6 +223,7 @@ string::upper-first() {
   printf '%s%s\n' "${first}" "${1:1}"
 }
 
+### Remove one matching pair of surrounding single or double quotes.
 string::strip-surrounding-quotes() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -226,6 +239,7 @@ string::strip-surrounding-quotes() {
   printf '%s\n' "${value}"
 }
 
+### Remove every substring that matches a Bash pattern.
 string::remove-all-matches() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -234,6 +248,7 @@ string::remove-all-matches() {
   printf '%s\n' "${1//$2/}"
 }
 
+### Remove the first substring that matches a Bash pattern.
 string::remove-first-match() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -242,6 +257,7 @@ string::remove-first-match() {
   printf '%s\n' "${1/$2/}"
 }
 
+### Remove the longest prefix that matches a Bash pattern.
 string::remove-prefix() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -250,6 +266,7 @@ string::remove-prefix() {
   printf '%s\n' "${1##$2}"
 }
 
+### Remove the longest suffix that matches a Bash pattern.
 string::remove-suffix() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -258,6 +275,7 @@ string::remove-suffix() {
   printf '%s\n' "${1%%$2}"
 }
 
+### Percent-encode a UTF-8 string byte by byte.
 string::encode-url() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -289,6 +307,7 @@ string::encode-url() {
   printf '%s\n' "${encoded}"
 }
 
+### Decode percent-encoded bytes without translating plus signs.
 string::decode-url() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -322,6 +341,7 @@ string::decode-url() {
   printf '%s\n' "${decoded}"
 }
 
+### Test whether a value contains a literal substring.
 string::contains() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -329,6 +349,7 @@ string::contains() {
   [[ "$1" == *"$2"* ]]
 }
 
+### Test whether a value starts with a literal prefix.
 string::starts-with() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -336,6 +357,7 @@ string::starts-with() {
   [[ "${1:0:${#2}}" == "$2" ]]
 }
 
+### Test whether a value ends with a literal suffix.
 string::ends-with() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -349,6 +371,7 @@ string::ends-with() {
   [[ "${1:$((${#1} - ${#2}))}" == "$2" ]]
 }
 
+### Join values with a literal delimiter.
 string::join() {
   if [[ "$#" -lt 1 ]]; then
     return 64
@@ -369,6 +392,7 @@ string::join() {
   printf '\n'
 }
 
+### Write the byte length of a value.
 string::byte-length() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -377,6 +401,7 @@ string::byte-length() {
   printf '%s\n' "${#1}"
 }
 
+### Write the character length of a value in a UTF-8 locale.
 string::length() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -385,6 +410,7 @@ string::length() {
   printf '%s\n' "${#1}"
 }
 
+### Replace the first substring that matches a Bash pattern.
 string::replace-first() {
   if [[ "$#" -ne 3 || -z "$2" ]]; then
     return 64
@@ -400,6 +426,7 @@ string::replace-first() {
   printf '%s\n' "${value/$pattern/$replacement}"
 }
 
+### Replace every substring that matches a Bash pattern.
 string::replace-all() {
   if [[ "$#" -ne 3 || -z "$2" ]]; then
     return 64
@@ -415,6 +442,7 @@ string::replace-all() {
   printf '%s\n' "${value//$pattern/$replacement}"
 }
 
+### Replace the rightmost non-empty substring that matches a Bash pattern.
 string::replace-last() {
   if [[ "$#" -ne 3 || -z "$2" ]]; then
     return 64
@@ -446,6 +474,7 @@ string::replace-last() {
   printf '%s\n' "${value}"
 }
 
+### Require a named value to be non-empty.
 string::require-non-empty() {
   if [[ "$#" -ne 2 ]] || ! string::__require-non-empty-line "$1"; then
     return 64
@@ -457,6 +486,7 @@ string::require-non-empty() {
   return 64
 }
 
+### Require a named value to be empty.
 string::require-empty() {
   if [[ "$#" -ne 2 ]] || ! string::__require-non-empty-line "$1"; then
     return 64
@@ -468,6 +498,7 @@ string::require-empty() {
   return 64
 }
 
+### Require a named value to equal one of the allowed values.
 string::require-allowed() {
   if [[ "$#" -lt 3 ]] || ! string::__require-non-empty-line "$1"; then
     return 64
@@ -488,6 +519,7 @@ string::require-allowed() {
   return 64
 }
 
+### Write a validated character range from a UTF-8 string.
 string::slice() {
   if [[ "$#" -lt 2 || "$#" -gt 3 ]] ||
     ! number::__is-non-negative-integer-at-most "$2" 2147483647; then

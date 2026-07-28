@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+### Test whether a shell function is defined.
 shell::is-function-defined() {
   if [[ "$#" -ne 1 || -z "$1" || "$1" == -* ]] ||
     ! string::__require-one-line "$1"; then

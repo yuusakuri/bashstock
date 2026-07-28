@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 
+### Require one non-empty, single-line AWS argument.
 aws::__require-value() {
   if [[ "$#" -ne 1 || -z "$1" ]] || ! string::__require-one-line "$1"; then
     return 64
   fi
 }
 
+### Run the AWS CLI and normalize authentication and service failures.
 aws::__cli() {
   if [[ "$#" -lt 1 ]]; then
     return 64

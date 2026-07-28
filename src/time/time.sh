@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2119,SC2120
 
+### Write milliseconds from the requested monotonic clock.
 time::__clock-milliseconds() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -49,6 +50,7 @@ time::__clock-milliseconds() {
   esac
 }
 
+### Write Unix-epoch milliseconds from the real-time clock.
 time::__realtime-milliseconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -58,6 +60,7 @@ time::__realtime-milliseconds() {
     return 69
 }
 
+### Format an epoch-millisecond value in a fixed date-time form.
 time::__format-milliseconds() {
   if [[ "$#" -ne 2 ]] || ! number::__is-non-negative-integer "$1"; then
     return 64
@@ -102,11 +105,13 @@ time::__format-milliseconds() {
   }
 }
 
+### Report that the portable time provider is unavailable.
 time::__provider-error() {
   console::__write-error 'The portable time provider is unavailable.'
   return 69
 }
 
+### Write monotonic milliseconds that exclude suspended time.
 time::monotonic-milliseconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -114,6 +119,7 @@ time::monotonic-milliseconds() {
   time::__clock-milliseconds monotonic || time::__provider-error
 }
 
+### Write milliseconds since boot including suspended time.
 time::boottime-milliseconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -121,6 +127,7 @@ time::boottime-milliseconds() {
   time::__clock-milliseconds boottime || time::__provider-error
 }
 
+### Write Unix-epoch milliseconds.
 time::unix-milliseconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -128,6 +135,7 @@ time::unix-milliseconds() {
   time::__realtime-milliseconds || time::__provider-error
 }
 
+### Write Unix-epoch seconds rounded down.
 time::unix-seconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -140,6 +148,7 @@ time::unix-seconds() {
   printf '%s\n' "$((milliseconds / 1000))"
 }
 
+### Write Unix-epoch days rounded down.
 time::unix-days() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -152,6 +161,7 @@ time::unix-days() {
   printf '%s\n' "$((milliseconds / 86400000))"
 }
 
+### Format the current real-time clock in a requested date-time form.
 time::__date-time() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -169,31 +179,37 @@ time::__date-time() {
   }
 }
 
+### Write the current UTC date and time with milliseconds.
 time::utc-date-time-milliseconds() {
   [[ "$#" -eq 0 ]] || return 64
   time::__date-time utc-ms
 }
 
+### Write the current UTC date and time with seconds.
 time::utc-date-time-seconds() {
   [[ "$#" -eq 0 ]] || return 64
   time::__date-time utc-s
 }
 
+### Write the current UTC date.
 time::utc-date() {
   [[ "$#" -eq 0 ]] || return 64
   time::__date-time utc-date
 }
 
+### Write the current local date and time with milliseconds and an offset.
 time::local-date-time-milliseconds() {
   [[ "$#" -eq 0 ]] || return 64
   time::__date-time local-ms
 }
 
+### Write the current local date and time with seconds and an offset.
 time::local-date-time-seconds() {
   [[ "$#" -eq 0 ]] || return 64
   time::__date-time local-s
 }
 
+### Write the current local date.
 time::local-date() {
   [[ "$#" -eq 0 ]] || return 64
   time::__date-time local-date

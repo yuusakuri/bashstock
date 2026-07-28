@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2234
 
+### Require a readable regular file that is not a symbolic link.
 file::__require-existing() {
   if [[ "$#" -ne 1 || -z "$1" ]]; then
     return 64
@@ -10,6 +11,7 @@ file::__require-existing() {
   fi
 }
 
+### Require a one-line expression that compiles as a Perl regular expression.
 file::__require-expression() {
   if [[ "$#" -ne 1 ]] || ! string::__require-one-line "$1"; then
     return 64
@@ -19,6 +21,7 @@ file::__require-expression() {
     -- "$1" 2>/dev/null
 }
 
+### Copy file content and metadata to another path.
 file::__copy-metadata-and-content() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -37,6 +40,7 @@ file::__copy-metadata-and-content() {
   esac
 }
 
+### Create a temporary path beside the target file.
 file::__temporary-path() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -50,6 +54,7 @@ file::__temporary-path() {
   mktemp "${directory}/.${name}.bashstock.XXXXXX" 2>/dev/null || return 74
 }
 
+### Prepare a metadata-preserving replacement file.
 file::__prepare-replacement() {
   if [[ "$#" -ne 4 ]]; then
     return 64
@@ -115,6 +120,7 @@ file::__prepare-replacement() {
   esac
 }
 
+### Test whether any file line matches a Perl regular expression.
 file::contains-match() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -136,6 +142,7 @@ file::contains-match() {
   ' -- "$1" "$2" 2>/dev/null
 }
 
+### Test a file against an expected SHA-256 digest.
 file::verify-sha256() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -164,6 +171,7 @@ file::verify-sha256() {
   [[ "$(string::lower "${actual}")" == "$(string::lower "$2")" ]]
 }
 
+### Append text without conversion using the current user's permissions.
 file::append-text() {
   if [[ "$#" -ne 2 || -z "$1" || -L "$1" ]]; then
     return 64
@@ -175,6 +183,7 @@ file::append-text() {
   printf '%s' "$2" >>"$1" 2>/dev/null || return 74
 }
 
+### Append text without conversion through the root helper.
 file::append-text-as-root() {
   if [[ "$#" -ne 2 || -z "$1" || -L "$1" ]]; then
     return 64
@@ -183,6 +192,7 @@ file::append-text-as-root() {
     append-text "$1" "$2"
 }
 
+### Replace the first Perl regular-expression match on every file line.
 file::replace-text() {
   if [[ "$#" -ne 3 ]] ||
     ! string::__require-one-line "$2" ||
@@ -200,6 +210,7 @@ file::replace-text() {
   fi
 }
 
+### Replace line matches through the root helper.
 file::replace-text-as-root() {
   if [[ "$#" -ne 3 ]] ||
     ! string::__require-one-line "$2" ||
@@ -210,6 +221,7 @@ file::replace-text-as-root() {
     replace-text "$@"
 }
 
+### Replace line matches across files with rollback on failure.
 file::__replace-text-in-files() {
   if [[ "$#" -lt 3 ]]; then
     return 64
@@ -289,10 +301,12 @@ file::__replace-text-in-files() {
   done
 }
 
+### Replace line matches across multiple files.
 file::replace-text-in-files() {
   file::__replace-text-in-files "$@"
 }
 
+### Replace line matches across multiple files through the root helper.
 file::replace-text-in-files-as-root() {
   if [[ "$#" -lt 3 ]]; then
     return 64
@@ -301,6 +315,7 @@ file::replace-text-in-files-as-root() {
     replace-text-in-files "$@"
 }
 
+### Replace line matches or append one line when no match exists.
 file::replace-or-append-text() {
   if [[ "$#" -ne 3 ]] ||
     ! string::__require-one-line "$2" ||
@@ -318,6 +333,7 @@ file::replace-or-append-text() {
   fi
 }
 
+### Replace line matches or append through the root helper.
 file::replace-or-append-text-as-root() {
   if [[ "$#" -ne 3 ]] ||
     ! string::__require-one-line "$2" ||

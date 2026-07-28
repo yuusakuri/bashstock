@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+### Create a non-login Fedora system account.
 platform::__create-system-user() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -9,6 +10,7 @@ platform::__create-system-user() {
     --shell /usr/sbin/nologin "$1" || return 73
 }
 
+### Create a Fedora login account and roll it back after password failure.
 platform::__create-login-user() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -30,6 +32,7 @@ platform::__create-login-user() {
   return 73
 }
 
+### Change ownership recursively without crossing Fedora mount points.
 platform::__change-owner-recursively() {
   if [[ "$#" -lt 2 || "$#" -gt 3 ]]; then
     return 64
