@@ -7,6 +7,7 @@ load test_helper
   printf 'alpha=1\nbeta=2' >"${file}"
 
   file::contains-match "${file}" '^alpha=[0-9]+$'
+  file::contains-match "${file}" '(?<=alpha)=[0-9]+'
   ! file::contains-match "${file}" '^gamma='
 
   run file::contains-match "${file}" '['

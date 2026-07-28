@@ -14,7 +14,7 @@ load test_helper
   BASH_REMATCH=('caller-value')
 
   string::lower 'VALUE' >/dev/null
-  string::is-match 'value' '^val' >/dev/null
+  regex::is-match 'value' '^val' >/dev/null
   number::is-number '12.5'
   path::normalize '/one/../two' >/dev/null
   array::unique one two one >/dev/null

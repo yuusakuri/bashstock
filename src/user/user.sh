@@ -23,7 +23,8 @@ user::is-root() {
 }
 
 user::exists() {
-  if [[ "$#" -ne 1 || -z "$1" || "$1" == -* ]] || core::__has-newline "$1"; then
+  if [[ "$#" -ne 1 || -z "$1" || "$1" == -* ]] ||
+    ! string::__require-one-line "$1"; then
     return 64
   fi
   id -u "$1" >/dev/null 2>&1
@@ -50,7 +51,7 @@ user::create-login-as-root() {
     return 73
   fi
   if ! terminal::is-available; then
-    core::__error 'A controlling terminal is required to set the password.'
+    console::__write-error 'A controlling terminal is required to set the password.'
     return 66
   fi
   command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \

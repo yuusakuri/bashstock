@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 aws::__require-value() {
-  if [[ "$#" -ne 1 || -z "$1" ]] || core::__has-newline "$1"; then
+  if [[ "$#" -ne 1 || -z "$1" ]] || ! string::__require-one-line "$1"; then
     return 64
   fi
 }

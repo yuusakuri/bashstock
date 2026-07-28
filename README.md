@@ -76,7 +76,7 @@ source "/path/to/bashstock/src/aws/ec2.sh"
 source "/path/to/bashstock/src/aws/auto-scaling.sh"
 ```
 
-公開関数の名前、引数、出力、終了状態は、[設計判断](docs/design.md)、[Lobashの関数選定](docs/references/lobash.md)、[bash-commonsの関数選定](docs/references/bash-commons.md)に記載しています。
+公開関数の契約は、[設計](docs/design.md)、[Lobashの関数選定](docs/references/lobash.md)、[bash-commonsの関数選定](docs/references/bash-commons.md)、[Pure Bash Bibleの関数選定](docs/references/pure-bash-bible.md)に記載しています。
 
 ## オプション
 
@@ -104,12 +104,13 @@ source "/path/to/bashstock/src/aws/auto-scaling.sh"
 | `src/cli/` | オプション定義、入力検査、実行順序を管理します。 |
 | `src/library.sh` | 標準ライブラリを依存順に読み込みます。 |
 | `src/aws/` | 任意で読み込むAWSモジュールを格納します。 |
+| `src/console/` | 利用者向け診断の内部出力を管理します。 |
 | `src/platform/` | macOS、Ubuntu、Fedoraの内部処理を格納します。 |
-| `src/output/` | 標準エラー出力を管理します。 |
+| `src/regex/` | 正規表現を受け取る公開関数を格納します。 |
 | `src/settings/` | 製品名とバージョンを管理します。 |
 | `test/` | Batsの自動テストを格納します。 |
 | `vendor/` | バージョンを固定した外部依存を格納します。 |
-| `docs/` | 設計判断を格納します。 |
+| `docs/` | 最終設計と参照資料を格納します。 |
 
 ## ライセンス
 

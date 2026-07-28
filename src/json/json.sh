@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 json::require-present() {
-  if [[ "$#" -ne 2 ]] || ! core::__require-display-name "$1"; then
+  if [[ "$#" -ne 2 ]] || ! string::__require-non-empty-line "$1"; then
     return 64
   fi
 
@@ -9,6 +9,6 @@ json::require-present() {
     return 0
   fi
 
-  core::__error "$1 must be present."
+  console::__write-error "$1 must be present."
   return 64
 }

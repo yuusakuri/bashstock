@@ -19,7 +19,8 @@ prompt::__read-line() {
 }
 
 prompt::confirm() {
-  if [[ "$#" -lt 1 || "$#" -gt 2 ]] || core::__has-newline "$1"; then
+  if [[ "$#" -lt 1 || "$#" -gt 2 ]] ||
+    ! string::__require-one-line "$1"; then
     return 64
   fi
 
@@ -54,7 +55,7 @@ prompt::confirm() {
 }
 
 prompt::read-line-with-default() {
-  if [[ "$#" -ne 2 ]] || core::__has-newline "$1"; then
+  if [[ "$#" -ne 2 ]] || ! string::__require-one-line "$1"; then
     return 64
   fi
 
@@ -68,7 +69,8 @@ prompt::read-line-with-default() {
 }
 
 prompt::confirm-or-cancel() {
-  if [[ "$#" -lt 1 || "$#" -gt 2 ]] || core::__has-newline "$1"; then
+  if [[ "$#" -lt 1 || "$#" -gt 2 ]] ||
+    ! string::__require-one-line "$1"; then
     return 64
   fi
 
@@ -110,7 +112,7 @@ prompt::confirm-or-cancel() {
 }
 
 prompt::select-one() {
-  if [[ "$#" -lt 2 ]] || core::__has-newline "$1"; then
+  if [[ "$#" -lt 2 ]] || ! string::__require-one-line "$1"; then
     return 64
   fi
 
@@ -123,7 +125,7 @@ prompt::select-one() {
   items=("$@")
 
   for item in "${items[@]}"; do
-    if core::__has-newline "${item}"; then
+    if ! string::__require-one-line "${item}"; then
       return 64
     fi
   done
@@ -135,7 +137,7 @@ prompt::select-one() {
   printf 'Selection: ' >&2
 
   selected="$(prompt::__read-line)" || return "$?"
-  if ! core::__is-safe-positive-integer "${selected}" 2147483647; then
+  if ! number::__is-positive-integer-at-most "${selected}" 2147483647; then
     return 64
   fi
   if ((10#${selected} > ${#items[@]})); then

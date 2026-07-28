@@ -41,7 +41,7 @@ cli::define-flags() {
 ### This function takes no arguments.
 cli::validate() {
   if [[ -n "${FLAGS_ARGV}" ]]; then
-    output::error 'Positional arguments are not accepted.'
+    console::__write-error 'Positional arguments are not accepted.'
     return 64
   fi
 }

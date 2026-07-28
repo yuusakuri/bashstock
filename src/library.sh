@@ -11,10 +11,11 @@ if [[ -z "${BASHSTOCK_ROOT:-}" ]]; then
   )"
 fi
 
-source "${BASHSTOCK_ROOT}/src/core/core.sh"
-source "${BASHSTOCK_ROOT}/src/array/array.sh"
+source "${BASHSTOCK_ROOT}/src/console/console.sh"
 source "${BASHSTOCK_ROOT}/src/number/number.sh"
 source "${BASHSTOCK_ROOT}/src/string/string.sh"
+source "${BASHSTOCK_ROOT}/src/regex/regex.sh"
+source "${BASHSTOCK_ROOT}/src/array/array.sh"
 source "${BASHSTOCK_ROOT}/src/system/system.sh"
 source "${BASHSTOCK_ROOT}/src/command/command.sh"
 source "${BASHSTOCK_ROOT}/src/shell/shell.sh"

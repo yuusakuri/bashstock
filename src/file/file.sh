@@ -11,7 +11,7 @@ file::__require-existing() {
 }
 
 file::__require-expression() {
-  if [[ "$#" -ne 1 ]] || core::__has-newline "$1"; then
+  if [[ "$#" -ne 1 ]] || ! string::__require-one-line "$1"; then
     return 64
   fi
   command -v perl >/dev/null 2>&1 || return 69
@@ -184,7 +184,9 @@ file::append-text-as-root() {
 }
 
 file::replace-text() {
-  if [[ "$#" -ne 3 ]] || core::__has-newline "$2" || core::__has-newline "$3"; then
+  if [[ "$#" -ne 3 ]] ||
+    ! string::__require-one-line "$2" ||
+    ! string::__require-one-line "$3"; then
     return 64
   fi
   file::__require-existing "$1" || return "$?"
@@ -199,7 +201,9 @@ file::replace-text() {
 }
 
 file::replace-text-as-root() {
-  if [[ "$#" -ne 3 ]] || core::__has-newline "$2" || core::__has-newline "$3"; then
+  if [[ "$#" -ne 3 ]] ||
+    ! string::__require-one-line "$2" ||
+    ! string::__require-one-line "$3"; then
     return 64
   fi
   command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
@@ -225,7 +229,8 @@ file::__replace-text-in-files() {
   shift 2
   paths=("$@")
 
-  if core::__has-newline "${expression}" || core::__has-newline "${replacement}"; then
+  if ! string::__require-one-line "${expression}" ||
+    ! string::__require-one-line "${replacement}"; then
     return 64
   fi
   file::__require-expression "${expression}" || return "$?"
@@ -297,7 +302,9 @@ file::replace-text-in-files-as-root() {
 }
 
 file::replace-or-append-text() {
-  if [[ "$#" -ne 3 ]] || core::__has-newline "$2" || core::__has-newline "$3"; then
+  if [[ "$#" -ne 3 ]] ||
+    ! string::__require-one-line "$2" ||
+    ! string::__require-one-line "$3"; then
     return 64
   fi
   file::__require-existing "$1" || return "$?"
@@ -312,7 +319,9 @@ file::replace-or-append-text() {
 }
 
 file::replace-or-append-text-as-root() {
-  if [[ "$#" -ne 3 ]] || core::__has-newline "$2" || core::__has-newline "$3"; then
+  if [[ "$#" -ne 3 ]] ||
+    ! string::__require-one-line "$2" ||
+    ! string::__require-one-line "$3"; then
     return 64
   fi
   command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \

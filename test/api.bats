@@ -12,8 +12,8 @@ load test_helper
   local function_name=''
   expected="$(
     {
-      awk '/^### Pure Bash Bibleから採用する関数$/{on=1; next} /^### Pure Bash Bibleから採用しない名前付き関数$/{on=0} on' \
-        "${PROJECT_ROOT}/docs/design.md"
+      awk '/^## 採用する関数$/{on=1; next} /^## 採用しない名前付き関数$/{on=0} on' \
+        "${PROJECT_ROOT}/docs/references/pure-bash-bible.md"
       awk '/^## 採用するモジュール$/{on=1; next} /^## 採用しないモジュール$/{on=0} on' \
         "${PROJECT_ROOT}/docs/references/lobash.md"
       awk '/^## 採用する関数$/{on=1; next} /^## 対応環境の検証$/{on=0} on' \
@@ -29,6 +29,16 @@ load test_helper
     [ -n "${function_name}" ]
     declare -F "${function_name}" >/dev/null
   done <<<"${expected}"
+}
+
+@test "regular expression functions use the regex namespace" {
+  declare -F regex::is-match >/dev/null
+  declare -F regex::capture-group >/dev/null
+  declare -F regex::capture-groups >/dev/null
+
+  ! declare -F string::is-match >/dev/null
+  ! declare -F string::capture-group >/dev/null
+  ! declare -F string::capture-groups >/dev/null
 }
 
 @test "the general library does not load AWS functions" {

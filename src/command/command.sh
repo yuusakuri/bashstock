@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 command::exists() {
-  if [[ "$#" -ne 1 || -z "$1" || "$1" == -* ]] || core::__has-newline "$1"; then
+  if [[ "$#" -ne 1 || -z "$1" || "$1" == -* ]] ||
+    ! string::__require-one-line "$1"; then
     return 64
   fi
 
@@ -22,7 +23,7 @@ command::require() {
     return 64
   fi
 
-  core::__error "Required command is unavailable: $1"
+  console::__write-error "Required command is unavailable: $1"
   return 69
 }
 
@@ -37,7 +38,7 @@ command::run-as-root() {
   fi
 
   if ! command -v sudo >/dev/null 2>&1; then
-    core::__error 'sudo is required for this operation.'
+    console::__write-error 'sudo is required for this operation.'
     return 69
   fi
 

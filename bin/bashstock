@@ -13,7 +13,6 @@ FLAGS_GETOPT_CMD='bashstock-getopt'
 export FLAGS_GETOPT_CMD
 
 source "${project_root}/src/settings/settings.sh"
-source "${project_root}/src/output/output.sh"
 source "${project_root}/src/library.sh"
 source "${project_root}/vendor/shflags/shflags"
 source "${project_root}/src/cli/cli.sh"

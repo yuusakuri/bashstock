@@ -23,7 +23,8 @@ platform::__create-login-user() {
   fi
 
   if ! userdel --remove "$1" >/dev/null 2>&1; then
-    core::__error "Failed to restore the account after password setup: $1, /home/$1"
+    console::__write-error \
+      "Failed to restore the account after password setup: $1, /home/$1"
     return 74
   fi
   return 73

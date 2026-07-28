@@ -59,7 +59,7 @@ time::__realtime-milliseconds() {
 }
 
 time::__format-milliseconds() {
-  if [[ "$#" -ne 2 ]] || ! core::__is-non-negative-integer "$1"; then
+  if [[ "$#" -ne 2 ]] || ! number::__is-non-negative-integer "$1"; then
     return 64
   fi
   command -v perl >/dev/null 2>&1 || return 69
@@ -103,7 +103,7 @@ time::__format-milliseconds() {
 }
 
 time::__provider-error() {
-  core::__error 'The portable time provider is unavailable.'
+  console::__write-error 'The portable time provider is unavailable.'
   return 69
 }
 

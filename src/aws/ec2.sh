@@ -46,8 +46,8 @@ aws::wait-for-instance-tag() {
     ! aws::__require-value "$1" ||
     ! aws::__require-value "$2" ||
     ! aws::__require-value "$3" ||
-    ! core::__is-safe-positive-integer "$4" 2147483647 ||
-    ! core::__is-safe-positive-integer "$5" 2147483647; then
+    ! number::__is-positive-integer-at-most "$4" 2147483647 ||
+    ! number::__is-positive-integer-at-most "$5" 2147483647; then
     return 64
   fi
 
@@ -62,7 +62,8 @@ aws::wait-for-instance-tag() {
   local status=''
 
   start="$(time::boottime-milliseconds)" || return "$?"
-  core::__is-safe-non-negative-integer "${start}" 9223372036854775807 || return 69
+  number::__is-non-negative-integer-at-most "${start}" 9223372036854775807 ||
+    return 69
   while :; do
     if value="$(aws::instance-tag "${instance_id}" "${region}" "${key}")"; then
       printf '%s\n' "${value}"
@@ -75,7 +76,8 @@ aws::wait-for-instance-tag() {
     fi
 
     current="$(time::boottime-milliseconds)" || return "$?"
-    core::__is-safe-non-negative-integer "${current}" 9223372036854775807 || return 69
+    number::__is-non-negative-integer-at-most "${current}" 9223372036854775807 ||
+      return 69
     if ((current - start >= timeout_milliseconds)); then
       return 75
     fi

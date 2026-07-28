@@ -34,7 +34,8 @@ platform::__create-login-user() {
 
   if id -u "$1" >/dev/null 2>&1; then
     if ! sysadminctl -deleteUser "$1" -secure </dev/tty >/dev/tty 2>/dev/tty; then
-      core::__error "Failed to restore the account after password setup: $1, /Users/$1"
+      console::__write-error \
+        "Failed to restore the account after password setup: $1, /Users/$1"
       return 74
     fi
   fi

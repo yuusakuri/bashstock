@@ -23,7 +23,7 @@ array::reverse() {
   local index=''
 
   for ((index = ${#values[@]} - 1; index >= 0; index--)); do
-    if core::__has-newline "${values[index]}"; then
+    if ! string::__require-one-line "${values[index]}"; then
       return 64
     fi
     printf '%s\n' "${values[index]}"
@@ -38,7 +38,7 @@ array::first() {
   if [[ "$#" -eq 0 ]]; then
     return 1
   fi
-  if core::__has-newline "$1"; then
+  if ! string::__require-one-line "$1"; then
     return 64
   fi
 
@@ -55,7 +55,7 @@ array::last() {
     :
   done
 
-  if core::__has-newline "${value}"; then
+  if ! string::__require-one-line "${value}"; then
     return 64
   fi
   printf '%s\n' "${value}"
@@ -68,7 +68,7 @@ array::unique() {
   local duplicate='0'
 
   for value in "$@"; do
-    if core::__has-newline "${value}"; then
+    if ! string::__require-one-line "${value}"; then
       return 64
     fi
 
@@ -88,7 +88,7 @@ array::unique() {
 }
 
 array::prepend-to-each() {
-  if [[ "$#" -lt 1 ]] || core::__has-newline "$1"; then
+  if [[ "$#" -lt 1 ]] || ! string::__require-one-line "$1"; then
     return 64
   fi
 
@@ -97,7 +97,7 @@ array::prepend-to-each() {
   shift
 
   for value in "$@"; do
-    if core::__has-newline "${value}"; then
+    if ! string::__require-one-line "${value}"; then
       return 64
     fi
     printf '%s%s\n' "${prefix}" "${value}"

@@ -299,14 +299,16 @@ path::config-home() {
   fi
 
   if [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
-    if [[ "${XDG_CONFIG_HOME}" != /* ]] || core::__has-newline "${XDG_CONFIG_HOME}"; then
+    if [[ "${XDG_CONFIG_HOME}" != /* ]] ||
+      ! string::__require-one-line "${XDG_CONFIG_HOME}"; then
       return 64
     fi
     printf '%s\n' "${XDG_CONFIG_HOME}"
     return 0
   fi
 
-  if [[ -z "${HOME:-}" || "${HOME}" != /* ]] || core::__has-newline "${HOME:-}"; then
+  if [[ -z "${HOME:-}" || "${HOME}" != /* ]] ||
+    ! string::__require-one-line "${HOME:-}"; then
     return 64
   fi
   printf '%s/.config\n' "${HOME%/}"
@@ -319,10 +321,10 @@ path::change-owner-recursively-as-root() {
   if [[ ! -d "$1" || -L "$1" ]]; then
     return 66
   fi
-  if ! core::__require-non-empty-line "$2"; then
+  if ! string::__require-non-empty-line "$2"; then
     return 64
   fi
-  if [[ "$#" -eq 3 ]] && ! core::__require-non-empty-line "$3"; then
+  if [[ "$#" -eq 3 ]] && ! string::__require-non-empty-line "$3"; then
     return 64
   fi
 

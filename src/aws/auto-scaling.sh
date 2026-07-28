@@ -72,8 +72,8 @@ aws::instances-in-auto-scaling-group() {
 
 aws::auto-scaling-group-name() {
   if [[ "$#" -ne 2 ]] ||
-    ! core::__is-safe-positive-integer "$1" 2147483647 ||
-    ! core::__is-safe-positive-integer "$2" 2147483647; then
+    ! number::__is-positive-integer-at-most "$1" 2147483647 ||
+    ! number::__is-positive-integer-at-most "$2" 2147483647; then
     return 64
   fi
 

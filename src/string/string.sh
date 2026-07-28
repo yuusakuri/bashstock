@@ -1,18 +1,32 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2119,SC2120,SC2233,SC2234
 
+string::__require-one-line() {
+  if [[ "$#" -ne 1 || "$1" == *$'\n'* ]]; then
+    return 64
+  fi
+}
+
+string::__require-non-empty-line() {
+  if [[ "$#" -ne 1 || -z "$1" ]]; then
+    return 64
+  fi
+
+  string::__require-one-line "$1"
+}
+
 string::__require-utf8-locale() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
   if ! command -v locale >/dev/null 2>&1; then
-    core::__error 'A UTF-8 locale is required.'
+    console::__write-error 'A UTF-8 locale is required.'
     return 69
   fi
 
   local character_map=''
   character_map="$(locale charmap 2>/dev/null)" || {
-    core::__error 'A UTF-8 locale is required.'
+    console::__write-error 'A UTF-8 locale is required.'
     return 69
   }
   case "${character_map}" in
@@ -20,7 +34,7 @@ string::__require-utf8-locale() {
       return 0
       ;;
     *)
-      core::__error 'A UTF-8 locale is required.'
+      console::__write-error 'A UTF-8 locale is required.'
       return 69
       ;;
   esac
@@ -81,30 +95,10 @@ string::collapse-whitespace() {
   printf '%s\n' "${result}"
 }
 
-string::is-match() {
-  if [[ "$#" -ne 2 ]]; then
-    return 64
-  fi
-
-  local value="$1"
-  local expression="$2"
-  local status=''
-
-  # shellcheck disable=SC2233
-  if ( [[ "${value}" =~ ${expression} ]] ); then
-    return 0
-  else
-    status="$?"
-  fi
-
-  if [[ "${status}" -eq 2 ]]; then
-    return 64
-  fi
-  return 1
-}
-
 string::split() {
-  if [[ "$#" -ne 2 || -z "$2" ]] || core::__has-newline "$1" || core::__has-newline "$2"; then
+  if [[ "$#" -ne 2 || -z "$2" ]] ||
+    ! string::__require-one-line "$1" ||
+    ! string::__require-one-line "$2"; then
     return 64
   fi
 
@@ -375,68 +369,6 @@ string::join() {
   printf '\n'
 }
 
-string::capture-group() {
-  if [[ "$#" -ne 3 ]] ||
-    ! core::__is-safe-non-negative-integer "$3" 2147483647; then
-    return 64
-  fi
-
-  local value="$1"
-  local expression="$2"
-  local group="$3"
-
-  (
-    local status=''
-    if [[ "${value}" =~ ${expression} ]]; then
-      if ((group >= ${#BASH_REMATCH[@]})); then
-        return 64
-      fi
-      if core::__has-newline "${BASH_REMATCH[group]}"; then
-        return 64
-      fi
-      printf '%s\n' "${BASH_REMATCH[group]}"
-      return 0
-    else
-      # shellcheck disable=SC2319
-      status="$?"
-    fi
-    if [[ "${status}" -eq 2 ]]; then
-      return 64
-    fi
-    return 1
-  )
-}
-
-string::capture-groups() {
-  if [[ "$#" -ne 2 ]]; then
-    return 64
-  fi
-
-  local value="$1"
-  local expression="$2"
-
-  (
-    local status=''
-    local index=''
-    if [[ "${value}" =~ ${expression} ]]; then
-      for ((index = 1; index < ${#BASH_REMATCH[@]}; index++)); do
-        if core::__has-newline "${BASH_REMATCH[index]}"; then
-          return 64
-        fi
-        printf '%s\n' "${BASH_REMATCH[index]}"
-      done
-      return 0
-    else
-      # shellcheck disable=SC2319
-      status="$?"
-    fi
-    if [[ "${status}" -eq 2 ]]; then
-      return 64
-    fi
-    return 1
-  )
-}
-
 string::byte-length() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -515,45 +447,50 @@ string::replace-last() {
 }
 
 string::require-non-empty() {
-  if [[ "$#" -ne 2 ]] || ! core::__require-display-name "$1"; then
+  if [[ "$#" -ne 2 ]] || ! string::__require-non-empty-line "$1"; then
     return 64
   fi
   if [[ -n "$2" ]]; then
     return 0
   fi
-  core::__error "$1 must not be empty."
+  console::__write-error "$1 must not be empty."
   return 64
 }
 
 string::require-empty() {
-  if [[ "$#" -ne 2 ]] || ! core::__require-display-name "$1"; then
+  if [[ "$#" -ne 2 ]] || ! string::__require-non-empty-line "$1"; then
     return 64
   fi
   if [[ -z "$2" ]]; then
     return 0
   fi
-  core::__error "$1 must be empty."
+  console::__write-error "$1 must be empty."
   return 64
 }
 
 string::require-allowed() {
-  if [[ "$#" -lt 3 ]] || ! core::__require-display-name "$1"; then
+  if [[ "$#" -lt 3 ]] || ! string::__require-non-empty-line "$1"; then
     return 64
   fi
 
   local name="$1"
   local value="$2"
+  local allowed=''
   shift 2
-  if array::contains "${value}" "$@"; then
-    return 0
-  fi
-  core::__error "${name} has an unsupported value."
+
+  for allowed in "$@"; do
+    if [[ "${value}" == "${allowed}" ]]; then
+      return 0
+    fi
+  done
+
+  console::__write-error "${name} has an unsupported value."
   return 64
 }
 
 string::slice() {
   if [[ "$#" -lt 2 || "$#" -gt 3 ]] ||
-    ! core::__is-safe-non-negative-integer "$2" 2147483647; then
+    ! number::__is-non-negative-integer-at-most "$2" 2147483647; then
     return 64
   fi
   string::__require-utf8-locale || return "$?"
@@ -563,7 +500,7 @@ string::slice() {
   local end="${3-${#1}}"
   local length="${#value}"
 
-  if ! core::__is-safe-non-negative-integer "${end}" 2147483647; then
+  if ! number::__is-non-negative-integer-at-most "${end}" 2147483647; then
     return 64
   fi
   if ((10#${start} > 10#${end} || 10#${end} > length)); then

@@ -71,23 +71,6 @@ load test_helper
   [ "${status}" -eq 64 ]
 }
 
-@test "regular expression functions return captures without changing the caller match" {
-  BASH_REMATCH=('unchanged')
-
-  string::is-match 'abc-123' '^([a-z]+)-([0-9]+)$'
-  [ "${BASH_REMATCH[0]}" = 'unchanged' ]
-
-  run string::capture-group 'abc-123' '^([a-z]+)-([0-9]+)$' 2
-  [ "${status}" -eq 0 ]
-  [ "${output}" = '123' ]
-
-  run string::capture-groups 'abc-123' '^([a-z]+)-([0-9]+)$'
-  [ "${output}" = $'abc\n123' ]
-
-  run string::is-match value '['
-  [ "${status}" -eq 64 ]
-}
-
 @test "length functions distinguish characters from bytes" {
   run string::length '日本'
   [ "${output}" = '2' ]

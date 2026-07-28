@@ -15,7 +15,7 @@ option::require-single() {
     value="$2"
     shift 2
 
-    if ! core::__require-display-name "${name}"; then
+    if ! string::__require-non-empty-line "${name}"; then
       return 64
     fi
     if [[ -n "${names}" ]]; then
@@ -30,6 +30,6 @@ option::require-single() {
   if [[ "${count}" -eq 1 ]]; then
     return 0
   fi
-  core::__error "Exactly one option must be set: ${names}"
+  console::__write-error "Exactly one option must be set: ${names}"
   return 64
 }
