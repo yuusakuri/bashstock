@@ -14,13 +14,13 @@ log::__write() {
     line="${remaining%%$'\n'*}"
     timestamp="$(time::local-date-time-milliseconds)" || return "$?"
     printf '%s [%s] [%s] %s\n' \
-      "${timestamp}" "${level}" "${MYTOOL_NAME:-modern-bash-cli}" "${line}" >&2
+      "${timestamp}" "${level}" "${BASHSTOCK_NAME:-bashstock}" "${line}" >&2
     remaining="${remaining#*$'\n'}"
   done
 
   timestamp="$(time::local-date-time-milliseconds)" || return "$?"
   printf '%s [%s] [%s] %s\n' \
-    "${timestamp}" "${level}" "${MYTOOL_NAME:-modern-bash-cli}" "${remaining}" >&2
+    "${timestamp}" "${level}" "${BASHSTOCK_NAME:-bashstock}" "${remaining}" >&2
 }
 
 log::info() {

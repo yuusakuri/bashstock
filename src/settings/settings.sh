@@ -2,6 +2,6 @@
 
 # Product identity values.
 # shellcheck disable=SC2034
-readonly MYTOOL_NAME='mytool'
+readonly BASHSTOCK_NAME='bashstock'
 # shellcheck disable=SC2034
-readonly MYTOOL_VERSION='1.0.0'
+readonly BASHSTOCK_VERSION='1.0.0'

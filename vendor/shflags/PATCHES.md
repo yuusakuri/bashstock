@@ -4,4 +4,4 @@
 
 `shflags`は、文字列、整数、浮動小数点数を変数へ代入するときに、Bashの`printf -v`を使用します。この処理は、利用者が入力した引用符を`eval`へ渡しません。外部の引数解析が失敗した場合は、同じエラーを重複して出力しません。
 
-コマンドは`libexec/mytool-getopt`を`FLAGS_GETOPT_CMD`として使用します。このアダプターは、macOSとLinuxで長いオプションと空白を含む値を同じ規則で解析します。
+コマンドは`libexec/bashstock-getopt`を`FLAGS_GETOPT_CMD`として使用します。このアダプターは、macOSとLinuxで長いオプションと空白を含む値を同じ規則で解析します。

@@ -9,7 +9,7 @@
 # Author: kate.ward@forestent.com (Kate Ward)
 # https://github.com/kward/shflags
 #
-# Modified by modern-bash-cli to use safe Bash variable assignment.
+# Modified by BashStock to use safe Bash variable assignment.
 #
 # This module implements something like the gflags library available
 # from https://github.com/gflags/gflags.

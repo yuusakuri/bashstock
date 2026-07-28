@@ -6,7 +6,7 @@
 ###
 ### This function takes no arguments.
 cli::write-help() {
-  local content='Usage: mytool [options]'
+  local content="Usage: ${BASHSTOCK_NAME} [options]"
 
   content+=$'\n'
   content+=$'\n''Options:'
@@ -30,7 +30,7 @@ flags_help() {
 ###
 ### This function takes no arguments.
 cli::define-flags() {
-  FLAGS_PARENT="${MYTOOL_NAME}"
+  FLAGS_PARENT="${BASHSTOCK_NAME}"
   DEFINE_boolean 'version' 'false' 'Show the version.' 'v'
 }
 
@@ -68,7 +68,7 @@ cli::run() {
   cli::validate
 
   if [[ "${FLAGS_version}" -eq "${FLAGS_TRUE}" ]]; then
-    printf '%s %s\n' "${MYTOOL_NAME}" "${MYTOOL_VERSION}"
+    printf '%s %s\n' "${BASHSTOCK_NAME}" "${BASHSTOCK_VERSION}"
     return 0
   fi
 

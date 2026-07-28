@@ -9,9 +9,9 @@ setup_project() {
   # shellcheck disable=SC2034
   PROJECT_ROOT="$(CDPATH='' cd -- "${BATS_TEST_DIRNAME}/.." >/dev/null 2>&1 && pwd -P)"
   # shellcheck disable=SC2034
-  TOOL="${PROJECT_ROOT}/bin/mytool"
+  TOOL="${PROJECT_ROOT}/bin/bashstock"
   # shellcheck disable=SC2034
-  GETOPT="${PROJECT_ROOT}/libexec/mytool-getopt"
+  GETOPT="${PROJECT_ROOT}/libexec/bashstock-getopt"
 }
 
 setup() {

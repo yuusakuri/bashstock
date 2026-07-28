@@ -67,7 +67,7 @@ load test_helper
   [ -n "${output}" ]
 
   user::exists "$(id -un)"
-  ! user::exists modern-bash-cli-user-that-does-not-exist
+  ! user::exists bashstock-user-that-does-not-exist
 
   if [[ "${EUID}" -eq 0 ]]; then
     user::is-root

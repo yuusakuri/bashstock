@@ -107,7 +107,7 @@ time::elapsed-milliseconds() {
 
   local current=''
   local elapsed=''
-  if [[ -z "${MODERN_BASH_CLI_START_MONOTONIC_MILLISECONDS:-}" ]]; then
+  if [[ -z "${BASHSTOCK_START_MONOTONIC_MILLISECONDS:-}" ]]; then
     time::__provider-error
     return 69
   fi
@@ -115,7 +115,7 @@ time::elapsed-milliseconds() {
     time::__provider-error
     return 69
   }
-  elapsed="$((current - MODERN_BASH_CLI_START_MONOTONIC_MILLISECONDS))"
+  elapsed="$((current - BASHSTOCK_START_MONOTONIC_MILLISECONDS))"
   if [[ "${elapsed}" -lt 0 ]]; then
     elapsed='0'
   fi
@@ -187,6 +187,6 @@ time::local-date() {
   time::__date-time local-date
 }
 
-if [[ -z "${MODERN_BASH_CLI_START_MONOTONIC_MILLISECONDS+x}" ]]; then
-  MODERN_BASH_CLI_START_MONOTONIC_MILLISECONDS="$(time::__monotonic-milliseconds 2>/dev/null || true)"
+if [[ -z "${BASHSTOCK_START_MONOTONIC_MILLISECONDS+x}" ]]; then
+  BASHSTOCK_START_MONOTONIC_MILLISECONDS="$(time::__monotonic-milliseconds 2>/dev/null || true)"
 fi

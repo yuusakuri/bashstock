@@ -9,7 +9,7 @@ readonly project_root
 
 PATH="${project_root}/libexec:${PATH}"
 export PATH
-FLAGS_GETOPT_CMD='mytool-getopt'
+FLAGS_GETOPT_CMD='bashstock-getopt'
 export FLAGS_GETOPT_CMD
 
 source "${project_root}/src/settings/settings.sh"

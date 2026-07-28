@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 if ! declare -F aws::__require-value >/dev/null 2>&1; then
-  source "${MODERN_BASH_CLI_ROOT}/src/aws/aws.sh"
+  source "${BASHSTOCK_ROOT}/src/aws/aws.sh"
 fi
 if ! declare -F aws::instance-id >/dev/null 2>&1; then
-  source "${MODERN_BASH_CLI_ROOT}/src/aws/imds.sh"
+  source "${BASHSTOCK_ROOT}/src/aws/imds.sh"
 fi
 if ! declare -F aws::instance-tag >/dev/null 2>&1; then
-  source "${MODERN_BASH_CLI_ROOT}/src/aws/ec2.sh"
+  source "${BASHSTOCK_ROOT}/src/aws/ec2.sh"
 fi
 
 aws::auto-scaling-group() {

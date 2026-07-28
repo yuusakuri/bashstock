@@ -47,7 +47,7 @@ file::__temporary-path() {
   directory="$(path::directory-name "$1")" || return "$?"
   name="$(path::base-name "$1")" || return "$?"
   command -v mktemp >/dev/null 2>&1 || return 69
-  mktemp "${directory}/.${name}.modern-bash-cli.XXXXXX" 2>/dev/null || return 74
+  mktemp "${directory}/.${name}.bashstock.XXXXXX" 2>/dev/null || return 74
 }
 
 file::__prepare-replacement() {
@@ -179,7 +179,7 @@ file::append-text-as-root() {
   if [[ "$#" -ne 2 || -z "$1" || -L "$1" ]]; then
     return 64
   fi
-  command::run-as-root "${MODERN_BASH_CLI_ROOT}/libexec/modern-bash-cli-root" \
+  command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
     append-text "$1" "$2"
 }
 
@@ -202,7 +202,7 @@ file::replace-text-as-root() {
   if [[ "$#" -ne 3 ]] || core::__has-newline "$2" || core::__has-newline "$3"; then
     return 64
   fi
-  command::run-as-root "${MODERN_BASH_CLI_ROOT}/libexec/modern-bash-cli-root" \
+  command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
     replace-text "$@"
 }
 
@@ -292,7 +292,7 @@ file::replace-text-in-files-as-root() {
   if [[ "$#" -lt 3 ]]; then
     return 64
   fi
-  command::run-as-root "${MODERN_BASH_CLI_ROOT}/libexec/modern-bash-cli-root" \
+  command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
     replace-text-in-files "$@"
 }
 
@@ -315,6 +315,6 @@ file::replace-or-append-text-as-root() {
   if [[ "$#" -ne 3 ]] || core::__has-newline "$2" || core::__has-newline "$3"; then
     return 64
   fi
-  command::run-as-root "${MODERN_BASH_CLI_ROOT}/libexec/modern-bash-cli-root" \
+  command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
     replace-or-append-text "$@"
 }

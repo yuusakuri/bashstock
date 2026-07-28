@@ -7,7 +7,7 @@ bats_require_minimum_version 1.5.0
   run --separate-stderr "${TOOL}"
 
   [ "${status}" -eq 0 ]
-  [[ "${output}" == 'Usage: mytool [options]'* ]]
+  [[ "${output}" == 'Usage: bashstock [options]'* ]]
   [ -z "${stderr}" ]
 }
 
@@ -15,7 +15,7 @@ bats_require_minimum_version 1.5.0
   run --separate-stderr "${TOOL}" --help
 
   [ "${status}" -eq 0 ]
-  [[ "${output}" == 'Usage: mytool [options]'* ]]
+  [[ "${output}" == 'Usage: bashstock [options]'* ]]
   [ -z "${stderr}" ]
 }
 
@@ -23,7 +23,7 @@ bats_require_minimum_version 1.5.0
   run --separate-stderr "${TOOL}" -h
 
   [ "${status}" -eq 0 ]
-  [[ "${output}" == 'Usage: mytool [options]'* ]]
+  [[ "${output}" == 'Usage: bashstock [options]'* ]]
   [ -z "${stderr}" ]
 }
 
@@ -31,7 +31,7 @@ bats_require_minimum_version 1.5.0
   run --separate-stderr "${TOOL}" --version
 
   [ "${status}" -eq 0 ]
-  [ "${output}" = 'mytool 1.0.0' ]
+  [ "${output}" = 'bashstock 1.0.0' ]
   [ -z "${stderr}" ]
 }
 
@@ -39,7 +39,7 @@ bats_require_minimum_version 1.5.0
   run --separate-stderr "${TOOL}" -v
 
   [ "${status}" -eq 0 ]
-  [ "${output}" = 'mytool 1.0.0' ]
+  [ "${output}" = 'bashstock 1.0.0' ]
   [ -z "${stderr}" ]
 }
 
@@ -48,7 +48,7 @@ bats_require_minimum_version 1.5.0
 
   [ "${status}" -eq 64 ]
   [ -z "${output}" ]
-  [ "${stderr}" = 'mytool: Positional arguments are not accepted.' ]
+  [ "${stderr}" = 'bashstock: Positional arguments are not accepted.' ]
 }
 
 @test "a positional command expression stays data" {
@@ -66,7 +66,7 @@ bats_require_minimum_version 1.5.0
 
   [ "${status}" -eq 64 ]
   [ -z "${output}" ]
-  [ "${stderr}" = 'mytool: Positional arguments are not accepted.' ]
+  [ "${stderr}" = 'bashstock: Positional arguments are not accepted.' ]
 }
 
 @test "an unknown long option returns a parser error" {

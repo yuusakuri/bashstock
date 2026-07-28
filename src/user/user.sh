@@ -36,7 +36,7 @@ user::create-system-as-root() {
   if user::exists "$1"; then
     return 73
   fi
-  command::run-as-root "${MODERN_BASH_CLI_ROOT}/libexec/modern-bash-cli-root" \
+  command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
     create-system-user "$1"
 }
 
@@ -53,6 +53,6 @@ user::create-login-as-root() {
     core::__error 'A controlling terminal is required to set the password.'
     return 66
   fi
-  command::run-as-root "${MODERN_BASH_CLI_ROOT}/libexec/modern-bash-cli-root" \
+  command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
     create-login-user "$1" "$2"
 }

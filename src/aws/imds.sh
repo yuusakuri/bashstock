@@ -2,7 +2,7 @@
 # shellcheck disable=SC2119,SC2120
 
 if ! declare -F aws::__require-value >/dev/null 2>&1; then
-  source "${MODERN_BASH_CLI_ROOT}/src/aws/aws.sh"
+  source "${BASHSTOCK_ROOT}/src/aws/aws.sh"
 fi
 
 aws::__imds-token() {
@@ -37,7 +37,7 @@ aws::__imds-get() {
   local output=''
   local status=''
   local http_status=''
-  output="$(mktemp "${TMPDIR:-/tmp}/modern-bash-cli-imds.XXXXXX")" || return 74
+  output="$(mktemp "${TMPDIR:-/tmp}/bashstock-imds.XXXXXX")" || return 74
   if [[ -z "${token}" || "${token}" == *[[:cntrl:]]* ]]; then
     rm -f -- "${output}"
     return 75

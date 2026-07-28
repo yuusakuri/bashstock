@@ -6,7 +6,7 @@ core::__error() {
     return 64
   fi
 
-  printf '%s: %s\n' "${MYTOOL_NAME:-modern-bash-cli}" "$1" >&2
+  printf '%s: %s\n' "${BASHSTOCK_NAME:-bashstock}" "$1" >&2
 }
 
 core::__has-newline() {

@@ -1,7 +1,7 @@
 .PHONY: check lint run test
 
 run:
-	./bin/mytool
+	./bin/bashstock
 
 test:
 	./bin/test

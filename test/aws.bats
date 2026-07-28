@@ -85,7 +85,7 @@ setup() {
   aws::instance-tag() {
     printf 'ready\n'
   }
-  MODERN_BASH_CLI_START_MONOTONIC_MILLISECONDS='0'
+  BASHSTOCK_START_MONOTONIC_MILLISECONDS='0'
   time::__monotonic-milliseconds() {
     printf '1\n'
   }

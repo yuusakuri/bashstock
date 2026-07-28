@@ -16,8 +16,8 @@ aws::__cli() {
   local output=''
   local error=''
   local status=''
-  output="$(mktemp "${TMPDIR:-/tmp}/modern-bash-cli-aws-output.XXXXXX")" || return 74
-  error="$(mktemp "${TMPDIR:-/tmp}/modern-bash-cli-aws-error.XXXXXX")" || {
+  output="$(mktemp "${TMPDIR:-/tmp}/bashstock-aws-output.XXXXXX")" || return 74
+  error="$(mktemp "${TMPDIR:-/tmp}/bashstock-aws-error.XXXXXX")" || {
     rm -f -- "${output}"
     return 74
   }

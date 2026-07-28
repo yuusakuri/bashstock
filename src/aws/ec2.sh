@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 if ! declare -F aws::__require-value >/dev/null 2>&1; then
-  source "${MODERN_BASH_CLI_ROOT}/src/aws/aws.sh"
+  source "${BASHSTOCK_ROOT}/src/aws/aws.sh"
 fi
 
 aws::instance-tags() {

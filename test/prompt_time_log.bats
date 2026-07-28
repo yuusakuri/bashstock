@@ -68,7 +68,7 @@ bats_require_minimum_version 1.5.0
 }
 
 @test "elapsed time uses the monotonic start value and truncates units" {
-  MODERN_BASH_CLI_START_MONOTONIC_MILLISECONDS='1000'
+  BASHSTOCK_START_MONOTONIC_MILLISECONDS='1000'
   time::__monotonic-milliseconds() {
     printf '86402001\n'
   }
@@ -96,10 +96,10 @@ bats_require_minimum_version 1.5.0
   run --separate-stderr log::info $'first\n\nthird'
   [ "${status}" -eq 0 ]
   [ -z "${output}" ]
-  [ "${stderr}" = $'2026-01-02T03:04:05.006+09:00 [INFO] [mytool] first\n2026-01-02T03:04:05.006+09:00 [INFO] [mytool] \n2026-01-02T03:04:05.006+09:00 [INFO] [mytool] third' ]
+  [ "${stderr}" = $'2026-01-02T03:04:05.006+09:00 [INFO] [bashstock] first\n2026-01-02T03:04:05.006+09:00 [INFO] [bashstock] \n2026-01-02T03:04:05.006+09:00 [INFO] [bashstock] third' ]
 
   run --separate-stderr log::warn 'warning'
-  [[ "${stderr}" == *'[WARN] [mytool] warning' ]]
+  [[ "${stderr}" == *'[WARN] [bashstock] warning' ]]
   run --separate-stderr log::error 'failure'
-  [[ "${stderr}" == *'[ERROR] [mytool] failure' ]]
+  [[ "${stderr}" == *'[ERROR] [bashstock] failure' ]]
 }

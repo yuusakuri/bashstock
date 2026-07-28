@@ -15,7 +15,7 @@ getopt_consumed='0'
 getopt::write-error() {
   local message="${1}"
 
-  printf 'mytool-getopt: %s\n' "${message}" >&2
+  printf 'bashstock-getopt: %s\n' "${message}" >&2
 }
 
 ### Append an option token to the parser output.

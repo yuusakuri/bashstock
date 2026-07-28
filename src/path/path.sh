@@ -326,6 +326,6 @@ path::change-owner-recursively-as-root() {
     return 64
   fi
 
-  command::run-as-root "${MODERN_BASH_CLI_ROOT}/libexec/modern-bash-cli-root" \
+  command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
     change-owner-recursively "$@"
 }
