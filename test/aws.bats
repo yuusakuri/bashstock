@@ -2,10 +2,7 @@
 
 load test_helper
 
-setup() {
-  setup_project
-  source "${PROJECT_ROOT}/src/settings/settings.sh"
-  source "${PROJECT_ROOT}/src/library.sh"
+test::load-extra-modules() {
   source "${PROJECT_ROOT}/src/aws/aws.sh"
   source "${PROJECT_ROOT}/src/aws/imds.sh"
   source "${PROJECT_ROOT}/src/aws/ec2.sh"
@@ -85,14 +82,47 @@ setup() {
   aws::instance-tag() {
     printf 'ready\n'
   }
-  BASHSTOCK_START_MONOTONIC_MILLISECONDS='0'
-  time::__monotonic-milliseconds() {
+  time::boottime-milliseconds() {
     printf '1\n'
   }
 
   run aws::wait-for-instance-tag 'i-123' 'ap-northeast-1' Role 10 1
   [ "${status}" -eq 0 ]
   [ "${output}" = 'ready' ]
+}
+
+@test "tag waiting uses boottime for its timeout" {
+  local clock_marker="${BATS_TEST_TMPDIR}/clock-called"
+
+  aws::instance-tag() {
+    return 1
+  }
+  time::boottime-milliseconds() {
+    if [[ -e "${clock_marker}" ]]; then
+      printf '1000\n'
+    else
+      : >"${clock_marker}"
+      printf '0\n'
+    fi
+  }
+  sleep() {
+    :
+  }
+
+  run aws::wait-for-instance-tag 'i-123' 'ap-northeast-1' Role 1 1
+  [ "${status}" -eq 75 ]
+}
+
+@test "tag waiting rejects a non-integer clock value" {
+  local injection_marker="${BATS_TEST_TMPDIR}/clock-injection"
+
+  time::boottime-milliseconds() {
+    printf '0+$(touch %s)\n' "${injection_marker}"
+  }
+
+  run aws::wait-for-instance-tag 'i-123' 'ap-northeast-1' Role 1 1
+  [ "${status}" -eq 69 ]
+  [ ! -e "${injection_marker}" ]
 }
 
 @test "instance search passes fixed state filters to AWS CLI" {

@@ -492,19 +492,23 @@ string::replace-last() {
   local pattern="$2"
   local replacement="$3"
   local candidate=''
-  local remainder=''
   local matched=''
-  local index=''
+  local start=''
+  local length=''
 
-  for ((index = ${#value} - 1; index >= 0; index--)); do
-    candidate="${value:index}"
-    # shellcheck disable=SC2295
-    remainder="${candidate#$pattern}"
-    if [[ "${remainder}" != "${candidate}" ]]; then
-      matched="${candidate:0:$((${#candidate} - ${#remainder}))}"
-      printf '%s%s%s\n' "${value:0:index}" "${replacement}" "${candidate:${#matched}}"
-      return 0
-    fi
+  for ((start = ${#value} - 1; start >= 0; start--)); do
+    candidate="${value:start}"
+    for ((length = ${#candidate}; length >= 1; length--)); do
+      matched="${candidate:0:length}"
+      # shellcheck disable=SC2053
+      if [[ "${matched}" == ${pattern} ]]; then
+        printf '%s%s%s\n' \
+          "${value:0:start}" \
+          "${replacement}" \
+          "${candidate:length}"
+        return 0
+      fi
+    done
   done
 
   printf '%s\n' "${value}"

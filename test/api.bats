@@ -30,7 +30,7 @@ load test_helper
     count=$((count + 1))
   done <<<"${expected}"
 
-  [ "${count}" -eq 114 ]
+  [ "${count}" -eq 113 ]
 }
 
 @test "the general library does not load AWS functions" {

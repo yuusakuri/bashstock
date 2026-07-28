@@ -67,24 +67,22 @@ bats_require_minimum_version 1.5.0
   [ "${output}" = '1970-01-01' ]
 }
 
-@test "elapsed time uses the monotonic start value and truncates units" {
-  BASHSTOCK_START_MONOTONIC_MILLISECONDS='1000'
-  time::__monotonic-milliseconds() {
-    printf '86402001\n'
-  }
+@test "monotonic and boottime clocks return milliseconds" {
+  run time::monotonic-milliseconds
+  [ "${status}" -eq 0 ]
+  [[ "${output}" =~ ^[0-9]+$ ]]
 
-  run time::elapsed-milliseconds
-  [ "${output}" = '86401001' ]
-  run time::elapsed-seconds
-  [ "${output}" = '86401' ]
-  run time::elapsed-days
-  [ "${output}" = '1' ]
+  run time::boottime-milliseconds
+  [ "${status}" -eq 0 ]
+  [[ "${output}" =~ ^[0-9]+$ ]]
 }
 
 @test "time functions reject arguments" {
   run time::utc-date unexpected
   [ "${status}" -eq 64 ]
-  run time::elapsed-milliseconds unexpected
+  run time::monotonic-milliseconds unexpected
+  [ "${status}" -eq 64 ]
+  run time::boottime-milliseconds unexpected
   [ "${status}" -eq 64 ]
 }
 

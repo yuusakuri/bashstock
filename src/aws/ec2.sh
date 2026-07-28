@@ -61,7 +61,8 @@ aws::wait-for-instance-tag() {
   local value=''
   local status=''
 
-  start="$(time::elapsed-milliseconds)" || return "$?"
+  start="$(time::boottime-milliseconds)" || return "$?"
+  core::__is-safe-non-negative-integer "${start}" 9223372036854775807 || return 69
   while :; do
     if value="$(aws::instance-tag "${instance_id}" "${region}" "${key}")"; then
       printf '%s\n' "${value}"
@@ -73,7 +74,8 @@ aws::wait-for-instance-tag() {
       return "${status}"
     fi
 
-    current="$(time::elapsed-milliseconds)" || return "$?"
+    current="$(time::boottime-milliseconds)" || return "$?"
+    core::__is-safe-non-negative-integer "${current}" 9223372036854775807 || return 69
     if ((current - start >= timeout_milliseconds)); then
       return 75
     fi

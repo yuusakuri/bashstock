@@ -14,7 +14,7 @@ flowchart LR
     Command --> Flags[shFlags]
     Flags --> Adapter[bashstock-getopt]
     Command --> Error[エラー出力]
-    Command --> Library[標準ライブラリ100関数]
+    Command --> Library[標準ライブラリ99関数]
     Library -. 明示的な読み込み .-> AWS[AWS 14関数]
   end
   User --> Command
@@ -22,7 +22,7 @@ flowchart LR
   Tests --> Adapter
 ```
 
-`bin/bashstock`は、BashStockの読み込みと設定を確認するCLIです。`src/library.sh`から標準ライブラリ100関数を依存順に読み込み、最後に`cli::run`を呼び出します。各モジュールは一つの機能領域を担当します。AWS 14関数は標準ライブラリに含めず、製品が`src/aws/`の必要なモジュールを明示的に読み込みます。
+`bin/bashstock`は、BashStockの読み込みと設定を確認するCLIです。`src/library.sh`から標準ライブラリ99関数を依存順に読み込み、最後に`cli::run`を呼び出します。各モジュールは一つの機能領域を担当します。AWS 14関数は標準ライブラリに含めず、製品が`src/aws/`の必要なモジュールを明示的に読み込みます。
 
 このリポジトリは、他のBashプロジェクトから第三者ライブラリとして読み込む開発キットです。標準ライブラリ、CLI構成、OS別処理、テスト環境を提供し、製品固有の機能を含みません。利用する製品は`src/library.sh`と必要な任意モジュールを読み込み、製品固有の処理を実装します。
 
@@ -49,7 +49,7 @@ flowchart LR
 | 変換 | 動詞を先頭に置き、変換対象を後ろへ置きます。 | `string::encode-url`、`string::remove-prefix` |
 | 数量 | 要素数と文字数には`length`、バイト数には`byte-length`を使用します。 | `array::length`、`string::length`、`string::byte-length` |
 | 複数結果 | 複数形の名詞を使用します。 | `string::capture-groups` |
-| 単位 | 省略せずに複数形で記載します。 | `time::elapsed-milliseconds`、`time::unix-seconds` |
+| 単位 | 省略せずに複数形で記載します。 | `time::monotonic-milliseconds`、`time::unix-seconds` |
 | 対称な機能 | 概念と粒度を同じ語順で並べます。 | `time::utc-date-time-seconds`、`time::local-date-time-seconds` |
 
 ## 関数実装時の参照先
@@ -150,7 +150,7 @@ shFlagsの文字列代入は、Bashの`printf -v`を使用します。利用者�
 
 shFlagsは実行時に必要なため、ソースとライセンスを`vendor/shflags`へ格納します。安全な代入処理の差分は`vendor/shflags/PATCHES.md`に記録します。
 
-時間関数は、OSごとに異なる`date`コマンドの機能へ依存しません。実行環境のPerl、`Time::HiRes`、`POSIX`を内部時計アダプターから使用し、単調時計、Unix時刻、UTC日時、UTCオフセットを含むローカル日時をmacOS、Ubuntu、Fedoraで同じ形式にします。時間関数は実行時に依存モジュールを検査し、利用できない場合は終了状態69を返します。
+時間関数は、OSごとに異なる`date`コマンドの機能へ依存しません。実行環境のPerl、`Time::HiRes`、`POSIX`を内部時計アダプターから使用し、スリープを除外する単調時計、スリープを含む起動後時計、Unix時刻、UTC日時、UTCオフセットを含むローカル日時をmacOS、Ubuntu、Fedoraで同じ形式にします。時間関数は実行時に依存モジュールを検査し、利用できない場合は終了状態69を返します。
 
 Bats-coreは開発時だけ必要なため、Gitサブモジュールとして`vendor/bats-core`へ格納します。GitのコミットIDが依存バージョンを固定します。
 

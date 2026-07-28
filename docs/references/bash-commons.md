@@ -171,7 +171,7 @@ AWS CLIの`--query`と`--output`を使用し、利用者の値をJMESPath式ま�
 | `aws_wrapper_get_asg_name` | `aws::auto-scaling-group-name` | `TIMEOUT_SECONDS INTERVAL_SECONDS` | 現在のEC2インスタンスの`aws:autoscaling:groupName`タグを取得し、Auto Scaling Group名を出力します。 |
 | `aws_wrapper_get_asg_size` | `aws::auto-scaling-group-size` | `NAME REGION` | 指定Auto Scaling Groupの希望容量を0以上の整数で出力します。 |
 
-`aws::auto-scaling-group-name`は`aws::wait-for-instance-tag`を使用します。待機関数は最大試行回数ではなく、0より大きい待機上限秒と確認間隔秒を受け取ります。`time::elapsed-milliseconds`を使用し、システム日時が変化しても待機時間が逆行しないようにします。待機上限へ達した場合は終了状態75を返します。関数は`exit`を呼び出さず、認証情報、トークン、AWS CLIの応答本文をログへ書きません。
+`aws::auto-scaling-group-name`は`aws::wait-for-instance-tag`を使用します。待機関数は最大試行回数ではなく、0より大きい待機上限秒と確認間隔秒を受け取ります。`time::boottime-milliseconds`を使用し、システム日時の変更とサスペンドを含めて待機上限を判定します。時計の戻り値は算術展開の前に0以上の整数であることを検証します。待機上限へ達した場合は終了状態75を返します。関数は`exit`を呼び出さず、認証情報、トークン、AWS CLIの応答本文をログへ書きません。
 
 AWS関数のテストはAWS CLIとHTTP処理を固定応答のアダプターへ置き換え、実際のAWSアカウント、認証情報、IMDSへ接続しません。成功、対象なし、ページ分割、APIエラー、認証エラー、タイムアウト、空値、メタデータパスの不正を確認します。
 

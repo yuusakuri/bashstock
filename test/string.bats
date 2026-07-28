@@ -107,6 +107,14 @@ load test_helper
   [ "${output}" = 'X&-X&-X&' ]
   run string::replace-last 'ab-ab-ab' 'ab' 'X&'
   [ "${output}" = 'ab-ab-X&' ]
+  run string::replace-last 'abc' 'a*' 'X'
+  [ "${output}" = 'X' ]
+  run string::replace-last 'abc' '?' 'X'
+  [ "${output}" = 'abX' ]
+  run string::replace-last 'abc' '*' 'X'
+  [ "${output}" = 'abX' ]
+  run string::replace-last 'abc' 'z*' 'X'
+  [ "${output}" = 'abc' ]
 
   run string::replace-all 'ab-ab' 'ab' 'X\Y'
   [ "${output}" = 'X\Y-X\Y' ]

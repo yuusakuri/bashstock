@@ -1,14 +1,52 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2119,SC2120
 
-time::__monotonic-milliseconds() {
-  if [[ "$#" -ne 0 ]]; then
+time::__clock-milliseconds() {
+  if [[ "$#" -ne 1 ]]; then
     return 64
   fi
+
   command -v perl >/dev/null 2>&1 || return 69
-  perl -MTime::HiRes=clock_gettime,CLOCK_MONOTONIC \
-    -e 'printf "%.0f\n", clock_gettime(CLOCK_MONOTONIC) * 1000' 2>/dev/null ||
-    return 69
+
+  local operating_system=''
+  operating_system="$(system::operating-system)" || return 69
+  case "${operating_system}:$1" in
+    linux:monotonic)
+      perl -MTime::HiRes=clock_gettime,CLOCK_MONOTONIC \
+        -e 'printf "%d\n", int(clock_gettime(CLOCK_MONOTONIC) * 1000)' \
+        2>/dev/null || return 69
+      ;;
+    linux:boottime)
+      perl -e '
+        use strict;
+        use warnings;
+
+        open my $input, "<", "/proc/uptime" or exit 69;
+        my $line = <$input>;
+        close $input or exit 69;
+        exit 69 unless defined($line)
+          && $line =~ /\A([0-9]+)(?:\.([0-9]+))?[[:space:]]/;
+
+        my $seconds = $1;
+        my $fraction = defined($2) ? $2 : "";
+        $fraction .= "000";
+        printf "%d\n", ($seconds * 1000) + substr($fraction, 0, 3);
+      ' 2>/dev/null || return 69
+      ;;
+    darwin:monotonic)
+      perl -MTime::HiRes=clock_gettime,CLOCK_UPTIME_RAW \
+        -e 'printf "%d\n", int(clock_gettime(CLOCK_UPTIME_RAW) * 1000)' \
+        2>/dev/null || return 69
+      ;;
+    darwin:boottime)
+      perl -MTime::HiRes=clock_gettime,CLOCK_MONOTONIC_RAW \
+        -e 'printf "%d\n", int(clock_gettime(CLOCK_MONOTONIC_RAW) * 1000)' \
+        2>/dev/null || return 69
+      ;;
+    *)
+      return 69
+      ;;
+  esac
 }
 
 time::__realtime-milliseconds() {
@@ -16,7 +54,7 @@ time::__realtime-milliseconds() {
     return 64
   fi
   command -v perl >/dev/null 2>&1 || return 69
-  perl -MTime::HiRes=time -e 'printf "%.0f\n", time() * 1000' 2>/dev/null ||
+  perl -MTime::HiRes=time -e 'printf "%d\n", int(time() * 1000)' 2>/dev/null ||
     return 69
 }
 
@@ -69,6 +107,20 @@ time::__provider-error() {
   return 69
 }
 
+time::monotonic-milliseconds() {
+  if [[ "$#" -ne 0 ]]; then
+    return 64
+  fi
+  time::__clock-milliseconds monotonic || time::__provider-error
+}
+
+time::boottime-milliseconds() {
+  if [[ "$#" -ne 0 ]]; then
+    return 64
+  fi
+  time::__clock-milliseconds boottime || time::__provider-error
+}
+
 time::unix-milliseconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -97,46 +149,6 @@ time::unix-days() {
     time::__provider-error
     return 69
   }
-  printf '%s\n' "$((milliseconds / 86400000))"
-}
-
-time::elapsed-milliseconds() {
-  if [[ "$#" -ne 0 ]]; then
-    return 64
-  fi
-
-  local current=''
-  local elapsed=''
-  if [[ -z "${BASHSTOCK_START_MONOTONIC_MILLISECONDS:-}" ]]; then
-    time::__provider-error
-    return 69
-  fi
-  current="$(time::__monotonic-milliseconds)" || {
-    time::__provider-error
-    return 69
-  }
-  elapsed="$((current - BASHSTOCK_START_MONOTONIC_MILLISECONDS))"
-  if [[ "${elapsed}" -lt 0 ]]; then
-    elapsed='0'
-  fi
-  printf '%s\n' "${elapsed}"
-}
-
-time::elapsed-seconds() {
-  if [[ "$#" -ne 0 ]]; then
-    return 64
-  fi
-  local milliseconds=''
-  milliseconds="$(time::elapsed-milliseconds)" || return "$?"
-  printf '%s\n' "$((milliseconds / 1000))"
-}
-
-time::elapsed-days() {
-  if [[ "$#" -ne 0 ]]; then
-    return 64
-  fi
-  local milliseconds=''
-  milliseconds="$(time::elapsed-milliseconds)" || return "$?"
   printf '%s\n' "$((milliseconds / 86400000))"
 }
 
@@ -186,7 +198,3 @@ time::local-date() {
   [[ "$#" -eq 0 ]] || return 64
   time::__date-time local-date
 }
-
-if [[ -z "${BASHSTOCK_START_MONOTONIC_MILLISECONDS+x}" ]]; then
-  BASHSTOCK_START_MONOTONIC_MILLISECONDS="$(time::__monotonic-milliseconds 2>/dev/null || true)"
-fi
