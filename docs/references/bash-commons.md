@@ -2,25 +2,9 @@
 
 ## 対象
 
-この文書は、bash-commons v1.0.0の公開関数88個を対象とします。本プロジェクトはbash-commons全体を実行時依存として読み込まず、選定した振る舞いを標準ライブラリ29関数と利用頻度の高い任意AWSモジュール14関数の合計43関数としてBash 3.2互換で実装します。
+この文書は、bash-commons v1.0.0を参照し、採用する振る舞いの契約を記載します。bash-commons全体は実行時依存として読み込みません。
 
 参照対象は、v1.0.0のタグが指すコミット`953e675d1a279ddd62b338dc3fc8e6c39baa0c61`です。参照元のライセンスはApache License 2.0です。本プロジェクトは参照元のコードを複製せず、関数の責務を本プロジェクトの名前空間、引数規則、終了状態、安全性、対応環境に合わせて実装します。
-
-## 選定結果
-
-| 名前空間 | 関数数 | 本プロジェクトの関数 |
-|---|---:|---|
-| `log` | 3 | `log::info`、`log::warn`、`log::error` |
-| `command` | 2 | `command::require`、`command::run-as-root` |
-| `option` | 1 | `option::require-single` |
-| `array` | 1 | `array::prepend-to-each` |
-| `string` | 4 | `string::require-non-empty`、`string::require-empty`、`string::require-allowed`、`string::slice` |
-| `json` | 1 | `json::require-present` |
-| `file` | 10 | `file::contains-match`、`file::verify-sha256`、`file::append-text`、`file::append-text-as-root`、`file::replace-text`、`file::replace-text-as-root`、`file::replace-text-in-files`、`file::replace-text-in-files-as-root`、`file::replace-or-append-text`、`file::replace-or-append-text-as-root` |
-| `path` | 1 | `path::change-owner-recursively-as-root` |
-| `user` | 6 | `user::name`、`user::primary-group`、`user::is-root`、`user::exists`、`user::create-system-as-root`、`user::create-login-as-root` |
-| `aws` | 14 | IMDS、EC2、Auto Scalingの任意モジュールに、利用頻度の高い14関数を配置します。 |
-| 合計 | 43 | 標準ライブラリ29関数と任意AWSモジュール14関数を採用します。 |
 
 ## 共通規則
 
@@ -30,7 +14,7 @@
 
 すべての関数は、macOSの標準Bash 3.2、Ubuntu 18.04以降、Fedoraで同じ引数、出力形式、終了状態を使用します。GNU版とBSD版で異なるコマンドのオプションは公開契約に含めません。
 
-## 採用する43関数
+## 採用する関数
 
 ### ログ
 
@@ -179,9 +163,9 @@ AWS関数のテストはAWS CLIとHTTP処理を固定応答のアダプターへ
 
 | 環境 | 必須条件 |
 |---|---|
-| macOS | Apple Silicon上の標準Bash 3.2で、標準ライブラリ29関数とmacOS用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
-| Ubuntu | Ubuntu 18.04以降のBashで、標準ライブラリ29関数とUbuntu用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
-| Fedora | FedoraのBashで、標準ライブラリ29関数とFedora用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
-| AWS任意モジュール | 14関数について、IMDSとAWS CLIを固定応答へ置き換え、macOS、Ubuntu、Fedoraで同じ出力、終了状態、待機規則になることを確認します。 |
+| macOS | Apple Silicon上の標準Bash 3.2で、公開APIとmacOS用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
+| Ubuntu | Ubuntu 18.04以降のBashで、公開APIとUbuntu用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
+| Fedora | FedoraのBashで、公開APIとFedora用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
+| AWS任意モジュール | IMDSとAWS CLIを固定応答へ置き換え、macOS、Ubuntu、Fedoraで同じ出力、終了状態、待機規則になることを確認します。 |
 | 安全性 | コマンド置換、単一引用符、二重引用符、バックスラッシュ、パターン記号、空白、改行を含む入力を実行しないことを確認します。 |
 | 状態保持 | 関数の成功後と失敗後に、現在のディレクトリ、`IFS`、ロケール、シェルオプションが変わらないことを確認します。 |

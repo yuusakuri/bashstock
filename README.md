@@ -11,10 +11,9 @@ BashStockは、他のBashプロジェクトが第三者ライブラリとして�
 - 利用者の入力を`eval`による変数代入へ渡しません。
 - 関数は`feature::command-name`形式で命名します。
 - 機能ごとにソースを分割します。
-- 標準ライブラリ99関数と、任意で読み込むAWS 14関数を提供します。
+- AWS機能は必要なモジュールだけを明示的に読み込みます。
 - 製品固有のサンプル機能を含みません。
-- Bats-core 1.14.0が正常系、異常系、入力の安全性を検査します。
-- ShellCheckとBashの構文検査を一つのコマンドで実行できます。
+- Bats-core、ShellCheck、Bashの構文検査を使用します。
 
 ## 動作環境
 
@@ -59,7 +58,7 @@ git submodule update --init --recursive
 
 ## 関数ライブラリ
 
-標準ライブラリ99関数は、`src/library.sh`を読み込むと使用できます。読み込みによってネットワーク通信、権限昇格、利用者作成、ファイル更新は実行されません。
+標準ライブラリは、`src/library.sh`を読み込むと使用できます。読み込みによってネットワーク通信、権限昇格、利用者作成、ファイル更新は実行されません。
 
 ```bash
 source "/path/to/bashstock/src/library.sh"
@@ -90,31 +89,11 @@ source "/path/to/bashstock/src/aws/auto-scaling.sh"
 
 ## 開発方法
 
-テストを実行します。
-
-```bash
-./bin/test
-```
-
-静的検査を実行します。
-
-```bash
-./bin/lint
-```
-
-すべての検査を実行します。
-
 ```bash
 ./bin/check
 ```
 
-Makeを使用する場合も、同じ検査を実行できます。
-
-```bash
-make test
-make lint
-make check
-```
+個別に実行する場合は`./bin/test`または`./bin/lint`を使用します。Makeでは各コマンド名から`./bin/`を除いて実行できます。
 
 ## ディレクトリ構成
 
@@ -123,18 +102,14 @@ make check
 | `bin/` | 利用者と開発者が直接実行するコマンドを格納します。 |
 | `libexec/` | コマンドから内部的に呼び出す実行ファイルを格納します。 |
 | `src/cli/` | オプション定義、入力検査、実行順序を管理します。 |
-| `src/library.sh` | 標準ライブラリ99関数を依存順に読み込みます。 |
-| `src/aws/` | 任意で読み込むAWS 14関数を格納します。 |
+| `src/library.sh` | 標準ライブラリを依存順に読み込みます。 |
+| `src/aws/` | 任意で読み込むAWSモジュールを格納します。 |
 | `src/platform/` | macOS、Ubuntu、Fedoraの内部処理を格納します。 |
 | `src/output/` | 標準エラー出力を管理します。 |
 | `src/settings/` | 製品名とバージョンを管理します。 |
 | `test/` | Batsの自動テストを格納します。 |
 | `vendor/` | バージョンを固定した外部依存を格納します。 |
 | `docs/` | 設計判断を格納します。 |
-
-## 設計
-
-詳しい設計は[設計判断](docs/design.md)に記載しています。
 
 ## ライセンス
 
