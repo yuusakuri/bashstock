@@ -55,26 +55,26 @@ load test_helper
   run "${GETOPT}" -o 'f:' -l 'file:' -- --other
 
   [ "${status}" -eq 1 ]
-  [ "${output}" = 'mytool-getopt: unknown option: --other' ]
+  [ "${output}" = 'bashstock-getopt: unknown option: --other' ]
 }
 
 @test "the adapter rejects a missing long value" {
   run "${GETOPT}" -o 'f:' -l 'file:' -- --file
 
   [ "${status}" -eq 1 ]
-  [ "${output}" = 'mytool-getopt: option needs a value: --file' ]
+  [ "${output}" = 'bashstock-getopt: option needs a value: --file' ]
 }
 
 @test "the adapter rejects a missing short value" {
   run "${GETOPT}" -o 'f:' -l 'file:' -- -f
 
   [ "${status}" -eq 1 ]
-  [ "${output}" = 'mytool-getopt: option needs a value: -f' ]
+  [ "${output}" = 'bashstock-getopt: option needs a value: -f' ]
 }
 
 @test "the adapter rejects a value for a boolean option" {
   run "${GETOPT}" -o 'v' -l 'version' -- --version=true
 
   [ "${status}" -eq 1 ]
-  [ "${output}" = 'mytool-getopt: option does not take a value: --version' ]
+  [ "${output}" = 'bashstock-getopt: option does not take a value: --version' ]
 }

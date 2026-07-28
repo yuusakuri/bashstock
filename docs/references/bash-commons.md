@@ -2,25 +2,9 @@
 
 ## 対象
 
-この文書は、bash-commons v1.0.0の公開関数88個を対象とします。本プロジェクトはbash-commons全体を実行時依存として読み込まず、選定した振る舞いを一般基盤29関数と利用頻度の高い任意AWSモジュール14関数の合計43関数としてBash 3.2互換で実装します。
+この文書は、bash-commons v1.0.0を参照し、採用する振る舞いの契約を記載します。bash-commons全体は実行時依存として読み込みません。
 
 参照対象は、v1.0.0のタグが指すコミット`953e675d1a279ddd62b338dc3fc8e6c39baa0c61`です。参照元のライセンスはApache License 2.0です。本プロジェクトは参照元のコードを複製せず、関数の責務を本プロジェクトの名前空間、引数規則、終了状態、安全性、対応環境に合わせて実装します。
-
-## 選定結果
-
-| 名前空間 | 関数数 | 本プロジェクトの関数 |
-|---|---:|---|
-| `log` | 3 | `log::info`、`log::warn`、`log::error` |
-| `command` | 2 | `command::require`、`command::run-as-root` |
-| `option` | 1 | `option::require-single` |
-| `array` | 1 | `array::prepend-to-each` |
-| `string` | 4 | `string::require-non-empty`、`string::require-empty`、`string::require-allowed`、`string::slice` |
-| `json` | 1 | `json::require-present` |
-| `file` | 10 | `file::contains-match`、`file::verify-sha256`、`file::append-text`、`file::append-text-as-root`、`file::replace-text`、`file::replace-text-as-root`、`file::replace-text-in-files`、`file::replace-text-in-files-as-root`、`file::replace-or-append-text`、`file::replace-or-append-text-as-root` |
-| `path` | 1 | `path::change-owner-recursively-as-root` |
-| `user` | 6 | `user::name`、`user::primary-group`、`user::is-root`、`user::exists`、`user::create-system-as-root`、`user::create-login-as-root` |
-| `aws` | 14 | IMDS、EC2、Auto Scalingの任意モジュールに、利用頻度の高い14関数を配置します。 |
-| 合計 | 43 | 一般基盤29関数と任意AWSモジュール14関数を採用します。 |
 
 ## 共通規則
 
@@ -30,7 +14,7 @@
 
 すべての関数は、macOSの標準Bash 3.2、Ubuntu 18.04以降、Fedoraで同じ引数、出力形式、終了状態を使用します。GNU版とBSD版で異なるコマンドのオプションは公開契約に含めません。
 
-## 採用する43関数
+## 採用する関数
 
 ### ログ
 
@@ -40,7 +24,7 @@
 | `log_warn`、`log` | `log::warn` | `MESSAGE` | 現在のローカル日時、`WARN`、コマンド名、メッセージを一行ずつ標準エラー出力へ書きます。 | 組み込みの`printf`と`time::local-date-time-milliseconds`を使用します。通常文字列、空文字、複数行、バックスラッシュ、書式指定文字、引数過多を確認します。 |
 | `log_error`、`log` | `log::error` | `MESSAGE` | 現在のローカル日時、`ERROR`、コマンド名、メッセージを一行ずつ標準エラー出力へ書きます。関数自体はプロセスを終了しません。 | 組み込みの`printf`と`time::local-date-time-milliseconds`を使用します。通常文字列、空文字、複数行、バックスラッシュ、書式指定文字、引数過多を確認します。 |
 
-ログの一行は、`YYYY-MM-DDTHH:MM:SS.sss+HH:MM [LEVEL] [COMMAND] MESSAGE`形式または負のUTCオフセットを使う同じ形式です。`COMMAND`には`MYTOOL_NAME`を使用します。メッセージが複数行の場合は、空の行を含む各行へ日時、レベル、コマンド名を付けます。メッセージ内の`\n`や`\t`を制御文字へ変換せず、受け取った文字をそのまま出力します。
+ログの一行は、`YYYY-MM-DDTHH:MM:SS.sss+HH:MM [LEVEL] [COMMAND] MESSAGE`形式または負のUTCオフセットを使う同じ形式です。`COMMAND`には`BASHSTOCK_NAME`を使用します。メッセージが複数行の場合は、空の行を含む各行へ日時、レベル、コマンド名を付けます。メッセージ内の`\n`や`\t`を制御文字へ変換せず、受け取った文字をそのまま出力します。
 
 参照元の`log`は、三つのログ関数に共通する内部処理として参照します。任意のログレベルを受け取る公開関数にはしません。
 
@@ -82,11 +66,11 @@
 | `file_append_text` | `file::append-text` | `PATH TEXT` | `TEXT`を変換せず、現在の利用者の権限で`PATH`の末尾へ正確に追記します。ファイルが存在しない場合は現在の`umask`で作成します。 | 組み込みの`printf '%s'`を使用し、`echo -e`、`eval`、権限昇格を使用しません。空文字、改行、バックスラッシュ、書式指定文字、新規ファイル、既存ファイル、シンボリックリンク、書込不可を確認します。 |
 | `file_append_text` | `file::append-text-as-root` | `PATH TEXT` | `file::append-text`と同じ内容を管理者権限で追記します。 | `command::run-as-root`と安全な内部書込アダプターを使用します。通常権限では書き込めないファイル、認証成功、認証拒否、rootでの直接実行、シンボリックリンクを確認します。 |
 | `file_replace_text` | `file::replace-text` | `PATH EXPRESSION REPLACEMENT` | 各行でPerl互換正規表現に最初に一致する部分を、リテラルの`REPLACEMENT`へ置換します。一件も一致しない場合はファイルを変更せず終了状態1を返します。 | 同じディレクトリの一時ファイルへ書き、権限と所有者を保持して原子的に置き換えます。置換値をPerlコードとして評価しません。一致、不一致、複数行、複数一致、無効な式、空の置換、末尾改行、メタデータ保持を確認します。 |
-| `file_replace_text` | `file::replace-text-as-root` | `PATH EXPRESSION REPLACEMENT` | `file::replace-text`と同じ置換を管理者権限で実行します。 | `command::run-as-root`を使用し、処理全体を同じ権限で実行します。通常権限では書き込めないファイル、認証拒否、原子的置換、所有者と権限の保持を確認します。 |
-| `file_replace_text_in_files` | `file::replace-text-in-files` | `EXPRESSION REPLACEMENT PATH...` | 一つ以上のファイルへ`file::replace-text`と同じ置換を適用します。 | 全入力と正規表現を検証してから一時ファイルを作成し、すべての作成に成功した後で置換します。途中で失敗した場合は保存した元ファイルから復元します。一件、複数件、入力不正、途中失敗、復元失敗を確認します。 |
-| `file_replace_text_in_files` | `file::replace-text-in-files-as-root` | `EXPRESSION REPLACEMENT PATH...` | `file::replace-text-in-files`と同じ複数ファイル置換を管理者権限で実行します。 | `command::run-as-root`を使用し、検証、一時ファイル作成、置換、復元を同じ権限で行います。認証拒否、複数所有者、途中失敗、復元を確認します。 |
-| `file_replace_or_append_text` | `file::replace-or-append-text` | `PATH EXPRESSION REPLACEMENT` | 一致する行があれば`file::replace-text`と同じ置換を行い、一致しなければ`REPLACEMENT`を新しい一行として末尾へ追加します。 | 置換または追記後の全内容を一時ファイルへ作成して原子的に置き換えます。空ファイル、一致、不一致、末尾改行ありとなし、空の置換、無効な式を確認します。 |
-| `file_replace_or_append_text` | `file::replace-or-append-text-as-root` | `PATH EXPRESSION REPLACEMENT` | `file::replace-or-append-text`と同じ処理を管理者権限で実行します。 | `command::run-as-root`を使用し、通常権限では書き込めないファイル、認証拒否、原子的置換、所有者と権限の保持を確認します。 |
+| `file_replace_text` | `file::replace-text-as-root` | `PATH EXPRESSION REPLACEMENT` | 各行でPerl互換正規表現に最初に一致する部分を、管理者権限でリテラルの`REPLACEMENT`へ置換します。 | `command::run-as-root`を使用し、処理全体を同じ権限で実行します。通常権限では書き込めないファイル、認証拒否、原子的置換、所有者と権限の保持を確認します。 |
+| `file_replace_text_in_files` | `file::replace-text-in-files` | `EXPRESSION REPLACEMENT PATH...` | 一つ以上のファイルについて、各行でPerl互換正規表現に最初に一致する部分をリテラルの`REPLACEMENT`へ置換します。 | 全入力と正規表現を検証してから一時ファイルを作成し、すべての作成に成功した後で置換します。途中で失敗した場合は保存した元ファイルから復元します。一件、複数件、入力不正、途中失敗、復元失敗を確認します。 |
+| `file_replace_text_in_files` | `file::replace-text-in-files-as-root` | `EXPRESSION REPLACEMENT PATH...` | 一つ以上のファイルについて、各行でPerl互換正規表現に最初に一致する部分を管理者権限でリテラルの`REPLACEMENT`へ置換します。 | `command::run-as-root`を使用し、検証、一時ファイル作成、置換、復元を同じ権限で行います。認証拒否、複数所有者、途中失敗、復元を確認します。 |
+| `file_replace_or_append_text` | `file::replace-or-append-text` | `PATH EXPRESSION REPLACEMENT` | 各行でPerl互換正規表現に一致する部分があれば最初の一致を置換し、なければ`REPLACEMENT`を新しい一行として末尾へ追加します。 | 置換または追記後の全内容を一時ファイルへ作成して原子的に置き換えます。空ファイル、一致、不一致、末尾改行ありとなし、空の置換、無効な式を確認します。 |
+| `file_replace_or_append_text` | `file::replace-or-append-text-as-root` | `PATH EXPRESSION REPLACEMENT` | 各行でPerl互換正規表現に一致する部分があれば管理者権限で最初の一致を置換し、なければ`REPLACEMENT`を新しい一行として末尾へ追加します。 | `command::run-as-root`を使用し、通常権限では書き込めないファイル、認証拒否、原子的置換、所有者と権限の保持を確認します。 |
 
 ファイルの検索関数と置換関数は、同じPerl互換正規表現を一行の範囲で評価します。式と置換値に改行またはNUL文字がある場合は終了状態64を返します。通常権限版は権限を昇格しません。管理者権限版だけが`command::run-as-root`を使用します。すべての更新関数はシンボリックリンクを拒否し、既存ファイルの所有者、グループ、モード、ACL、拡張属性を保持します。メタデータを保持できない場合は元ファイルを変更せず終了状態74を返します。
 
@@ -128,7 +112,7 @@
 
 ### AWS任意モジュール
 
-AWS関数は一般基盤の起動時に読み込みません。製品は使用する機能に対応するモジュールだけを明示的に読み込みます。AWSモジュールを読み込んだだけでは、ネットワーク通信、メタデータ取得、認証、環境変数の変更を行いません。
+AWS関数は標準ライブラリの起動時に読み込みません。製品は使用する機能に対応するモジュールだけを明示的に読み込みます。AWSモジュールを読み込んだだけでは、ネットワーク通信、メタデータ取得、認証、環境変数の変更を行いません。
 
 #### IMDS
 
@@ -171,7 +155,7 @@ AWS CLIの`--query`と`--output`を使用し、利用者の値をJMESPath式ま�
 | `aws_wrapper_get_asg_name` | `aws::auto-scaling-group-name` | `TIMEOUT_SECONDS INTERVAL_SECONDS` | 現在のEC2インスタンスの`aws:autoscaling:groupName`タグを取得し、Auto Scaling Group名を出力します。 |
 | `aws_wrapper_get_asg_size` | `aws::auto-scaling-group-size` | `NAME REGION` | 指定Auto Scaling Groupの希望容量を0以上の整数で出力します。 |
 
-`aws::auto-scaling-group-name`は`aws::wait-for-instance-tag`を使用します。待機関数は最大試行回数ではなく、0より大きい待機上限秒と確認間隔秒を受け取ります。`time::elapsed-milliseconds`を使用し、システム日時が変化しても待機時間が逆行しないようにします。待機上限へ達した場合は終了状態75を返します。関数は`exit`を呼び出さず、認証情報、トークン、AWS CLIの応答本文をログへ書きません。
+`aws::auto-scaling-group-name`は`aws::wait-for-instance-tag`を使用します。待機関数は最大試行回数ではなく、0より大きい待機上限秒と確認間隔秒を受け取ります。`time::boottime-milliseconds`を使用し、システム日時の変更とサスペンドを含めて待機上限を判定します。時計の戻り値は算術展開の前に0以上の整数であることを検証します。待機上限へ達した場合は終了状態75を返します。関数は`exit`を呼び出さず、認証情報、トークン、AWS CLIの応答本文をログへ書きません。
 
 AWS関数のテストはAWS CLIとHTTP処理を固定応答のアダプターへ置き換え、実際のAWSアカウント、認証情報、IMDSへ接続しません。成功、対象なし、ページ分割、APIエラー、認証エラー、タイムアウト、空値、メタデータパスの不正を確認します。
 
@@ -179,9 +163,9 @@ AWS関数のテストはAWS CLIとHTTP処理を固定応答のアダプターへ
 
 | 環境 | 必須条件 |
 |---|---|
-| macOS | Apple Silicon上の標準Bash 3.2で、一般基盤29関数とmacOS用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
-| Ubuntu | Ubuntu 18.04以降のBashで、一般基盤29関数とUbuntu用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
-| Fedora | FedoraのBashで、一般基盤29関数とFedora用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
-| AWS任意モジュール | 14関数について、IMDSとAWS CLIを固定応答へ置き換え、macOS、Ubuntu、Fedoraで同じ出力、終了状態、待機規則になることを確認します。 |
+| macOS | Apple Silicon上の標準Bash 3.2で、公開APIとmacOS用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
+| Ubuntu | Ubuntu 18.04以降のBashで、公開APIとUbuntu用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
+| Fedora | FedoraのBashで、公開APIとFedora用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
+| AWS任意モジュール | IMDSとAWS CLIを固定応答へ置き換え、macOS、Ubuntu、Fedoraで同じ出力、終了状態、待機規則になることを確認します。 |
 | 安全性 | コマンド置換、単一引用符、二重引用符、バックスラッシュ、パターン記号、空白、改行を含む入力を実行しないことを確認します。 |
 | 状態保持 | 関数の成功後と失敗後に、現在のディレクトリ、`IFS`、ロケール、シェルオプションが変わらないことを確認します。 |

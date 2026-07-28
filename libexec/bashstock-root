@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+project_root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
+readonly project_root
+
+unset BASHSTOCK_LOADED
+BASHSTOCK_ROOT="${project_root}"
+readonly BASHSTOCK_ROOT
+
+source "${project_root}/src/settings/settings.sh"
+source "${project_root}/src/library.sh"
+
+### Dispatch one validated privileged operation.
+main() {
+  if [[ "${EUID}" -ne 0 || "$#" -lt 1 ]]; then
+    return 77
+  fi
+
+  local operation="$1"
+  shift
+  case "${operation}" in
+    append-text)
+      file::append-text "$@"
+      ;;
+    replace-text)
+      file::replace-text "$@"
+      ;;
+    replace-text-in-files)
+      file::replace-text-in-files "$@"
+      ;;
+    replace-or-append-text)
+      file::replace-or-append-text "$@"
+      ;;
+    create-system-user)
+      platform::__create-system-user "$@"
+      ;;
+    create-login-user)
+      platform::__create-login-user "$@"
+      ;;
+    change-owner-recursively)
+      platform::__change-owner-recursively "$@"
+      ;;
+    *)
+      return 64
+      ;;
+  esac
+}
+
+main "$@"

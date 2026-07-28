@@ -1,6 +1,6 @@
-# modern-bash-cli
+# BashStock
 
-このリポジトリは、Apple Siliconを含むmacOS、Ubuntu 18.04以降、Fedoraで同じ動作をするBash製CLIの基盤です。引数解析、ヘルプ、バージョン、入力エラー、テスト、静的検査、継続的インテグレーションを提供します。
+BashStockは、他のBashプロジェクトが第三者ライブラリとして読み込む開発キットです。Apple Siliconを含むmacOS、Ubuntu 18.04以降、Fedoraで共通して利用できる関数、引数解析、入力検査、テスト、静的検査、継続的インテグレーションを提供します。
 
 ## 特徴
 
@@ -11,9 +11,9 @@
 - 利用者の入力を`eval`による変数代入へ渡しません。
 - 関数は`feature::command-name`形式で命名します。
 - 機能ごとにソースを分割します。
+- AWS機能は必要なモジュールだけを明示的に読み込みます。
 - 製品固有のサンプル機能を含みません。
-- Bats-core 1.14.0が正常系、異常系、入力の安全性を検査します。
-- ShellCheckとBashの構文検査を一つのコマンドで実行できます。
+- Bats-core、ShellCheck、Bashの構文検査を使用します。
 
 ## 動作環境
 
@@ -32,7 +32,7 @@
 
 ```bash
 git clone --recurse-submodules <repository-url>
-cd modern-bash-cli
+cd bashstock
 ```
 
 通常の`git clone`を実行した場合は、次のコマンドでBats-coreを取得します。
@@ -43,18 +43,40 @@ git submodule update --init --recursive
 
 ## 使用方法
 
-引数を付けずに実行すると、ヘルプを表示します。
+確認用CLIへ引数を付けずに実行すると、ヘルプを表示します。
 
 ```bash
-./bin/mytool
+./bin/bashstock
 ```
 
 ヘルプとバージョンを表示します。
 
 ```bash
-./bin/mytool --help
-./bin/mytool --version
+./bin/bashstock --help
+./bin/bashstock --version
 ```
+
+## 関数ライブラリ
+
+標準ライブラリは、`src/library.sh`を読み込むと使用できます。読み込みによってネットワーク通信、権限昇格、利用者作成、ファイル更新は実行されません。
+
+```bash
+source "/path/to/bashstock/src/library.sh"
+
+string::upper "example"
+path::normalize "/srv/app/../data"
+```
+
+AWS関数は標準ライブラリへ自動的に含まれません。IMDS、EC2、Auto Scalingから、使用するモジュールを読み込みます。Auto Scalingモジュールは依存するIMDS関数とEC2関数も読み込みます。
+
+```bash
+source "/path/to/bashstock/src/library.sh"
+source "/path/to/bashstock/src/aws/imds.sh"
+source "/path/to/bashstock/src/aws/ec2.sh"
+source "/path/to/bashstock/src/aws/auto-scaling.sh"
+```
+
+公開関数の契約は、[設計](docs/design.md)、[Lobashの関数選定](docs/references/lobash.md)、[bash-commonsの関数選定](docs/references/bash-commons.md)、[Pure Bash Bibleの関数選定](docs/references/pure-bash-bible.md)に記載しています。
 
 ## オプション
 
@@ -67,31 +89,11 @@ git submodule update --init --recursive
 
 ## 開発方法
 
-テストを実行します。
-
-```bash
-./bin/test
-```
-
-静的検査を実行します。
-
-```bash
-./bin/lint
-```
-
-すべての検査を実行します。
-
 ```bash
 ./bin/check
 ```
 
-Makeを使用する場合も、同じ検査を実行できます。
-
-```bash
-make test
-make lint
-make check
-```
+個別に実行する場合は`./bin/test`または`./bin/lint`を使用します。Makeでは各コマンド名から`./bin/`を除いて実行できます。
 
 ## ディレクトリ構成
 
@@ -100,15 +102,15 @@ make check
 | `bin/` | 利用者と開発者が直接実行するコマンドを格納します。 |
 | `libexec/` | コマンドから内部的に呼び出す実行ファイルを格納します。 |
 | `src/cli/` | オプション定義、入力検査、実行順序を管理します。 |
-| `src/output/` | 標準エラー出力を管理します。 |
+| `src/library.sh` | 標準ライブラリを依存順に読み込みます。 |
+| `src/aws/` | 任意で読み込むAWSモジュールを格納します。 |
+| `src/console/` | 利用者向け診断の内部出力を管理します。 |
+| `src/platform/` | macOS、Ubuntu、Fedoraの内部処理を格納します。 |
+| `src/regex/` | 正規表現を受け取る公開関数を格納します。 |
 | `src/settings/` | 製品名とバージョンを管理します。 |
 | `test/` | Batsの自動テストを格納します。 |
 | `vendor/` | バージョンを固定した外部依存を格納します。 |
-| `docs/` | 設計判断を格納します。 |
-
-## 設計
-
-詳しい設計は[設計判断](docs/design.md)に記載しています。
+| `docs/` | 最終設計と参照資料を格納します。 |
 
 ## ライセンス
 
