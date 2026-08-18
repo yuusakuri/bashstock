@@ -41,7 +41,7 @@ bats_require_minimum_version 1.5.0
 }
 
 @test "time functions format one fixed real-time value" {
-  time::__realtime-milliseconds() {
+  time::_realtime-milliseconds() {
     printf '0\n'
   }
 

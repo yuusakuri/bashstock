@@ -25,9 +25,9 @@ lint::visit-files() {
       "${project_root}/libexec" \
       "${project_root}/src" \
       "${project_root}/test" \
-      "${project_root}/vendor/shflags/shflags" \
+      "${project_root}/bashstock.sh" \
       -type f \
-      \( -name '*.sh' -o -name '*.bash' -o -name '*.bats' -o -name 'bashstock' -o -name 'bashstock-getopt' -o -name 'bashstock-root' -o -name 'test' -o -name 'lint' -o -name 'check' -o -name 'shflags' \) \
+      \( -name '*.sh' -o -name '*.bash' -o -name '*.bats' -o -name 'bashstock-root' -o -name 'test' -o -name 'lint' -o -name 'check' -o -name 'build' \) \
       -print0
   )
 
@@ -95,7 +95,7 @@ lint::check-doc-comments() {
       "${project_root}/libexec" \
       "${project_root}/src" \
       -type f \
-      \( -name '*.sh' -o -name '*.bash' -o -name 'bashstock' -o -name 'bashstock-getopt' -o -name 'bashstock-root' -o -name 'lint' -o -name 'check' \) \
+      \( -name '*.sh' -o -name '*.bash' -o -name 'bashstock-root' -o -name 'lint' -o -name 'check' -o -name 'build' \) \
       -print0
   )
 

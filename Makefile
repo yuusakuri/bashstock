@@ -1,7 +1,7 @@
-.PHONY: check lint run test
+.PHONY: build check lint test
 
-run:
-	./bin/bashstock
+build:
+	./bin/build
 
 test:
 	./bin/test
