@@ -3,11 +3,6 @@
 load test_helper
 
 @test "every selected public function is implemented" {
-  source "${PROJECT_ROOT}/src/aws/aws.sh"
-  source "${PROJECT_ROOT}/src/aws/imds.sh"
-  source "${PROJECT_ROOT}/src/aws/ec2.sh"
-  source "${PROJECT_ROOT}/src/aws/auto-scaling.sh"
-
   local expected=''
   local function_name=''
   expected="$(
@@ -41,7 +36,7 @@ load test_helper
   ! declare -F string::capture-groups >/dev/null
 }
 
-@test "the general library does not load AWS functions" {
-  ! declare -F aws::instance-id >/dev/null
-  ! declare -F aws::auto-scaling-group >/dev/null
+@test "the library loads AWS functions by default" {
+  declare -F aws::instance-id >/dev/null
+  declare -F aws::auto-scaling-group >/dev/null
 }

@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
 load test_helper
+bats_require_minimum_version 1.5.0
 
 demo::create() {
   local name=''
@@ -127,9 +128,9 @@ demo::_create-args() {
   arg::completion::dispatch
 
   [ "${#COMPREPLY[@]}" -eq 3 ]
-  [ "${COMPREPLY[0]}" = '-Force' ]
-  [ "${COMPREPLY[1]}" = '-Name' ]
-  [ "${COMPREPLY[2]}" = '-Shell' ]
+  [ "${COMPREPLY[0]}" = '-Name' ]
+  [ "${COMPREPLY[1]}" = '-Shell' ]
+  [ "${COMPREPLY[2]}" = '-Force' ]
 }
 
 @test "dispatch writes value candidates only right after their flag" {

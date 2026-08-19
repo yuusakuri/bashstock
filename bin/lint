@@ -57,7 +57,9 @@ lint::check-syntax() {
 lint::check-shell() {
   local file="${1}"
 
-  if [[ "${file}" == *.bats || "${file}" == */vendor/* ]]; then
+  if [[ "${file}" == *.bats ||
+    "${file}" == */vendor/* ||
+    "${file}" == "${project_root}/bashstock.sh" ]]; then
     return 0
   fi
 

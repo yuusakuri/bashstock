@@ -9,7 +9,7 @@ load test_helper
 }
 
 @test "the Ubuntu provider creates a non-login system account" {
-  source "${PROJECT_ROOT}/src/platform/ubuntu.sh"
+  source "${PROJECT_ROOT}/src/os-ubuntu.sh"
   useradd() {
     printf '%s\n' "$*"
   }
@@ -20,7 +20,7 @@ load test_helper
 }
 
 @test "the Fedora provider creates a non-login system account" {
-  source "${PROJECT_ROOT}/src/platform/fedora.sh"
+  source "${PROJECT_ROOT}/src/os-fedora.sh"
   useradd() {
     printf '%s\n' "$*"
   }
@@ -31,7 +31,7 @@ load test_helper
 }
 
 @test "the macOS provider creates a role account in the reserved UID range" {
-  source "${PROJECT_ROOT}/src/platform/darwin.sh"
+  source "${PROJECT_ROOT}/src/os-darwin.sh"
   dscl() {
     printf '_existing 451\n'
   }

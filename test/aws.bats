@@ -2,13 +2,6 @@
 
 load test_helper
 
-test::load-extra-modules() {
-  source "${PROJECT_ROOT}/src/aws/aws.sh"
-  source "${PROJECT_ROOT}/src/aws/imds.sh"
-  source "${PROJECT_ROOT}/src/aws/ec2.sh"
-  source "${PROJECT_ROOT}/src/aws/auto-scaling.sh"
-}
-
 @test "IMDS functions use one token and validate public paths" {
   aws::_imds-token() {
     printf 'token\n'

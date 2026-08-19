@@ -7,5 +7,8 @@ set -o pipefail
 project_root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
 readonly project_root
 
+"${project_root}/bin/build"
+git -C "${project_root}" diff --exit-code -- bashstock.sh
+
 "${project_root}/bin/lint"
 "${project_root}/bin/test"
