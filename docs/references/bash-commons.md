@@ -110,13 +110,13 @@
 | Ubuntu | `useradd --system --no-create-home`を使用し、ホームを`/nonexistent`、シェルを`/usr/sbin/nologin`に設定します。 | `useradd --create-home`で一般利用者を作成し、`passwd`で制御端末からパスワードを設定します。 | GNU版の`find`と`chown --no-dereference`を使用し、別のファイルシステムとリンク先へ進みません。 |
 | Fedora | `useradd --system --no-create-home`を使用し、ホームを`/nonexistent`、シェルを`/usr/sbin/nologin`に設定します。 | `useradd --create-home`で一般利用者を作成し、`passwd`で制御端末からパスワードを設定します。 | GNU版の`find`と`chown --no-dereference`を使用し、別のファイルシステムとリンク先へ進みません。 |
 
-### AWS任意モジュール
+### AWS操作
 
-AWS関数は標準ライブラリの起動時に読み込みません。製品は使用する機能に対応するモジュールだけを明示的に読み込みます。AWSモジュールを読み込んだだけでは、ネットワーク通信、メタデータ取得、認証、環境変数の変更を行いません。
+AWS関数は`bashstock.sh`に含まれ、個別に`source`する必要はありません。読み込んだだけでは、ネットワーク通信、メタデータ取得、認証、環境変数の変更を行いません。AWS CLIの存在は、その機能を実際に呼び出した関数が確認します。
 
 #### IMDS
 
-`src/aws/imds.sh`は、EC2 Instance Metadata Service Version 2だけを使用します。IMDSv1への切り替え、バージョン選択、グローバルなトークン状態を公開APIに含めません。
+`src/aws.sh`は、EC2 Instance Metadata Service Version 2だけを使用します。IMDSv1への切り替え、バージョン選択、グローバルなトークン状態を公開APIに含めません。
 
 | 参照元 | 本プロジェクトの関数 | 引数 | 機能 |
 |---|---|---|---|
@@ -133,7 +133,7 @@ AWS関数は標準ライブラリの起動時に読み込みません。製品�
 
 #### EC2
 
-`src/aws/ec2.sh`はAWS CLI v2を使用します。リージョンは各関数の引数で明示し、利用者の既定リージョンを暗黙に使用しません。
+`src/aws.sh`はAWS CLI v2を使用します。リージョンは各関数の引数で明示し、利用者の既定リージョンを暗黙に使用しません。
 
 | 参照元 | 本プロジェクトの関数 | 引数 | 機能 |
 |---|---|---|---|
@@ -146,7 +146,7 @@ AWS CLIの`--query`と`--output`を使用し、利用者の値をJMESPath式ま�
 
 #### Auto Scaling
 
-`src/aws/auto-scaling.sh`は、EC2 Auto Scaling Groupの取得、待機、アドレス選択を提供します。
+`src/aws.sh`は、EC2 Auto Scaling Groupの取得、待機、アドレス選択も提供します。
 
 | 参照元 | 本プロジェクトの関数 | 引数 | 機能 |
 |---|---|---|---|
@@ -166,6 +166,6 @@ AWS関数のテストはAWS CLIとHTTP処理を固定応答のアダプターへ
 | macOS | Apple Silicon上の標準Bash 3.2で、公開APIとmacOS用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
 | Ubuntu | Ubuntu 18.04以降のBashで、公開APIとUbuntu用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
 | Fedora | FedoraのBashで、公開APIとFedora用内部プロバイダーの出力、終了状態、標準出力と標準エラー出力の分離を確認します。 |
-| AWS任意モジュール | IMDSとAWS CLIを固定応答へ置き換え、macOS、Ubuntu、Fedoraで同じ出力、終了状態、待機規則になることを確認します。 |
+| AWS操作 | IMDSとAWS CLIを固定応答へ置き換え、macOS、Ubuntu、Fedoraで同じ出力、終了状態、待機規則になることを確認します。 |
 | 安全性 | コマンド置換、単一引用符、二重引用符、バックスラッシュ、パターン記号、空白、改行を含む入力を実行しないことを確認します。 |
 | 状態保持 | 関数の成功後と失敗後に、現在のディレクトリ、`IFS`、ロケール、シェルオプションが変わらないことを確認します。 |
