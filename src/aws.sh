@@ -266,7 +266,7 @@ aws::wait-for-instance-tag() {
   local value=''
   local status=''
 
-  start="$(time::boottime-milliseconds)" || return "$?"
+  start="$(time::boot-time-milliseconds)" || return "$?"
   number::_is-non-negative-integer-at-most "${start}" 9223372036854775807 ||
     return 69
   while :; do
@@ -280,7 +280,7 @@ aws::wait-for-instance-tag() {
       return "${status}"
     fi
 
-    current="$(time::boottime-milliseconds)" || return "$?"
+    current="$(time::boot-time-milliseconds)" || return "$?"
     number::_is-non-negative-integer-at-most "${current}" 9223372036854775807 ||
       return 69
     if ((current - start >= timeout_milliseconds)); then

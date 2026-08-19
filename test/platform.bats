@@ -6,6 +6,7 @@ load test_helper
   declare -F platform::_create-system-user >/dev/null
   declare -F platform::_create-login-user >/dev/null
   declare -F platform::_change-owner-recursively >/dev/null
+  declare -F platform::_path-mode >/dev/null
 }
 
 @test "the Ubuntu provider creates a non-login system account" {

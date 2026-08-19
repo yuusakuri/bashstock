@@ -40,6 +40,22 @@ load test_helper
   ! path::is-empty-directory "${directory}"
 }
 
+@test "path mode is a portable octal value" {
+  local file="${BATS_TEST_TMPDIR}/file"
+  printf 'value' >"${file}"
+  chmod 640 "${file}"
+
+  run path::mode "${file}"
+  [ "${status}" -eq 0 ]
+  [ "${output}" = '640' ]
+
+  run path::mode "${BATS_TEST_TMPDIR}/missing"
+  [ "${status}" -eq 66 ]
+
+  run path::mode
+  [ "${status}" -eq 64 ]
+}
+
 @test "path extension handles hidden files and multiple dots" {
   run path::extension 'archive.tar.gz'
   [ "${output}" = '.gz' ]

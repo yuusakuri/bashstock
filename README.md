@@ -55,7 +55,7 @@ example::run -Name sample -Count 3 -Force
 [関数リファレンス](docs/reference/functions.md)では、公開関数を名前空間ごとに確認できます。
 [アーキテクチャ](docs/explanation/architecture.md)では、ソース、配布物、モジュール、OS別実装の関係を説明します。
 
-関数の選定根拠は、[bash-commons](docs/explanation/function-selection/bash-commons.md)、[Lobash](docs/explanation/function-selection/lobash.md)、[Pure Bash Bible](docs/explanation/function-selection/pure-bash-bible.md)ごとに整理しています。
+関数の選定根拠は、[bash-commons](docs/explanation/function-selection/bash-commons.md)、[Lobash](docs/explanation/function-selection/lobash.md)、[Pure Bash Bible](docs/explanation/function-selection/pure-bash-bible.md)、[utilスクリプト](docs/explanation/function-selection/util-scripts.md)ごとに整理しています。
 
 ## コントリビューション
 

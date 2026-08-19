@@ -25,23 +25,61 @@ load test_helper
   [ "${status}" -eq 64 ]
 }
 
-@test "root variants dispatch exact argument values to the root helper" {
+@test "file updates elevate with exact arguments only when permissions require it" {
+  file::_require-regular-target() {
+    return 0
+  }
+  file::_requires-root() {
+    return 0
+  }
+  file::_requires-root-to-append() {
+    return 0
+  }
   command::run-as-root() {
     printf '%s\n' "$@"
   }
 
-  run file::append-text-as-root '/protected file' $'text\nvalue'
+  run file::append-text '/protected file' $'text\nvalue'
   [ "${status}" -eq 0 ]
   [[ "${output}" == *$'append-text\n/protected file\ntext\nvalue' ]]
 
-  run file::replace-text-as-root '/protected file' '^name=' 'name=value'
+  run file::replace-text '/protected file' '^name=' 'name=value'
   [[ "${output}" == *$'replace-text\n/protected file\n^name=\nname=value' ]]
 
-  run file::replace-text-in-files-as-root '^name=' 'name=value' '/first file' '/second file'
+  run file::replace-all-text '/protected file' '^name=' 'name=value'
+  [[ "${output}" == *$'replace-all-text\n/protected file\n^name=\nname=value' ]]
+
+  run file::replace-text-in-files '^name=' 'name=value' '/first file' '/second file'
   [[ "${output}" == *$'replace-text-in-files\n^name=\nname=value\n/first file\n/second file' ]]
 
-  run file::replace-or-append-text-as-root '/protected file' '^name=' 'name=value'
-  [[ "${output}" == *$'replace-or-append-text\n/protected file\n^name=\nname=value' ]]
+  run file::replace-all-text-in-files '^name=' 'name=value' '/first file' '/second file'
+  [[ "${output}" == *$'replace-all-text-in-files\n^name=\nname=value\n/first file\n/second file' ]]
+
+  run file::replace-text-or-append '/protected file' '^name=' 'name=value'
+  [[ "${output}" == *$'replace-text-or-append\n/protected file\n^name=\nname=value' ]]
+}
+
+@test "file append and atomic replacement use their required permissions" {
+  local directory="${BATS_TEST_TMPDIR}/permission-split"
+  local file="${directory}/value"
+  mkdir -p "${directory}"
+  printf 'first' >"${file}"
+
+  chmod 500 "${directory}"
+  chmod 600 "${file}"
+
+  if [[ "${EUID}" -eq 0 ]]; then
+    skip 'permission predicates do not restrict root'
+  fi
+
+  run file::_can-append "${file}"
+  local append_status="${status}"
+  run file::_can-update "${file}"
+  local update_status="${status}"
+  chmod 700 "${directory}"
+
+  [ "${append_status}" -eq 0 ]
+  [ "${update_status}" -ne 0 ]
 }
 
 @test "the root helper ignores an externally supplied library root" {
@@ -92,11 +130,11 @@ load test_helper
 }
 
 @test "user creation functions validate account types before escalation" {
-  run user::create-system-as-root service
+  run user::create-system service
   [ "${status}" -eq 64 ]
-  run user::create-login-as-root _service 'Service Account'
+  run user::create-login _service 'Service Account'
   [ "${status}" -eq 64 ]
-  run user::create-login-as-root user 'Bad:Name'
+  run user::create-login user 'Bad:Name'
   [ "${status}" -eq 64 ]
 }
 
@@ -111,17 +149,17 @@ load test_helper
     printf '%s\n' "$@"
   }
 
-  run user::create-system-as-root _service
+  run user::create-system _service
   [ "${status}" -eq 0 ]
   [[ "${output}" == *$'create-system-user\n_service' ]]
 
-  run user::create-login-as-root developer 'Developer Name'
+  run user::create-login developer 'Developer Name'
   [ "${status}" -eq 0 ]
   [[ "${output}" == *$'create-login-user\ndeveloper\nDeveloper Name' ]]
 }
 
 @test "recursive ownership validates the path before escalation" {
-  run path::change-owner-recursively-as-root \
+  run path::change-owner-recursively \
     "${BATS_TEST_TMPDIR}/missing" "$(id -un)"
   [ "${status}" -eq 66 ]
 }

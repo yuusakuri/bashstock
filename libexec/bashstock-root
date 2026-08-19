@@ -30,11 +30,17 @@ main() {
     replace-text)
       file::replace-text "$@"
       ;;
+    replace-all-text)
+      file::replace-all-text "$@"
+      ;;
     replace-text-in-files)
       file::replace-text-in-files "$@"
       ;;
-    replace-or-append-text)
-      file::replace-or-append-text "$@"
+    replace-all-text-in-files)
+      file::replace-all-text-in-files "$@"
+      ;;
+    replace-text-or-append)
+      file::replace-text-or-append "$@"
       ;;
     create-system-user)
       platform::_create-system-user "$@"

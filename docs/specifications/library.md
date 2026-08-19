@@ -49,6 +49,8 @@
 | 数量 | 要素数と文字数には`length`、バイト数には`byte-length`を使用します。 | `string::byte-length` |
 | 複数結果 | 複数形を使用します。 | `regex::capture-groups` |
 | 単位 | 単位を省略せず複数形で記載します。 | `time::unix-milliseconds` |
+| 日時形式 | ISO 8601拡張形式には`-extended`、基本形式には`-basic`を付けます。 | `time::local-date-extended`、`time::local-date-time-seconds-basic` |
+| Gitの既定対象 | コミットは`HEAD`、stashは`stash@{0}`を既定値とし、関数名に`latest`を含めません。差分の対象を引数で受け取らない関数は、最新コミットと未コミット変更を`latest-*`と`uncommitted-*`で区別します。 | `git::commit::revert`、`git::diff::latest-patch` |
 
 ## 内部関数
 
@@ -84,6 +86,7 @@ Bashには関数の可視性を制限する仕組みがないため、内部関�
 | `0` | 処理に成功したか、述語の条件が成立しました。 |
 | `1` | 述語の条件が成立しないか、検索対象が見つかりません。 |
 | `64` | 引数の個数、形式、組み合わせが不正です。 |
+| `65` | 指定されたデータ、リビジョン、または状態を処理対象として使用できません。 |
 | `66` | 入力ファイルまたは必要な入力元を利用できません。 |
 | `69` | 必要なコマンド、モジュール、実行環境を利用できません。 |
 | `73` | 利用者などの対象を作成できません。 |
@@ -101,14 +104,19 @@ Bashには関数の可視性を制限する仕組みがないため、内部関�
 | `regex::capture-group` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 入力文字列 |
 | `regex::capture-groups` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 入力文字列 |
 | `file::contains-match` | Perlの`qr//`が解釈する正規表現 | ファイルの各行 |
-| `file::replace-text` | Perlの`qr//`が解釈する正規表現 | 各行の最初の一致 |
-| `file::replace-text-as-root` | Perlの`qr//`が解釈する正規表現 | 各行の最初の一致 |
-| `file::replace-text-in-files` | Perlの`qr//`が解釈する正規表現 | 各ファイルの各行にある最初の一致 |
-| `file::replace-text-in-files-as-root` | Perlの`qr//`が解釈する正規表現 | 各ファイルの各行にある最初の一致 |
-| `file::replace-or-append-text` | Perlの`qr//`が解釈する正規表現 | 各行の最初の一致 |
-| `file::replace-or-append-text-as-root` | Perlの`qr//`が解釈する正規表現 | 各行の最初の一致 |
+| `file::replace-text` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の最初の一致 |
+| `file::replace-all-text` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の全一致 |
+| `file::replace-text-in-files` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各ファイルの各行にある最初の一致 |
+| `file::replace-all-text-in-files` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各ファイルの各行にある全一致 |
+| `file::replace-text-or-append` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の全一致 |
 
-ファイル置換関数は置換値をリテラル文字列として扱います。
+`file::contains-match`はPerl正規表現を評価します。
+ファイル置換関数はBash 3.2で入力を一行ずつ処理し、置換値をリテラル文字列として扱います。
+全一致置換では、空文字列へ一致できる正規表現を終了状態64で拒否します。
+Bash変数で保持できないNUL文字を入力ファイルから検出した場合は、元のファイルを保持して終了状態64を返します。
+
+`git::commit::edit-via-rebase REVISION [DIRECTORY]`は、指定したリビジョンが`HEAD`の祖先にあるルートコミットまたは単一親コミットであることを検査してから対話的rebaseを開始します。
+配布物内のシーケンスエディターは、Gitから渡されたtodoファイルの対象行だけを`edit`へ置換します。
 
 ## シェル状態
 
@@ -120,6 +128,7 @@ Tab補完の登録は、ライブラリの読み込み時に実行します。
 ## ファイル更新と権限
 
 通常権限と管理者権限のどちらでも実行できる操作では、管理者権限を使う公開関数を`-as-root`で終わる名前にします。
+管理者権限を常に必要とする操作と、書き込み権限が不足した場合に昇格する操作は、関数名に`-as-root`を付けません。
 管理者権限を使う関数は、`command::run-as-root`から配布物内の`libexec/bashstock-root`を実行します。
 
 ファイル更新関数は通常ファイルを同じディレクトリの一時ファイルで置き換え、所有者、グループ、モード、ACL、拡張属性を保持します。
@@ -131,3 +140,16 @@ Tab補完の登録は、ライブラリの読み込み時に実行します。
 公開関数はOS固有コマンドを直接呼び出さず、`platform`の内部関数を通して実行します。
 
 時間関数はPerlの`Time::HiRes`と`POSIX`を使用し、単調時計、起動後時計、Unix時刻、UTC日時、UTCオフセット付きローカル日時を同じ形式で返します。
+パスのモード取得、利用者作成、所有者変更、SHA-256計算は、OS別プロバイダーが同じ出力形式と終了状態を提供します。
+
+## 関数ごとの実行時依存
+
+Bash以外のコマンドやOS機能を使う関数は、処理を始める前に依存先を確認します。
+依存先を利用できない場合は終了状態69を返します。
+
+| 機能 | 実行時依存 |
+| --- | --- |
+| 時刻とPerl正規表現 | Perl、`Time::HiRes`、`POSIX` |
+| AWS | AWS CLI v2、curl、Perl、`JSON::PP`、IMDSv2またはAWS APIの認証情報 |
+| Git | Git CLI |
+| Ubuntuの静的IPv4設定 | iproute2、Netplan、hostnamectl、管理者権限 |

@@ -58,3 +58,12 @@ platform::_change-owner-recursively() {
   fi
   find -x "$1" -exec chown -h "${2}:${group}" {} + || return 74
 }
+
+### Write a path's permission mode with BSD stat.
+platform::_path-mode() {
+  if [[ "$#" -ne 1 || -z "$1" ]]; then
+    return 64
+  fi
+  command -v stat >/dev/null 2>&1 || return 69
+  stat -f '%Lp' -- "$1" 2>/dev/null || return 74
+}

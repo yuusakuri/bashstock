@@ -48,6 +48,8 @@ build::_write-library() {
   local after_platform=(
     user
     aws
+    git
+    net
   )
   local module=''
 

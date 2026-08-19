@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+project_root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
+readonly project_root
+
+unset _BASHSTOCK_LOADED
+BASHSTOCK_ROOT="${project_root}"
+# shellcheck disable=SC2034 # The sourced distribution reads this value.
+readonly BASHSTOCK_ROOT
+
+# shellcheck disable=SC1091 # bashstock.sh is generated beside libexec/.
+source "${project_root}/bashstock.sh"
+
+### Mark exactly one requested commit for editing in a Git rebase todo file.
+###
+### Arguments
+###
+### * FILE - Git rebase todo file supplied by Git.
+main() {
+  if [[ "$#" -ne 1 || -z "${BASHSTOCK_GIT_EDIT_COMMIT:-}" ]] ||
+    ! [[ "${BASHSTOCK_GIT_EDIT_COMMIT}" =~ ^[0-9a-f]{40}([0-9a-f]{24})?$ ]]; then
+    return 64
+  fi
+
+  local file="$1"
+  local line=''
+  local candidate=''
+  local selected=''
+  local matches='0'
+
+  file::_require-existing "${file}" || return "$?"
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    if [[ "${line}" =~ ^(pick|p)[[:space:]]+([0-9a-f]+)([[:space:]]|$) ]]; then
+      candidate="${BASH_REMATCH[2]}"
+      if [[ "${BASHSTOCK_GIT_EDIT_COMMIT:0:${#candidate}}" == "${candidate}" ]]; then
+        selected="${candidate}"
+        matches=$((matches + 1))
+      fi
+    fi
+  done <"${file}"
+
+  if [[ "${matches}" -ne 1 ]]; then
+    return 65
+  fi
+  file::replace-text \
+    "${file}" \
+    "^(pick|p)[[:space:]]+${selected}" \
+    "edit ${selected}"
+}
+
+main "$@"

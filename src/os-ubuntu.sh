@@ -46,3 +46,12 @@ platform::_change-owner-recursively() {
   fi
   find "$1" -xdev -exec chown --no-dereference "${2}:${group}" {} + || return 74
 }
+
+### Write a path's permission mode with GNU stat.
+platform::_path-mode() {
+  if [[ "$#" -ne 1 || -z "$1" ]]; then
+    return 64
+  fi
+  command -v stat >/dev/null 2>&1 || return 69
+  stat -c '%a' -- "$1" 2>/dev/null || return 74
+}

@@ -52,3 +52,8 @@ platform::_create-login-user() {
 platform::_change-owner-recursively() {
   return 69
 }
+
+### Return unavailable until an operating-system provider defines path modes.
+platform::_path-mode() {
+  return 69
+}
