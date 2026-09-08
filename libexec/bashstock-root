@@ -9,8 +9,10 @@ readonly project_root
 
 unset _BASHSTOCK_LOADED
 BASHSTOCK_ROOT="${project_root}"
+# shellcheck disable=SC2034 # The sourced distribution reads this value.
 readonly BASHSTOCK_ROOT
 
+# shellcheck disable=SC1091 # bashstock.sh is generated beside libexec/.
 source "${project_root}/bashstock.sh"
 
 ### Dispatch one validated privileged operation.

@@ -21,13 +21,12 @@ lint::visit-files() {
     "${command}" "${file}" || status='1'
   done 3< <(
     find \
-      "${project_root}/bin" \
+      "${project_root}/scripts" \
       "${project_root}/libexec" \
       "${project_root}/src" \
       "${project_root}/test" \
-      "${project_root}/bashstock.sh" \
       -type f \
-      \( -name '*.sh' -o -name '*.bash' -o -name '*.bats' -o -name 'bashstock-root' -o -name 'test' -o -name 'lint' -o -name 'check' -o -name 'build' \) \
+      \( -name '*.sh' -o -name '*.bash' -o -name '*.bats' -o -name 'bashstock-root' -o -name 'test' -o -name 'lint' -o -name 'build' \) \
       -print0
   )
 
@@ -58,8 +57,7 @@ lint::check-shell() {
   local file="${1}"
 
   if [[ "${file}" == *.bats ||
-    "${file}" == */vendor/* ||
-    "${file}" == "${project_root}/bashstock.sh" ]]; then
+    "${file}" == */vendor/* ]]; then
     return 0
   fi
 
@@ -93,11 +91,11 @@ lint::check-doc-comments() {
     ' "${file}" || status='1'
   done < <(
     find \
-      "${project_root}/bin" \
+      "${project_root}/scripts" \
       "${project_root}/libexec" \
       "${project_root}/src" \
       -type f \
-      \( -name '*.sh' -o -name '*.bash' -o -name 'bashstock-root' -o -name 'lint' -o -name 'check' -o -name 'build' \) \
+      \( -name '*.sh' -o -name '*.bash' -o -name 'bashstock-root' -o -name 'lint' -o -name 'build' \) \
       -print0
   )
 
