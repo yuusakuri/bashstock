@@ -32,7 +32,7 @@ git submodule update --init --recursive
 
 | コマンド | 実行内容 |
 | --- | --- |
-| `just build` | `src/*.sh`と`libexec/`から`dist/bashstock/`と`dist/bashstock.tar.gz`を生成します。 |
+| `just build` | `src/*.sh`と`libexec/`から利用者向け配布物`dist/bashstock/`とRelease用アーカイブ`dist/bashstock.tar.gz`を生成します。 |
 | `just lint` | Bash構文、ShellCheck、Docコメント、差分の空白エラーを検査します。 |
 | `just test` | 配布物を生成してからBatsテストを実行します。 |
 | `just verify` | 静的検査、配布物の生成、全テストを順に実行します。 |
@@ -45,7 +45,7 @@ git submodule update --init --recursive
 公開関数の名前空間、内部関数、入出力、終了状態は[ライブラリ仕様](docs/specifications/library.md)に従います。
 名前付き引数を持つ関数は[名前付き引数とTab補完の仕様](docs/specifications/named-arguments.md)に従います。
 
-- 変数と引数を引用符で囲みます。
+- 変数と引数は引用符で囲みます。
 - ファイルパスの列挙にはヌル文字区切りを使用します。
 - 利用者の入力を`eval`へ渡しません。
 - 外部コマンドを使わずに実装できる処理は、Bashの組み込み機能を使用します。
