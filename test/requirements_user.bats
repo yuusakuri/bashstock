@@ -53,7 +53,7 @@ load test_helper
   run env \
     BASHSTOCK_ROOT="${external_root}" \
     _BASHSTOCK_LOADED='0' \
-    "${PROJECT_ROOT}/libexec/bashstock-root" unknown-operation
+    "${PROJECT_ROOT}/dist/bashstock/libexec/bashstock-root" unknown-operation
 
   [[ "${status}" -eq 64 || "${status}" -eq 77 ]]
   [ ! -e "${marker}" ]
