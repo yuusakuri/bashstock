@@ -1,8 +1,9 @@
-# 関数一覧
+# 関数リファレンス
 
-BashStockが公開する関数の一覧。名前空間ごとにまとめる。各関数の設計判断は[設計](design.md)、名前付き引数とTab補完の正式仕様は[名前付き引数の仕様](argument-model.md)を参照する。
+BashStockが公開する関数を名前空間ごとに示します。
+関数名と入出力の規則は[ライブラリ仕様](../specifications/library.md)、名前付き引数とTab補完は[名前付き引数とTab補完の仕様](../specifications/named-arguments.md)で定義します。
 
-`-as-root`で終わる関数は、管理者権限が必要な操作を`libexec/bashstock-root`を通じて実行する。
+`-as-root`で終わる関数は、管理者権限が必要な操作を`libexec/bashstock-root`を通じて実行します。
 
 ## `number`
 

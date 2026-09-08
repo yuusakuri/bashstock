@@ -1,6 +1,6 @@
 # 名前付き引数とTab補完の仕様
 
-この文書は、BashStockの公開関数が使う名前付き引数の表記と、Tab補完の実装契約を定義する。Bash 3.2向けの一般的な引数解析規則そのものは対象としない。
+この文書は、BashStockの公開関数が使う名前付き引数の表記と、Tab補完の契約を定義します。
 
 ## 対象
 
@@ -105,4 +105,4 @@ user::_create-args() {
 - 値補完が対象引数の直後だけで動作すること。
 - 補完定義を持つ公開関数へ`arg::completion::dispatch`が登録されること。
 
-[test/arguments.bats](../test/arguments.bats)は、この契約を検証する例を含む。
+[test/arguments.bats](../../test/arguments.bats)は、この契約を検証する例を含みます。

@@ -1,43 +1,62 @@
-# 開発への参加
+# BashStockへのコントリビューション
+
+この文書では、開発環境の準備、検証、実装、PR作成の手順を説明します。
 
 ## 開発環境
 
-Bash 3.2以上、Git、ShellCheckを使用します。リポジトリを取得した後に、Bats-coreサブモジュールを初期化します。
+次のツールはBashStockの開発と検証に使用します。
+利用者向けの実行環境は[ライブラリ仕様](docs/specifications/library.md)で定義します。
+
+| ツール | 用途 |
+| --- | --- |
+| Bash 3.2以上 | ビルドスクリプト、検査スクリプト、テスト、配布物を実行します。 |
+| Git | ソース、履歴、Bats-coreサブモジュールを取得します。 |
+| just 1.58.0 | 開発コマンドを実行します。 |
+| ShellCheck | Bashソースを静的解析します。 |
+| Perl、`Time::HiRes`、`POSIX`、`JSON::PP` | 時刻処理とJSON処理を含むテストを実行します。 |
+| tar | 配布用アーカイブを生成します。 |
+
+## セットアップ
+
+リポジトリを取得し、Bats-coreサブモジュールを初期化します。
 
 ```bash
+git clone https://github.com/yuusakuri/bashstock.git
+cd bashstock
 git submodule update --init --recursive
 ```
 
-## ソースとビルド
+## 開発コマンド
 
-利用者が読み込む`bashstock.sh`は生成物です。開発は`src/*.sh`を編集し、コミット前に`bin/build`で再生成します。
+`just`を引数なしで実行すると、利用できるコマンドを表示します。
 
-```bash
-./bin/build
-```
+| コマンド | 実行内容 |
+| --- | --- |
+| `just build` | `src/*.sh`と`libexec/`から`dist/bashstock/`と`dist/bashstock.tar.gz`を生成します。 |
+| `just lint` | Bash構文、ShellCheck、Docコメント、差分の空白エラーを検査します。 |
+| `just test` | 配布物を生成してからBatsテストを実行します。 |
+| `just verify` | 静的検査、配布物の生成、全テストを順に実行します。 |
 
-`bashstock.sh`と`src/*.sh`の内容が一致しないコミットは、CIの`./bin/check`が失敗します。
+開発では`src/*.sh`と`libexec/`を編集します。
+`dist/`はローカルとCIで生成するため、Gitの追跡対象には含めません。
 
 ## 実装規則
 
-- 関数は`domain::action`形式の名前空間を付けます。同じ対象へ複数の操作を提供する場合だけ`domain::category::action`形式にします。
-- 公開関数に従属する内部関数は、名前空間の最後の要素の先頭へ`_`を付けます（例: `string::_require-one-line`）。
-- 変数と引数は引用符で囲みます。
+公開関数の名前空間、内部関数、入出力、終了状態は[ライブラリ仕様](docs/specifications/library.md)に従います。
+名前付き引数を持つ関数は[名前付き引数とTab補完の仕様](docs/specifications/named-arguments.md)に従います。
+
+- 変数と引数を引用符で囲みます。
 - ファイルパスの列挙にはヌル文字区切りを使用します。
 - 利用者の入力を`eval`へ渡しません。
-- 外部コマンドを使わずに明確に実装できる処理は、Bashの組み込み機能を使用します。
-- ライブラリを`source`しただけで、`errexit`、`nounset`、`pipefail`、`IFS`、カレントディレクトリなど呼び出し元シェルの状態を変更しません。
-- 複数の設定値を受け取る公開関数を追加する場合は、`while` / `case`と`src/arguments.sh`の`arg::`関数で引数を検査します。名前付き引数を公開する場合は、同じ名前空間に`::_<処理>-args`形式のTab補完用内部関数を追加します。詳細は[名前付き引数の仕様](docs/argument-model.md)を参照します。
+- 外部コマンドを使わずに実装できる処理は、Bashの組み込み機能を使用します。
+- ライブラリの読み込みと公開関数の実行では、呼び出し元のシェルオプション、`IFS`、カレントディレクトリを保持します。
 - 新しい動作には正常系と異常系のテストを用意します。
 
-公開関数の設計判断、名前空間の責務、終了状態の一覧は[設計](docs/design.md)に記載します。
+## PRの作成
 
-## 確認方法
-
-すべての検査を実行します。
+PRは一つの目的へ絞り、変更後の動作と確認方法を説明します。
+ブランチ名、コミットメッセージ、レビュー、マージは[Git規則](https://github.com/yuusakuri/dev-rules/blob/main/guidelines/development/git-guidelines.md)に従います。
 
 ```bash
-./bin/check
+just verify
 ```
-
-検査が成功したコミットだけを提出します。

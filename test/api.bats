@@ -8,11 +8,11 @@ load test_helper
   expected="$(
     {
       awk '/^## 採用する関数$/{on=1; next} /^## 採用しない名前付き関数$/{on=0} on' \
-        "${PROJECT_ROOT}/docs/references/pure-bash-bible.md"
+        "${PROJECT_ROOT}/docs/explanation/function-selection/pure-bash-bible.md"
       awk '/^## 採用するモジュール$/{on=1; next} /^## 採用しないモジュール$/{on=0} on' \
-        "${PROJECT_ROOT}/docs/references/lobash.md"
+        "${PROJECT_ROOT}/docs/explanation/function-selection/lobash.md"
       awk '/^## 採用する関数$/{on=1; next} /^## 対応環境の検証$/{on=0} on' \
-        "${PROJECT_ROOT}/docs/references/bash-commons.md"
+        "${PROJECT_ROOT}/docs/explanation/function-selection/bash-commons.md"
     } |
       perl -nle 'while (/`([a-z][a-z0-9-]*::[a-z][a-z0-9-]*)`/g) { print $1 }' |
       sort -u
