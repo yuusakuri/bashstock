@@ -50,6 +50,7 @@ build::_write-library() {
     aws
     git
     net
+    util
   )
   local module=''
 

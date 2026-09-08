@@ -24,6 +24,9 @@ main() {
   local operation="$1"
   shift
   case "${operation}" in
+    write-text)
+      file::write-text "$@"
+      ;;
     append-text)
       file::append-text "$@"
       ;;

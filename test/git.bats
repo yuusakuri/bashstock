@@ -160,9 +160,9 @@ git_test::edit-via-rebase-in-directory() {
   git_test::create-repository "${repository}"
   root="$(git_test::commit "${repository}" root root)"
   initial_branch="$(git -C "${repository}" symbolic-ref --short HEAD)"
-  git -C "${repository}" checkout --quiet -b side
+  git -C "${repository}" switch --quiet -c side
   side="$(git_test::commit "${repository}" side side)"
-  git -C "${repository}" checkout --quiet "${initial_branch}"
+  git -C "${repository}" switch --quiet "${initial_branch}"
   main="$(git_test::commit "${repository}" main main)"
 
   run git::commit::edit-via-rebase missing "${repository}"
