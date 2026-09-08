@@ -7,12 +7,13 @@ set -o pipefail
 project_root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
 readonly project_root
 
-unset BASHSTOCK_LOADED
+unset _BASHSTOCK_LOADED
 BASHSTOCK_ROOT="${project_root}"
+# shellcheck disable=SC2034 # The sourced distribution reads this value.
 readonly BASHSTOCK_ROOT
 
-source "${project_root}/src/settings/settings.sh"
-source "${project_root}/src/library.sh"
+# shellcheck disable=SC1091 # bashstock.sh is generated beside libexec/.
+source "${project_root}/bashstock.sh"
 
 ### Dispatch one validated privileged operation.
 main() {
@@ -36,13 +37,13 @@ main() {
       file::replace-or-append-text "$@"
       ;;
     create-system-user)
-      platform::__create-system-user "$@"
+      platform::_create-system-user "$@"
       ;;
     create-login-user)
-      platform::__create-login-user "$@"
+      platform::_create-login-user "$@"
       ;;
     change-owner-recursively)
-      platform::__change-owner-recursively "$@"
+      platform::_change-owner-recursively "$@"
       ;;
     *)
       return 64

@@ -47,13 +47,13 @@ load test_helper
 @test "the root helper ignores an externally supplied library root" {
   local external_root="${BATS_TEST_TMPDIR}/external"
   local marker="${BATS_TEST_TMPDIR}/external-library-loaded"
-  mkdir -p "${external_root}/src"
-  printf 'touch %q\n' "${marker}" >"${external_root}/src/library.sh"
+  mkdir -p "${external_root}"
+  printf 'touch %q\n' "${marker}" >"${external_root}/bashstock.sh"
 
   run env \
     BASHSTOCK_ROOT="${external_root}" \
-    BASHSTOCK_LOADED='0' \
-    "${PROJECT_ROOT}/libexec/bashstock-root" unknown-operation
+    _BASHSTOCK_LOADED='0' \
+    "${PROJECT_ROOT}/dist/bashstock/libexec/bashstock-root" unknown-operation
 
   [[ "${status}" -eq 64 || "${status}" -eq 77 ]]
   [ ! -e "${marker}" ]

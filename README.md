@@ -1,117 +1,67 @@
 # BashStock
 
-BashStockは、他のBashプロジェクトが第三者ライブラリとして読み込む開発キットです。Apple Siliconを含むmacOS、Ubuntu 18.04以降、Fedoraで共通して利用できる関数、引数解析、入力検査、テスト、静的検査、継続的インテグレーションを提供します。
+BashStockは、macOS、Ubuntu、Fedoraの対話型Bashから読み込んで使う関数ライブラリです。
+文字列、パス、ファイル、時刻、OS設定、AWS操作などを、同じ名前と終了状態で呼び出せます。
 
-## 特徴
+## インストール
 
-- Bash 3.2以上で動作します。
-- `errexit`、`nounset`、`pipefail`を有効にします。
-- shFlags 1.3.0がオプションを定義します。
-- 移植可能な引数アダプターが、macOSとLinuxの`getopt`の差を吸収します。
-- 利用者の入力を`eval`による変数代入へ渡しません。
-- 関数は`feature::command-name`形式で命名します。
-- 機能ごとにソースを分割します。
-- AWS機能は必要なモジュールだけを明示的に読み込みます。
-- 製品固有のサンプル機能を含みません。
-- Bats-core、ShellCheck、Bashの構文検査を使用します。
-
-## 動作環境
-
-| 用途 | 条件 |
-|---|---|
-| 実行 | Bash 3.2以上 |
-| 対応OS | Apple Siliconを含むmacOS、Ubuntu 18.04以降、Fedora |
-| 取得 | Git |
-| テスト | Gitサブモジュール内のBats-core |
-| 静的検査 | ShellCheck |
-| 短縮コマンド | Make |
-
-## 取得方法
-
-リポジトリをサブモジュールと一緒に取得します。
+[Releases](https://github.com/yuusakuri/bashstock/releases)から`bashstock.tar.gz`を取得し、利用者用のデータディレクトリへ展開します。
 
 ```bash
-git clone --recurse-submodules <repository-url>
-cd bashstock
+data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+mkdir -p "${data_home}"
+curl --fail --location \
+  --output /tmp/bashstock.tar.gz \
+  https://github.com/yuusakuri/bashstock/releases/latest/download/bashstock.tar.gz
+tar -xzf /tmp/bashstock.tar.gz -C "${data_home}"
+rm /tmp/bashstock.tar.gz
 ```
 
-通常の`git clone`を実行した場合は、次のコマンドでBats-coreを取得します。
+`.bashrc`から配布物の`bashstock.sh`を読み込みます。
 
 ```bash
-git submodule update --init --recursive
+source "${XDG_DATA_HOME:-$HOME/.local/share}/bashstock/bashstock.sh"
 ```
 
-## 使用方法
+## 使い方
 
-確認用CLIへ引数を付けずに実行すると、ヘルプを表示します。
+公開関数は名前空間を含む名前で呼び出します。
 
 ```bash
-./bin/bashstock
+string::upper 'hello'
+path::normalize './foo/../bar'
 ```
 
-ヘルプとバージョンを表示します。
+名前付き引数を持つ関数は、`-Name VALUE`形式の引数とTab補完を提供します。
 
 ```bash
-./bin/bashstock --help
-./bin/bashstock --version
+example::run -Name sample -Count 3 -Force
 ```
 
-## 関数ライブラリ
+## 対応環境
 
-標準ライブラリは、`src/library.sh`を読み込むと使用できます。読み込みによってネットワーク通信、権限昇格、利用者作成、ファイル更新は実行されません。
+公開APIが対応する実行環境は次のとおりです。
+各関数が必要とするコマンドとOS機能は[関数リファレンス](docs/reference/functions.md)に記載します。
 
-```bash
-source "/path/to/bashstock/src/library.sh"
+| 対象 | 対応範囲 |
+| --- | --- |
+| シェル | Bash 3.2以上 |
+| OS | macOS、Ubuntu、Fedora |
 
-string::upper "example"
-path::normalize "/srv/app/../data"
-```
+## API
 
-AWS関数は標準ライブラリへ自動的に含まれません。IMDS、EC2、Auto Scalingから、使用するモジュールを読み込みます。Auto Scalingモジュールは依存するIMDS関数とEC2関数も読み込みます。
+[ライブラリ仕様](docs/specifications/library.md)では、読み込み、名前空間、入出力、終了状態、シェル状態の契約を定義します。
+[名前付き引数とTab補完の仕様](docs/specifications/named-arguments.md)では、引数の表記と補完関数の契約を定義します。
+[関数リファレンス](docs/reference/functions.md)では、公開関数を名前空間ごとに確認できます。
+[アーキテクチャ](docs/explanation/architecture.md)では、ソース、配布物、モジュール、OS別実装の関係を説明します。
 
-```bash
-source "/path/to/bashstock/src/library.sh"
-source "/path/to/bashstock/src/aws/imds.sh"
-source "/path/to/bashstock/src/aws/ec2.sh"
-source "/path/to/bashstock/src/aws/auto-scaling.sh"
-```
+関数の選定根拠は、[bash-commons](docs/explanation/function-selection/bash-commons.md)、[Lobash](docs/explanation/function-selection/lobash.md)、[Pure Bash Bible](docs/explanation/function-selection/pure-bash-bible.md)ごとに整理しています。
 
-公開関数の契約は、[設計](docs/design.md)、[Lobashの関数選定](docs/references/lobash.md)、[bash-commonsの関数選定](docs/references/bash-commons.md)、[Pure Bash Bibleの関数選定](docs/references/pure-bash-bible.md)に記載しています。
+## コントリビューション
 
-## オプション
-
-| 短い名前 | 長い名前 | 値 | 説明 | 既定値 |
-|---|---|---|---|---|
-| `-v` | `--version` | なし | バージョンを表示します。 | 無効 |
-| `-h` | `--help` | なし | ヘルプを表示します。 | 無効 |
-
-位置引数は受け付けません。オプションに誤りがある場合は終了状態2を返します。位置引数が指定された場合は終了状態64を返します。
-
-## 開発方法
-
-```bash
-./bin/check
-```
-
-個別に実行する場合は`./bin/test`または`./bin/lint`を使用します。Makeでは各コマンド名から`./bin/`を除いて実行できます。
-
-## ディレクトリ構成
-
-| パス | 役割 |
-|---|---|
-| `bin/` | 利用者と開発者が直接実行するコマンドを格納します。 |
-| `libexec/` | コマンドから内部的に呼び出す実行ファイルを格納します。 |
-| `src/cli/` | オプション定義、入力検査、実行順序を管理します。 |
-| `src/library.sh` | 標準ライブラリを依存順に読み込みます。 |
-| `src/aws/` | 任意で読み込むAWSモジュールを格納します。 |
-| `src/console/` | 利用者向け診断の内部出力を管理します。 |
-| `src/platform/` | macOS、Ubuntu、Fedoraの内部処理を格納します。 |
-| `src/regex/` | 正規表現を受け取る公開関数を格納します。 |
-| `src/settings/` | 製品名とバージョンを管理します。 |
-| `test/` | Batsの自動テストを格納します。 |
-| `vendor/` | バージョンを固定した外部依存を格納します。 |
-| `docs/` | 最終設計と参照資料を格納します。 |
+開発環境、開発コマンド、実装規則、PRの作成方法は[CONTRIBUTING.md](CONTRIBUTING.md)を参照してください。
 
 ## ライセンス
 
-このリポジトリの独自コードはMIT Licenseで提供します。shFlagsはApache License 2.0で提供され、ライセンス本文は`vendor/shflags/LICENSE`に格納されています。Bats-coreのライセンス本文はサブモジュール内に格納されています。
+BashStockは[MIT License](LICENSE)で提供します。
+Bats-coreのライセンス本文はサブモジュール内に格納されています。

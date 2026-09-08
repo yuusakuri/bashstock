@@ -23,15 +23,20 @@ jobs:
 
     steps:
       - name: Check out the repository
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
         with:
           submodules: recursive
 
-      - name: Install ShellCheck on macOS
+      - name: Set up just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0"
+
+      - name: Install dependencies on macOS
         if: runner.os == 'macOS'
         run: brew install perl shellcheck
 
-      - name: Install ShellCheck on Linux
+      - name: Install dependencies on Linux
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
@@ -41,7 +46,15 @@ jobs:
         run: perl -MTime::HiRes -MPOSIX -e 1
 
       - name: Run all checks
-        run: ./bin/check
+        run: just verify
+
+      - name: Upload the distribution
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v7.0.1
+        with:
+          name: bashstock-${{ github.sha }}
+          path: dist/bashstock.tar.gz
+          if-no-files-found: error
 
   check-fedora:
     name: Check on Fedora 44
@@ -55,15 +68,17 @@ jobs:
         run: dnf install --assumeyes git glibc-langpack-en perl perl-JSON-PP perl-POSIX perl-Time-HiRes ShellCheck
 
       - name: Check out the repository
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
         with:
           submodules: recursive
 
+      - name: Set up just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.58.0"
+
       - name: Trust the checked-out repository
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-      - name: Verify the time provider
-        run: perl -MTime::HiRes -MPOSIX -e 1
 
       - name: Verify the UTF-8 locale
         env:
@@ -75,4 +90,4 @@ jobs:
         env:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
-        run: ./bin/check
+        run: just verify

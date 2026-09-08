@@ -2,18 +2,11 @@
 
 load test_helper
 
-test::load-extra-modules() {
-  source "${PROJECT_ROOT}/src/aws/aws.sh"
-  source "${PROJECT_ROOT}/src/aws/imds.sh"
-  source "${PROJECT_ROOT}/src/aws/ec2.sh"
-  source "${PROJECT_ROOT}/src/aws/auto-scaling.sh"
-}
-
 @test "IMDS functions use one token and validate public paths" {
-  aws::__imds-token() {
+  aws::_imds-token() {
     printf 'token\n'
   }
-  aws::__imds-get() {
+  aws::_imds-get() {
     [ "$2" = 'token' ]
     case "$1" in
       instance-id)
@@ -46,10 +39,10 @@ test::load-extra-modules() {
 }
 
 @test "instance region parses the identity document" {
-  aws::__imds-token() {
+  aws::_imds-token() {
     printf 'token\n'
   }
-  aws::__imds-document() {
+  aws::_imds-document() {
     [ "$1" = 'token' ]
     printf '{"region":"ap-northeast-1"}\n'
   }
@@ -60,7 +53,7 @@ test::load-extra-modules() {
 }
 
 @test "EC2 tag functions keep user values outside the query expression" {
-  aws::__cli() {
+  aws::_cli() {
     [ "$1" = 'ec2' ]
     [ "$2" = 'describe-tags' ]
     printf '{"Tags":[{"Key":"Role","Value":"web"},{"Key":"Empty","Value":""}]}\n'
@@ -126,7 +119,7 @@ test::load-extra-modules() {
 }
 
 @test "instance search passes fixed state filters to AWS CLI" {
-  aws::__cli() {
+  aws::_cli() {
     printf '%s\n' "$*"
   }
 
@@ -137,7 +130,7 @@ test::load-extra-modules() {
 }
 
 @test "Auto Scaling functions parse group data" {
-  aws::__cli() {
+  aws::_cli() {
     if [[ "$1 $2" = 'autoscaling describe-auto-scaling-groups' ]]; then
       printf '{"AutoScalingGroupName":"group","DesiredCapacity":2,"Instances":[{"InstanceId":"i-1"},{"InstanceId":"i-2"}]}\n'
     else
