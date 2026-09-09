@@ -13,13 +13,13 @@ log::_write() {
 
   while [[ "${remaining}" == *$'\n'* ]]; do
     line="${remaining%%$'\n'*}"
-    timestamp="$(time::local-date-time-milliseconds)" || return "$?"
+    timestamp="$(time::local-date-time-milliseconds-extended)" || return "$?"
     printf '%s [%s] [%s] %s\n' \
       "${timestamp}" "${level}" "${BASHSTOCK_NAME:-bashstock}" "${line}" >&2
     remaining="${remaining#*$'\n'}"
   done
 
-  timestamp="$(time::local-date-time-milliseconds)" || return "$?"
+  timestamp="$(time::local-date-time-milliseconds-extended)" || return "$?"
   printf '%s [%s] [%s] %s\n' \
     "${timestamp}" "${level}" "${BASHSTOCK_NAME:-bashstock}" "${remaining}" >&2
 }

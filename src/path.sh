@@ -132,6 +132,18 @@ path::is-writable() {
   [[ -w "$1" ]]
 }
 
+### Write a path's permission mode as an octal number.
+path::mode() {
+  if [[ "$#" -ne 1 || -z "$1" ]]; then
+    return 64
+  fi
+  if [[ ! -e "$1" && ! -L "$1" ]]; then
+    return 66
+  fi
+
+  platform::_path-mode "$1"
+}
+
 ### Write the extension of the final path component.
 path::extension() {
   if [[ "$#" -ne 1 ]]; then
@@ -329,7 +341,7 @@ path::config-home() {
 }
 
 ### Change directory ownership recursively through the root helper.
-path::change-owner-recursively-as-root() {
+path::change-owner-recursively() {
   if [[ "$#" -lt 2 || "$#" -gt 3 ]]; then
     return 64
   fi

@@ -13,8 +13,10 @@ load test_helper
         "${PROJECT_ROOT}/docs/explanation/function-selection/lobash.md"
       awk '/^## 採用する関数$/{on=1; next} /^## 対応環境の検証$/{on=0} on' \
         "${PROJECT_ROOT}/docs/explanation/function-selection/bash-commons.md"
+      awk '/^## 検討中から採用する関数$/{on=1; next} /^## 検討中の関数$/{on=0} on' \
+        "${PROJECT_ROOT}/docs/explanation/function-selection/util-scripts.md"
     } |
-      perl -nle 'while (/`([a-z][a-z0-9-]*::[a-z][a-z0-9-]*)`/g) { print $1 }' |
+      perl -nle 'while (/`([a-z][a-z0-9-]*(?:::[a-z][a-z0-9-]*)+)/g) { print $1 }' |
       sort -u
   )"
 
@@ -36,7 +38,31 @@ load test_helper
   ! declare -F string::capture-groups >/dev/null
 }
 
-@test "the library loads AWS functions by default" {
+@test "the library loads every standard module by default" {
   declare -F aws::instance-id >/dev/null
   declare -F aws::auto-scaling-group >/dev/null
+  declare -F git::commit::edit-via-rebase >/dev/null
+  declare -F net::ip::set-static >/dev/null
+}
+
+@test "public mutation names do not encode mandatory administrator execution" {
+  declare -F file::append-text >/dev/null
+  declare -F file::replace-text >/dev/null
+  declare -F file::replace-all-text >/dev/null
+  declare -F file::replace-text-in-files >/dev/null
+  declare -F file::replace-all-text-in-files >/dev/null
+  declare -F file::replace-text-or-append >/dev/null
+  declare -F user::create-system >/dev/null
+  declare -F user::create-login >/dev/null
+  declare -F path::change-owner-recursively >/dev/null
+
+  ! declare -F file::append-text-as-root >/dev/null
+  ! declare -F file::replace-text-as-root >/dev/null
+  ! declare -F file::replace-all-text-as-root >/dev/null
+  ! declare -F file::replace-text-in-files-as-root >/dev/null
+  ! declare -F file::replace-all-text-in-files-as-root >/dev/null
+  ! declare -F file::replace-all-text-or-append >/dev/null
+  ! declare -F user::create-system-as-root >/dev/null
+  ! declare -F user::create-login-as-root >/dev/null
+  ! declare -F path::change-owner-recursively-as-root >/dev/null
 }

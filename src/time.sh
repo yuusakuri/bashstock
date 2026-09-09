@@ -17,7 +17,7 @@ time::_clock-milliseconds() {
         -e 'printf "%d\n", int(clock_gettime(CLOCK_MONOTONIC) * 1000)' \
         2>/dev/null || return 69
       ;;
-    linux:boottime)
+    linux:boot-time)
       perl -e '
         use strict;
         use warnings;
@@ -39,7 +39,7 @@ time::_clock-milliseconds() {
         -e 'printf "%d\n", int(clock_gettime(CLOCK_UPTIME_RAW) * 1000)' \
         2>/dev/null || return 69
       ;;
-    darwin:boottime)
+    darwin:boot-time)
       perl -MTime::HiRes=clock_gettime,CLOCK_MONOTONIC_RAW \
         -e 'printf "%d\n", int(clock_gettime(CLOCK_MONOTONIC_RAW) * 1000)' \
         2>/dev/null || return 69
@@ -75,26 +75,28 @@ time::_format-milliseconds() {
     my $seconds = int($milliseconds / 1000);
     my $fraction = $milliseconds % 1000;
     my ($base, $offset);
-    if ($mode eq "utc-ms") {
+    if ($mode eq "utc-ms-extended") {
       $base = strftime("%Y-%m-%dT%H:%M:%S", gmtime($seconds));
       printf "%s.%03dZ\n", $base, $fraction;
-    } elsif ($mode eq "utc-s") {
+    } elsif ($mode eq "utc-s-extended") {
       print strftime("%Y-%m-%dT%H:%M:%SZ", gmtime($seconds)), "\n";
-    } elsif ($mode eq "utc-date") {
+    } elsif ($mode eq "utc-date-extended") {
       print strftime("%Y-%m-%d", gmtime($seconds)), "\n";
-    } elsif ($mode eq "local-ms" || $mode eq "local-s") {
+    } elsif ($mode eq "local-ms-extended" || $mode eq "local-s-extended") {
       my @local = localtime($seconds);
       $base = strftime("%Y-%m-%dT%H:%M:%S", @local);
       $offset = strftime("%z", @local);
       $offset =~ s/([+-][0-9]{2})([0-9]{2})\z/$1:$2/;
       exit 69 unless $offset =~ /\A[+-][0-9]{2}:[0-9]{2}\z/;
-      if ($mode eq "local-ms") {
+      if ($mode eq "local-ms-extended") {
         printf "%s.%03d%s\n", $base, $fraction, $offset;
       } else {
         print $base, $offset, "\n";
       }
-    } elsif ($mode eq "local-date") {
+    } elsif ($mode eq "local-date-extended") {
       print strftime("%Y-%m-%d", localtime($seconds)), "\n";
+    } elsif ($mode eq "local-s-basic") {
+      print strftime("%Y%m%dT%H%M%S", localtime($seconds)), "\n";
     } else {
       exit 64;
     }
@@ -120,11 +122,11 @@ time::monotonic-milliseconds() {
 }
 
 ### Write milliseconds since boot including suspended time.
-time::boottime-milliseconds() {
+time::boot-time-milliseconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
-  time::_clock-milliseconds boottime || time::_provider-error
+  time::_clock-milliseconds boot-time || time::_provider-error
 }
 
 ### Write Unix-epoch milliseconds.
@@ -179,38 +181,44 @@ time::_date-time() {
   }
 }
 
-### Write the current UTC date and time with milliseconds.
-time::utc-date-time-milliseconds() {
+### Write the current UTC date and time in ISO 8601 extended format with milliseconds.
+time::utc-date-time-milliseconds-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time utc-ms
+  time::_date-time utc-ms-extended
 }
 
-### Write the current UTC date and time with seconds.
-time::utc-date-time-seconds() {
+### Write the current UTC date and time in ISO 8601 extended format with seconds.
+time::utc-date-time-seconds-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time utc-s
+  time::_date-time utc-s-extended
 }
 
-### Write the current UTC date.
-time::utc-date() {
+### Write the current UTC date in ISO 8601 extended format.
+time::utc-date-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time utc-date
+  time::_date-time utc-date-extended
 }
 
-### Write the current local date and time with milliseconds and an offset.
-time::local-date-time-milliseconds() {
+### Write the current local date and time in ISO 8601 extended format with milliseconds and an offset.
+time::local-date-time-milliseconds-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time local-ms
+  time::_date-time local-ms-extended
 }
 
-### Write the current local date and time with seconds and an offset.
-time::local-date-time-seconds() {
+### Write the current local date and time in ISO 8601 extended format with seconds and an offset.
+time::local-date-time-seconds-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time local-s
+  time::_date-time local-s-extended
 }
 
-### Write the current local date.
-time::local-date() {
+### Write the current local date in ISO 8601 extended format.
+time::local-date-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time local-date
+  time::_date-time local-date-extended
+}
+
+### Write the current local date and time in ISO 8601 basic format with seconds.
+time::local-date-time-seconds-basic() {
+  [[ "$#" -eq 0 ]] || return 64
+  time::_date-time local-s-basic
 }

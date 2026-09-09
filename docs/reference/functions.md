@@ -3,7 +3,8 @@
 BashStockが公開する関数を名前空間ごとに示します。
 関数名と入出力の規則は[ライブラリ仕様](../specifications/library.md)、名前付き引数とTab補完は[名前付き引数とTab補完の仕様](../specifications/named-arguments.md)で定義します。
 
-`-as-root`で終わる関数は、管理者権限が必要な操作を`libexec/bashstock-root`を通じて実行します。
+`-as-root`で終わる関数は、通常権限と管理者権限のどちらで実行するかを呼び出し側が選べる操作です。
+管理者権限を常に必要とする操作と、書き込み権限が不足した場合に昇格する操作は、関数名に`-as-root`を付けません。
 
 ## `number`
 
@@ -124,11 +125,12 @@ BashStockが公開する関数を名前空間ごとに示します。
 | `path::is-symbolic-link` | Test whether a path names a symbolic link. |
 | `path::is-readable` | Test whether the current user may read a path. |
 | `path::is-writable` | Test whether the current user may write a path. |
+| `path::mode` | Write a path's permission mode as an octal number. |
 | `path::extension` | Write the extension of the final path component. |
 | `path::normalize` | Normalize a path lexically without accessing the file system. |
 | `path::relative` | Write the lexical relative path from one path to another. |
 | `path::config-home` | Write the absolute configuration-home directory. |
-| `path::change-owner-recursively-as-root` | Change directory ownership recursively through the root helper. |
+| `path::change-owner-recursively` | Change directory ownership recursively through the root helper. |
 
 ## `prompt`
 
@@ -144,16 +146,17 @@ BashStockが公開する関数を名前空間ごとに示します。
 | 関数 | 説明 |
 |---|---|
 | `time::monotonic-milliseconds` | Write monotonic milliseconds that exclude suspended time. |
-| `time::boottime-milliseconds` | Write milliseconds since boot including suspended time. |
+| `time::boot-time-milliseconds` | Write milliseconds since boot including suspended time. |
 | `time::unix-milliseconds` | Write Unix-epoch milliseconds. |
 | `time::unix-seconds` | Write Unix-epoch seconds rounded down. |
 | `time::unix-days` | Write Unix-epoch days rounded down. |
-| `time::utc-date-time-milliseconds` | Write the current UTC date and time with milliseconds. |
-| `time::utc-date-time-seconds` | Write the current UTC date and time with seconds. |
-| `time::utc-date` | Write the current UTC date. |
-| `time::local-date-time-milliseconds` | Write the current local date and time with milliseconds and an offset. |
-| `time::local-date-time-seconds` | Write the current local date and time with seconds and an offset. |
-| `time::local-date` | Write the current local date. |
+| `time::utc-date-time-milliseconds-extended` | Write the current UTC date and time in ISO 8601 extended format with milliseconds. |
+| `time::utc-date-time-seconds-extended` | Write the current UTC date and time in ISO 8601 extended format with seconds. |
+| `time::utc-date-extended` | Write the current UTC date in ISO 8601 extended format. |
+| `time::local-date-time-milliseconds-extended` | Write the current local date and time in ISO 8601 extended format with milliseconds and an offset. |
+| `time::local-date-time-seconds-extended` | Write the current local date and time in ISO 8601 extended format with seconds and an offset. |
+| `time::local-date-extended` | Write the current local date in ISO 8601 extended format. |
+| `time::local-date-time-seconds-basic` | Write the current local date and time in ISO 8601 basic format with seconds. |
 
 ## `log`
 
@@ -181,14 +184,12 @@ BashStockが公開する関数を名前空間ごとに示します。
 |---|---|
 | `file::contains-match` | Test whether any file line matches a Perl regular expression. |
 | `file::verify-sha256` | Test a file against an expected SHA-256 digest. |
-| `file::append-text` | Append text without conversion using the current user's permissions. |
-| `file::append-text-as-root` | Append text without conversion through the root helper. |
-| `file::replace-text` | Replace the first Perl regular-expression match on every file line. |
-| `file::replace-text-as-root` | Replace line matches through the root helper. |
+| `file::append-text` | Append text without conversion, elevating only when permissions require it. |
+| `file::replace-text` | Replace the first Bash ERE match on every file line. Arguments * FILE - Regular text file to update. * EXPRESSION - Nonempty Bash extended regular expression. * REPLACEMENT - Literal one-line replacement text. |
+| `file::replace-all-text` | Replace every nonempty Bash ERE match on every file line. Arguments * FILE - Regular text file to update. * EXPRESSION - Nonempty Bash extended regular expression. * REPLACEMENT - Literal one-line replacement text. |
 | `file::replace-text-in-files` | Replace line matches across multiple files. |
-| `file::replace-text-in-files-as-root` | Replace line matches across multiple files through the root helper. |
-| `file::replace-or-append-text` | Replace line matches or append one line when no match exists. |
-| `file::replace-or-append-text-as-root` | Replace line matches or append through the root helper. |
+| `file::replace-all-text-in-files` | Replace every line match across multiple files. |
+| `file::replace-text-or-append` | Replace every line match or append one line when no match exists. |
 
 ## `user`
 
@@ -198,8 +199,8 @@ BashStockが公開する関数を名前空間ごとに示します。
 | `user::primary-group` | Write the effective user's primary group name. |
 | `user::is-root` | Test whether the effective user is root. |
 | `user::exists` | Test whether a local user account exists. |
-| `user::create-system-as-root` | Create a non-login system account through the root helper. |
-| `user::create-login-as-root` | Create a local login account through the root helper. |
+| `user::create-system` | Create a non-login system account through the root helper. |
+| `user::create-login` | Create a local login account through the root helper. |
 
 ## `aws`
 
@@ -219,3 +220,15 @@ BashStockが公開する関数を名前空間ごとに示します。
 | `aws::instances-in-auto-scaling-group` | Write running or pending instances in an Auto Scaling group. |
 | `aws::auto-scaling-group-name` | Write the current instance's Auto Scaling group name. |
 | `aws::auto-scaling-group-size` | Write the desired capacity of an Auto Scaling group. |
+
+## `git::commit`
+
+| 関数 | 説明 |
+|---|---|
+| `git::commit::edit-via-rebase` | Start an interactive rebase that stops at one non-merge commit for editing. Arguments * REVISION - Root or single-parent commit that is an ancestor of HEAD. * DIRECTORY - Git working tree. Defaults to the current directory. |
+
+## `net::ip`
+
+| 関数 | 説明 |
+|---|---|
+| `net::ip::set-static` | Replace one Ubuntu Netplan file with a static IPv4 configuration. Options * -Interface INTERFACE - Network interface. Defaults to the first default route. * -Address ADDRESS - IPv4 address. Defaults to the interface's primary address. * -PrefixLength PREFIX_LENGTH - IPv4 prefix length. Defaults to the current value. * -Gateway GATEWAY - IPv4 gateway. Defaults to the first default route. * -Dns DNS_SERVERS - Comma-separated IPv4 DNS servers. Defaults to 1.1.1.1,8.8.8.8. * -HostName HOST_NAME - Host name. Defaults to the current host name. * -File FILE - Netplan file. Defaults to the only /etc/netplan YAML file. * -Renderer RENDERER - networkd or NetworkManager. Defaults to Netplan's selection. |

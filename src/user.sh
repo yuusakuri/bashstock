@@ -35,7 +35,7 @@ user::exists() {
 }
 
 ### Create a non-login system account through the root helper.
-user::create-system-as-root() {
+user::create-system() {
   if [[ "$#" -ne 1 ]] || ! ( [[ "$1" =~ ^_[a-z][a-z0-9_-]*$ ]] ); then
     return 64
   fi
@@ -47,7 +47,7 @@ user::create-system-as-root() {
 }
 
 ### Create a local login account through the root helper.
-user::create-login-as-root() {
+user::create-login() {
   if [[ "$#" -ne 2 ]] ||
     ! ( [[ "$1" =~ ^[a-z][a-z0-9_-]*$ ]] ) ||
     [[ -z "$2" || "$2" == *:* || "$2" == *[[:cntrl:]]* ]]; then

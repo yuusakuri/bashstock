@@ -57,7 +57,7 @@ PRと`main`へのpushでは、CIがソースから配布物を生成して検査
 | 4 | `prompt`、`time`、`log` | 対話入力、時計、ログを扱います。 |
 | 5 | `json`、`option`、`file` | 値の条件、選択条件、ファイル更新を扱います。 |
 | 6 | `os`、OS別プロバイダー、`user` | OS差分、利用者、所有者を扱います。 |
-| 7 | `aws` | IMDS、EC2、Auto Scalingを扱います。 |
+| 7 | `aws`、`git`、`net` | IMDS、EC2、Auto Scaling、Gitリポジトリ、Ubuntuのネットワーク設定を扱います。 |
 
 ## OS別プロバイダー
 
