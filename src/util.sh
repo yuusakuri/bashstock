@@ -486,6 +486,8 @@ ssh::key::add-all() {
   [[ "$#" -le 1 ]] || return 64
   local directory='' path='' status=0
   if [[ "$#" -ge 1 ]]; then directory="$1"; else directory="$HOME/.ssh"; fi
+  [[ -d "$directory" && ! -L "$directory" ]] || return 66
+  command -v ssh-add >/dev/null 2>&1 || return 69
   while IFS= read -r path; do
     ssh::key::add "$path" || status="$?"
   done < <(ssh::key::private-files "$directory") || return "$?"
@@ -930,7 +932,7 @@ go::install() {
   [[ "$#" -le 1 ]] || return 64
   go::repository::register || return "$?"
   if command -v brew >/dev/null 2>&1; then
-    brew install go
+    if [[ "$#" -eq 1 ]]; then brew install "go@$1"; else brew install go; fi
   elif [[ "$#" -eq 1 ]]; then
     sudo apt-get install -y "golang-$1"
   else
@@ -993,7 +995,7 @@ jfrog::setup() {
 ### Install the OpenCode command-line application.
 opencode::install() {
   [[ "$#" -le 1 ]] || return 64
-  if command -v brew >/dev/null 2>&1; then brew install opencode; elif command -v npm >/dev/null 2>&1; then if [[ "$#" -eq 1 ]]; then npm install --global "opencode@$1"; else npm install --global opencode; fi; else return 69; fi
+  if command -v brew >/dev/null 2>&1; then if [[ "$#" -eq 1 ]]; then brew install "opencode@$1"; else brew install opencode; fi; elif command -v npm >/dev/null 2>&1; then if [[ "$#" -eq 1 ]]; then npm install --global "opencode@$1"; else npm install --global opencode; fi; else return 69; fi
 }
 
 ### Log in to an Artifactory Docker registry using a token on standard input.
@@ -1037,11 +1039,13 @@ chrome::profile::find-by-email() {
   local email="$1" root='' path=''
   if [[ "$#" -eq 2 ]]; then root="$2"; elif [[ "$(system::operating-system)" == darwin ]]; then root="$HOME/Library/Application Support/Google/Chrome"; else root="$HOME/.config/google-chrome"; fi
   [[ -d "$root" ]] || return 66
-  shopt -s nullglob
-  for path in "$root"/Default "$root"/Profile\ *; do
-    [[ -d "$path" ]] || continue
-    [[ "$(chrome::profile::email "$path" 2>/dev/null)" == "$email" ]] && printf '%s\n' "$path"
-  done
+  (
+    shopt -s nullglob
+    for path in "$root"/Default "$root"/Profile\ *; do
+      [[ -d "$path" ]] || continue
+      [[ "$(chrome::profile::email "$path" 2>/dev/null)" == "$email" ]] && printf '%s\n' "$path"
+    done
+  )
 }
 
 ### Extend swap capacity up to a target size.
