@@ -9,16 +9,21 @@ readonly project_root
 
 unset _BASHSTOCK_LOADED
 BASHSTOCK_ROOT="${project_root}"
-# shellcheck disable=SC2034 # The sourced distribution reads this value.
+# shellcheck disable=SC2034 # The sourced library reads this value.
 readonly BASHSTOCK_ROOT
 
-# shellcheck disable=SC1091 # bashstock.sh is generated beside libexec/.
+# shellcheck disable=SC1091 # bashstock.sh sits beside libexec/.
 source "${project_root}/bashstock.sh"
 
-### Dispatch one validated privileged operation.
-main() {
-  if [[ "${EUID}" -ne 0 || "$#" -lt 1 ]]; then
-    return 77
+### Run the library function that implements one operation name.
+###
+### Arguments
+###
+### * operation - The name of the operation to run.
+### * ... - The arguments that the library function receives.
+root::_dispatch() {
+  if [[ "$#" -lt 1 ]]; then
+    return 64
   fi
 
   local operation="$1"
@@ -51,4 +56,20 @@ main() {
   esac
 }
 
-main "$@"
+### Reject unprivileged callers and dispatch one privileged operation.
+###
+### Arguments
+###
+### * operation - The name of the operation to run.
+### * ... - The arguments that the library function receives.
+main() {
+  if [[ "${EUID}" -ne 0 ]]; then
+    return 77
+  fi
+
+  root::_dispatch "$@"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
