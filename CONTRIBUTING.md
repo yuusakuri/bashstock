@@ -32,12 +32,13 @@ git submodule update --init --recursive
 
 | コマンド | 実行内容 |
 | --- | --- |
-| `just build` | `src/*.sh`と`libexec/`から利用者向け配布物`dist/bashstock/`とRelease用アーカイブ`dist/bashstock.tar.gz`を生成します。 |
+| `just build` | `bashstock.sh`、`src/*.sh`、`libexec/`から利用者向け配布物`dist/bashstock/`とRelease用アーカイブ`dist/bashstock.tar.gz`を生成します。 |
 | `just lint` | Bash構文、ShellCheck、Docコメント、差分の空白エラーを検査します。 |
 | `just test` | 配布物を生成してからBatsテストを実行します。 |
 | `just verify` | 静的検査、配布物の生成、全テストを順に実行します。 |
 
-開発では`src/*.sh`と`libexec/`を編集します。
+開発では`bashstock.sh`、`src/*.sh`、`libexec/`を編集します。
+`src/`へモジュールを追加した場合は、`bashstock.sh`へ依存順に沿った読み込みを追加します。
 `dist/`はローカルとCIで生成するため、Gitの追跡対象には含めません。
 
 ## 実装規則

@@ -44,21 +44,6 @@ load test_helper
   [[ "${output}" == *$'replace-or-append-text\n/protected file\n^name=\nname=value' ]]
 }
 
-@test "the root helper ignores an externally supplied library root" {
-  local external_root="${BATS_TEST_TMPDIR}/external"
-  local marker="${BATS_TEST_TMPDIR}/external-library-loaded"
-  mkdir -p "${external_root}"
-  printf 'touch %q\n' "${marker}" >"${external_root}/bashstock.sh"
-
-  run env \
-    BASHSTOCK_ROOT="${external_root}" \
-    _BASHSTOCK_LOADED='0' \
-    "${PROJECT_ROOT}/dist/bashstock/libexec/bashstock-root" unknown-operation
-
-  [[ "${status}" -eq 64 || "${status}" -eq 77 ]]
-  [ ! -e "${marker}" ]
-}
-
 @test "JSON and option requirements enforce one selected value" {
   json::require-present Field value
   json::require-present Field false

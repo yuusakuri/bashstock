@@ -21,6 +21,7 @@ lint::visit-files() {
     "${command}" "${file}" || status='1'
   done 3< <(
     find \
+      "${project_root}/bashstock.sh" \
       "${project_root}/scripts" \
       "${project_root}/libexec" \
       "${project_root}/src" \
@@ -91,6 +92,7 @@ lint::check-doc-comments() {
     ' "${file}" || status='1'
   done < <(
     find \
+      "${project_root}/bashstock.sh" \
       "${project_root}/scripts" \
       "${project_root}/libexec" \
       "${project_root}/src" \
