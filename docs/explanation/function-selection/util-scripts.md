@@ -234,7 +234,8 @@
 | `git-set-store-credential-with-gpg` | `git::config::use-gpg-credential-store` | 任意 | Git Credential Managerの保存先をGPGへ設定します。 | — | `git config --global credential.credentialStore gpg`を実行し、公開鍵登録の案内を表示します。 |
 | `git-set-store-credential-with-manager` | `git::config::use-credential-manager` | 任意 | global Git credential helperをmanagerへ設定します。 | — | `git config --global credential.helper manager`を実行します。 |
 
-| `pass-init-gpg` | `pass::store::remove [STORE_DIRECTORY]`<br>`pass::store::init [FINGERPRINT] [STORE_DIRECTORY]` | 任意 | 既存の秘密情報storeを削除する操作と、GPG鍵で`pass`を初期化する操作を個別に実行します。 | <ul><li>storeの削除と`pass init`を独立した関数へ分けます。</li><li>`FINGERPRINT`の規定値として最初の秘密鍵のfingerprintを使用します。</li><li>`STORE_DIRECTORY`の規定値として`PASSWORD_STORE_DIR`、未設定時は`$HOME/.password-store`を使用します。</li></ul> | `pass::store::remove`は確認せず対象storeを再帰削除します。`pass::store::init`はstoreを削除せず、`GPG_TTY`を利用可能な制御端末へ設定してから`pass init`を実行します。 |
+| `pass-init-gpg` | `pass::store::remove [STORE_DIRECTORY]` | 任意 | 既存の秘密情報storeを削除します。 | — | STORE_DIRECTORYを省略した場合は`PASSWORD_STORE_DIR`、未設定時は`$HOME/.password-store`を使用し、対象storeを再帰削除します。 |
+| `pass-init-gpg` | `pass::store::init [FINGERPRINT] [STORE_DIRECTORY]` | 任意 | GPG鍵で`pass`を初期化します。 | — | FINGERPRINTを省略した場合は最初の秘密鍵を使用し、STORE_DIRECTORYを省略した場合は`PASSWORD_STORE_DIR`、未設定時は`$HOME/.password-store`を使用します。既存storeは削除しません。 |
 | `gpg-generate-key` | `gpg::key::generate [-Usage USAGE] [-Algorithm ALGORITHM] [-Expires EXPIRES] [-UserId USER_ID] [-Pinentry \| -PassphraseFd FD]` | 任意 | 主鍵と副鍵からなるGPG鍵を生成します。 | <ul><li>鍵用途、algorithm、期限、利用者IDをoptionで上書きできるようにします。</li><li>passphraseをcommand引数へ含めず、pinentryまたは保護されたfile descriptorから受け取ります。</li><li>optionを省略した場合は、Ed25519署名主鍵、cv25519暗号化副鍵、5年期限、passphraseなしを使用します。</li><li>利用者IDを省略した場合はGitの利用者名とメールアドレスから生成します。</li></ul> | GnuPGのbatch parameter fileを保護された一時fileへ作成し、主鍵と副鍵を一回の操作で生成します。passphrase用file descriptorは読取り後に値を保持しません。 |
 | `gpg-setup-new` | `gpg::setup [OPTIONS...]` | 任意 | GPG鍵生成、`pass`導入と初期化、Git資格情報設定、公開鍵表示を一括実行します。 | <ul><li>未定義のGit設定関数をBashStockの公開関数へ置き換えます。</li><li>受け取ったoptionを対応する個別関数へ渡せるようにします。</li><li>各処理が失敗した場合は、その時点で後続処理を停止します。</li></ul> | `gpg::key::generate`、`pass::install`、`pass::store::init`、Git資格情報設定、Git署名設定、GPG公開鍵表示を順に実行します。個別関数も単独で利用できます。 |
 | `ssh-generate-key-rsa` | `ssh::key::generate-rsa4096 [-Comment COMMENT] [-Output FILE] [-PassphraseFd FD]` | 任意 | 4096-bit RSA SSH鍵を生成し、公開鍵を表示します。 | <ul><li>既存鍵を無確認で削除せず、既存pathを上書きする前に制御端末で確認します。</li><li>COMMENT、出力先、passphrase入力をoptionで上書きできるようにします。</li><li>COMMENTの規定値は空文字列、FILEの規定値は`$HOME/.ssh/id_rsa`、passphraseの規定値は空文字列です。</li></ul> | 秘密鍵または公開鍵が既存の場合だけ上書き確認を行います。passphraseは保護されたfile descriptorから読み取り、processのcommand引数へ含めません。 |
@@ -268,52 +269,49 @@ DNS管理方式の判定は非公開関数`net::dns::_manager`が行い、`syste
 | `net::dns::_verify` | 期待する管理方式、設定されたDNS server、`resolv.conf`の状態、実際の名前解決を確認します。 |
 
 
+## 検討中から採用する関数
+
+注記に記載した制約を除き、以下の設計を採用します。
+
+| 参照元の関数 | BashStockの関数 | 区分 | 機能 | 注記 | 採用する設計 |
+|---|---|---|---|---|---|
+| `ssh-update-config` | `ssh::config::update FILE HOST_PATTERN KEY VALUE` | 任意 | SSH設定の管理対象Host blockへキーを追加または置換します。 | — | Include、Match、複数Host pattern、否定patternを含む既存設定を変更せず、marker付きmanaged blockだけをファイル先頭で原子的に更新します。更新後に`ssh -G`で検証します。 |
+| `ssh-set-config` | `ssh::config::set FILE HOST_PATTERN KEY VALUE` | 任意 | SSH設定ファイルを準備してHost設定を更新します。 | — | FILEがなければ親directoryを作成し、`ssh::config::update`を呼び出します。FILE、HOST_PATTERN、KEY、VALUEは必須です。 |
+| `ssh-enable-auto-add-keys` | `ssh::config::enable-auto-add-keys [FILE] [HOST_PATTERN]` | 任意 | AddKeysToAgentを管理対象Hostへ設定します。 | — | FILEの既定値は`$HOME/.ssh/config`、HOST_PATTERNの既定値は`*`です。対象patternを指定したmanaged blockだけを更新します。 |
+| `ssh-disable-host-key-checking` | `ssh::config::disable-host-key-checking [FILE] [HOST_PATTERN]` | 任意 | StrictHostKeyCheckingを管理対象Hostへ設定します。 | 通常用途でhost key確認を無効にせず、known_hostsへ正しい鍵を登録します。 | FILEの既定値は`$HOME/.ssh/config`、HOST_PATTERNの既定値は`*`です。検証用設定として`StrictHostKeyChecking no`と`UserKnownHostsFile /dev/null`をmanaged blockへ設定します。 |
+| `ssh-private-key-files` | `ssh::key::private-files [DIRECTORY]` | 任意 | 秘密鍵として読み込めるファイルを列挙します。 | — | DIRECTORYの既定値は`$HOME/.ssh`です。各pathを`ssh-keygen -y -f PATH`へ渡し、成功したpathだけを一行ずつ出力します。 |
+| `ssh-add-all-private-keys` | `ssh::key::add FILE`、`ssh::key::add-all-private-keys [DIRECTORY]` | 任意 | SSH秘密鍵をssh-agentへ追加します。 | — | `ssh::key::add`は一件を処理し、`ssh::key::add-all-private-keys`は検出したpathを一件ずつ`ssh-add`へ渡します。 |
+| `golang-install` | `go::repository::register`、`go::install [VERSION]` | 任意 | Goの提供元を登録し、指定版または安定版を導入します。 | — | repository登録を独立関数にし、`go::install`から必要な場合だけ呼び出します。VERSIONを省略した場合は実行環境に対応する最新安定版を選びます。 |
+| `rust-install` | `rust::install [VERSION]`、`rust::versions` | 任意 | Rustを導入し、利用可能な安定版を列挙します。 | — | VERSIONを省略した場合は最新安定版を選び、公式installerを一時fileへ保存してから非対話実行します。 |
+| `flutter-set-version` | `flutter::use-version [VERSION] [SDK_DIRECTORY]` | 任意 | Flutter SDKを指定tagまたはcommitへ切り替えます。 | SDK_DIRECTORYにある未保存変更は破棄します。 | VERSIONを省略した場合はstableの最新tagを使用し、SDK_DIRECTORYをcleanにしてから`git switch`します。 |
+| `jfrog-config-clear` | `jfrog::config::clear SERVER_ID`、`jfrog::config::clear-all`、`jfrog::config::list` | 任意 | JFrog CLI設定を個別または全件で削除し、一覧を表示します。 | — | SERVER_ID指定のclear、全件clear-all、読み取り専用のlistを分離します。 |
+| `jfrog-setup` | `jfrog::setup SERVER_ID URL USER TOKEN` | 任意 | JFrog CLIへ認証情報を登録し接続を確認します。 | TOKENはprocess引数に現れます。 | TOKENを引数で受け、`jfrog config add`へ渡してから接続を検証します。 |
+| `opencode-install` | `opencode::install [VERSION]` | 任意 | OpenCode CLIを導入します。 | CLIアプリのため認証や対話起動は含めません。 | VERSIONを省略した場合は選択したpackage managerの最新安定版を使用します。 |
+| `docker-login-artifactory` | `docker::login-artifactory REGISTRY USER TOKEN` | 任意 | ArtifactoryのDocker registryへログインします。 | TOKENはprocess引数に現れます。 | TOKENを引数で受け、`docker login REGISTRY --username USER --password-stdin`の標準入力へ渡します。 |
+| `chrome-export-bookmarks` | `chrome::profile::export-bookmarks PROFILE_DIRECTORY [OUTPUT_FILE]` | 任意 | Chrome profileのBookmarksを複製します。 | — | OUTPUT_FILEの既定値は`./bookmarks.json`です。profile内の通常fileをそのまま複製します。 |
+| `chrome-export-preferences` | `chrome::profile::export-preferences PROFILE_DIRECTORY [OUTPUT_FILE]` | 任意 | Chrome profileのPreferencesを複製します。 | — | OUTPUT_FILEの既定値は`./preferences.json`です。profile内の通常fileをそのまま複製します。 |
+| `chrome-get-profile-email` | `chrome::profile::email PROFILE_DIRECTORY` | 任意 | Chrome profileからメールアドレスを取得します。 | — | PreferencesをJSONとして解析し、既知fieldの文字列値が有効なemailの場合だけ返します。正規表現による探索は行いません。 |
+| `chrome-find-profile-by-email` | `chrome::profile::find-by-email EMAIL [PROFILE_DIRECTORY]` | 任意 | メールアドレスに一致するChrome profileを列挙します。 | — | EMAILをliteralとして完全一致比較し、JSON parserで各profileの既知fieldを検査します。 |
+| `swap-ensure-total-size` | `swap::ensure-total-size TARGET_BYTES [MAX_ADD_BYTES] [PATH]` | 任意 | 指定容量までswapを追加します。 | — | TARGET_BYTESを現在のswap容量と比較し、不足分だけを追加します。MAX_ADD_BYTESとPATHは省略可能な既定値を持ち、作成前に計画を検証します。 |
+| `vscode-remove-user-data`（Linux共通定義） | `vscode::remove-user-data [PROFILE_DIRECTORY]` | 任意 | VS Code利用者データを削除します。 | — | PROFILE_DIRECTORYを省略した場合は標準profile directoryを使用し、指定した場合はそのdirectoryだけを削除します。VS Codeの停止確認は行いません。 |
+
 ## 検討中の関数
 
 | 参照元の関数 | 機能 | 現状の課題 | 検討する設計 |
 |---|---|---|---|
-| `ssh-update-config` | SSH config内のHost節へキーを置換または追加します。 | `Include`、`Match`、複数Hostパターン、否定パターン、最初に得た値が優先される規則を正しく扱いません。 | 既存SSH構文を直接書き換えず、識別marker付きの管理対象Host blockだけを原子的に追加・置換します。 |
-| `ssh-set-config` | `~/.ssh/config`を準備してHost設定を更新します。 | 採用しない文字列ベースのSSH config更新へ依存するためです。 | FILE、HOST、KEY、VALUEを必須にし、管理対象blockの更新関数を呼び、更新後に`ssh -G`で検証します。 |
-| `ssh-enable-auto-add-keys` | 全Hostへ`AddKeysToAgent yes`を設定します。 | 利用者全体へ影響する個人設定だからです。 | 対象Host patternと設定fileを必須にし、そのmanaged blockだけへ`AddKeysToAgent yes`を設定します。 |
-| `ssh-disable-host-key-checking` | 全Hostのhost key確認を無効にします。 | 中間者攻撃の検出を無効にする危険な既定設定だからです。 | 全Hostには設定せず、検証用の一時環境で対象Hostを必須にします。通常用途ではknown_hostsを正しく登録します。 |
-| `ssh-private-key-files` | `~/.ssh`直下で`PRIVATE KEY`を含むファイルを列挙します。 | 鍵形式を網羅せず、通常ファイル内容の走査で秘密鍵を判定するためです。 | 通常ファイルとmodeを検査し、`ssh-keygen -y -f PATH`で秘密鍵として読めるpathだけを列挙します。 |
-| `ssh-add-all-private-keys` | 検出した全秘密鍵をssh-agentへ追加します。 | 対象鍵、確認、保存時間を利用者が選べないためです。 | 追加する鍵pathを引数で明示し、各鍵のfingerprintを表示してから`ssh-add`へ一件ずつ渡します。 |
-| `_android-commandlinetools-url` | Android StudioのHTMLからOS別command-line tools URLを抽出します。 | 非公開のHTML構造を正規表現で解析するためです。 | Googleの配布metadataからOS、architecture、任意の`VERSION`に対応するURLを決定します。`VERSION`を省略した場合は最新安定版を選びます。 |
-| `android-commandlinetools-install` | `ANDROID_HOME`を削除してAndroid SDK一式を最新版で再作成します。 | 既存SDKを無確認で削除するためです。 | `android::command-line-tools::install [VERSION] [INSTALL_DIRECTORY]`とし、版を省略した場合は最新安定版を選びます。既存SDKを保持したまま一時directoryへ展開し、成功後に切り替えます。hash指定は要求しません。 |
-| `golang-install`（共通定義） | PPAを追加してaptからGoを導入します。 | Ubuntu固有のPPA追加と管理者更新を導入処理へ連結するためです。 | `go::install [VERSION]`と`go::version::list`を提供し、版を省略した場合はOS別の公式提供元から最新安定版を選びます。repository登録が必要な場合は別の管理関数へ分けます。hash指定は要求しません。 |
-| `rust-install` | rustupのネットワークスクリプトを直接シェルへ渡します。 | 取得内容を一時fileとして確認できないままshellへ直接渡すためです。 | `rust::install [VERSION]`と`rust::versions`を提供します。版を省略した場合は最新安定版を選び、公式installerを一時fileへ取得してから非対話設定で実行します。hash指定は要求しません。 |
-| `flutter-set-version` | Flutter SDKのGit作業ツリーを指定版またはstable最新版へ変更します。 | 共有SDKの未保存変更を検査せず作業treeを切り替えるためです。 | `flutter::use-version [VERSION] [SDK_DIRECTORY]`と`flutter::versions`を提供します。版を省略した場合は最新stableを選び、専用SDK directoryがcleanであることを確認してから対象tagまたはcommitへ切り替えます。 |
-| `jfrog-config-clear` | JFrog CLIの設定を消去します。 | 対象設定を明示しない削除だからです。 | SERVER_IDを必須にし、対象設定だけを削除します。 |
-| `jfrog-setup` | JFrog CLIへ認証情報を登録して接続確認します。 | 秘密値をコマンド引数へ渡し、永続化方式がJFrog CLI設定に依存するためです。 | SERVER_ID、URL、USERを引数化し、tokenは標準入力または保護されたfile descriptorから渡してprocess引数へ含めません。 |
-| `antigravity-cli-install` | ネットワークスクリプトでCLIを導入し、対話ログインします。 | 導入と認証を一つの関数へ連結するためです。 | `antigravity::install [VERSION]`と版一覧関数を提供し、版を省略した場合は最新安定版を選びます。認証は別関数へ分け、hash指定は要求しません。 |
-| `codex-install` | npmのglobal領域へCodexを導入してログインします。 | global packageの導入と認証を一つの関数へ連結するためです。 | `codex::install [VERSION]`と版一覧関数を提供し、版を省略した場合はnpmの最新安定版を選びます。認証は別関数へ分け、hash指定は要求しません。 |
-| `claude-code-install` | npmのglobal領域へClaude Codeを導入して起動します。 | global packageの導入と対話起動を一つの関数へ連結するためです。 | `claude-code::install [VERSION]`と版一覧関数を提供し、版を省略した場合は最新安定版を選びます。起動は別関数へ分け、hash指定は要求しません。 |
-| `opencode-install` | npmのglobal領域へOpenCodeを導入します。 | 利用者が選ぶglobal package managerを固定するためです。 | `opencode::install [VERSION]`と版一覧関数を提供し、版を省略した場合は選択したpackage managerの最新安定版を選びます。hash指定は要求しません。 |
-| `docker-login-artifactory` | ArtifactoryのDocker registryへログインしようとします。 | 元の実装は`docker login`を呼ばず、秘密情報とregistry認証は製品の資格情報管理に属します。 | `docker login REGISTRY --username USER --password-stdin`を使用し、tokenを標準入力だけから渡します。 |
-| `chrome-export-bookmarks` | ChromeプロファイルのBookmarksを指定先へ複製します。 | Chrome内部fileの整合性、実行中更新、個人情報の保護がbackup製品の責務だからです。 | `PROFILE_DIRECTORY [OUTPUT_PATH]`とし、`OUTPUT_PATH`の規定値は`./bookmarks.json`です。Chrome停止または整合したsnapshotを確認し、mode 600で複製します。 |
-| `chrome-export-preferences` | ChromeプロファイルのPreferencesを指定先へ複製します。 | application内部形式と個人情報を扱うbackup処理だからです。 | `PROFILE_DIRECTORY [OUTPUT_PATH]`とし、`OUTPUT_PATH`の規定値は`./preferences.json`です。Chrome停止または整合したsnapshotを確認し、mode 600で複製します。 |
-| `chrome-get-profile-email` | Preferencesを正規表現で検索して最初のメールアドレスを出力します。 | JSONを構文解析せず、Chrome内部スキーマへ依存するためです。 | JSON parserで既知fieldを読み、schemaと値の型を検証してliteral emailだけを返します。 |
-| `chrome-find-profile-by-email` | メールアドレス正規表現に一致するChromeプロファイルを検索します。 | 利用者入力を正規表現として扱い、個人情報を基準に内部プロファイルを列挙するためです。 | EMAILをliteralとして完全一致比較し、JSON parserで各profileを検査します。正規表現として評価しません。 |
-| `chrome-export-user-data-by-email` | メールアドレスでプロファイルを選び、設定とbookmarkを複製します。 | 採用しないChrome内部ファイル操作を組み合わせるためです。 | literal emailで一つのprofileを確定し、export対象、出力mode、上書き方針を明示して個別export関数を呼びます。 |
-| `git-setup`（Linux定義） | 共通Git設定とCredential Manager設定を適用します。 | global Git設定と資格情報方式は利用者または組織の方針だからです。 | `git::config::setup`を実行してから、Linuxで利用できるCredential Managerを設定します。 |
-| `swap-ensure-total-size` | 物理メモリーとswapの合計が固定基準に届くようswap fileを追加します。 | 物理メモリーとswapを同じ容量基準へ合算する運用判断が製品固有だからです。 | 物理memoryと合算せず、必要なswap容量と最大追加容量を明示し、作成前に計画だけを返す関数と適用関数を分離します。 |
-| `keyboard-setup-lang-keys` | 特定USBキーボードのusage IDを変換・無変換キーへ割り当てます。 | ハードウェア、キー配列、udev設定が個人環境固有だからです。 | device matchとkey mappingを引数化し、hwdbの構文を検証してから明示適用します。 |
-| `android-commandlinetools-url`（Linux定義） | Android command-line toolsのLinux用URLを選びます。 | 採用しないHTML解析helperへ依存するためです。 | 共通のmetadata解析関数へLinuxとarchitectureと任意の`VERSION`を渡し、版を省略した場合は最新安定版のURLを返します。 |
-| `vscode-remove-user-data`（Linux共通定義） | LinuxのVS Code利用者データを再帰削除します。 | 利用者の設定、拡張、状態を一括削除するためです。 | PROFILE_DIRECTORYを必須にし、VS Code停止を確認してから指定directoryを削除します。 |
-| `aws-vpn-client-log-files` | AWS VPN ClientのLinuxログファイルを列挙します。 | 特定デスクトップアプリの内部パスとファイル名に依存するためです。 | LOG_DIRECTORYを必須にし、通常ファイルだけをNUL区切りで列挙します。 |
-| `aws-vpn-client-log-clear` | AWS VPN ClientのLinuxログを削除します。 | 対象期間や保存ポリシーを指定しない一括削除だからです。 | LOG_DIRECTORY、保持期間、最大使用量を必須にし、該当する通常ファイルだけを削除します。 |
+| `chrome-export-user-data-by-email` | メールアドレスでプロファイルを選び、設定とbookmarkを複製します。 | 採用する個別export関数の組合せとして提供します。 | EMAILをliteralとして完全一致比較し、選択したprofileのBookmarksとPreferencesを指定出力先へ複製します。 |
+| `keyboard-setup-lang-keys` | 特定USBキーボードのusage IDを変換・無変換キーへ割り当てます。 | ハードウェアとキー配列に依存するため、対象を引数で限定します。 | DEVICE、VENDOR_ID、PRODUCT_ID、USAGE_ID、KEY_NAMEを任意指定できるAPIとして提供し、hwdbの構文を検証してから適用します。省略可能な値は安全な既定値を使用します。 |
+| `aws-vpn-client-log-files` | AWS VPN ClientのLinuxログファイルを列挙します。 | — | LOG_DIRECTORYを省略した場合は標準ログdirectoryを使用し、指定した場合はそのdirectory配下の通常fileだけをNUL区切りで列挙します。 |
+| `aws-vpn-client-log-clear` | AWS VPN ClientのLinuxログを削除します。 | 対象directory以下を削除するため、呼び出し側がdirectoryを確認します。 | LOG_DIRECTORYを省略した場合は標準ログdirectoryを使用し、指定した場合はそのdirectory配下のログfileだけを削除します。保持期間や最大使用量は関数の必須引数にしません。 |
 | `aws-vpn-client-log-open` | AWS VPN ClientログをVS Codeで開きます。 | 特定アプリとエディターを結合した個人診断処理だからです。 | EDITORと明示されたlog path一覧を引数で受け、各pathを配列引数として起動します。 |
 | `node-install` | HomebrewでNode.jsを導入し、Corepackとpnpm storeを設定します。 | Node.jsの導入とpnpmの個人設定を一つの関数へ連結するためです。 | `node::install [VERSION]`と`node::versions`へ導入を分け、版を省略した場合は最新LTSを選びます。Corepack有効化とpnpm store設定は別関数にし、hash指定は要求しません。 |
 | `docker-install` | HomebrewでDocker CLI群とColimaを導入し、リンク作成後に起動します。 | 複数toolの導入、仮想化方式の選択、daemon起動を一つの関数へ連結するためです。 | Docker CLIとColimaに個別の`install [VERSION]`と版一覧関数を提供し、版を省略した場合は最新安定版を選びます。daemon起動は別関数へ分け、hash指定は要求しません。 |
 | `command-line-tools-upgrade` | Xcode Command Line Toolsを削除して再導入UIを開きます。 | 開発環境を破壊して対話インストールへ移るためです。 | 現在版と必要版を検査し、削除を行わず、利用者が公式installerを完了した後に状態を再検証します。 |
-| `android-commandlinetools-url`（macOS定義） | Android command-line toolsのmacOS用URLを選びます。 | 採用しないHTML解析helperへ依存するためです。 | 共通のmetadata解析関数へmacOSとarchitectureと任意の`VERSION`を渡し、版を省略した場合は最新安定版のURLを返します。 |
 | `ruby-install` | Homebrewでrbenvを導入し、Zsh設定を書き換えてRubyを導入します。 | package導入、shell設定、Ruby導入を一つの関数へ連結するためです。 | `ruby::install [VERSION]`と`ruby::version::list`を提供し、版を省略した場合は最新安定版を選びます。shell設定は別関数へ分け、hash指定は要求しません。 |
-| `java-ensure-path` | Homebrew OpenJDKをシステムへリンクし、`JAVA_HOME`と`PATH`を永続設定します。 | JDK選択とシェル設定が製品または利用者の責務だからです。 | JDK_HOMEと対象shell設定fileを必須にし、既存JDK選択を保持してmanaged blockへ設定します。 |
-| `golang-install`（macOS定義） | HomebrewでGoを導入し、Bash設定へGOPATHのbinを追加します。 | Go導入と利用者のPATH設定を一つの関数へ連結するためです。 | 共通の`go::install [VERSION]`と`go::version::list`を使用し、版を省略した場合は最新安定版を選びます。PATH設定は別関数へ分け、hash指定は要求しません。 |
+| `java-ensure-path` | Homebrew OpenJDKをシステムへリンクし、`JAVA_HOME`と`PATH`を永続設定します。 | JDK選択とシェル設定が製品または利用者の責務だからです。 | `[JDK_HOME]`と`[SHELL_RC]`を外部から任意指定でき、省略時は現在のJDKと標準shell設定fileを使用してmanaged blockへ設定します。 |
 | `pipx-install` | Homebrewでpipxを導入し、PATH設定を更新します。 | pipx導入と利用者のPATH設定を一つの関数へ連結するためです。 | `pipx::install [VERSION]`と版一覧関数を提供し、版を省略した場合は最新安定版を選びます。PATH設定は別関数へ分け、hash指定は要求しません。 |
 | `qmk-install` | HomebrewでQMK Toolboxを導入し、QMK公式installerでQMK CLIと依存toolを導入してから`qmk doctor`で環境を診断します。 | GUI applicationとCLIの導入を一つの関数へ連結し、取得したshell scriptを確認可能なfileへ保存せず直接実行するためです。 | `qmk::toolbox::install [VERSION]`と`qmk::cli::install [VERSION]`へ分けます。QMK CLIは`https://install.qmk.fm`から一時fileへ取得し、HTTP取得の成功と通常fileであることを確認してから`sh`で実行し、成功後に`qmk doctor`を実行します。版を省略した場合は各公式提供元の最新安定版を選び、hash指定は要求しません。 |
 | `supabase-install` | Homebrew tapからSupabase CLIを導入します。 | Homebrew tapの登録とpackage導入を一つの関数へ連結するためです。 | `supabase::install [VERSION]`と`supabase::versions`を提供し、版を省略した場合は最新安定版を選びます。必要なtap登録は内部で冪等に行い、hash指定は要求しません。 |
-| `vscode-remove-user-data`（macOS定義） | macOSのVS Code利用者データを再帰削除します。 | 利用者の設定、拡張、状態を一括削除するためです。 | PROFILE_DIRECTORYを必須にし、VS Code停止を確認してから指定directoryを削除します。 |
 | `vscode-to-default-app` | 多数の拡張子とUTIの既定アプリをVS Codeへ変更します。 | 個人のmacOS関連付け設定だからです。 | 対象拡張子とUTIを引数で受け、macOSの関連付けtoolでVS Codeを既定applicationへ設定します。 |
 | `iina-to-default-app` | 多数の動画拡張子の既定アプリをIINAへ変更します。 | 個人のmacOS関連付け設定だからです。 | 対象拡張子とUTIを引数で受け、macOSの関連付けtoolでIINAを既定applicationへ設定します。 |
 | `utm-install` | 最新UTMのDMGを取得、mount、コピーして導入します。 | mountの解除と一時fileの後始末を失敗時に保証しないためです。 | `utm::install [VERSION] [APPLICATION_DIRECTORY]`と`utm::versions`を提供し、版を省略した場合は最新安定版を選びます。trapでmount解除と一時領域の削除を保証し、hash指定は要求しません。 |
@@ -321,7 +319,6 @@ DNS管理方式の判定は非公開関数`net::dns::_manager`が行い、`syste
 | `docker-desktop-install` | Rosettaと最新Docker Desktopを導入します。 | Rosetta導入、Docker Desktop導入、application起動を一つの関数へ連結するためです。 | `docker-desktop::install [VERSION] [APPLICATION_DIRECTORY]`と版一覧関数を提供し、版を省略した場合は最新安定版を選びます。Rosettaが必要なら自動導入し、licenseへ自動同意します。起動は別関数へ分け、hash指定は要求しません。 |
 | `rancher-desktop-install` | HomebrewでRancher Desktopを導入します。 | package managerをHomebrewへ固定するためです。 | `rancher-desktop::install [VERSION]`と版一覧関数を提供します。版を省略した場合はOS別package managerの最新安定版を選び、hash指定は要求しません。 |
 | `key-binding-disable-option-t` | macOSの個人キーバインドでOption+Tを無効にします。 | 個人設定であり、適用範囲がmacOSに限定されるためです。 | `plist::set "$HOME/Library/KeyBindings/DefaultKeyBinding.dict" '~t' 'noop:'`を実行します。plist操作のため、専用の文字列編集関数は使用しません。 |
-| `git-setup`（macOS定義） | 共通Git設定とosxkeychain設定を適用します。 | global Git設定と資格情報方式は利用者の方針だからです。 | `git::config::setup`を実行してから、credential helperをosxkeychainへ設定します。 |
 | `mac-setup` | macOS設定、アプリ削除、パッケージ導入、セキュリティ緩和を一括実行します。 | 個人設定を固定し、Gatekeeper無効化と広範囲な削除を含むためです。 | 設定、削除、導入を個別関数へ分けます。導入関数の版は任意とし、省略時は最新安定版を選びます。hash指定は要求しません。 |
 | `apt-search-latest` | apt-cacheから名前に版を含む最新パッケージを選びます。 | package名に版が含まれるという前提で人間向け出力を解析するためです。 | machine-readableなcandidateからpackage名とversionを別fieldで列挙する関数と、最新安定版を返す関数に分けます。導入関数はlatestを規定値にします。 |
 | `dpkg-install-from-url` | URLからdebを取得し、`dpkg`と依存修復を実行します。 | `dpkg`失敗後の依存修復を別commandで連結し、途中状態を残すためです。 | `deb::install-from-url URL [EXPECTED_ARCHITECTURE]`とし、一時fileへ取得してarchitectureを確認し、管理者権限で`apt install`へlocal pathを直接渡します。hash指定は要求しません。 |
@@ -342,7 +339,6 @@ DNS管理方式の判定は非公開関数`net::dns::_manager`が行い、`syste
 | `mozc-tool-install` | Mozc GUIツールを導入して個人binへリンクします。 | package導入と個人binへのlink作成を一つの関数へ連結するためです。 | `mozc::tool::install [VERSION]`と版一覧関数を提供し、版を省略した場合は最新安定版を選びます。link作成は別関数へ分け、hash指定は要求しません。 |
 | `ssh-server-install` | OpenSSH serverを導入して自動起動を有効にします。 | package導入とnetwork serviceの有効化を一つの関数へ連結するためです。 | `ssh-server::install [VERSION]`と版一覧関数を提供し、版を省略した場合はOS別package managerの最新安定版を選びます。自動起動と開始は別関数へ分け、hash指定は要求しません。 |
 | `vscode-install` | Microsoft repositoryを追加してVS Codeを導入します。 | repository登録とapplication導入を一つの関数へ連結するためです。 | `vscode::install [VERSION]`と`vscode::versions`を提供し、版を省略した場合は最新安定版を選びます。repository登録は内部で冪等に行い、hash指定は要求しません。 |
-| `vscode-remove-user-data`（Ubuntu定義） | UbuntuのVS Code利用者データを再帰削除します。 | 利用者の設定、拡張、状態を一括削除するためです。 | PROFILE_DIRECTORYを必須にし、VS Code停止を確認してから指定directoryを削除します。 |
 | `_slack-url` | SlackのWebページから版を抽出し、amd64 deb URLを組み立てます。 | 元の代入構文に誤りがあり、HTML構造とarchitectureを固定するためです。 | vendor repositoryまたはrelease metadataから、OS、architecture、任意の`VERSION`に対応するURLを返します。版を省略した場合は最新安定版を選びます。 |
 | `slack-install` | Slackのdebを取得して導入します。 | Linux amd64のdebへ固定するためです。 | `slack::install [VERSION]`と版一覧関数を提供し、版を省略した場合は実行OSとarchitectureに対応する最新安定版を選びます。hash指定は要求しません。 |
 | `chrome-install` | Google Chromeのlatest amd64 debを導入します。 | Linux amd64のdebへ固定するためです。 | `chrome::install [VERSION]`と版一覧関数を提供し、版を省略した場合は実行OSとarchitectureに対応する最新安定版を選びます。hash指定は要求しません。 |
@@ -352,12 +348,17 @@ DNS管理方式の判定は非公開関数`net::dns::_manager`が行い、`syste
 | `ubuntu-setup` | 環境読込、エディター、補完、user directory、group、Git、SSHを一括設定します。 | 個人設定と管理処理を一つの固定構成で適用するためです。 | 各設定関数を独立して提供し、選択された関数を順に適用します。 |
 | `ubuntu-setup-for-desktop` | Ubuntu共通設定にkeyboard、Mozc、VLC設定を加えます。 | 個人のデスクトップ構成だからです。 | desktop設定を個別関数として提供し、選択された関数を順に適用します。 |
 | `ubuntu-22-setup-for-desktop` | Ubuntu desktop設定に固定版Mozcとwindow button設定を加えます。 | 特定distribution版と個人設定へ限定されるためです。 | 対応distributionを検証し、選択されたMozcとwindow設定を直接適用します。 |
-採用するAPIは、BashStockの引数規則、終了状態、英語のDocコメント、Batsテスト、macOS・Ubuntu・FedoraのCIを満たす独立実装として提供します。
-
 ## 採用しない関数
 
 | 参照元の関数 | 機能 | 不採用の理由 | 目的を達成する設計 |
 |---|---|---|---|
+| `antigravity-cli-install` | ネットワークスクリプトでCLIを導入し、対話ログインします。 | CLIアプリの導入と認証を一つの関数へ結合するためです。 | CLI導入と認証を別の製品設定で扱います。 |
+| `codex-install` | npmのglobal領域へCodexを導入してログインします。 | CLIアプリの導入と認証を一つの関数へ結合するためです。 | CLI導入と認証を別の製品設定で扱います。 |
+| `claude-code-install` | npmのglobal領域へClaude Codeを導入して起動します。 | CLIアプリの導入と対話起動を一つの関数へ結合するためです。 | CLI導入と起動を別の操作として扱います。 |
+| `git-setup`（Linux定義） | 共通Git設定とCredential Manager設定を適用します。 | global設定と資格情報方式を一つの関数へ固定するためです。 | `git::config::setup`とCredential Manager設定を呼び出し側で個別に実行します。 |
+| `_android-commandlinetools-url` | Android StudioのHTMLからOS別command-line tools URLを抽出します。 | 非公開HTMLの構造解析へ依存するためです。 | 公式metadataを扱う製品固有の取得処理へ移します。 |
+| `android-commandlinetools-install` | Android SDK一式を最新版で再作成します。 | 既存SDKを置き換える導入処理を関数へ固定するためです。 | SDK導入製品が既存SDKの切替えとrollbackを管理します。 |
+| `android-commandlinetools-url`（Linux定義） | Android command-line toolsのLinux用URLを選びます。 | 非公開HTMLの構造解析へ依存するためです。 | 公式metadataを扱う製品固有の取得処理へ移します。 |
 | `foreach-line` | 各入力行を環境変数へ入れ、文字列として受け取ったコマンドを`eval`で実行します。 | 入力とコマンドをシェルコードとして結合するためです。呼び出し側が`while IFS= read -r`で関数を直接呼びます。 | コールバック関数名を検証し、各行を第一引数として直接呼び出します。文字列コマンドと`eval`は使用しません。 |
 | `datetimes` | Linuxの起動後秒数と現在時刻を説明付きで出力します。 | `time::boot-time-milliseconds`とローカル日時APIを呼び出し側が目的に合う表示へ整形します。 | 起動後時間とローカル日時を別々の時刻APIから取得し、表示関数が固定形式へ整形します。 |
 | `net-netmask` | default interfaceの最初のIPv4 prefix長を表示します。 | `net::ip::private-v4`は利用時に必要なprimary addressだけを返し、prefix長を別の公開関数として固定しないためです。 | prefix長が必要な製品は、OS別のinterface詳細取得処理からaddressとprefix長を同時に取得します。 |

@@ -367,6 +367,134 @@ symlink::create-in-local-bin() { [[ "$#" -ge 1 && "$#" -le 3 && -e "$1" ]] || re
 ### Prepare an SSH directory with restrictive permissions.
 ssh::setup-directory() { [[ "$#" -eq 0 ]] || return 64; mkdir -p -- "$HOME/.ssh" || return 74; chmod 700 -- "$HOME/.ssh" || return 74; }
 
+### Replace one marker-managed SSH Host block and validate the resulting configuration.
+ssh::config::_write-block() {
+  [[ "$#" -eq 3 && -n "$1" && -n "$2" && -n "$3" ]] || return 64
+  local file="$1" pattern="$2" options="$3" begin='' end='' line='' content='' preserved='' old_content='' keys='' option='' key=''
+  [[ -f "$file" && ! -L "$file" ]] || return 66
+  [[ "$pattern" != *$'\n'* && "$pattern" != *$'\r'* ]] || return 64
+  [[ "$options" != *$'\r'* ]] || return 64
+  command -v ssh >/dev/null 2>&1 || return 69
+  old_content="$(<"$file")"
+  while IFS= read -r option || [[ -n "$option" ]]; do
+    [[ "$option" == '  '* ]] || continue
+    key="${option#  }"
+    key="${key%% *}"
+    keys+="|$key|"
+  done <<<"$options"
+  begin="# bashstock: begin $pattern"
+  end='# bashstock: end'
+  local in_block=0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ "$line" == "$begin" ]]; then
+      in_block=1
+      continue
+    fi
+    if ((in_block)); then
+      [[ "$line" == "$end" ]] && in_block=0
+      if ((in_block)) && [[ "$line" == '  '* ]]; then
+        key="${line#  }"
+        key="${key%% *}"
+        [[ "$keys" == *"|$key|"* ]] && continue
+        preserved+="$line"$'\n'
+      fi
+      continue
+    fi
+    content+="$line"$'\n'
+  done <"$file"
+  local block=''
+  block="$begin"$'\n'"Host $pattern"$'\n'
+  block+="$preserved$options"$'\n'"$end"$'\n'
+  file::write-text "$file" "$block$content" || return "$?"
+  if ! ssh -G -F "$file" "$pattern" >/dev/null 2>&1; then
+    file::write-text "$file" "$old_content" >/dev/null 2>&1 || true
+    return 65
+  fi
+}
+
+### Update one key in a marker-managed SSH Host block.
+ssh::config::update() {
+  [[ "$#" -eq 4 && -n "$1" && -n "$2" && "$3" =~ ^[A-Za-z][A-Za-z0-9]*$ && -n "$4" ]] || return 64
+  [[ "$4" != *$'\n'* && "$4" != *$'\r'* ]] || return 64
+  ssh::config::_write-block "$1" "$2" "  $3 $4"
+}
+
+### Create an SSH configuration file when necessary and update one key.
+ssh::config::set() {
+  [[ "$#" -eq 4 && -n "$1" ]] || return 64
+  [[ ! -L "$1" ]] || return 64
+  if [[ -e "$1" && ! -f "$1" ]]; then return 66; fi
+  if [[ ! -e "$1" ]]; then
+    mkdir -p -- "$(path::directory-name "$1")" || return 74
+    : >"$1" || return 74
+  fi
+  ssh::config::update "$@"
+}
+
+### Enable AddKeysToAgent for an optional SSH Host pattern.
+ssh::config::enable-auto-add-keys() {
+  [[ "$#" -le 2 ]] || return 64
+  local file='' pattern=''
+  if [[ "$#" -ge 1 ]]; then file="$1"; else file="$HOME/.ssh/config"; fi
+  if [[ "$#" -ge 2 ]]; then pattern="$2"; else pattern='*'; fi
+  ssh::config::set "$file" "$pattern" AddKeysToAgent yes
+}
+
+### Disable SSH host-key checks for an optional Host pattern.
+###
+### Normal use should register the correct host key in known_hosts instead.
+ssh::config::disable-host-key-checking() {
+  [[ "$#" -le 2 ]] || return 64
+  local file='' pattern=''
+  if [[ "$#" -ge 1 ]]; then file="$1"; else file="$HOME/.ssh/config"; fi
+  if [[ "$#" -ge 2 ]]; then pattern="$2"; else pattern='*'; fi
+  [[ ! -L "$file" ]] || return 64
+  if [[ -e "$file" && ! -f "$file" ]]; then return 66; fi
+  if [[ ! -e "$file" ]]; then
+    mkdir -p -- "$(path::directory-name "$file")" || return 74
+    : >"$file" || return 74
+  fi
+  ssh::config::_write-block "$file" "$pattern" $'  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null'
+}
+
+### List regular files that ssh-keygen can read as private keys.
+ssh::key::private-files() {
+  [[ "$#" -le 1 ]] || return 64
+  local directory='' path=''
+  if [[ "$#" -ge 1 ]]; then directory="$1"; else directory="$HOME/.ssh"; fi
+  [[ -d "$directory" && ! -L "$directory" ]] || return 66
+  command -v ssh-keygen >/dev/null 2>&1 || return 69
+  (
+    shopt -s nullglob dotglob
+    for path in "$directory"/*; do
+      [[ -f "$path" && ! -L "$path" ]] || continue
+      ssh-keygen -y -f "$path" </dev/null >/dev/null 2>&1 && printf '%s\n' "$path"
+    done
+    :
+  )
+}
+
+### Add one private key to ssh-agent.
+ssh::key::add() {
+  [[ "$#" -eq 1 && -f "$1" && ! -L "$1" ]] || return 64
+  command -v ssh-add >/dev/null 2>&1 || return 69
+  ssh-add "$1"
+}
+
+### Add every detected private key in a directory to ssh-agent.
+ssh::key::add-all() {
+  [[ "$#" -le 1 ]] || return 64
+  local directory='' path='' status=0
+  if [[ "$#" -ge 1 ]]; then directory="$1"; else directory="$HOME/.ssh"; fi
+  while IFS= read -r path; do
+    ssh::key::add "$path" || status="$?"
+  done < <(ssh::key::private-files "$directory") || return "$?"
+  return "$status"
+}
+
+### Add every detected private key in a directory to ssh-agent.
+ssh::key::add-all-private-keys() { ssh::key::add-all "$@"; }
+
 ### Ping a host a bounded number of times.
 net::ping() { [[ "$#" -ge 0 && "$#" -le 3 ]] || return 64; local host="${1:-127.0.0.1}" attempts="${2:-1}" timeout="${3:-1}"; [[ "$attempts" =~ ^[1-9][0-9]*$ && "$timeout" =~ ^[1-9][0-9]*$ ]] || return 64; command -v ping >/dev/null 2>&1 || return 69; case "$(system::operating-system)" in darwin) ping -c "$attempts" -W $((timeout*1000)) "$host" ;; *) ping -c "$attempts" -W "$timeout" "$host" ;; esac; }
 
@@ -790,3 +918,151 @@ git-credential-manager::install() { [[ "$#" -le 1 ]] || return 64; command -v br
 
 ### Execute the git::config::setup utility.
 git::config::setup() { [[ "$#" -le 2 ]] || return 64; [[ -n "${1:-}" ]] && git::config::set-email "$1"; [[ -n "${2:-}" ]] && git::config::set-username "$2"; git::config::set-default-branch main; git::config::enable-rebase-on-pull; git::config::enable-prune-fetch; }
+
+### Register the official Go package source for the current platform.
+go::repository::register() {
+  [[ "$#" -eq 0 ]] || return 64
+  command -v brew >/dev/null 2>&1 || command -v apt-get >/dev/null 2>&1 || return 69
+}
+
+### Install Go from the platform package source.
+go::install() {
+  [[ "$#" -le 1 ]] || return 64
+  go::repository::register || return "$?"
+  if command -v brew >/dev/null 2>&1; then
+    brew install go
+  elif [[ "$#" -eq 1 ]]; then
+    sudo apt-get install -y "golang-$1"
+  else
+    sudo apt-get install -y golang
+  fi
+}
+
+### Install Rust using rustup and an optional toolchain version.
+rust::install() {
+  [[ "$#" -le 1 ]] || return 64
+  command -v curl >/dev/null 2>&1 || return 69
+  local temporary=''
+  local toolchain='stable'
+  [[ "$#" -eq 1 ]] && toolchain="$1"
+  temporary="$(mktemp)" || return 74
+  if ! curl -fsSL https://sh.rustup.rs -o "$temporary"; then
+    rm -f -- "$temporary"
+    return 74
+  fi
+  sh "$temporary" -y --default-toolchain "$toolchain"
+  local status="$?"
+  rm -f -- "$temporary"
+  return "$status"
+}
+
+### List installed or available Rust toolchains.
+rust::versions() {
+  [[ "$#" -eq 0 ]] || return 64
+  if command -v rustup >/dev/null 2>&1; then rustup toolchain list; else command -v rustc >/dev/null 2>&1 || return 69; rustc --version; fi
+}
+
+### Discard Flutter SDK changes and switch to a tag or commit.
+flutter::use-version() {
+  [[ "$#" -le 2 ]] || return 64
+  local version='' directory=''
+  if [[ "$#" -ge 1 ]]; then version="$1"; else version='stable'; fi
+  if [[ "$#" -ge 2 ]]; then directory="$2"; else directory="$HOME/flutter"; fi
+  [[ -d "$directory/.git" ]] || return 66
+  git -C "$directory" reset --hard HEAD || return 75
+  git -C "$directory" clean -fdx || return 75
+  git -C "$directory" switch "$version"
+}
+
+### Remove one JFrog CLI server configuration.
+jfrog::config::clear() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; util::_run-command jf config remove "$1"; }
+
+### Remove every JFrog CLI server configuration.
+jfrog::config::clear-all() { [[ "$#" -eq 0 ]] || return 64; util::_run-command jf config clean; }
+
+### Display JFrog CLI server configurations.
+jfrog::config::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command jf config show; }
+
+### Register and verify a JFrog CLI server.
+jfrog::setup() {
+  [[ "$#" -eq 5 && -n "$1" && -n "$2" && -n "$3" && -n "$4" && -n "$5" ]] || return 64
+  util::_run-command jf config add "$1" --url "$2" --user "$3" --password "$5" --interactive=false || return "$?"
+  util::_run-command jf rt ping --server-id "$1"
+}
+
+### Install the OpenCode command-line application.
+opencode::install() {
+  [[ "$#" -le 1 ]] || return 64
+  if command -v brew >/dev/null 2>&1; then brew install opencode; elif command -v npm >/dev/null 2>&1; then if [[ "$#" -eq 1 ]]; then npm install --global "opencode@$1"; else npm install --global opencode; fi; else return 69; fi
+}
+
+### Log in to an Artifactory Docker registry using a token on standard input.
+docker::login-artifactory() {
+  [[ "$#" -eq 3 && -n "$1" && -n "$2" && -n "$3" ]] || return 64
+  command -v docker >/dev/null 2>&1 || return 69
+  printf '%s\n' "$3" | docker login "$1" --username "$2" --password-stdin
+}
+
+### Export a Chrome profile's Bookmarks file.
+chrome::profile::export-bookmarks() {
+  [[ "$#" -ge 1 && "$#" -le 2 && -d "$1" && ! -L "$1" ]] || return 64
+  local output=''
+  if [[ "$#" -eq 2 ]]; then output="$2"; else output='./bookmarks.json'; fi
+  [[ -f "$1/Bookmarks" && ! -L "$1/Bookmarks" ]] || return 66
+  cp -- "$1/Bookmarks" "$output"
+}
+
+### Export a Chrome profile's Preferences file.
+chrome::profile::export-preferences() {
+  [[ "$#" -ge 1 && "$#" -le 2 && -d "$1" && ! -L "$1" ]] || return 64
+  local output=''
+  if [[ "$#" -eq 2 ]]; then output="$2"; else output='./preferences.json'; fi
+  [[ -f "$1/Preferences" && ! -L "$1/Preferences" ]] || return 66
+  cp -- "$1/Preferences" "$output"
+}
+
+### Write the first known email address from a Chrome profile.
+chrome::profile::email() {
+  [[ "$#" -eq 1 && -d "$1" && -f "$1/Preferences" && ! -L "$1/Preferences" ]] || return 64
+  command -v jq >/dev/null 2>&1 || return 69
+  local email=''
+  email="$(jq -r '.. | objects | (.email? // .user_name? // empty) | select(type == "string")' "$1/Preferences" 2>/dev/null | head -n 1)" || return 74
+  [[ "$email" == *@*.* ]] || return 1
+  printf '%s\n' "$email"
+}
+
+### Find Chrome profiles whose known email matches literally.
+chrome::profile::find-by-email() {
+  [[ "$#" -ge 1 && "$#" -le 2 && -n "$1" ]] || return 64
+  local email="$1" root='' path=''
+  if [[ "$#" -eq 2 ]]; then root="$2"; elif [[ "$(system::operating-system)" == darwin ]]; then root="$HOME/Library/Application Support/Google/Chrome"; else root="$HOME/.config/google-chrome"; fi
+  [[ -d "$root" ]] || return 66
+  shopt -s nullglob
+  for path in "$root"/Default "$root"/Profile\ *; do
+    [[ -d "$path" ]] || continue
+    [[ "$(chrome::profile::email "$path" 2>/dev/null)" == "$email" ]] && printf '%s\n' "$path"
+  done
+}
+
+### Extend swap capacity up to a target size.
+swap::ensure-total-size() {
+  [[ "$#" -ge 1 && "$#" -le 3 && "$1" =~ ^[1-9][0-9]*$ ]] || return 64
+  local target="$1" max='' path='' current='' add=''
+  if [[ "$#" -ge 2 ]]; then max="$2"; else max="$target"; fi
+  if [[ "$#" -ge 3 ]]; then path="$3"; else path='/swapfile'; fi
+  [[ "$max" =~ ^[0-9]+$ ]] || return 64
+  current="$(mem::swap-total-bytes)" || return "$?"
+  (( current >= target )) && return 0
+  add=$((target - current))
+  (( add > max )) && add="$max"
+  swap::create "$add" "$path"
+}
+
+### Remove VS Code user data from an optional profile directory.
+vscode::remove-user-data() {
+  [[ "$#" -le 1 ]] || return 64
+  local directory=''
+  if [[ "$#" -eq 1 ]]; then directory="$1"; elif [[ "$(system::operating-system)" == darwin ]]; then directory="$HOME/Library/Application Support/Code"; else directory="$HOME/.config/Code"; fi
+  [[ -d "$directory" && ! -L "$directory" ]] || return 66
+  directory::clear "$directory"
+}

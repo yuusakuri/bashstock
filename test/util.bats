@@ -58,3 +58,37 @@ bats_require_minimum_version 1.5.0
   [ "${status}" -eq 0 ]
   git -C "$repository" show-ref --verify --quiet refs/heads/topic
 }
+
+@test "managed SSH configuration preserves unrelated directives" {
+  local config="${BATS_TEST_TMPDIR}/ssh-config" include="${BATS_TEST_TMPDIR}/included-config"
+  : >"$include"
+  chmod 600 "$include"
+  printf 'Include %s\nMatch all\n  ForwardAgent no\n' "$include" >"$config"
+
+  run ssh::config::set "$config" '*.example' User alice
+  [ "${status}" -eq 0 ]
+  run ssh::config::enable-auto-add-keys "$config" '*.example'
+  [ "${status}" -eq 0 ]
+  run ssh::config::disable-host-key-checking "$config" '*.example'
+  [ "${status}" -eq 0 ]
+  [ "$(grep -F -c '# bashstock: begin *.example' "$config")" -eq 1 ]
+  grep -Fq '  User alice' "$config"
+  grep -Fq '  AddKeysToAgent yes' "$config"
+  grep -Fq '  StrictHostKeyChecking no' "$config"
+  grep -Fq '  UserKnownHostsFile /dev/null' "$config"
+  grep -Fq "Include $include" "$config"
+  grep -Fq 'Match all' "$config"
+  grep -Fq '  ForwardAgent no' "$config"
+  run ssh -G -F "$config" host.example
+  [ "${status}" -eq 0 ]
+}
+
+@test "SSH private-key listing delegates key detection to ssh-keygen" {
+  local directory="${BATS_TEST_TMPDIR}/keys" key="${BATS_TEST_TMPDIR}/keys/id_ed25519"
+  mkdir -p "$directory"
+  ssh-keygen -q -t ed25519 -N '' -f "$key"
+  printf 'not a key\n' >"${directory}/notes.txt"
+  run ssh::key::private-files "$directory"
+  [ "${status}" -eq 0 ]
+  [ "${output}" = "$key" ]
+}

@@ -13,8 +13,10 @@ load test_helper
         "${PROJECT_ROOT}/docs/explanation/function-selection/lobash.md"
       awk '/^## 採用する関数$/{on=1; next} /^## 対応環境の検証$/{on=0} on' \
         "${PROJECT_ROOT}/docs/explanation/function-selection/bash-commons.md"
+      awk '/^## 検討中から採用する関数$/{on=1; next} /^## 検討中の関数$/{on=0} on' \
+        "${PROJECT_ROOT}/docs/explanation/function-selection/util-scripts.md"
     } |
-      perl -nle 'while (/`([a-z][a-z0-9-]*::[a-z][a-z0-9-]*)`/g) { print $1 }' |
+      perl -nle 'while (/`([a-z][a-z0-9-]*(?:::[a-z][a-z0-9-]*)+)/g) { print $1 }' |
       sort -u
   )"
 
