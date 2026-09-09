@@ -370,7 +370,7 @@ ssh::setup-directory() { [[ "$#" -eq 0 ]] || return 64; mkdir -p -- "$HOME/.ssh"
 ### Replace one marker-managed SSH Host block and validate the resulting configuration.
 ssh::config::_write-block() {
   [[ "$#" -eq 3 && -n "$1" && -n "$2" && -n "$3" ]] || return 64
-  local file="$1" pattern="$2" options="$3" begin='' end='' line='' content='' preserved='' old_content='' keys='' option='' key=''
+  local file="$1" pattern="$2" options="$3" begin='' end='' line='' content='' preserved='' old_content='' keys='' option='' key='' validation_host='localhost' token=''
   [[ -f "$file" && ! -L "$file" ]] || return 66
   [[ "$pattern" != *$'\n'* && "$pattern" != *$'\r'* ]] || return 64
   [[ "$options" != *$'\r'* ]] || return 64
@@ -406,7 +406,14 @@ ssh::config::_write-block() {
   block="$begin"$'\n'"Host $pattern"$'\n'
   block+="$preserved$options"$'\n'"$end"$'\n'
   file::write-text "$file" "$block$content" || return "$?"
-  if ! ssh -G -F "$file" "$pattern" >/dev/null 2>&1; then
+  local pattern_parts=()
+  read -r -a pattern_parts <<<"$pattern"
+  for token in "${pattern_parts[@]}"; do
+    [[ "$token" == '!'* ]] && continue
+    validation_host="$token"
+    break
+  done
+  if ! ssh -G -F "$file" "$validation_host" >/dev/null 2>&1; then
     file::write-text "$file" "$old_content" >/dev/null 2>&1 || true
     return 65
   fi

@@ -71,6 +71,8 @@ bats_require_minimum_version 1.5.0
   [ "${status}" -eq 0 ]
   run ssh::config::disable-host-key-checking "$config" '*.example'
   [ "${status}" -eq 0 ]
+  run ssh::config::set "$config" 'foo.example bar.example !bad.example' ProxyJump none
+  [ "${status}" -eq 0 ]
   [ "$(grep -F -c '# bashstock: begin *.example' "$config")" -eq 1 ]
   grep -Fq '  User alice' "$config"
   grep -Fq '  AddKeysToAgent yes' "$config"
