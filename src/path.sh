@@ -328,8 +328,8 @@ path::config-home() {
   printf '%s/.config\n' "${HOME%/}"
 }
 
-### Change directory ownership recursively through the root helper.
-path::change-owner-recursively-as-root() {
+### Validate a directory and the requested owner and group.
+path::_validate-ownership() {
   if [[ "$#" -lt 2 || "$#" -gt 3 ]]; then
     return 64
   fi
@@ -343,6 +343,11 @@ path::change-owner-recursively-as-root() {
     return 64
   fi
 
-  command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
-    change-owner-recursively "$@"
+  return 0
+}
+
+### Change directory ownership recursively in a separate root process.
+path::change-owner-recursively-as-root() {
+  path::_validate-ownership "$@" || return "$?"
+  bashstock::_run-as-root change-owner-recursively "$@"
 }

@@ -1,75 +1,88 @@
 # BashStockのアーキテクチャ
 
-この文書では、開発ソースから配布物を生成し、利用者のシェルへ読み込むまでの構成を説明します。
-公開APIの契約は[ライブラリ仕様](../specifications/library.md)で定義します。
+BashStockは、Bashスクリプトと対話型Bashから読み込んで使う関数ライブラリです。
+開発では機能ごとにソースを分割し、配布では一つの`bashstock.sh`へ結合します。
 
-## 配布の流れ
+## ソースと配布ファイル
 
-`src/*.sh`は関数本体、`libexec/`は権限分離が必要な内部コマンドを保持します。
-`scripts/build`は両方を`dist/bashstock/`へ集め、GitHub Releaseへ添付する`dist/bashstock.tar.gz`を生成します。
+| パス | 担当する処理 |
+| --- | --- |
+| `src/*.sh` | 文字列、数値、パス、ファイル、時刻、利用者、AWSなどの関数を定義します。 |
+| `src/os.sh`、`src/os-darwin.sh`、`src/os-ubuntu.sh`、`src/os-fedora.sh` | OSの判定と、OSごとの内部処理を定義します。 |
+| `src/runtime/header.sh` | 多重読み込みを確認し、配布ファイル自身の絶対パスを記録します。 |
+| `src/runtime/operations.sh` | 管理者権限のプロセス起動、操作名の対応付け、権限の確認を担当します。 |
+| `src/runtime/footer.sh` | 読み込み完了の記録、または内部コマンドの実行を行います。 |
+| `scripts/build` | ソースとライセンス文を結合し、`dist/bashstock.sh`を生成します。 |
+| `test/` | 生成した配布ファイルの公開APIと実行時の振る舞いを検証します。 |
 
 ```mermaid
 flowchart LR
-  Source[src/*.sh]
-  Helpers[libexec/]
+  Source[機能別ソース]
+  Runtime[読み込みと実行の制御]
+  License[LICENSE]
   Build[scripts/build]
-  Directory[dist/bashstock/]
-  Archive[dist/bashstock.tar.gz]
-  CI[CI]
+  File[dist/bashstock.sh]
+  Checks[構文検査・静的解析・テスト]
   Release[GitHub Release]
-  Shell[利用者のBash]
-
   Source --> Build
-  Helpers --> Build
-  Build --> Directory
-  Directory --> Archive
-  Archive --> CI
-  Archive --> Release
-  Directory --> Shell
+  Runtime --> Build
+  License --> Build
+  Build --> File
+  File --> Checks
+  Checks --> Release
 ```
 
-PRと`main`へのpushでは、CIがソースから配布物を生成して検査し、ワークフローの成果物として保存します。
-`v<major>.<minor>.<patch>`形式のタグでは、Releaseワークフローが同じ検査を実行し、`bashstock.tar.gz`をGitHub Releaseへ添付します。
+`scripts/build`は、固定の一覧と順序でソースを結合します。
+すべてのOS別実装をファイルへ含め、読み込み時に該当する実装を選びます。
+生成した一時ファイルの構文を確認してから、`dist/bashstock.sh`として配置します。
+生成に失敗した場合は、既存の配布ファイルを保持します。
 
-## 配布物
+配布ファイルにはMIT Licenseの全文をコメントとして含めます。
+利用者はこの一つのファイルを任意の場所へ配置でき、実行権限や付随するディレクトリを必要としません。
+`dist/`は生成物として扱い、Gitの追跡対象には含めません。
 
-配布用アーカイブは次の構成を持ちます。
+## 関数の読み込みと対話設定
 
-| パス | 内容 |
-| --- | --- |
-| `bashstock/bashstock.sh` | 利用者が`source`する関数ライブラリです。 |
-| `bashstock/libexec/` | 管理者権限などを分離して実行する内部コマンドです。 |
-| `bashstock/LICENSE` | 配布物の利用許諾条件です。 |
+`source`で読み込まれた場合は、関数定義とOS別実装の選択を行い、呼び出し元へ戻ります。
+読み込み時には通信、入力待ち、権限昇格、Tab補完の登録を行いません。
+関数が必要とする外部コマンドは、その関数を実行する際に確認します。
 
-`bashstock.sh`は`src/*.sh`を依存順に結合し、多重読み込み防止とTab補完登録を加えたファイルです。
-開発ソースと配布物の役割を分けるため、生成先の`dist/`はGitの追跡対象から外します。
+Tab補完は、読み込み後に`arg::completion::register-all`を明示的に呼び出して登録します。
+自動化スクリプトと対話型Bashは同じ関数を利用できます。
+2回目以降の読み込みでは、最初の関数定義と利用者が設定した補完を保持します。
 
-## モジュールの依存順
+## 管理者権限の実行
 
-`scripts/build`は、下位の機能から上位の機能へ向かう順序でモジュールを結合します。
-上位モジュールは、表の上側にあるモジュールだけを呼び出します。
+管理者権限を使う公開関数は、読み込み時に記録した配布ファイルを別のBashプロセスで実行します。
+ファイルの位置は現在のディレクトリや外部の設定値に依存しません。
+配布ファイルを読み込み後に移動する場合は、新しいBashプロセスで移動先から読み込みます。
 
-| 順序 | モジュール | 責務 |
-| --- | --- | --- |
-| 1 | `settings`、`console`、`number`、`string`、`regex`、`array` | 製品識別、診断、数値、文字列、正規表現、値の列を扱います。 |
-| 2 | `arguments`、`completion` | 名前付き引数の検査とTab補完を扱います。 |
-| 3 | `system`、`command`、`shell`、`terminal`、`path` | 実行環境、コマンド、シェル、端末、パスを扱います。 |
-| 4 | `prompt`、`time`、`log` | 対話入力、時計、ログを扱います。 |
-| 5 | `json`、`option`、`file` | 値の条件、選択条件、ファイル更新を扱います。 |
-| 6 | `os`、OS別プロバイダー、`user` | OS差分、利用者、所有者を扱います。 |
-| 7 | `aws` | IMDS、EC2、Auto Scalingを扱います。 |
+```mermaid
+flowchart LR
+  Public[公開関数 -as-root]
+  Runner[command::run-as-root]
+  Process[同じbashstock.shを別プロセスで実行]
+  Dispatch[操作名・権限・引数の検査]
+  Operation[ファイル操作またはOS別処理]
+  Public --> Runner
+  Runner --> Process
+  Process --> Dispatch
+  Dispatch --> Operation
+```
 
-## OS別プロバイダー
+内部の実行形式は`bash bashstock.sh --internal-root 操作名 引数`です。
+実行側は固定の操作名だけを受け付け、root権限を確認し、引数を検査して対応する処理を実行します。
+関数名やシェルコードを引数から評価しません。
+読み込む場合と実行する場合で、ファイル操作の実装を共有します。
 
-生成された`bashstock.sh`は、macOS、Ubuntu、Fedoraの実装を一つのファイルに保持します。
-読み込み時に`platform::_identifier`がOSを判定し、該当するプロバイダーだけを定義します。
+非対話型Bashでは、`sudo`の認証入力を待たずに権限不足を返します。
+対話型Bashでは、権限昇格時に認証入力を利用できます。
+配布ファイルの実行時にも、Tab補完の登録は行いません。
 
-公開関数は`platform`名前空間の内部関数を呼び出します。
-この依存方向により、呼び出し側はOSごとのコマンド名やオプションを扱わずに同じ公開APIを使用できます。
+## 検証とリリース
 
-## 関連文書
-
-- [ライブラリ仕様](../specifications/library.md)
-- [名前付き引数とTab補完の仕様](../specifications/named-arguments.md)
-- [関数リファレンス](../reference/functions.md)
-- [リリース手順](../how-to/release.md)
+CIはmacOS、Ubuntu、Fedoraでソースと生成ファイルを静的に検査し、生成ファイルを読み込んでテストします。
+macOSではHomebrewのBashとシステムのBashの両方を使用します。
+単独でコピーした配布ファイルについて、パスの解決、再読み込み、明示的な補完登録、管理者権限の実行を確認します。
+バージョンタグの公開では、検査に成功した`bashstock.sh`をGitHub Releaseへ添付します。
+自動化では、特定のバージョンのファイルを固定して利用できます。

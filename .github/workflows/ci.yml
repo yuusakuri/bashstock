@@ -34,7 +34,7 @@ jobs:
 
       - name: Install dependencies on macOS
         if: runner.os == 'macOS'
-        run: brew install perl shellcheck
+        run: brew install bash perl shellcheck
 
       - name: Install dependencies on Linux
         if: runner.os == 'Linux'
@@ -46,14 +46,24 @@ jobs:
         run: perl -MTime::HiRes -MPOSIX -e 1
 
       - name: Run all checks
-        run: just verify
+        run: |
+          bash --version
+          just verify
+
+      - name: Verify with macOS system Bash
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p "$RUNNER_TEMP/bashstock-system-bash"
+          ln -s /bin/bash "$RUNNER_TEMP/bashstock-system-bash/bash"
+          /bin/bash --version
+          PATH="$RUNNER_TEMP/bashstock-system-bash:$PATH" just verify
 
       - name: Upload the distribution
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v7.0.1
         with:
           name: bashstock-${{ github.sha }}
-          path: dist/bashstock.tar.gz
+          path: dist/bashstock.sh
           if-no-files-found: error
 
   check-fedora:

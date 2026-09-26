@@ -60,8 +60,7 @@ arg::completion::dispatch() {
 
 ### Register Tab completion for every function that has a completion helper.
 ###
-### Called once after every module has been loaded, so that functions
-### defined later in the load order are still discovered.
+### Call explicitly after sourcing the library and defining completion helpers.
 arg::completion::register-all() {
   if [[ "$#" -ne 0 ]]; then
     return 64

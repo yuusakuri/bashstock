@@ -25,7 +25,7 @@ load test_helper
   [ "${status}" -eq 64 ]
 }
 
-@test "root variants dispatch exact argument values to the root helper" {
+@test "root variants pass exact argument values to the standalone file" {
   command::run-as-root() {
     printf '%s\n' "$@"
   }
@@ -42,21 +42,6 @@ load test_helper
 
   run file::replace-or-append-text-as-root '/protected file' '^name=' 'name=value'
   [[ "${output}" == *$'replace-or-append-text\n/protected file\n^name=\nname=value' ]]
-}
-
-@test "the root helper ignores an externally supplied library root" {
-  local external_root="${BATS_TEST_TMPDIR}/external"
-  local marker="${BATS_TEST_TMPDIR}/external-library-loaded"
-  mkdir -p "${external_root}"
-  printf 'touch %q\n' "${marker}" >"${external_root}/bashstock.sh"
-
-  run env \
-    BASHSTOCK_ROOT="${external_root}" \
-    _BASHSTOCK_LOADED='0' \
-    "${PROJECT_ROOT}/dist/bashstock/libexec/bashstock-root" unknown-operation
-
-  [[ "${status}" -eq 64 || "${status}" -eq 77 ]]
-  [ ! -e "${marker}" ]
 }
 
 @test "JSON and option requirements enforce one selected value" {

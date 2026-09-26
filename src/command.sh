@@ -30,6 +30,7 @@ command::require() {
 }
 
 ### Run a command directly as root or through validated sudo access.
+### Noninteractive shells never wait for sudo password input.
 command::run-as-root() {
   if [[ "$#" -lt 1 || -z "$1" ]]; then
     return 64
@@ -45,8 +46,11 @@ command::run-as-root() {
     return 69
   fi
 
-  if ! sudo -v; then
-    return 77
+  if [[ "$-" == *i* ]]; then
+    sudo -v || return 77
+    sudo -- "$@"
+  else
+    sudo -n -v || return 77
+    sudo -n -- "$@"
   fi
-  sudo -- "$@"
 }
