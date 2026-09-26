@@ -66,7 +66,7 @@ git_test::edit-via-rebase-in-directory() {
 
   run env \
     BASHSTOCK_GIT_EDIT_COMMIT="${second}" \
-    "${PROJECT_ROOT}/dist/bashstock/libexec/bashstock-git-sequence-editor" "${todo}"
+    bash "${PROJECT_ROOT}/dist/bashstock.sh" --internal-git-sequence-editor "${todo}"
 
   [ "${status}" -eq 0 ]
   [ -z "${output}" ]
@@ -84,7 +84,7 @@ git_test::edit-via-rebase-in-directory() {
 
   run env \
     BASHSTOCK_GIT_EDIT_COMMIT="${target}" \
-    "${PROJECT_ROOT}/dist/bashstock/libexec/bashstock-git-sequence-editor" "${todo}"
+    bash "${PROJECT_ROOT}/dist/bashstock.sh" --internal-git-sequence-editor "${todo}"
   [ "${status}" -eq 65 ]
   cmp "${original}" "${todo}"
 
@@ -92,7 +92,7 @@ git_test::edit-via-rebase-in-directory() {
   cp "${todo}" "${original}"
   run env \
     BASHSTOCK_GIT_EDIT_COMMIT="${target}" \
-    "${PROJECT_ROOT}/dist/bashstock/libexec/bashstock-git-sequence-editor" "${todo}"
+    bash "${PROJECT_ROOT}/dist/bashstock.sh" --internal-git-sequence-editor "${todo}"
   [ "${status}" -eq 65 ]
   cmp "${original}" "${todo}"
 }

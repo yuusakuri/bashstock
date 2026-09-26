@@ -22,11 +22,10 @@ lint::visit-files() {
   done 3< <(
     find \
       "${project_root}/scripts" \
-      "${project_root}/libexec" \
       "${project_root}/src" \
       "${project_root}/test" \
       -type f \
-      \( -name '*.sh' -o -name '*.bash' -o -name '*.bats' -o -name 'bashstock-root' -o -name 'bashstock-git-sequence-editor' -o -name 'test' -o -name 'lint' -o -name 'build' \) \
+      \( -name '*.sh' -o -name '*.bash' -o -name '*.bats' -o -name 'test' -o -name 'lint' -o -name 'build' \) \
       -print0
   )
 
@@ -92,10 +91,9 @@ lint::check-doc-comments() {
   done < <(
     find \
       "${project_root}/scripts" \
-      "${project_root}/libexec" \
       "${project_root}/src" \
       -type f \
-      \( -name '*.sh' -o -name '*.bash' -o -name 'bashstock-root' -o -name 'bashstock-git-sequence-editor' -o -name 'lint' -o -name 'build' \) \
+      \( -name '*.sh' -o -name '*.bash' -o -name 'lint' -o -name 'build' \) \
       -print0
   )
 
@@ -116,6 +114,9 @@ main() {
   lint::visit-files lint::check-syntax
   lint::visit-files lint::check-shell
   lint::check-doc-comments
+  "${project_root}/scripts/build"
+  lint::check-syntax "${project_root}/dist/bashstock.sh"
+  lint::check-shell "${project_root}/dist/bashstock.sh"
   git -C "${project_root}" diff --check
 }
 

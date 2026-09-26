@@ -56,13 +56,13 @@ load test_helper
   declare -F user::create-login >/dev/null
   declare -F path::change-owner-recursively >/dev/null
 
-  ! declare -F file::append-text-as-root >/dev/null
-  ! declare -F file::replace-text-as-root >/dev/null
-  ! declare -F file::replace-all-text-as-root >/dev/null
-  ! declare -F file::replace-text-in-files-as-root >/dev/null
-  ! declare -F file::replace-all-text-in-files-as-root >/dev/null
+  declare -F file::append-text-as-root >/dev/null
+  declare -F file::replace-text-as-root >/dev/null
+  declare -F file::replace-all-text-as-root >/dev/null
+  declare -F file::replace-text-in-files-as-root >/dev/null
+  declare -F file::replace-all-text-in-files-as-root >/dev/null
   ! declare -F file::replace-all-text-or-append >/dev/null
-  ! declare -F user::create-system-as-root >/dev/null
-  ! declare -F user::create-login-as-root >/dev/null
-  ! declare -F path::change-owner-recursively-as-root >/dev/null
+  declare -F user::create-system-as-root >/dev/null
+  declare -F user::create-login-as-root >/dev/null
+  declare -F path::change-owner-recursively-as-root >/dev/null
 }

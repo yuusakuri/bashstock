@@ -14,7 +14,6 @@
 | just 1.58.0 | 開発コマンドを実行します。 |
 | ShellCheck | Bashソースを静的解析します。 |
 | Perl、`Time::HiRes`、`POSIX`、`JSON::PP` | 時刻処理とJSON処理を含むテストを実行します。 |
-| tar | 配布用アーカイブを生成します。 |
 
 ## セットアップ
 
@@ -32,12 +31,14 @@ git submodule update --init --recursive
 
 | コマンド | 実行内容 |
 | --- | --- |
-| `just build` | `src/*.sh`と`libexec/`から利用者向け配布物`dist/bashstock/`とRelease用アーカイブ`dist/bashstock.tar.gz`を生成します。 |
-| `just lint` | Bash構文、ShellCheck、Docコメント、差分の空白エラーを検査します。 |
+| `just build` | `src/`の実装と`LICENSE`から単一の配布ファイル`dist/bashstock.sh`を生成し、構文を検査します。 |
+| `just lint` | ソースと配布ファイルのBash構文、ShellCheck、Docコメント、差分の空白エラーを検査します。 |
 | `just test` | 配布物を生成してからBatsテストを実行します。 |
 | `just verify` | 静的検査、配布物の生成、全テストを順に実行します。 |
 
-開発では`src/*.sh`と`libexec/`を編集します。
+開発では`src/`の機能別ファイルと`src/runtime/`の実行制御を編集します。
+`scripts/build`がモジュールの結合順を管理します。
+生成した`dist/bashstock.sh`は直接編集せず、テストではこの配布ファイルを読み込みます。
 `dist/`はローカルとCIで生成するため、Gitの追跡対象には含めません。
 
 ## 実装規則

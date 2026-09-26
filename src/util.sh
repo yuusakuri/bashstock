@@ -88,12 +88,15 @@ file::write-text() {
   if [[ "$#" -ne 2 || -z "$1" || -L "$1" ]]; then return 64; fi
   local file="$1" text="$2" temporary=''
   if [[ -e "$file" && ! -f "$file" ]]; then return 66; fi
-  if file::_requires-root "$file"; then command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" write-text "$@"; return; fi
-  temporary="$(file::_temporary-path "$file")" || {
-    [[ ! -e "$file" ]] || return "$?"
+  if file::_requires-root "$file"; then bashstock::_run-as-root write-text "$@"; return; fi
+  if temporary="$(file::_temporary-path "$file")"; then
+    :
+  else
+    local status="$?"
+    [[ ! -e "$file" ]] || return "${status}"
     command -v mktemp >/dev/null 2>&1 || return 69
     temporary="$(mktemp "${file}.bashstock.XXXXXX")" || return 74
-  }
+  fi
   if [[ -e "$file" ]]; then file::_copy-metadata-and-content "$file" "$temporary" || { rm -f -- "$temporary"; return 74; }; : >"$temporary" || { rm -f -- "$temporary"; return 74; }; fi
   if ! printf '%s' "$text" >"$temporary" || ! mv -f -- "$temporary" "$file"; then rm -f -- "$temporary"; return 74; fi
 }
@@ -162,7 +165,11 @@ net::ip::private-v6() {
   if [[ "$#" -gt 2 ]]; then return 64; fi
   local interface="${1:-$(net::_default-interface)}" excluded="${2:-}" address=''
   [[ -n "$interface" ]] || return 69
-  if [[ "$(system::operating-system)" == darwin ]]; then address="$(ifconfig "$interface" 2>/dev/null | awk '/inet6 / && $2 !~ /^fe80/ {print $2; exit}')"; else address="$(ip -o -6 addr show dev "$interface" scope global 2>/dev/null | awk 'NR==1 {sub(/\/.*/,"",$4); print $4}')"; fi
+  if [[ "$(system::operating-system)" == darwin ]]; then
+    address="$(ifconfig "$interface" 2>/dev/null | awk -v excluded="$excluded" '/inet6 / && $2 !~ /^fe80/ && $2 != excluded {print $2; exit}')"
+  else
+    address="$(ip -o -6 addr show dev "$interface" scope global 2>/dev/null | awk -v excluded="$excluded" '{sub(/\/.*/,"",$4); if ($4 != excluded) {print $4; exit}}')"
+  fi
   [[ -n "$address" ]] || return 1; printf '%s\n' "$address"
 }
 
@@ -170,10 +177,15 @@ net::ip::private-v6() {
 net::ip::public() { [[ "$#" -eq 0 ]] || return 64; command -v curl >/dev/null 2>&1 || return 69; curl -fsS https://api.ipify.org || return 74; printf '\n'; }
 
 ### Test whether a DNS name resolves.
-net::dns::test() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; command -v getent >/dev/null 2>&1 && getent ahosts "$1" >/dev/null 2>&1 || { command -v dscacheutil >/dev/null 2>&1 && dscacheutil -q host -a name "$1" >/dev/null 2>&1; }; }
-
-### Test whether a TCP endpoint accepts a connection.
-net::tcp::test() { if [[ "$#" -lt 2 || "$#" -gt 3 || ! "$2" =~ ^[0-9]+$ ]]; then return 64; fi; local timeout="${3:-5}"; command -v nc >/dev/null 2>&1 || return 69; nc -z -w "$timeout" "$1" "$2"; }
+net::dns::test() {
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  if command -v getent >/dev/null 2>&1; then
+    getent ahosts "$1" >/dev/null 2>&1
+    return
+  fi
+  command -v dscacheutil >/dev/null 2>&1 || return 69
+  dscacheutil -q host -a name "$1" >/dev/null 2>&1
+}
 
 ### Add a user to a supplementary group.
 user::add-to-group() { if [[ "$#" -lt 1 || "$#" -gt 2 || -z "$1" ]]; then return 64; fi; local user="${2:-$(user::name)}"; case "$(system::operating-system)" in darwin) command -v dseditgroup >/dev/null 2>&1 || return 69; dseditgroup -o edit -a "$user" -t user "$1" ;; linux) command -v usermod >/dev/null 2>&1 || return 69; usermod -a -G "$1" "$user" ;; *) return 69 ;; esac; }
@@ -209,7 +221,24 @@ time::status-continuous() { [[ "$#" -eq 0 ]] || return 64; while :; do time::loc
 file::edit() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; if [[ -e "$1" && ! -f "$1" ]]; then return 66; fi; if [[ -w "$1" || (! -e "$1" && -w "$(path::directory-name "$1")") ]]; then "${EDITOR:-vi}" "$1"; else command -v sudoedit >/dev/null 2>&1 || return 69; sudoedit "$1"; fi; }
 
 ### Release a file held by another process.
-file::release() { [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64; command -v lsof >/dev/null 2>&1 || return 69; local timeout="${2:-2}" start="$(date +%s)" pid=''; while read -r pid; do [[ -n "$pid" ]] || continue; kill -TERM "$pid" 2>/dev/null || true; done < <(lsof -t -- "$1" 2>/dev/null); while (( $(date +%s) - start < timeout )); do lsof -t -- "$1" >/dev/null 2>&1 || return 0; sleep 0.1; done; while read -r pid; do kill -KILL "$pid" 2>/dev/null || true; done < <(lsof -t -- "$1" 2>/dev/null); lsof -t -- "$1" >/dev/null 2>&1 && return 75; }
+file::release() {
+  [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64
+  command -v lsof >/dev/null 2>&1 || return 69
+  local timeout="${2:-2}" start='' pid=''
+  start="$(date +%s)" || return 74
+  while read -r pid; do
+    [[ -n "$pid" ]] || continue
+    kill -TERM "$pid" 2>/dev/null || true
+  done < <(lsof -t -- "$1" 2>/dev/null)
+  while (( $(date +%s) - start < timeout )); do
+    lsof -t -- "$1" >/dev/null 2>&1 || return 0
+    sleep 0.1
+  done
+  while read -r pid; do
+    kill -KILL "$pid" 2>/dev/null || true
+  done < <(lsof -t -- "$1" 2>/dev/null)
+  lsof -t -- "$1" >/dev/null 2>&1 && return 75
+}
 
 ### Open a GNU Screen session.
 screen::open() { if [[ "$#" -gt 1 ]]; then return 64; fi; command -v screen >/dev/null 2>&1 || return 69; screen "${1:-default}"; }
@@ -528,8 +557,15 @@ file::tree-with-contents() { [[ "$#" -le 3 ]] || return 64; local path="${1:-.}"
 ### Print a text file without changing its contents.
 file::_print-text() { [[ "$#" -eq 1 ]] || return 64; file::_require-existing "$1" || return "$?"; cat -- "$1"; }
 
-### Test whether a host and port can be reached.
-net::tcp::test() { [[ "$#" -ge 2 && "$#" -le 3 && "$2" =~ ^[0-9]+$ ]] || return 64; local timeout="${3:-5}"; command -v nc >/dev/null 2>&1 || return 69; nc -z -w "$timeout" "$1" "$2"; }
+# shellcheck disable=SC2329
+### Test whether a TCP endpoint accepts a connection.
+net::tcp::test() {
+  [[ "$#" -ge 2 && "$#" -le 3 && -n "$1" && "$2" =~ ^[0-9]+$ ]] || return 64
+  local timeout="${3:-5}"
+  [[ "${timeout}" =~ ^[1-9][0-9]*$ ]] || return 64
+  command -v nc >/dev/null 2>&1 || return 69
+  nc -z -w "${timeout}" "$1" "$2"
+}
 
 ### Open a serial device with a configured baud rate.
 serial::configure() { [[ "$#" -ge 1 && "$#" -le 2 && -e "$1" ]] || return 64; local device="$1" baud="${2:-115200}"; command -v stty >/dev/null 2>&1 || return 69; stty -F "$device" "$baud" 2>/dev/null || stty -f "$device" "$baud"; }
@@ -620,7 +656,16 @@ adb::device::first() { [[ "$#" -eq 0 ]] || return 64; adb devices | awk 'NR>1 &&
 ### Execute the utility function.
 adb::device::list() { [[ "$#" -eq 0 ]] || return 64; adb::_run devices -l; }
 ### Execute the utility function.
-adb::device::wait-for-path() { [[ "$#" -ge 1 && "$#" -le 3 ]] || return 64; local path="$1" timeout="${2:-30}"; local start="$(date +%s)"; while (( $(date +%s)-start < timeout )); do adb::_run shell test -e "$path" >/dev/null 2>&1 && return 0; sleep 1; done; return 75; }
+adb::device::wait-for-path() {
+  [[ "$#" -ge 1 && "$#" -le 3 ]] || return 64
+  local path="$1" timeout="${2:-30}" start=''
+  start="$(date +%s)" || return 74
+  while (( $(date +%s) - start < timeout )); do
+    adb::_run shell test -e "$path" >/dev/null 2>&1 && return 0
+    sleep 1 || return 74
+  done
+  return 75
+}
 ### Execute the utility function.
 adb::device::screen::capture-once() { [[ "$#" -le 2 ]] || return 64; local output="${1:-screen.png}"; adb::_run exec-out screencap -p >"$output"; }
 ### Execute the utility function.

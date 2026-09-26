@@ -390,8 +390,7 @@ file::append-text() {
   fi
 
   if file::_requires-root-to-append "$1"; then
-    command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
-      append-text "$1" "$2"
+    bashstock::_run-as-root append-text "$1" "$2"
     return
   fi
   printf '%s' "$2" >>"$1" 2>/dev/null || return 74
@@ -436,8 +435,7 @@ file::replace-text() {
   file::_require-bash-expression "$2" 0 || return "$?"
   string::_require-one-line "$3" || return "$?"
   if file::_requires-root "$1"; then
-    command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
-      replace-text "$@"
+    bashstock::_run-as-root replace-text "$@"
     return
   fi
   file::_replace-text "$@" 0
@@ -458,8 +456,7 @@ file::replace-all-text() {
   file::_require-bash-expression "$2" 1 || return "$?"
   string::_require-one-line "$3" || return "$?"
   if file::_requires-root "$1"; then
-    command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
-      replace-all-text "$@"
+    bashstock::_run-as-root replace-all-text "$@"
     return
   fi
   file::_replace-text "$@" 1
@@ -563,8 +560,7 @@ file::replace-text-in-files() {
     file::_require-regular-target "${path}" || return "$?"
   done
   if file::_requires-root "${paths[@]}"; then
-    command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
-      replace-text-in-files "$@"
+    bashstock::_run-as-root replace-text-in-files "$@"
     return
   fi
   file::_replace-text-in-files 0 "$@"
@@ -583,8 +579,7 @@ file::replace-all-text-in-files() {
     file::_require-regular-target "${path}" || return "$?"
   done
   if file::_requires-root "${paths[@]}"; then
-    command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
-      replace-all-text-in-files "$@"
+    bashstock::_run-as-root replace-all-text-in-files "$@"
     return
   fi
   file::_replace-text-in-files 1 "$@"
@@ -621,9 +616,45 @@ file::replace-text-or-append() {
   file::_require-bash-expression "$2" 1 || return "$?"
   string::_require-one-line "$3" || return "$?"
   if file::_requires-root "$1"; then
-    command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
-      replace-text-or-append "$@"
+    bashstock::_run-as-root replace-or-append-text "$@"
     return
   fi
   file::_replace-text-or-append "$@" 1
+}
+
+
+### Append text through the root execution dispatcher.
+file::append-text-as-root() {
+  [[ "$#" -eq 2 ]] || return 64
+  bashstock::_run-as-root append-text "$@"
+}
+
+### Replace the first expression match through the root execution dispatcher.
+file::replace-text-as-root() {
+  [[ "$#" -eq 3 ]] || return 64
+  bashstock::_run-as-root replace-text "$@"
+}
+
+### Replace every expression match through the root execution dispatcher.
+file::replace-all-text-as-root() {
+  [[ "$#" -eq 3 ]] || return 64
+  bashstock::_run-as-root replace-all-text "$@"
+}
+
+### Replace expression matches in files through the root execution dispatcher.
+file::replace-text-in-files-as-root() {
+  [[ "$#" -ge 3 ]] || return 64
+  bashstock::_run-as-root replace-text-in-files "$@"
+}
+
+### Replace all expression matches in files through the root execution dispatcher.
+file::replace-all-text-in-files-as-root() {
+  [[ "$#" -ge 3 ]] || return 64
+  bashstock::_run-as-root replace-all-text-in-files "$@"
+}
+
+### Replace matching text or append it through the root execution dispatcher.
+file::replace-or-append-text-as-root() {
+  [[ "$#" -eq 3 ]] || return 64
+  bashstock::_run-as-root replace-or-append-text "$@"
 }

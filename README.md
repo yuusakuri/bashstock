@@ -1,27 +1,37 @@
 # BashStock
 
-BashStockは、macOS、Ubuntu、Fedoraの対話型Bashから読み込んで使う関数ライブラリです。
+BashStockは、macOS、Ubuntu、FedoraのBashスクリプトと対話型Bashから読み込んで使う関数ライブラリです。
 文字列、パス、ファイル、時刻、OS設定、AWS操作などを、同じ名前と終了状態で呼び出せます。
 
 ## インストール
 
-[Releases](https://github.com/yuusakuri/bashstock/releases)から`bashstock.tar.gz`を取得し、利用者用のデータディレクトリへ展開します。
+[Releases](https://github.com/yuusakuri/bashstock/releases)から`bashstock.sh`を取得します。
+このファイルには全機能とMIT Licenseの本文が含まれ、単独で配置できます。
 
 ```bash
-data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
-mkdir -p "${data_home}"
+installation_directory="${XDG_DATA_HOME:-$HOME/.local/share}/bashstock"
+mkdir -p "${installation_directory}"
 curl --fail --location \
-  --output /tmp/bashstock.tar.gz \
-  https://github.com/yuusakuri/bashstock/releases/latest/download/bashstock.tar.gz
-tar -xzf /tmp/bashstock.tar.gz -C "${data_home}"
-rm /tmp/bashstock.tar.gz
+  --output "${installation_directory}/bashstock.sh.download" \
+  https://github.com/yuusakuri/bashstock/releases/latest/download/bashstock.sh &&
+  mv "${installation_directory}/bashstock.sh.download" "${installation_directory}/bashstock.sh"
 ```
 
-`.bashrc`から配布物の`bashstock.sh`を読み込みます。
+スクリプトからは、配置したファイルを読み込みます。
+読み込みが失敗した場合は、そのスクリプトを終了します。
+
+```bash
+source "${XDG_DATA_HOME:-$HOME/.local/share}/bashstock/bashstock.sh" || exit "$?"
+```
+
+対話型Bashでは、`.bashrc`から読み込むとTab補完も自動で有効になります。
 
 ```bash
 source "${XDG_DATA_HOME:-$HOME/.local/share}/bashstock/bashstock.sh"
 ```
+
+自動化で使用するバージョンを固定する場合は、特定のリリースから取得した`bashstock.sh`をスクリプトと一緒に管理します。
+配布ファイルの実行権限は必要ありません。
 
 ## 使い方
 
@@ -55,7 +65,7 @@ example::run -Name sample -Count 3 -Force
 [関数リファレンス](docs/reference/functions.md)では、公開関数を名前空間ごとに確認できます。
 [アーキテクチャ](docs/explanation/architecture.md)では、ソース、配布物、モジュール、OS別実装の関係を説明します。
 
-関数の選定根拠は、[bash-commons](docs/explanation/function-selection/bash-commons.md)、[Lobash](docs/explanation/function-selection/lobash.md)、[Pure Bash Bible](docs/explanation/function-selection/pure-bash-bible.md)、[utilスクリプト](docs/explanation/function-selection/util-scripts.md)ごとに整理しています。
+関数の選定根拠は、[bash-commons](docs/explanation/function-selection/bash-commons.md)、[Lobash](docs/explanation/function-selection/lobash.md)、[Pure Bash Bible](docs/explanation/function-selection/pure-bash-bible.md)ごとに整理しています。
 
 ## コントリビューション
 

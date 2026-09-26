@@ -355,6 +355,21 @@ path::change-owner-recursively() {
     return 64
   fi
 
-  command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
-    change-owner-recursively "$@"
+  path::_validate-ownership "$@" || return "$?"
+  bashstock::_run-as-root change-owner-recursively "$@"
+}
+
+
+### Validate a directory and its requested owner and group.
+path::_validate-ownership() {
+  if [[ "$#" -lt 2 || "$#" -gt 3 ]]; then return 64; fi
+  if [[ ! -d "$1" || -L "$1" ]]; then return 66; fi
+  string::_require-non-empty-line "$2" || return "$?"
+  if [[ "$#" -eq 3 ]]; then string::_require-non-empty-line "$3" || return "$?"; fi
+}
+
+### Change directory ownership recursively in a separate root process.
+path::change-owner-recursively-as-root() {
+  path::_validate-ownership "$@" || return "$?"
+  bashstock::_run-as-root change-owner-recursively "$@"
 }
