@@ -17,8 +17,8 @@ git pull --ff-only
 just verify
 ```
 
-`just build`は`dist/bashstock/`と`dist/bashstock.tar.gz`を生成します。
-ローカルで配布内容を確認する場合は、生成された`dist/bashstock/bashstock.sh`を新しいBashプロセスから読み込みます。
+`just build`は単一の配布ファイル`dist/bashstock.sh`を生成します。
+ローカルで配布内容を確認する場合は、生成された`dist/bashstock.sh`を新しいBashプロセスから読み込みます。
 
 ## 公開
 
@@ -30,4 +30,4 @@ git push origin v1.2.3
 ```
 
 タグのpushによりReleaseワークフローが開始します。
-ワークフローは静的検査、配布物の生成、全テストを実行し、成功後に`bashstock.tar.gz`を添付したGitHub Releaseを作成します。
+ワークフローは静的検査、配布物の生成、全テストを実行し、成功後に`bashstock.sh`を添付したGitHub Releaseを作成します。

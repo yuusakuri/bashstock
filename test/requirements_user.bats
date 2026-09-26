@@ -25,7 +25,7 @@ load test_helper
   [ "${status}" -eq 64 ]
 }
 
-@test "root variants dispatch exact argument values to the root helper" {
+@test "root variants pass exact argument values to the standalone file" {
   command::run-as-root() {
     printf '%s\n' "$@"
   }

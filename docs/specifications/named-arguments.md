@@ -90,7 +90,9 @@ user::_create-args() {
 }
 ```
 
-`src/completion.sh`の`arg::completion::dispatch`は、補完対象の公開関数名から補完用内部関数名を自動的に導出して呼び出す。中央のdispatcherには個別関数の知識を持たせない。`arg::completion::register-all`は、`bashstock.sh`の結合時に存在するすべての`::_*-args`関数を検出し、対応する公開関数へ`complete -F arg::completion::dispatch`を登録する。
+`src/completion.sh`の`arg::completion::dispatch`は、補完対象の公開関数名から補完用内部関数名を自動的に導出して呼び出す。中央のdispatcherには個別関数の知識を持たせない。`arg::completion::register-all`は、明示的に呼び出された時点で定義されているすべての`::_*-args`関数を検出し、対応する公開関数へ`complete -F arg::completion::dispatch`を登録する。
+
+ライブラリを読み込むだけではTab補完を登録しない。対話型Bashの設定から、読み込み後に`arg::completion::register-all`を呼び出す。
 
 新しい名前付き引数の公開関数を追加するときは、その関数と対応する`::_<処理>-args`を同じ機能ファイルへ追加するだけでよい。中央の補完登録一覧を手動で更新する必要はない。
 

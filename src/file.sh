@@ -183,13 +183,12 @@ file::append-text() {
   printf '%s' "$2" >>"$1" 2>/dev/null || return 74
 }
 
-### Append text without conversion through the root helper.
+### Append text without conversion in a separate root process.
 file::append-text-as-root() {
   if [[ "$#" -ne 2 || -z "$1" || -L "$1" ]]; then
     return 64
   fi
-  command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
-    append-text "$1" "$2"
+  bashstock::_run-as-root append-text "$1" "$2"
 }
 
 ### Replace the first Perl regular-expression match on every file line.
@@ -210,15 +209,14 @@ file::replace-text() {
   fi
 }
 
-### Replace line matches through the root helper.
+### Replace line matches in a separate root process.
 file::replace-text-as-root() {
   if [[ "$#" -ne 3 ]] ||
     ! string::_require-one-line "$2" ||
     ! string::_require-one-line "$3"; then
     return 64
   fi
-  command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
-    replace-text "$@"
+  bashstock::_run-as-root replace-text "$@"
 }
 
 ### Replace line matches across files with rollback on failure.
@@ -306,13 +304,12 @@ file::replace-text-in-files() {
   file::_replace-text-in-files "$@"
 }
 
-### Replace line matches across multiple files through the root helper.
+### Replace line matches across multiple files in a separate root process.
 file::replace-text-in-files-as-root() {
   if [[ "$#" -lt 3 ]]; then
     return 64
   fi
-  command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
-    replace-text-in-files "$@"
+  bashstock::_run-as-root replace-text-in-files "$@"
 }
 
 ### Replace line matches or append one line when no match exists.
@@ -333,13 +330,12 @@ file::replace-or-append-text() {
   fi
 }
 
-### Replace line matches or append through the root helper.
+### Replace line matches or append in a separate root process.
 file::replace-or-append-text-as-root() {
   if [[ "$#" -ne 3 ]] ||
     ! string::_require-one-line "$2" ||
     ! string::_require-one-line "$3"; then
     return 64
   fi
-  command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
-    replace-or-append-text "$@"
+  bashstock::_run-as-root replace-or-append-text "$@"
 }

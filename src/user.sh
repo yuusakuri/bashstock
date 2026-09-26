@@ -34,20 +34,24 @@ user::exists() {
   id -u "$1" >/dev/null 2>&1
 }
 
-### Create a non-login system account through the root helper.
-user::create-system-as-root() {
+### Validate a system account name and reject an existing account.
+user::_validate-system-creation() {
   if [[ "$#" -ne 1 ]] || ! ( [[ "$1" =~ ^_[a-z][a-z0-9_-]*$ ]] ); then
     return 64
   fi
   if user::exists "$1"; then
     return 73
   fi
-  command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
-    create-system-user "$1"
 }
 
-### Create a local login account through the root helper.
-user::create-login-as-root() {
+### Create a non-login system account in a separate root process.
+user::create-system-as-root() {
+  user::_validate-system-creation "$@" || return "$?"
+  bashstock::_run-as-root create-system-user "$@"
+}
+
+### Validate login account arguments and require password input through a terminal.
+user::_validate-login-creation() {
   if [[ "$#" -ne 2 ]] ||
     ! ( [[ "$1" =~ ^[a-z][a-z0-9_-]*$ ]] ) ||
     [[ -z "$2" || "$2" == *:* || "$2" == *[[:cntrl:]]* ]]; then
@@ -60,6 +64,10 @@ user::create-login-as-root() {
     console::_write-error 'A controlling terminal is required to set the password.'
     return 66
   fi
-  command::run-as-root "${BASHSTOCK_ROOT}/libexec/bashstock-root" \
-    create-login-user "$1" "$2"
+}
+
+### Create a local login account in a separate root process.
+user::create-login-as-root() {
+  user::_validate-login-creation "$@" || return "$?"
+  bashstock::_run-as-root create-login-user "$@"
 }

@@ -3,7 +3,7 @@
 BashStockが公開する関数を名前空間ごとに示します。
 関数名と入出力の規則は[ライブラリ仕様](../specifications/library.md)、名前付き引数とTab補完は[名前付き引数とTab補完の仕様](../specifications/named-arguments.md)で定義します。
 
-`-as-root`で終わる関数は、管理者権限が必要な操作を`libexec/bashstock-root`を通じて実行します。
+`-as-root`で終わる関数は、同じ`bashstock.sh`を管理者権限の別プロセスで起動し、指定された操作を実行します。
 
 ## `number`
 
@@ -81,7 +81,7 @@ BashStockが公開する関数を名前空間ごとに示します。
 | 関数 | 説明 |
 |---|---|
 | `arg::completion::dispatch` | Dispatch Tab completion to the target function's completion helper. Registered with `complete -F` for every function that has a matching `::_<action>-args` helper. Bash calls this with no arguments and reads COMP_WORDS, COMP_CWORD, and COMPREPLY. |
-| `arg::completion::register-all` | Register Tab completion for every function that has a completion helper. Called once after every module has been loaded, so that functions defined later in the load order are still discovered. |
+| `arg::completion::register-all` | Register Tab completion for every function that has a completion helper. Call explicitly after sourcing the library and defining completion helpers. |
 
 ## `system`
 
@@ -96,7 +96,7 @@ BashStockが公開する関数を名前空間ごとに示します。
 |---|---|
 | `command::exists` | Test whether a command name resolves in the current environment. |
 | `command::require` | Require a command name to resolve in the current environment. |
-| `command::run-as-root` | Run a command directly as root or through validated sudo access. |
+| `command::run-as-root` | Run a command directly as root or through validated sudo access. Noninteractive shells never wait for sudo password input. |
 
 ## `shell`
 
@@ -128,7 +128,7 @@ BashStockが公開する関数を名前空間ごとに示します。
 | `path::normalize` | Normalize a path lexically without accessing the file system. |
 | `path::relative` | Write the lexical relative path from one path to another. |
 | `path::config-home` | Write the absolute configuration-home directory. |
-| `path::change-owner-recursively-as-root` | Change directory ownership recursively through the root helper. |
+| `path::change-owner-recursively-as-root` | Change directory ownership recursively in a separate root process. |
 
 ## `prompt`
 
@@ -182,13 +182,13 @@ BashStockが公開する関数を名前空間ごとに示します。
 | `file::contains-match` | Test whether any file line matches a Perl regular expression. |
 | `file::verify-sha256` | Test a file against an expected SHA-256 digest. |
 | `file::append-text` | Append text without conversion using the current user's permissions. |
-| `file::append-text-as-root` | Append text without conversion through the root helper. |
+| `file::append-text-as-root` | Append text without conversion in a separate root process. |
 | `file::replace-text` | Replace the first Perl regular-expression match on every file line. |
-| `file::replace-text-as-root` | Replace line matches through the root helper. |
+| `file::replace-text-as-root` | Replace line matches in a separate root process. |
 | `file::replace-text-in-files` | Replace line matches across multiple files. |
-| `file::replace-text-in-files-as-root` | Replace line matches across multiple files through the root helper. |
+| `file::replace-text-in-files-as-root` | Replace line matches across multiple files in a separate root process. |
 | `file::replace-or-append-text` | Replace line matches or append one line when no match exists. |
-| `file::replace-or-append-text-as-root` | Replace line matches or append through the root helper. |
+| `file::replace-or-append-text-as-root` | Replace line matches or append in a separate root process. |
 
 ## `user`
 
@@ -198,8 +198,8 @@ BashStockが公開する関数を名前空間ごとに示します。
 | `user::primary-group` | Write the effective user's primary group name. |
 | `user::is-root` | Test whether the effective user is root. |
 | `user::exists` | Test whether a local user account exists. |
-| `user::create-system-as-root` | Create a non-login system account through the root helper. |
-| `user::create-login-as-root` | Create a local login account through the root helper. |
+| `user::create-system-as-root` | Create a non-login system account in a separate root process. |
+| `user::create-login-as-root` | Create a local login account in a separate root process. |
 
 ## `aws`
 
