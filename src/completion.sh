@@ -60,7 +60,8 @@ arg::completion::dispatch() {
 
 ### Register Tab completion for every function that has a completion helper.
 ###
-### Call explicitly after sourcing the library and defining completion helpers.
+### Registered automatically when the library is sourced in an interactive shell.
+### Call again after defining additional completion helpers.
 arg::completion::register-all() {
   if [[ "$#" -ne 0 ]]; then
     return 64
