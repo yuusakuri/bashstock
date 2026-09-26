@@ -362,6 +362,7 @@ DNS管理方式の判定は非公開関数`net::dns::_manager`が行い、`syste
 | `codex-install` | npmのglobal領域へCodexを導入してログインします。 | CLIアプリの導入と認証を一つの関数へ結合するためです。 | CLI導入と認証を別の製品設定で扱います。 |
 | `claude-code-install` | npmのglobal領域へClaude Codeを導入して起動します。 | CLIアプリの導入と対話起動を一つの関数へ結合するためです。 | CLI導入と起動を別の操作として扱います。 |
 | `git-setup`（Linux定義） | 共通Git設定とCredential Manager設定を適用します。 | global設定と資格情報方式を一つの関数へ固定するためです。 | `git::config::setup`とCredential Manager設定を呼び出し側で個別に実行します。 |
+| `git-setup`（macOS定義） | 共通Git設定とosxkeychain設定を適用します。 | global設定と資格情報方式を一つの関数へ固定するためです。 | `git::config::setup`と`git::config::use-osx-keychain`を呼び出し側で個別に実行します。 |
 | `_android-commandlinetools-url` | Android StudioのHTMLからOS別command-line tools URLを抽出します。 | 非公開HTMLの構造解析へ依存するためです。 | 公式metadataを扱う製品固有の取得処理へ移します。 |
 | `android-commandlinetools-install` | Android SDK一式を最新版で再作成します。 | 既存SDKを置き換える導入処理を関数へ固定するためです。 | SDK導入製品が既存SDKの切替えとrollbackを管理します。 |
 | `android-commandlinetools-url`（Linux定義） | Android command-line toolsのLinux用URLを選びます。 | 非公開HTMLの構造解析へ依存するためです。 | 公式metadataを扱う製品固有の取得処理へ移します。 |
