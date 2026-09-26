@@ -24,12 +24,10 @@ curl --fail --location \
 source "${XDG_DATA_HOME:-$HOME/.local/share}/bashstock/bashstock.sh" || exit "$?"
 ```
 
-対話型Bashでは、`.bashrc`から読み込み、Tab補完を明示的に登録します。
+対話型Bashでは、`.bashrc`から読み込むとTab補完も自動で有効になります。
 
 ```bash
-if source "${XDG_DATA_HOME:-$HOME/.local/share}/bashstock/bashstock.sh"; then
-  arg::completion::register-all
-fi
+source "${XDG_DATA_HOME:-$HOME/.local/share}/bashstock/bashstock.sh"
 ```
 
 自動化で使用するバージョンを固定する場合は、特定のリリースから取得した`bashstock.sh`をスクリプトと一緒に管理します。

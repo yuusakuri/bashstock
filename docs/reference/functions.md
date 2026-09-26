@@ -81,7 +81,7 @@ BashStockが公開する関数を名前空間ごとに示します。
 | 関数 | 説明 |
 |---|---|
 | `arg::completion::dispatch` | Dispatch Tab completion to the target function's completion helper. Registered with `complete -F` for every function that has a matching `::_<action>-args` helper. Bash calls this with no arguments and reads COMP_WORDS, COMP_CWORD, and COMPREPLY. |
-| `arg::completion::register-all` | Register Tab completion for every function that has a completion helper. Call explicitly after sourcing the library and defining completion helpers. |
+| `arg::completion::register-all` | Register Tab completion for every function that has a completion helper. Registered automatically when the library is sourced in an interactive shell. Call again after defining additional completion helpers. |
 
 ## `system`
 

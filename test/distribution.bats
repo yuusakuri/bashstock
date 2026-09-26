@@ -56,7 +56,7 @@ copy_distribution() {
   [ "${output}" = 'HELLO' ]
 }
 
-@test "sourcing is silent and preserves caller state and existing completion" {
+@test "noninteractive sourcing is silent and preserves caller state and existing completion" {
   run bash -c '
     sample::run() { :; }
     sample::_run-args() { printf "%s\n" -Name; }
@@ -130,4 +130,24 @@ copy_distribution() {
   ' _ "${PROJECT_ROOT}/dist/bashstock.sh" "${BATS_TEST_TMPDIR}/file"
   [ "${status}" -eq 0 ]
   [ "${output}" = 'HELLO' ]
+}
+
+@test "interactive sourcing enables completion automatically and preserves it on reload" {
+  run bash --noprofile --norc -ic '
+    sample::run() { :; }
+    sample::_run-args() { printf "%s\n" -Name -Count; }
+    source "$1" >"$2" || exit 90
+    test ! -s "$2" || exit 91
+    registered="$(complete -p sample::run)" || exit 92
+    [[ "${registered}" == *"-F arg::completion::dispatch"* ]] || exit 93
+    COMP_WORDS=(sample::run -N)
+    COMP_CWORD=1
+    arg::completion::dispatch || exit 94
+    [[ "${#COMPREPLY[@]}" -eq 1 && "${COMPREPLY[0]}" == -Name ]] || exit 95
+    complete -W retained sample::run
+    retained="$(complete -p sample::run)"
+    source "$1" || exit 96
+    test "$(complete -p sample::run)" = "${retained}" || exit 97
+  ' _ "${PROJECT_ROOT}/dist/bashstock.sh" "${BATS_TEST_TMPDIR}/output"
+  [ "${status}" -eq 0 ]
 }
