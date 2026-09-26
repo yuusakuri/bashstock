@@ -122,7 +122,7 @@ file::latest-by-name() {
   [[ -d "$directory" ]] || return 66
   while IFS= read -r -d '' path; do
     [[ "$(basename -- "$path")" =~ $expression ]] || continue
-    current_time="$(stat -f '%m' -- "$path" 2>/dev/null || stat -c '%Y' -- "$path" 2>/dev/null)" || continue
+    current_time="$(file::modified-time-unix-seconds "$path" 2>/dev/null)" || continue
     if [[ -z "$newest" || "$current_time" -gt "$newest_time" ]]; then newest="$path"; newest_time="$current_time"; fi
   done < <(find "$directory" -type f -print0)
   [[ -n "$newest" ]] || return 1; printf '%s\n' "$newest"
@@ -187,8 +187,17 @@ net::dns::test() {
   dscacheutil -q host -a name "$1" >/dev/null 2>&1
 }
 
-### Add a user to a supplementary group.
-user::add-to-group() { if [[ "$#" -lt 1 || "$#" -gt 2 || -z "$1" ]]; then return 64; fi; local user="${2:-$(user::name)}"; case "$(system::operating-system)" in darwin) command -v dseditgroup >/dev/null 2>&1 || return 69; dseditgroup -o edit -a "$user" -t user "$1" ;; linux) command -v usermod >/dev/null 2>&1 || return 69; usermod -a -G "$1" "$user" ;; *) return 69 ;; esac; }
+### Add a user to a supplementary group through administrator execution.
+user::add-to-group() {
+  if [[ "$#" -lt 1 || "$#" -gt 2 || ! "$1" =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]]; then return 64; fi
+  local user="${2:-}"
+  [[ -n "${user}" ]] || user="$(user::name)" || return "$?"
+  case "$(system::operating-system)" in
+    darwin) command::require dseditgroup || return "$?"; command::run-as-root dseditgroup -o edit -a "${user}" -t user "$1" ;;
+    linux) command::require usermod || return "$?"; command::run-as-root usermod -a -G "$1" "${user}" ;;
+    *) return 69 ;;
+  esac
+}
 
 ### Write the kernel name.
 system::kernel-name() { [[ "$#" -eq 0 ]] || return 64; command -v uname >/dev/null 2>&1 || return 69; uname -s; }
@@ -827,11 +836,23 @@ go::version::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command go versi
 ### Execute the go::version::latest utility.
 go::version::latest() { [[ "$#" -eq 0 ]] || return 64; go::version::list; }
 
-### Execute the ruby::version::list utility.
-ruby::version::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command ruby -e 'puts RUBY_VERSION'; }
+### Write stable Ruby versions that rbenv can install in ascending order.
+ruby::version::list() {
+  [[ "$#" -eq 0 ]] || return 64
+  local rbenv='' versions='' version=''
+  rbenv="$(ruby::_rbenv-command)" || return "$?"
+  versions="$("${rbenv}" install --list-all 2>/dev/null)" || return 74
+  while IFS= read -r version; do
+    version="${version#"${version%%[![:space:]]*}"}"
+    [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && printf '%s\n' "${version}"
+  done <<<"${versions}" | package::_sort-versions
+}
 
-### Execute the ruby::version::latest utility.
-ruby::version::latest() { [[ "$#" -eq 0 ]] || return 64; ruby::version::list; }
+### Write the newest stable Ruby version that rbenv can install.
+ruby::version::latest() {
+  [[ "$#" -eq 0 ]] || return 64
+  ruby::version::list | package::_latest-stable-version
+}
 
 ### Execute the rosetta::install utility.
 rosetta::install() { [[ "$#" -eq 0 ]] || return 64; [[ "$(system::operating-system)" == darwin ]] || return 69; util::_run-command softwareupdate --install-rosetta --agree-to-license; }
@@ -890,11 +911,40 @@ terminal::gnome-bash() { [[ "$#" -ge 0 ]] || return 64; util::_run-command gnome
 ### Execute the shell::editor::set-default utility.
 shell::editor::set-default() { [[ "$#" -ge 1 ]] || return 64; env::set-variable EDITOR "$1"; }
 
-### Execute the plist::set utility.
-plist::set() { [[ "$#" -eq 3 && -f "$1" ]] || return 64; util::_run-command defaults write "$1" "$2" "$3"; }
+### Set a string value for one top-level key in a macOS property list.
+###
+### The file is created as an empty dictionary when it does not exist and is
+### validated with plutil before and after the change.
+plist::set() {
+  [[ "$#" -eq 3 && -n "$1" && -n "$2" && "$2" != *.* && ! -L "$1" ]] || return 64
+  command::require plutil || return "$?"
+  if [[ ! -e "$1" ]]; then
+    mkdir -p -- "$(path::directory-name "$1")" || return 74
+    file::write-text "$1" '<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict/>
+</plist>
+' || return "$?"
+  fi
+  [[ -f "$1" ]] || return 66
+  plutil -lint -s "$1" || return 65
+  plutil -replace "$2" -string "$3" "$1" || return 74
+  plutil -lint -s "$1" || return 65
+}
 
-### Execute the textproto::set-scalar utility.
-textproto::set-scalar() { [[ "$#" -eq 4 && -f "$1" ]] || return 64; file::replace-text "$1" "^${2}:.*$" "${2}: ${4}"; }
+### Replace or append one top-level scalar field in a textproto file.
+###
+### Arguments
+###
+### * FILE - Existing textproto file.
+### * FIELD - Field name.
+### * VALUE - Literal scalar value written after the field name.
+textproto::set-scalar() {
+  [[ "$#" -eq 3 && -f "$1" && ! -L "$1" && "$2" =~ ^[A-Za-z_][A-Za-z0-9_]*$ && -n "$3" ]] || return 64
+  string::_require-one-line "$3" || return "$?"
+  file::replace-text-or-append "$1" "^$2[[:space:]]*:.*$" "$2: $3"
+}
 
 ### Execute the shell::completion::enable-ignore-case utility.
 shell::completion::enable-ignore-case() { [[ "$#" -le 1 ]] || return 64; env::set-variable completion_ignore_case 1; }
@@ -947,15 +997,6 @@ ssh::key::generate-ed25519() { [[ "$#" -le 6 ]] || return 64; ssh-keygen -t ed25
 
 ### Execute the ssh::kill-all utility.
 ssh::kill-all() { [[ "$#" -eq 0 ]] || return 64; ssh-add -D; }
-
-### Execute the net::dns::use-systemd-resolved utility.
-net::dns::use-systemd-resolved() { [[ "$#" -eq 0 ]] || return 64; command -v resolvectl >/dev/null 2>&1 || return 69; sudo resolvectl flush-caches; }
-
-### Execute the net::dns::use-network-manager utility.
-net::dns::use-network-manager() { [[ "$#" -eq 0 ]] || return 64; command -v nmcli >/dev/null 2>&1 || return 69; sudo nmcli general reload; }
-
-### Execute the net::dns::use-google utility.
-net::dns::use-google() { [[ "$#" -eq 0 ]] || return 64; command -v resolvectl >/dev/null 2>&1 || return 69; sudo resolvectl dns "$(net::interface::default)" 8.8.8.8 8.8.4.4; }
 
 ### Execute the git::config::use-osx-keychain utility.
 git::config::use-osx-keychain() { [[ "$#" -eq 0 ]] || return 64; [[ "$(system::operating-system)" == darwin ]] || return 69; git config --global credential.helper osxkeychain; }
@@ -1121,4 +1162,308 @@ vscode::remove-user-data() {
   if [[ "$#" -eq 1 ]]; then directory="$1"; elif [[ "$(system::operating-system)" == darwin ]]; then directory="$HOME/Library/Application Support/Code"; else directory="$HOME/.config/Code"; fi
   [[ -d "$directory" && ! -L "$directory" ]] || return 66
   directory::clear "$directory"
+}
+
+### Reboot a device into its bootloader.
+adb::device::bootloader::enter() { adb::_run reboot bootloader "$@"; }
+
+### Set the default ADB device for later calls in the current shell by exporting ANDROID_SERIAL.
+adb::device::set-default() {
+  [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9._:-]+$ ]] || return 64
+  export ANDROID_SERIAL="$1"
+}
+
+### Start the host ADB server.
+adb::server::start() { [[ "$#" -eq 0 ]] || return 64; util::_run-command adb start-server; }
+
+### Stop the host ADB server.
+adb::server::stop() { [[ "$#" -eq 0 ]] || return 64; util::_run-command adb kill-server; }
+
+### Stop and then start the host ADB server.
+adb::server::restart() { [[ "$#" -eq 0 ]] || return 64; adb::server::stop || return "$?"; adb::server::start; }
+
+### List stashes.
+git::stash::list() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" stash list; }
+
+### Write the last modification time of a file as Unix seconds.
+file::modified-time-unix-seconds() {
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  [[ -e "$1" || -L "$1" ]] || return 66
+  command::require stat || return "$?"
+  case "$(system::operating-system)" in
+    darwin) stat -f '%m' -- "$1" || return 74 ;;
+    linux) stat -c '%Y' -- "$1" || return 74 ;;
+    *) return 69 ;;
+  esac
+}
+
+### List the named arguments and value candidates for gpg::key::generate.
+gpg::key::_generate-args() {
+  case "${1-}" in
+    -Usage)
+      printf '%s\n' sign cert auth sign,auth
+      ;;
+    -Algorithm)
+      printf '%s\n' ed25519 rsa3072 rsa4096
+      ;;
+    '')
+      printf '%s\n' -Usage -Algorithm -Expires -UserId -Pinentry -PassphraseFd
+      ;;
+  esac
+}
+
+### Generate a GPG primary key and an encryption subkey in one operation.
+###
+### Options
+###
+### * -Usage USAGE - Primary key usage: sign, cert, auth, or a comma-separated
+###   combination. Defaults to sign.
+### * -Algorithm ALGORITHM - ed25519, rsa3072, or rsa4096. Defaults to ed25519,
+###   which pairs an Ed25519 primary key with a Curve25519 encryption subkey.
+### * -Expires EXPIRES - GnuPG expiration such as 5y, 12m, or 0. Defaults to 5y.
+### * -UserId USER_ID - "Name <email>". Defaults to the Git user name and email.
+### * -Pinentry - Ask for the passphrase through pinentry.
+### * -PassphraseFd FD - Read the passphrase from a file descriptor.
+###
+### Without -Pinentry or -PassphraseFd, the key has no passphrase.
+gpg::key::generate() {
+  local usage='sign' algorithm='ed25519' expires='5y' user_id='' pinentry='false' passphrase_fd=''
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+      -Usage | -Algorithm | -Expires | -UserId | -PassphraseFd)
+        arg::require-next "$#" "$1" || return "$?"
+        case "$1" in
+          -Usage) usage="$2" ;;
+          -Algorithm) algorithm="$2" ;;
+          -Expires) expires="$2" ;;
+          -UserId) user_id="$2" ;;
+          -PassphraseFd) passphrase_fd="$2" ;;
+        esac
+        shift 2
+        ;;
+      -Pinentry)
+        pinentry='true'
+        shift
+        ;;
+      *)
+        arg::unknown "$1" || return "$?"
+        ;;
+    esac
+  done
+  [[ "${usage}" =~ ^(sign|cert|auth)(,(sign|cert|auth))*$ ]] || return 64
+  arg::one-of -Algorithm "${algorithm}" ed25519 rsa3072 rsa4096 || return "$?"
+  [[ "${expires}" =~ ^(0|[1-9][0-9]*[dwmy]?)$ ]] || return 64
+  [[ -z "${passphrase_fd}" || "${passphrase_fd}" =~ ^[0-9]+$ ]] || return 64
+  [[ "${pinentry}" == 'false' || -z "${passphrase_fd}" ]] || return 64
+  command::require gpg || return "$?"
+  if [[ -z "${user_id}" ]]; then
+    local name='' email=''
+    name="$(git config --get user.name 2>/dev/null)"
+    email="$(git config --get user.email 2>/dev/null)"
+    [[ -n "${name}" && -n "${email}" ]] || return 64
+    user_id="${name} <${email}>"
+  fi
+  local user_id_pattern='^([^<>]+) <([^<>@[:space:]]+@[^<>[:space:]]+)>$'
+  [[ "${user_id}" =~ ${user_id_pattern} ]] || return 64
+  local real_name="${BASH_REMATCH[1]}" email_address="${BASH_REMATCH[2]}" parameters='' directory='' status=0
+  case "${algorithm}" in
+    ed25519)
+      parameters="Key-Type: eddsa"$'\n'"Key-Curve: ed25519"$'\n'
+      parameters+="Subkey-Type: ecdh"$'\n'"Subkey-Curve: cv25519"$'\n'
+      ;;
+    rsa*)
+      parameters="Key-Type: RSA"$'\n'"Key-Length: ${algorithm#rsa}"$'\n'
+      parameters+="Subkey-Type: RSA"$'\n'"Subkey-Length: ${algorithm#rsa}"$'\n'
+      ;;
+  esac
+  parameters+="Key-Usage: ${usage//,/ }"$'\n'"Subkey-Usage: encrypt"$'\n'
+  parameters+="Name-Real: ${real_name}"$'\n'"Name-Email: ${email_address}"$'\n'
+  parameters+="Expire-Date: ${expires}"$'\n'
+  [[ "${pinentry}" == 'true' || -n "${passphrase_fd}" ]] || parameters+='%no-protection'$'\n'
+  parameters+='%commit'$'\n'
+  directory="$(package::_temporary-directory)" || return "$?"
+  chmod 0700 "${directory}" || status=74
+  if [[ "${status}" -eq 0 ]]; then
+    (umask 077 && printf '%s' "${parameters}" >"${directory}/parameters") || status=74
+  fi
+  if [[ "${status}" -eq 0 ]]; then
+    if [[ -n "${passphrase_fd}" ]]; then
+      gpg --batch --pinentry-mode loopback --passphrase-fd "${passphrase_fd}" \
+        --generate-key "${directory}/parameters" || status="$?"
+    elif [[ "${pinentry}" == 'true' ]]; then
+      gpg --generate-key "${directory}/parameters" || status="$?"
+    else
+      gpg --batch --generate-key "${directory}/parameters" || status="$?"
+    fi
+  fi
+  rm -rf -- "${directory}"
+  return "${status}"
+}
+
+### Write the current DNS manager: systemd-resolved, network-manager, or unknown.
+net::dns::manager() { [[ "$#" -eq 0 ]] || return 64; net::dns::_manager; }
+
+### Write one setting from the effective NetworkManager configuration.
+net::dns::_network-manager-setting() {
+  [[ "$#" -eq 1 && "$1" =~ ^[a-z-]+$ ]] || return 64
+  command -v NetworkManager >/dev/null 2>&1 || return 1
+  NetworkManager --print-config 2>/dev/null |
+    awk -F= -v key="$1" '/^\[/ {section=$0} section == "[main]" && $1 == key {print $2; exit}'
+}
+
+### Write the current DNS manager by inspecting resolv.conf and NetworkManager settings.
+net::dns::_manager() {
+  [[ "$#" -eq 0 ]] || return 64
+  local target='' dns=''
+  if [[ -L /etc/resolv.conf ]]; then
+    target="$(readlink /etc/resolv.conf)" || target=''
+  fi
+  dns="$(net::dns::_network-manager-setting dns)" || dns=''
+  case "${target}" in
+    */run/NetworkManager/resolv.conf)
+      printf 'network-manager\n'
+      return 0
+      ;;
+    */run/systemd/resolve/stub-resolv.conf | */run/systemd/resolve/resolv.conf)
+      printf 'systemd-resolved\n'
+      return 0
+      ;;
+  esac
+  case "${dns}" in
+    systemd-resolved) printf 'systemd-resolved\n' ;;
+    default | dnsmasq) printf 'network-manager\n' ;;
+    *) printf 'unknown\n' ;;
+  esac
+}
+
+### Back up /etc/resolv.conf when it differs from the link that will replace it.
+net::dns::_backup-resolv-conf() {
+  [[ "$#" -eq 1 && "$1" == /* ]] || return 64
+  [[ -e /etc/resolv.conf || -L /etc/resolv.conf ]] || return 0
+  if [[ -L /etc/resolv.conf && "$(readlink /etc/resolv.conf)" == "$1" ]]; then
+    return 0
+  fi
+  local stamp=''
+  stamp="$(time::local-date-time-seconds-basic)" || return "$?"
+  command::run-as-root cp -P -- /etc/resolv.conf "/etc/resolv.conf.bashstock-${stamp}" || return 74
+}
+
+### Write active NetworkManager connection UUIDs, excluding VPN connections.
+net::dns::_active-network-manager-connections() {
+  [[ "$#" -eq 0 ]] || return 64
+  command::require nmcli || return "$?"
+  nmcli -t -f UUID,TYPE connection show --active 2>/dev/null |
+    awk -F: '$2 != "vpn" && $2 != "wireguard" && $2 != "loopback" && $1 != "" {print $1}'
+}
+
+### Restart systemd-resolved and confirm that it is active.
+net::dns::_restart-systemd-resolved() {
+  [[ "$#" -eq 0 ]] || return 64
+  command::require systemctl || return "$?"
+  command::run-as-root systemctl restart systemd-resolved || return 75
+  systemctl is-active --quiet systemd-resolved || return 75
+}
+
+### Restart NetworkManager and wait until it writes its runtime resolv.conf.
+net::dns::_restart-network-manager() {
+  [[ "$#" -eq 0 ]] || return 64
+  command::require systemctl || return "$?"
+  command::run-as-root systemctl restart NetworkManager || return 75
+  systemctl is-active --quiet NetworkManager || return 75
+  local attempt=0
+  while [[ ! -f /run/NetworkManager/resolv.conf ]]; do
+    attempt=$((attempt + 1))
+    [[ "${attempt}" -le 20 ]] || return 75
+    sleep 0.5 || return 74
+  done
+}
+
+### Verify the DNS manager, configured servers, resolv.conf link, and name resolution.
+###
+### Arguments
+###
+### * MANAGER - Expected DNS manager.
+### * SERVER... - DNS servers that must be configured.
+net::dns::_verify() {
+  [[ "$#" -ge 1 ]] || return 64
+  local manager="$1" actual='' configured='' server=''
+  shift
+  actual="$(net::dns::_manager)" || return "$?"
+  if [[ "${actual}" != "${manager}" ]]; then
+    console::_write-error "DNS manager is ${actual}, expected ${manager}."
+    return 75
+  fi
+  case "${manager}" in
+    systemd-resolved)
+      [[ "$(readlink /etc/resolv.conf 2>/dev/null)" == */run/systemd/resolve/*resolv.conf ]] || return 75
+      command::require resolvectl || return "$?"
+      configured="$(resolvectl dns 2>/dev/null)"
+      ;;
+    network-manager)
+      [[ "$(readlink /etc/resolv.conf 2>/dev/null)" == */run/NetworkManager/resolv.conf ]] || return 75
+      configured="$(<"/etc/resolv.conf")"
+      ;;
+  esac
+  for server in "$@"; do
+    if [[ "${configured}" != *"${server}"* ]]; then
+      console::_write-error "DNS server is not configured: ${server}"
+      return 75
+    fi
+  done
+  net::dns::test example.com || return 75
+}
+
+### Make systemd-resolved manage DNS and /etc/resolv.conf.
+net::dns::use-systemd-resolved() {
+  [[ "$#" -eq 0 ]] || return 64
+  local link='/run/systemd/resolve/stub-resolv.conf'
+  package::_enable-service systemd-resolved || return "$?"
+  net::dns::_backup-resolv-conf "${link}" || return "$?"
+  command::run-as-root ln -sfn "${link}" /etc/resolv.conf || return 74
+  net::dns::_restart-systemd-resolved || return "$?"
+  net::dns::_verify systemd-resolved
+}
+
+### Make NetworkManager manage DNS and /etc/resolv.conf directly.
+net::dns::use-network-manager() {
+  [[ "$#" -eq 0 ]] || return 64
+  local link='/run/NetworkManager/resolv.conf'
+  command::require NetworkManager || return "$?"
+  command::run-as-root install -d -m 0755 /etc/NetworkManager/conf.d || return 74
+  file::write-text /etc/NetworkManager/conf.d/90-bashstock-dns.conf \
+    $'[main]\ndns=default\nrc-manager=symlink\n' || return "$?"
+  net::dns::_restart-network-manager || return "$?"
+  net::dns::_backup-resolv-conf "${link}" || return "$?"
+  command::run-as-root ln -sfn "${link}" /etc/resolv.conf || return 74
+  net::dns::_verify network-manager
+}
+
+### Configure Google Public DNS while keeping the current DNS manager.
+net::dns::use-google() {
+  [[ "$#" -eq 0 ]] || return 64
+  local manager='' connection='' connections=''
+  manager="$(net::dns::_manager)" || return "$?"
+  case "${manager}" in
+    systemd-resolved)
+      command::run-as-root install -d -m 0755 /etc/systemd/resolved.conf.d || return 74
+      file::write-text /etc/systemd/resolved.conf.d/90-bashstock-google.conf \
+        $'[Resolve]\nDNS=8.8.8.8 8.8.4.4 2001:4860:4860::8888 2001:4860:4860::8844\n' || return "$?"
+      net::dns::_restart-systemd-resolved || return "$?"
+      ;;
+    network-manager)
+      connections="$(net::dns::_active-network-manager-connections)" || return "$?"
+      [[ -n "${connections}" ]] || return 69
+      while IFS= read -r connection; do
+        command::run-as-root nmcli connection modify "${connection}" \
+          ipv4.dns '8.8.8.8 8.8.4.4' ipv4.ignore-auto-dns yes \
+          ipv6.dns '2001:4860:4860::8888 2001:4860:4860::8844' ipv6.ignore-auto-dns yes || return 74
+        command::run-as-root nmcli connection up "${connection}" >/dev/null || return 75
+      done <<<"${connections}"
+      ;;
+    *)
+      console::_write-error 'The DNS manager is unknown; no change was made.'
+      return 69
+      ;;
+  esac
+  net::dns::_verify "${manager}" 8.8.8.8 8.8.4.4
 }
