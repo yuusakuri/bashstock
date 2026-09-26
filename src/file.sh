@@ -622,6 +622,11 @@ file::replace-text-or-append() {
   file::_replace-text-or-append "$@" 1
 }
 
+### Replace matching text or append it using the established API name.
+file::replace-or-append-text() {
+  file::replace-text-or-append "$@"
+}
+
 
 ### Append text through the root execution dispatcher.
 file::append-text-as-root() {
