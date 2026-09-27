@@ -139,6 +139,8 @@ use_fake_curl() {
   use_platform ubuntu 24.04 noble
   record_root_commands
   apt-get() { :; }
+  systemctl() { :; }
+  usermod() { :; }
   use_fake_root
   use_fake_curl
   dpkg() { [[ "$1" == '--print-architecture' ]] && printf 'arm64\n'; }
