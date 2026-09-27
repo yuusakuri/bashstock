@@ -131,9 +131,16 @@ gnome::keybinding::set-custom() {
       gsettings::string-array::remove "${schema}" custom-keybindings "${path}" || return "$?"
     fi
   done <<<"${binding_paths}"
-  gsettings set "${item_schema}:${target}" name "$2" || return 74
-  gsettings set "${item_schema}:${target}" command "$3" || return 74
-  gsettings set "${item_schema}:${target}" binding "$4" || return 74
+  local key='' value='' quoted=''
+  for key in name command binding; do
+    case "${key}" in
+      name) value="$2" ;;
+      command) value="$3" ;;
+      binding) value="$4" ;;
+    esac
+    quoted="$(gsettings::_quote "${value}")" || return "$?"
+    gsettings set "${item_schema}:${target}" "${key}" "${quoted}" || return 74
+  done
   gsettings::string-array::add "${schema}" custom-keybindings "${target}"
 }
 
@@ -349,7 +356,7 @@ ubuntu::setup-desktop-22() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform ubuntu || return "$?"
   local version=''
-  version="$(package::_os-release-value VERSION_ID)" || return "$?"
+  version="$(platform::_os-release-value VERSION_ID)" || return "$?"
   if [[ "${version}" != '22.04' ]]; then
     console::_write-error 'This setup supports only Ubuntu 22.04.'
     return 69

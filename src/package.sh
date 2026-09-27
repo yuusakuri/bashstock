@@ -102,21 +102,6 @@ package::_download() {
   [[ -f "$2" && -s "$2" ]] || return 74
 }
 
-### Write one value from /etc/os-release without evaluating the file.
-package::_os-release-value() {
-  [[ "$#" -eq 1 && "$1" =~ ^[A-Z_]+$ ]] || return 64
-  [[ -r /etc/os-release ]] || return 66
-  local key='' value=''
-  while IFS='=' read -r key value; do
-    [[ "${key}" == "$1" ]] || continue
-    value="${value#\"}"
-    value="${value%\"}"
-    printf '%s\n' "${value}"
-    return 0
-  done </etc/os-release
-  return 1
-}
-
 ### Write the Debian architecture name of the current system.
 package::_deb-architecture() {
   [[ "$#" -eq 0 ]] || return 64

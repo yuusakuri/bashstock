@@ -256,7 +256,7 @@ docker::versions() {
     fedora)
       architecture="$(package::_rpm-architecture)" || return "$?"
       local release=''
-      release="$(package::_os-release-value VERSION_ID)" || return "$?"
+      release="$(platform::_os-release-value VERSION_ID)" || return "$?"
       package::_rpm-repository-versions \
         "https://download.docker.com/linux/fedora/${release}/${architecture}/stable" docker-ce
       ;;
@@ -266,8 +266,8 @@ docker::versions() {
 ### Write the Ubuntu codename used by the Docker repository.
 docker::_ubuntu-codename() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_os-release-value UBUNTU_CODENAME 2>/dev/null ||
-    package::_os-release-value VERSION_CODENAME
+  platform::_os-release-value UBUNTU_CODENAME 2>/dev/null ||
+    platform::_os-release-value VERSION_CODENAME
 }
 
 ### Install the Docker CLI, and Docker Engine on Linux.
