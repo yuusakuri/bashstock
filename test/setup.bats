@@ -78,12 +78,12 @@ use_fake_curl() {
   }
   run mozc::server::install
   [ "${status}" -eq 0 ]
-  [ "$(<"${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y mozc-server=2.28.4715.102+dfsg-2.2~bpo22.04.1' ]
+  [ "$(<"${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades mozc-server=2.28.4715.102+dfsg-2.2~bpo22.04.1' ]
 
   : >"${ROOT_LOG}"
   run mozc::ibus::install 2.26.4220.100+dfsg-5.2
   [ "${status}" -eq 0 ]
-  [ "$(<"${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y ibus-mozc=2.26.4220.100+dfsg-5.2 mozc-server=2.26.4220.100+dfsg-5.2' ]
+  [ "$(<"${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades ibus-mozc=2.26.4220.100+dfsg-5.2 mozc-server=2.26.4220.100+dfsg-5.2' ]
 }
 
 @test "package installers use the package manager of each platform" {
@@ -153,7 +153,7 @@ use_fake_curl() {
     'Components: stable' \
     'Architectures: arm64' \
     'Signed-By: /etc/apt/keyrings/docker.asc')" ]
-  grep -Fqx 'env DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce=5:29.8.1-1~ubuntu.24.04~noble docker-ce-cli=5:29.8.1-1~ubuntu.24.04~noble containerd.io docker-buildx-plugin docker-compose-plugin' "${ROOT_LOG}"
+  grep -Fqx 'env DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades docker-ce=5:29.8.1-1~ubuntu.24.04~noble docker-ce-cli=5:29.8.1-1~ubuntu.24.04~noble containerd.io docker-buildx-plugin docker-compose-plugin' "${ROOT_LOG}"
   grep -Eq '^install -m 0644 .*/docker\.asc /etc/apt/keyrings/docker\.asc$' "${ROOT_LOG}"
   grep -Fqx 'systemctl enable --now docker' "${ROOT_LOG}"
   grep -Fqx "usermod -a -G docker $(id -un)" "${ROOT_LOG}"
@@ -170,6 +170,94 @@ use_fake_curl() {
   [ "${status}" -eq 69 ]
   [ ! -s "${ROOT_LOG}" ]
   [ ! -e "${FAKE_ROOT}/etc/apt/sources.list.d/docker.sources" ]
+}
+
+@test "Docker repository files are readable by unprivileged package queries" {
+  record_root_commands
+  use_fake_root
+  use_fake_curl
+  use_platform ubuntu 18.04 bionic
+  run package::_apt-register-repository docker https://example.invalid/key https://example.invalid/repo bionic stable arm64
+  [ "${status}" -eq 0 ]
+  grep -Fqx 'chmod 0644 /etc/apt/sources.list.d/docker.sources' "${ROOT_LOG}"
+  [ "$(tail -1 "${ROOT_LOG}")" = 'apt-get update' ]
+
+  use_platform fedora 43
+  run package::_dnf-register-repository docker-ce '[docker-ce-stable]'
+  [ "${status}" -eq 0 ]
+  grep -Fqx 'chmod 0644 /etc/yum.repos.d/docker-ce.repo' "${ROOT_LOG}"
+  [ "$(tail -1 "${ROOT_LOG}")" = 'dnf makecache' ]
+}
+
+@test "repository registration propagates permission failures without refreshing" {
+  use_fake_root
+  use_fake_curl
+  command::run-as-root() {
+    case "$1" in
+      chmod) return 77 ;;
+      apt-get | dnf) return 99 ;;
+    esac
+  }
+  use_platform ubuntu 18.04 bionic
+  run package::_apt-register-repository docker https://example.invalid/key https://example.invalid/repo bionic stable arm64
+  [ "${status}" -eq 77 ]
+  use_platform fedora 43
+  run package::_dnf-register-repository docker-ce '[docker-ce-stable]'
+  [ "${status}" -eq 77 ]
+}
+
+@test "Docker on Fedora accepts the engine epoch without imposing it on the CLI" {
+  use_platform fedora 43
+  record_root_commands
+  use_fake_root
+  CURL_BODY=$'[docker-ce-stable]\nname=Docker CE Stable\n'
+  use_fake_curl
+  dnf() { :; }
+  systemctl() { :; }
+  usermod() { :; }
+  run docker::install '3:29.8.0-1.fc43'
+  [ "${status}" -eq 0 ]
+  grep -Fqx 'dnf install -y docker-ce-3:29.8.0-1.fc43 docker-ce-cli-29.8.0-1.fc43 containerd.io docker-buildx-plugin docker-compose-plugin' "${ROOT_LOG}"
+  grep -Fqx 'systemctl enable --now docker' "${ROOT_LOG}"
+  grep -Fqx "usermod -a -G docker $(id -un)" "${ROOT_LOG}"
+}
+
+@test "package version ordering places epoch releases after legacy Docker releases" {
+  run bash -c 'source "$1"; printf "%s\n" 18.06.3~ce~3-0~ubuntu 5:24.0.2-1~ubuntu.18.04~bionic 5:24.0.1-1~ubuntu.18.04~bionic 5:24.0.2-1~ubuntu.18.04~bionic | package::_sort-versions' _ "${PROJECT_ROOT}/dist/bashstock.sh"
+  [ "${status}" -eq 0 ]
+  [ "${output}" = $'18.06.3~ce~3-0~ubuntu\n5:24.0.1-1~ubuntu.18.04~bionic\n5:24.0.2-1~ubuntu.18.04~bionic' ]
+}
+
+@test "Docker on Fedora upgrades installed packages only when no version is requested" {
+  use_platform fedora 43
+  record_root_commands
+  use_fake_root
+  use_fake_curl
+  dnf() { :; }
+  systemctl() { :; }
+  usermod() { :; }
+  run docker::install
+  [ "${status}" -eq 0 ]
+  grep -Fqx 'dnf upgrade -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin' "${ROOT_LOG}"
+
+  : >"${ROOT_LOG}"
+  run docker::install '3:29.8.0-1.fc43'
+  [ "${status}" -eq 0 ]
+  ! grep -q '^dnf upgrade ' "${ROOT_LOG}"
+}
+
+@test "APT permits downgrades only for explicit package versions" {
+  use_platform ubuntu 22.04 jammy
+  record_root_commands
+  apt-get() { :; }
+  run package::_install docker-ce docker-ce-cli
+  [ "${status}" -eq 0 ]
+  [ "$(<"${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli' ]
+
+  : >"${ROOT_LOG}"
+  run package::_install docker-ce=5:29.8.0 docker-ce-cli=5:29.8.0
+  [ "${status}" -eq 0 ]
+  [ "$(<"${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades docker-ce=5:29.8.0 docker-ce-cli=5:29.8.0' ]
 }
 
 @test "Docker on macOS requires Colima or Rancher Desktop to be running" {

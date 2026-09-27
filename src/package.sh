@@ -43,8 +43,12 @@ package::_sort-versions() {
   command::require perl || return "$?"
   perl -e '
     sub compare_versions {
-      my @left = split /([0-9]+)/, $_[0];
-      my @right = split /([0-9]+)/, $_[1];
+      my ($left, $right) = @_;
+      my $left_epoch = $left =~ s/^([0-9]+):// ? $1 : 0;
+      my $right_epoch = $right =~ s/^([0-9]+):// ? $1 : 0;
+      return $left_epoch <=> $right_epoch if $left_epoch != $right_epoch;
+      my @left = split /([0-9]+)/, $left;
+      my @right = split /([0-9]+)/, $right;
       while (@left || @right) {
         my $x = shift @left;
         my $y = shift @right;
@@ -220,10 +224,12 @@ package::_refresh() {
 ###
 ### A Homebrew version that differs from the stable formula version selects
 ### the versioned formula NAME@VERSION.
+### APT permits downgrades only when a version is explicitly requested.
 package::_install() {
   [[ "$#" -ge 1 ]] || return 64
   local platform='' specification='' name='' version='' stable=''
   local packages=()
+  local install_options=()
   platform="$(package::_platform)" || return "$?"
   for specification in "$@"; do
     name="${specification%%=*}"
@@ -239,7 +245,10 @@ package::_install() {
         fi
         packages+=("${name}")
         ;;
-      ubuntu) packages+=("${name}${version:+=${version}}") ;;
+      ubuntu)
+        packages+=("${name}${version:+=${version}}")
+        [[ -z "${version}" ]] || install_options=(--allow-downgrades)
+        ;;
       fedora) packages+=("${name}${version:+-${version}}") ;;
     esac
   done
@@ -250,7 +259,7 @@ package::_install() {
       ;;
     ubuntu)
       command::require apt-get || return "$?"
-      command::run-as-root env DEBIAN_FRONTEND=noninteractive apt-get install -y "${packages[@]}"
+      command::run-as-root env DEBIAN_FRONTEND=noninteractive apt-get install -y ${install_options[@]+"${install_options[@]}"} "${packages[@]}"
       ;;
     fedora)
       command::require dnf || return "$?"
@@ -408,6 +417,7 @@ package::_apt-register-repository() {
   [[ -z "${architecture}" ]] || content+="Architectures: ${architecture}"$'\n'
   content+="Signed-By: /etc/apt/keyrings/${name}.asc"$'\n'
   file::write-text "/etc/apt/sources.list.d/${name}.sources" "${content}" || return "$?"
+  command::run-as-root chmod 0644 "/etc/apt/sources.list.d/${name}.sources" || return "$?"
   package::_refresh
 }
 
@@ -416,6 +426,7 @@ package::_dnf-register-repository() {
   [[ "$#" -eq 2 && "$1" =~ ^[a-z0-9][a-z0-9.-]*$ && -n "$2" ]] || return 64
   package::_require-platform fedora || return "$?"
   file::write-text "/etc/yum.repos.d/$1.repo" "$2" || return "$?"
+  command::run-as-root chmod 0644 "/etc/yum.repos.d/$1.repo" || return "$?"
   package::_refresh
 }
 

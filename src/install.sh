@@ -342,13 +342,17 @@ docker::_install-ubuntu() {
 ### Install Docker Engine from the official repository on Fedora.
 docker::_install-fedora() {
   [[ "$#" -eq 1 ]] || return 64
-  local version="$1" repository=''
+  local version="$1" cli_version="${1#*:}" repository=''
   command::run-as-root dnf remove -y docker docker-client docker-client-latest docker-common docker-latest \
     docker-latest-logrotate docker-logrotate docker-selinux docker-engine-selinux docker-engine >/dev/null 2>&1 || true
   repository="$(package::_fetch https://download.docker.com/linux/fedora/docker-ce.repo)" || return "$?"
   package::_dnf-register-repository docker-ce "${repository}"$'\n' || return "$?"
-  package::_install "docker-ce${version:+=${version}}" "docker-ce-cli${version:+=${version}}" \
+  package::_install "docker-ce${version:+=${version}}" "docker-ce-cli${cli_version:+=${cli_version}}" \
     containerd.io docker-buildx-plugin docker-compose-plugin || return "$?"
+  if [[ -z "${version}" ]]; then
+    command::run-as-root dnf upgrade -y docker-ce docker-ce-cli containerd.io \
+      docker-buildx-plugin docker-compose-plugin || return "$?"
+  fi
   package::_enable-service docker || return "$?"
   package::_add-current-user-to-group docker
 }
