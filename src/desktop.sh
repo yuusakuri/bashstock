@@ -273,25 +273,13 @@ mozc::ibus::set-hiragana-as-default() {
   ibus-daemon -rd
 }
 
-### Write the IBus engine name for an XKB layout.
-keyboard::_ibus-layout-engine() {
-  [[ "$#" -eq 1 ]] || return 64
-  case "$1" in
-    us) printf 'xkb:us::eng\n' ;;
-    jp) printf 'xkb:jp::jpn\n' ;;
-    *)
-      console::_write-error "No IBus engine is known for the XKB layout: $1"
-      return 69
-      ;;
-  esac
-}
-
-### Assign Convert to IME on and Nonconvert to IME off for USB keyboards.
+### Map the Convert and Nonconvert keys of USB keyboards to henkan and muhenkan.
 ###
-### KC_INT4 (HID usage 0x7008A, Convert) becomes henkan and turns Mozc on.
-### KC_INT5 (HID usage 0x7008B, Nonconvert) becomes muhenkan and switches to
-### the current XKB layout. The hwdb entry applies to every USB keyboard, or
-### only to the keyboard identified by VENDOR_ID and PRODUCT_ID.
+### KC_INT4 (HID usage 0x7008A, Convert) becomes henkan and KC_INT5 (HID usage
+### 0x7008B, Nonconvert) becomes muhenkan, as in the reference script. The input
+### method handles the keys; this function does not change IME settings. The
+### hwdb entry applies to every USB keyboard, or only to the keyboard identified
+### by VENDOR_ID and PRODUCT_ID.
 ###
 ### Arguments
 ###
@@ -299,7 +287,7 @@ keyboard::_ibus-layout-engine() {
 ### * PRODUCT_ID - Four hexadecimal digits. Requires VENDOR_ID.
 keyboard::setup-ime-keys() {
   [[ "$#" -eq 0 || "$#" -eq 2 ]] || return 64
-  local match='evdev:input:b0003v*p*' layout='' engine='' content=''
+  local match='evdev:input:b0003v*p*' content=''
   if [[ "$#" -eq 2 ]]; then
     [[ "$1" =~ ^[0-9A-Fa-f]{4}$ && "$2" =~ ^[0-9A-Fa-f]{4}$ ]] || return 64
     match="evdev:input:b0003v$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')p$(printf '%s' "$2" | tr '[:lower:]' '[:upper:]')*"
@@ -307,15 +295,11 @@ keyboard::setup-ime-keys() {
   [[ "$(system::operating-system)" == 'linux' ]] || return 69
   command::require systemd-hwdb || return "$?"
   command::require udevadm || return "$?"
-  layout="$(gnome::input-source::_first-layout)" || return "$?"
-  engine="$(keyboard::_ibus-layout-engine "${layout}")" || return "$?"
   content='# Managed by BashStock keyboard::setup-ime-keys.'$'\n'"${match}"$'\n'
   content+=' KEYBOARD_KEY_7008a=henkan'$'\n'' KEYBOARD_KEY_7008b=muhenkan'$'\n'
   file::write-text /etc/udev/hwdb.d/90-bashstock-ime-keys.hwdb "${content}" || return "$?"
   command::run-as-root systemd-hwdb update || return "$?"
-  command::run-as-root udevadm trigger --subsystem-match=input --action=change || return "$?"
-  gnome::keybinding::set-custom custom102 'Enable IME (Convert)' "ibus engine 'mozc-jp'" Henkan || return "$?"
-  gnome::keybinding::set-custom custom103 'Disable IME (Nonconvert)' "ibus engine '${engine}'" Muhenkan
+  command::run-as-root udevadm trigger --subsystem-match=input --action=change
 }
 
 ### Run one setup step, report a failure, and return its status.

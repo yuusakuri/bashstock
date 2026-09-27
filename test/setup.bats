@@ -138,19 +138,15 @@ record_root_commands() {
   [ "${status}" -eq 64 ]
 
   HWDB_LOG="${BATS_TEST_TMPDIR}/hwdb"
-  BINDING_LOG="${BATS_TEST_TMPDIR}/bindings"
   system::operating-system() { printf 'linux\n'; }
   command::require() { return 0; }
-  gnome::input-source::_first-layout() { printf 'us\n'; }
   file::write-text() { printf '%s' "$2" >"${HWDB_LOG}"; }
-  gnome::keybinding::set-custom() { printf '%s|%s|%s\n' "$1" "$3" "$4" >>"${BINDING_LOG}"; }
   run keyboard::setup-ime-keys 046d c52b
   [ "${status}" -eq 0 ]
   grep -Fqx 'evdev:input:b0003v046DpC52B*' "${HWDB_LOG}"
   grep -Fqx ' KEYBOARD_KEY_7008a=henkan' "${HWDB_LOG}"
   grep -Fqx ' KEYBOARD_KEY_7008b=muhenkan' "${HWDB_LOG}"
-  grep -Fqx 'systemd-hwdb update' "${ROOT_LOG}"
-  [ "$(<"${BINDING_LOG}")" = $'custom102|ibus engine \'mozc-jp\'|Henkan\ncustom103|ibus engine \'xkb:us::eng\'|Muhenkan' ]
+  [ "$(<"${ROOT_LOG}")" = $'systemd-hwdb update\nudevadm trigger --subsystem-match=input --action=change' ]
 }
 
 @test "input-source shortcuts accept documented options only" {
