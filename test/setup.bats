@@ -69,6 +69,7 @@ use_fake_curl() {
 @test "Mozc installers choose the newest version the running release provides" {
   use_platform ubuntu 22.04 jammy
   record_root_commands
+  apt-get() { :; }
   apt-cache() {
     [[ "$1" == 'madison' ]] || return 1
     printf ' %s | 2.26.4220.100+dfsg-5.2 | http://archive.ubuntu.com jammy/universe amd64 Packages\n' "$2"
@@ -104,6 +105,7 @@ use_fake_curl() {
 @test "Debian packages install with dependencies only when the architecture matches" {
   use_platform ubuntu 24.04 noble
   record_root_commands
+  apt-get() { :; }
   use_fake_curl
   dpkg() { [[ "$1" == '--print-architecture' ]] && printf 'amd64\n'; }
   dpkg-deb() { printf '%s\n' "${DEB_ARCHITECTURE}"; }
@@ -136,6 +138,7 @@ use_fake_curl() {
 @test "Docker on Ubuntu registers the official repository and starts the service" {
   use_platform ubuntu 24.04 noble
   record_root_commands
+  apt-get() { :; }
   use_fake_root
   use_fake_curl
   dpkg() { [[ "$1" == '--print-architecture' ]] && printf 'arm64\n'; }
