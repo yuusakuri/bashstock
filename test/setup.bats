@@ -172,38 +172,23 @@ use_fake_curl() {
   [ ! -e "${FAKE_ROOT}/etc/apt/sources.list.d/docker.sources" ]
 }
 
-@test "Docker repository files are readable by unprivileged package queries" {
+@test "Docker installation propagates repository write failures before installing Docker" {
   record_root_commands
-  use_fake_root
   use_fake_curl
+  apt-get() { :; }
+  dnf() { :; }
+  file::write-text() { return 77; }
+  dpkg() { printf 'arm64\n'; }
   use_platform ubuntu 18.04 bionic
-  run package::_apt-register-repository docker https://example.invalid/key https://example.invalid/repo bionic stable arm64
-  [ "${status}" -eq 0 ]
-  grep -Fqx 'chmod 0644 /etc/apt/sources.list.d/docker.sources' "${ROOT_LOG}"
-  [ "$(tail -1 "${ROOT_LOG}")" = 'apt-get update' ]
-
-  use_platform fedora 43
-  run package::_dnf-register-repository docker-ce '[docker-ce-stable]'
-  [ "${status}" -eq 0 ]
-  grep -Fqx 'chmod 0644 /etc/yum.repos.d/docker-ce.repo' "${ROOT_LOG}"
-  [ "$(tail -1 "${ROOT_LOG}")" = 'dnf makecache' ]
-}
-
-@test "repository registration propagates permission failures without refreshing" {
-  use_fake_root
-  use_fake_curl
-  command::run-as-root() {
-    case "$1" in
-      chmod) return 77 ;;
-      apt-get | dnf) return 99 ;;
-    esac
-  }
-  use_platform ubuntu 18.04 bionic
-  run package::_apt-register-repository docker https://example.invalid/key https://example.invalid/repo bionic stable arm64
+  run docker::install
   [ "${status}" -eq 77 ]
-  use_platform fedora 43
-  run package::_dnf-register-repository docker-ce '[docker-ce-stable]'
+  ! grep -q 'install -y.*docker-ce' "${ROOT_LOG}"
+
+  : >"${ROOT_LOG}"
+  use_platform fedora 34
+  run docker::install
   [ "${status}" -eq 77 ]
+  ! grep -q '^dnf install ' "${ROOT_LOG}"
 }
 
 @test "Docker on Fedora accepts the engine epoch without imposing it on the CLI" {
@@ -222,8 +207,12 @@ use_fake_curl() {
   grep -Fqx "usermod -a -G docker $(id -un)" "${ROOT_LOG}"
 }
 
-@test "package version ordering places epoch releases after legacy Docker releases" {
-  run bash -c 'source "$1"; printf "%s\n" 18.06.3~ce~3-0~ubuntu 5:24.0.2-1~ubuntu.18.04~bionic 5:24.0.1-1~ubuntu.18.04~bionic 5:24.0.2-1~ubuntu.18.04~bionic | package::_sort-versions' _ "${PROJECT_ROOT}/dist/bashstock.sh"
+@test "Docker versions order epoch releases after legacy releases" {
+  use_platform ubuntu 18.04 bionic
+  dpkg() { printf 'arm64\n'; }
+  CURL_BODY=$'Package: docker-ce\nVersion: 5:24.0.2-1~ubuntu.18.04~bionic\nFilename: newest.deb\n\nPackage: docker-ce\nVersion: 18.06.3~ce~3-0~ubuntu\nFilename: legacy.deb\n\nPackage: docker-ce\nVersion: 5:24.0.1-1~ubuntu.18.04~bionic\nFilename: previous.deb\n'
+  use_fake_curl
+  run docker::versions
   [ "${status}" -eq 0 ]
   [ "${output}" = $'18.06.3~ce~3-0~ubuntu\n5:24.0.1-1~ubuntu.18.04~bionic\n5:24.0.2-1~ubuntu.18.04~bionic' ]
 }
@@ -246,18 +235,24 @@ use_fake_curl() {
   ! grep -q '^dnf upgrade ' "${ROOT_LOG}"
 }
 
-@test "APT permits downgrades only for explicit package versions" {
+@test "Docker on Ubuntu permits downgrades only for explicit versions" {
   use_platform ubuntu 22.04 jammy
   record_root_commands
+  use_fake_root
+  use_fake_curl
   apt-get() { :; }
-  run package::_install docker-ce docker-ce-cli
+  systemctl() { :; }
+  usermod() { :; }
+  dpkg() { printf 'arm64\n'; }
+  run docker::install
   [ "${status}" -eq 0 ]
-  [ "$(<"${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli' ]
+  grep -Fqx 'env DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin' "${ROOT_LOG}"
+  ! grep -q -- '--allow-downgrades' "${ROOT_LOG}"
 
   : >"${ROOT_LOG}"
-  run package::_install docker-ce=5:29.8.0 docker-ce-cli=5:29.8.0
+  run docker::install '5:29.8.0-1~ubuntu.22.04~jammy'
   [ "${status}" -eq 0 ]
-  [ "$(<"${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades docker-ce=5:29.8.0 docker-ce-cli=5:29.8.0' ]
+  grep -Fqx 'env DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades docker-ce=5:29.8.0-1~ubuntu.22.04~jammy docker-ce-cli=5:29.8.0-1~ubuntu.22.04~jammy containerd.io docker-buildx-plugin docker-compose-plugin' "${ROOT_LOG}"
 }
 
 @test "Docker on macOS requires Colima or Rancher Desktop to be running" {

@@ -3,6 +3,49 @@
 load test_helper
 bats_require_minimum_version 1.5.0
 
+@test "write-text creates files with the caller's umask and preserves shell state" {
+  local mask='' expected='' file='' actual=''
+  for mask in 0022 0002 0077 0777; do
+    file="${BATS_TEST_TMPDIR}/mode-${mask}"
+    run bash -c 'source "$1"; umask "$2"; before="$(umask)"; file::write-text "$3" "literal text" && test "$(umask)" = "$before"' _ "${PROJECT_ROOT}/dist/bashstock.sh" "${mask}" "${file}"
+    [ "${status}" -eq 0 ]
+    case "$(uname -s)" in
+      Darwin) actual="$(stat -f '%Lp' "${file}")" ;;
+      *) actual="$(stat -c '%a' "${file}")" ;;
+    esac
+    case "${mask}" in
+      0022) expected=644 ;;
+      0002) expected=664 ;;
+      0077) expected=600 ;;
+      0777) expected=0 ;;
+    esac
+    [ "${actual}" = "${expected}" ]
+  done
+}
+
+@test "write-text preserves existing file permissions and accepts empty text" {
+  local file="${BATS_TEST_TMPDIR}/private"
+  printf 'previous' >"${file}"
+  chmod 640 "${file}"
+  run bash -c 'source "$1"; umask 077; file::write-text "$2" ""' _ "${PROJECT_ROOT}/dist/bashstock.sh" "${file}"
+  [ "${status}" -eq 0 ]
+  [ ! -s "${file}" ]
+  case "$(uname -s)" in
+    Darwin) [ "$(stat -f '%Lp' "${file}")" = 640 ] ;;
+    *) [ "$(stat -c '%a' "${file}")" = 640 ] ;;
+  esac
+}
+
+@test "write-text rejects symbolic links and retains their targets" {
+  local target="${BATS_TEST_TMPDIR}/target" link="${BATS_TEST_TMPDIR}/link"
+  printf 'original' >"${target}"
+  ln -s "${target}" "${link}"
+  run file::write-text "${link}" 'replacement'
+  [ "${status}" -eq 64 ]
+  [ -L "${link}" ]
+  [ "$(<"${target}")" = original ]
+}
+
 @test "utility file and environment functions preserve literal values" {
   local file="${BATS_TEST_TMPDIR}/value file"
   run file::write-text "$file" 'a$HOME\nvalue'

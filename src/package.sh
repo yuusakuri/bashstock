@@ -417,7 +417,6 @@ package::_apt-register-repository() {
   [[ -z "${architecture}" ]] || content+="Architectures: ${architecture}"$'\n'
   content+="Signed-By: /etc/apt/keyrings/${name}.asc"$'\n'
   file::write-text "/etc/apt/sources.list.d/${name}.sources" "${content}" || return "$?"
-  command::run-as-root chmod 0644 "/etc/apt/sources.list.d/${name}.sources" || return "$?"
   package::_refresh
 }
 
@@ -426,7 +425,6 @@ package::_dnf-register-repository() {
   [[ "$#" -eq 2 && "$1" =~ ^[a-z0-9][a-z0-9.-]*$ && -n "$2" ]] || return 64
   package::_require-platform fedora || return "$?"
   file::write-text "/etc/yum.repos.d/$1.repo" "$2" || return "$?"
-  command::run-as-root chmod 0644 "/etc/yum.repos.d/$1.repo" || return "$?"
   package::_refresh
 }
 

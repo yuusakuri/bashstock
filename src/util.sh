@@ -84,21 +84,28 @@ mem::total-gibibytes() {
 }
 
 ### Write text to a regular file using an atomic replacement.
+### New files use 0666 filtered by the caller's umask; existing metadata is preserved.
 file::write-text() {
   if [[ "$#" -ne 2 || -z "$1" || -L "$1" ]]; then return 64; fi
-  local file="$1" text="$2" temporary=''
+  local file="$1" text="$2" temporary='' mode='' mask=''
   if [[ -e "$file" && ! -f "$file" ]]; then return 66; fi
-  if file::_requires-root "$file"; then bashstock::_run-as-root write-text "$@"; return; fi
-  if temporary="$(file::_temporary-path "$file")"; then
-    :
-  else
-    local status="$?"
-    [[ ! -e "$file" ]] || return "${status}"
-    command -v mktemp >/dev/null 2>&1 || return 69
-    temporary="$(mktemp "${file}.bashstock.XXXXXX")" || return 74
+  mask="$(umask)"
+  if file::_requires-root "$file"; then
+    bashstock::_run-as-root write-text "$@" "${mask}"
+    return
   fi
-  if [[ -e "$file" ]]; then file::_copy-metadata-and-content "$file" "$temporary" || { rm -f -- "$temporary"; return 74; }; : >"$temporary" || { rm -f -- "$temporary"; return 74; }; fi
-  if ! printf '%s' "$text" >"$temporary" || ! mv -f -- "$temporary" "$file"; then rm -f -- "$temporary"; return 74; fi
+  temporary="$(umask 077 && file::_temporary-path "$file")" || return "$?"
+  if [[ -e "$file" ]]; then
+    file::_copy-metadata-and-content "$file" "$temporary" || { rm -f -- "$temporary"; return 74; }
+  else
+    printf -v mode '%04o' "$((0666 & ~8#${mask}))"
+  fi
+  if ! printf '%s' "$text" >"$temporary"; then rm -f -- "$temporary"; return 74; fi
+  if [[ -n "${mode}" ]] && ! chmod "${mode}" "${temporary}"; then
+    rm -f -- "${temporary}"
+    return 74
+  fi
+  if ! mv -f -- "$temporary" "$file"; then rm -f -- "$temporary"; return 74; fi
 }
 
 ### Find regular files whose contents match a Perl expression.
