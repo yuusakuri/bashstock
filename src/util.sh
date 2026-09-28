@@ -653,25 +653,25 @@ docker::remove-all() { [[ "$#" -eq 0 ]] || return 64; docker::container::stop-al
 
 ### Run an ADB command with an optional serial number.
 adb::_run() { [[ "$#" -ge 1 ]] || return 64; local serial='' args=() value=''; while [[ "$#" -gt 0 ]]; do if [[ "$1" == '-Serial' ]]; then [[ "$#" -ge 2 ]] || return 64; serial="$2"; shift 2; else args+=("$1"); shift; fi; done; [[ -n "$serial" ]] && args=(-s "$serial" "${args[@]}"); util::_run-command adb "${args[@]}"; }
-### Execute the utility function.
+### Wait for an ADB device to connect, optionally selected with -Serial.
 adb::device::wait() { adb::_run wait-for-device "$@"; }
-### Execute the utility function.
+### Copy files from an ADB device to the host.
 adb::device::pull() { [[ "$#" -ge 1 ]] || return 64; adb::_run pull "$@"; }
-### Execute the utility function.
+### Copy files from the host to an ADB device.
 adb::device::push() { [[ "$#" -ge 1 ]] || return 64; adb::_run push "$@"; }
-### Execute the utility function.
+### Clear the selected device log buffers.
 adb::logcat::clear() { adb::_run logcat -c "$@"; }
-### Execute the utility function.
+### Write the selected device log buffers once.
 adb::logcat::once() { adb::_run logcat -d "$@"; }
-### Execute the utility function.
+### Stream logs from the selected device.
 adb::logcat::continuous() { adb::_run logcat "$@"; }
-### Execute the utility function.
+### Reboot the selected device.
 adb::device::reboot() { adb::_run reboot "$@"; }
-### Execute the utility function.
+### Write the first connected ADB device serial.
 adb::device::first() { [[ "$#" -eq 0 ]] || return 64; adb devices | awk 'NR>1 && $2=="device" {print $1; exit}'; }
-### Execute the utility function.
+### List ADB devices and their connection details.
 adb::device::list() { [[ "$#" -eq 0 ]] || return 64; adb::_run devices -l; }
-### Execute the utility function.
+### Wait up to TIMEOUT_SECONDS for a path on the device; return 75 on timeout.
 adb::device::wait-for-path() {
   [[ "$#" -ge 1 && "$#" -le 3 ]] || return 64
   local path="$1" timeout="${2:-30}" start=''
@@ -682,33 +682,33 @@ adb::device::wait-for-path() {
   done
   return 75
 }
-### Execute the utility function.
+### Save a device screenshot to OUTPUT_PATH, which defaults to screen.png.
 adb::device::screen::capture-once() { [[ "$#" -le 2 ]] || return 64; local output="${1:-screen.png}"; adb::_run exec-out screencap -p >"$output"; }
-### Execute the utility function.
+### Copy the requested device path to the host.
 adb::device::select-and-pull() { [[ "$#" -ge 1 ]] || return 64; adb::_run pull "$@"; }
-### Execute the utility function.
+### Request bootloader unlocking through ADB.
 adb::device::bootloader::unlock() { adb::_run oem unlock "$@"; }
-### Execute the utility function.
+### Disable dm-verity on the selected device.
 adb::device::verity::disable() { adb::_run disable-verity "$@"; }
-### Execute the utility function.
+### Remount the selected device partitions.
 adb::device::partition::remount() { adb::_run remount "$@"; }
-### Execute the utility function.
+### Write the selected device build fingerprint.
 adb::device::build::fingerprint() { adb::_run shell getprop ro.build.fingerprint "$@"; }
-### Execute the utility function.
+### Write the selected device build timestamp as Unix seconds.
 adb::device::build::date() { adb::_run shell getprop ro.build.date.utc "$@"; }
-### Execute the utility function.
+### Write the selected device active slot suffix.
 adb::device::slot::suffix() { adb::_run shell getprop ro.boot.slot_suffix "$@"; }
-### Execute the utility function.
+### Write the selected device kernel release.
 adb::device::build::kernel-version() { adb::_run shell uname -r "$@"; }
-### Execute the utility function.
+### Save repeated screenshots; MAX_COUNT of zero runs until interrupted.
 adb::device::screen::capture-continuous() { [[ "$#" -le 4 ]] || return 64; local directory="${1:-.}" interval="${2:-1}" max="${3:-0}" index=0; mkdir -p -- "$directory" || return 74; while [[ "$max" -eq 0 || "$index" -lt "$max" ]]; do adb::device::screen::capture-once "$directory/screen-${index}.png" "${4:-}" || return "$?"; index=$((index+1)); sleep "$interval" || return 74; done; }
-### Execute the utility function.
+### Write a device partition SHA-256 checksum.
 adb::device::partition::sha256() { [[ "$#" -ge 1 ]] || return 64; adb::_run shell sha256sum "$1"; }
-### Execute the utility function.
+### Keep the selected device awake while charging.
 adb::wake::lock() { adb::_run shell svc power stayon true "$@"; }
-### Execute the utility function.
+### Restore the selected device normal sleep behavior.
 adb::wake::unlock() { adb::_run shell svc power stayon false "$@"; }
-### Execute the utility function.
+### Show the selected device power and wake lock state.
 adb::wake::list() { adb::_run shell dumpsys power "$@"; }
 
 ### Execute the process::ids-by-name utility.
@@ -831,11 +831,35 @@ gpg::secret-key::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command gpg 
 ### Execute the user::directory::create-english-links utility.
 user::directory::create-english-links() { [[ "$#" -le 1 ]] || return 64; local directory="${1:-$HOME}"; [[ -d "$directory" ]] || return 66; local name target; for name in Desktop Documents Downloads Music Pictures Videos; do target="$directory/$name"; [[ -e "$target" ]] || ln -s "$directory/$name" "$target" 2>/dev/null || true; done; }
 
-### Execute the android::build-tools::versions utility.
-android::build-tools::versions() { [[ "$#" -eq 0 ]] || return 64; util::_run-command sdkmanager --list | awk '/build-tools;/{print $1}'; }
+### Write available stable Android Build Tools versions in ascending order.
+### Use Android CLI when available, otherwise use sdkmanager.
+android::build-tools::versions() {
+  [[ "$#" -eq 0 ]] || return 64
+  command::require perl || return "$?"
+  local listing='' versions=''
+  local arguments=(--no-metrics)
+  if command -v android >/dev/null 2>&1; then
+    [[ -z "${ANDROID_HOME:-}" ]] || arguments+=("--sdk=${ANDROID_HOME}")
+    listing="$(android "${arguments[@]}" sdk list 'build-tools/*' --all --all-versions)" || return "$?"
+  else
+    command::require sdkmanager || return "$?"
+    listing="$(sdkmanager --list --channel=0)" || return "$?"
+  fi
+  versions="$(printf '%s\n' "${listing}" | perl -ne '
+    print "$1\n" if /^\s*build-tools;([0-9]+\.[0-9]+\.[0-9]+)\s*\|/
+      || /^\s*build-tools\/([0-9]+\.[0-9]+\.[0-9]+)\s+[0-9]+\.[0-9]+\.[0-9]+(?=\s|$)/;
+  ' | package::_sort-versions)" || return "$?"
+  [[ -n "${versions}" ]] || return 1
+  printf '%s\n' "${versions}"
+}
 
-### Execute the android::build-tools::latest-version utility.
-android::build-tools::latest-version() { [[ "$#" -eq 0 ]] || return 64; android::build-tools::versions | sort -V | tail -n 1; }
+### Write the newest available stable Android Build Tools version.
+android::build-tools::latest-version() {
+  [[ "$#" -eq 0 ]] || return 64
+  local versions=''
+  versions="$(android::build-tools::versions)" || return "$?"
+  printf '%s\n' "${versions##*$'\n'}"
+}
 
 ### Execute the go::version::list utility.
 go::version::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command go version; }
@@ -861,7 +885,7 @@ ruby::version::latest() {
   ruby::version::list | package::_latest-stable-version
 }
 
-### Execute the rosetta::install utility.
+### Install Rosetta on macOS and accept its license.
 rosetta::install() { [[ "$#" -eq 0 ]] || return 64; [[ "$(system::operating-system)" == darwin ]] || return 69; util::_run-command softwareupdate --install-rosetta --agree-to-license; }
 
 ### Execute the net::dns::servers utility.
@@ -1008,14 +1032,14 @@ ssh::kill-all() { [[ "$#" -eq 0 ]] || return 64; ssh-add -D; }
 ### Execute the git::config::use-osx-keychain utility.
 git::config::use-osx-keychain() { [[ "$#" -eq 0 ]] || return 64; [[ "$(system::operating-system)" == darwin ]] || return 69; git config --global credential.helper osxkeychain; }
 
-### Execute the git-credential-manager::version::list utility.
+### Write the installed Git Credential Manager version.
 git-credential-manager::version::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command git-credential-manager --version; }
 
-### Execute the git-credential-manager::_artifact-url utility.
+### Write a Git Credential Manager asset URL from the latest release.
 git-credential-manager::_artifact-url() { [[ "$#" -le 1 ]] || return 64; printf 'https://github.com/git-ecosystem/git-credential-manager/releases/latest/download/%s
 ' "${1:-git-credential-manager.tar.gz}"; }
 
-### Execute the git-credential-manager::install utility.
+### Install Git Credential Manager with Homebrew.
 git-credential-manager::install() { [[ "$#" -le 1 ]] || return 64; command -v brew >/dev/null 2>&1 || return 69; if [[ -n "${1:-}" ]]; then brew install --cask git-credential-manager; else brew install --cask git-credential-manager; fi; }
 
 ### Execute the git::config::setup utility.
