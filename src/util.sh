@@ -1391,9 +1391,16 @@ go::install() {
 rust::install() {
   [[ "$#" -le 1 ]] || return 64
   command -v curl >/dev/null 2>&1 || return 69
-  local temporary=''
+  local temporary='' platform=''
   local toolchain='stable'
   [[ "$#" -eq 1 ]] && toolchain="$1"
+  platform="$(package::_platform)" || return "$?"
+  case "$platform" in
+    ubuntu) package::_install build-essential || return "$?" ;;
+    fedora) package::_install gcc || return "$?" ;;
+    darwin) command -v cc >/dev/null 2>&1 || return 69 ;;
+    *) return 69 ;;
+  esac
   temporary="$(mktemp)" || return 74
   if ! curl -fsSL https://sh.rustup.rs -o "$temporary"; then
     rm -f -- "$temporary"
@@ -1402,7 +1409,8 @@ rust::install() {
   sh "$temporary" -y --default-toolchain "$toolchain"
   local status="$?"
   rm -f -- "$temporary"
-  return "$status"
+  [[ "$status" -eq 0 ]] || return "$status"
+  env::add-path "$HOME/.cargo/bin"
 }
 
 ### List installed or available Rust toolchains.
