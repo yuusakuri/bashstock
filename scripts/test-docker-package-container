@@ -48,6 +48,7 @@ versions="$(docker::versions)"
 [[ -n "$versions" ]]
 version="$(printf '%s\n' "$versions" | tail -n 1)"
 [[ -n "$version" ]]
+older="$(printf '%s\n' "$versions" | tail -n 2 | head -n 1)"
 printf 'Docker selected version: %s\n' "$version"
 docker::install "$version"
 docker::install "$version"
@@ -66,4 +67,23 @@ else
   installed="$(dpkg-query -W -f='${Version}' docker-ce)"
   [[ "$installed" == "$version" ]]
   apt-get update
+fi
+
+if [[ -n "$older" && "$older" != "$version" ]]; then
+  printf 'Docker older version: %s\n' "$older"
+  docker::install "$older"
+  if [[ -f /etc/fedora-release ]]; then
+    installed="$(rpm -q --qf '%{EPOCH}:%{VERSION}-%{RELEASE}\n' docker-ce)"
+  else
+    installed="$(dpkg-query -W -f='${Version}' docker-ce)"
+  fi
+  [[ "$installed" == "$older" ]]
+  docker --version
+  docker::install "$version"
+  if [[ -f /etc/fedora-release ]]; then
+    installed="$(rpm -q --qf '%{EPOCH}:%{VERSION}-%{RELEASE}\n' docker-ce)"
+  else
+    installed="$(dpkg-query -W -f='${Version}' docker-ce)"
+  fi
+  [[ "$installed" == "$version" ]]
 fi
