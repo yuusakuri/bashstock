@@ -356,7 +356,7 @@ git::stash::pop() { [[ "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:-
 git::stash::drop() { [[ "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:-.}" stash drop "${1:-stash@{0}}"; }
 
 ### Reset a working tree to a revision.
-git::reset() { [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:-.}" reset "$1"; }
+git::reset() { [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:-.}" reset --hard "$1"; }
 
 ### Pull a branch using rebase.
 git::pull-rebase() { [[ "$#" -le 3 ]] || return 64; local branch="${1:-}" remote="${2:-}" directory="${3:-.}" args=(pull --rebase); [[ -n "$remote" ]] && args+=("$remote"); [[ -n "$branch" ]] && args+=("$branch"); git::_run-in-directory "$directory" "${args[@]}"; }
@@ -368,10 +368,33 @@ git::cherry-pick() { [[ "$#" -ge 1 && "$#" -le 3 ]] || return 64; local revision
 git::cherry-pick-continue() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" cherry-pick --continue; }
 
 ### Abort an in-progress cherry-pick.
-git::cherry-pick-abort() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" cherry-pick --abort; }
+git::cherry-pick-abort() {
+  [[ "$#" -le 1 ]] || return 64
+  local directory="${1:-.}" path=''
+  local untracked=()
+  git::_run-in-directory "$directory" cherry-pick --abort || return "$?"
+  while IFS= read -r -d '' path; do untracked+=("$path"); done \
+    < <(git::_run-in-directory "$directory" ls-files --others --exclude-standard -z)
+  [[ "${#untracked[@]}" -gt 0 ]] || return 0
+  git::_run-in-directory "$directory" stash push --include-untracked -- "${untracked[@]}" && return 0
+  git::_run-in-directory "$directory" clean -fd
+}
 
 ### Push a branch to a remote.
-git::push() { [[ "$#" -le 3 ]] || return 64; local branch="${1:-}" remote="${2:-}" directory="${3:-.}" args=(push); [[ -n "$remote" ]] && args+=("$remote"); [[ -n "$branch" ]] && args+=("$branch"); git::_run-in-directory "$directory" "${args[@]}"; }
+git::push() {
+  [[ "$#" -le 3 ]] || return 64
+  local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
+  [[ -n "$branch" ]] || branch="$(git::branch::current "$directory")" || return "$?"
+  git::_run-in-directory "$directory" push "$remote" "$branch"
+}
+
+### Push a branch without overwriting a remote update.
+git::push::force-with-lease() {
+  [[ "$#" -le 3 ]] || return 64
+  local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
+  [[ -n "$branch" ]] || branch="$(git::branch::current "$directory")" || return "$?"
+  git::_run-in-directory "$directory" push --force-with-lease "$remote" "$branch"
+}
 
 ### Push a branch for review.
 gerrit::push-review() { [[ "$#" -le 3 ]] || return 64; git::push "${1:-HEAD:refs/for/main}" "${2:-origin}" "${3:-.}"; }
@@ -386,7 +409,13 @@ git::remote::delete-branch() { [[ "$#" -le 3 ]] || return 64; git::_run-in-direc
 git::submodule::update-all() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" submodule update --init --recursive; }
 
 ### Discard all changes in a working tree.
-git::commit::discard() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" reset --hard HEAD; git::_run-in-directory "${1:-.}" clean -fd; }
+git::commit::discard() {
+  [[ "$#" -le 1 ]] || return 64
+  local directory="${1:-.}"
+  git::_run-in-directory "$directory" rev-parse --verify 'HEAD^' >/dev/null || return "$?"
+  git::_run-in-directory "$directory" stash push --include-untracked || return "$?"
+  git::_run-in-directory "$directory" reset --hard HEAD^
+}
 
 ### Fetch a remote and reset its remote-tracking branch.
 git::reset-remote() { [[ "$#" -le 2 ]] || return 64; local remote="${1:-origin}" directory="${2:-.}"; git::_run-in-directory "$directory" fetch "$remote"; git::_run-in-directory "$directory" reset --hard "$remote/$(git::branch::current "$directory")"; }
@@ -398,10 +427,36 @@ git::pull-base-branch() { [[ "$#" -le 2 ]] || return 64; local base="${1:-main}"
 env::dotenv::import() { [[ "$#" -eq 1 && -f "$1" && ! -L "$1" ]] || return 64; local line key value; while IFS= read -r line || [[ -n "$line" ]]; do [[ -z "$line" || "$line" == \#* ]] && continue; [[ "$line" == *=* ]] || return 64; key="${line%%=*}"; value="${line#*=}"; [[ "$key" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] || return 64; if [[ "$value" == \"*\" && "$value" == *\" ]]; then value="${value:1:${#value}-2}"; fi; export "${key}=${value}"; done <"$1"; }
 
 ### Set an environment variable for the current shell.
-env::set-variable() { [[ "$#" -ge 2 && "$#" -le 3 && "$1" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] || return 64; local name="$1" value="$2" shells="${3:-bash,zsh}" shell rc escaped; export "${name}=${value}"; escaped="${value//\'/\'\\\'\'}"; IFS=',' read -r -a _util_shells <<<"$shells"; for shell in "${_util_shells[@]}"; do case "$shell" in bash) rc="$HOME/.bashrc" ;; zsh) rc="$HOME/.zshrc" ;; *) return 64 ;; esac; file::replace-text-or-append "$rc" "^export ${name}=" "export ${name}='${escaped}'" 2>/dev/null || file::append-text "$rc" "export ${name}='${escaped}'\n" || return "$?"; done; }
+env::set-variable() {
+  [[ "$#" -ge 2 && "$#" -le 3 && "$1" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] || return 64
+  local name="$1" value="$2" shells="${3:-bash,zsh}" shell='' rc='' quoted=''
+  [[ "$shells" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] || return 64
+  printf -v quoted '%q' "$value"
+  IFS=',' read -r -a _util_shells <<<"$shells"
+  for shell in "${_util_shells[@]}"; do
+    case "$shell" in bash) rc="$HOME/.bashrc" ;; zsh) rc="$HOME/.zshrc" ;; esac
+    if [[ ! -e "$rc" ]]; then file::write-text "$rc" '' || return "$?"; fi
+    file::replace-text-or-append "$rc" "^export ${name}=" "export ${name}=${quoted}" || return "$?"
+  done
+  export "${name}=${value}"
+}
 
 ### Add a directory to PATH without creating duplicates.
-env::add-path() { [[ "$#" -ge 1 && "$#" -le 2 && -d "$1" ]] || return 64; local path="$1" shells="${2:-bash,zsh}" shell rc line; case ":${PATH:-}:" in *":$path:"*) ;; *) PATH="${PATH:+${PATH}:}${path}"; export PATH ;; esac; IFS=',' read -r -a _util_shells <<<"$shells"; for shell in "${_util_shells[@]}"; do case "$shell" in bash) rc="$HOME/.bashrc" ;; zsh) rc="$HOME/.zshrc" ;; *) return 64 ;; esac; line="export PATH=\"\${PATH:+\${PATH}:}${path}\""; file::contains-match "$rc" "^export PATH=.*${path//./\\.}.*$" 2>/dev/null || file::append-text "$rc" "${line}\n" || return "$?"; done; }
+env::add-path() {
+  [[ "$#" -ge 1 && "$#" -le 2 && -d "$1" ]] || return 64
+  local path="$1" shells="${2:-bash,zsh}" shell='' rc='' quoted='' line=''
+  [[ "$shells" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] || return 64
+  printf -v quoted '%q' "$path"
+  line="__bashstock_path=${quoted}; case \":\$PATH:\" in *\":\$__bashstock_path:\"*) ;; *) if [ -n \"\$PATH\" ]; then PATH=\"\$PATH:\$__bashstock_path\"; else PATH=\"\$__bashstock_path\"; fi; export PATH ;; esac; unset __bashstock_path"
+  IFS=',' read -r -a _util_shells <<<"$shells"
+  for shell in "${_util_shells[@]}"; do
+    case "$shell" in bash) rc="$HOME/.bashrc" ;; zsh) rc="$HOME/.zshrc" ;; esac
+    if [[ ! -f "$rc" ]] || ! grep -Fqx -- "$line" "$rc"; then
+      file::append-text "$rc" "${line}"$'\n' || return "$?"
+    fi
+  done
+  case ":${PATH:-}:" in *":$path:"*) ;; *) PATH="${PATH:+${PATH}:}${path}"; export PATH ;; esac
+}
 
 ### Register a dotenv file in selected shell startup files.
 env::dotenv::register() { [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" && ! -L "$1" ]] || return 64; local file="$1" shells="${2:-bash,zsh}" shell rc line; IFS=',' read -r -a _util_shells <<<"$shells"; for shell in "${_util_shells[@]}"; do case "$shell" in bash) rc="$HOME/.bashrc" ;; zsh) rc="$HOME/.zshrc" ;; *) return 64 ;; esac; line="env::dotenv::import '$file'"; file::contains-match "$rc" "^${line//./\\.}$" 2>/dev/null || file::append-text "$rc" "${line}\n" || return "$?"; done; }
@@ -652,7 +707,24 @@ docker::volume::remove-all() { [[ "$#" -eq 0 ]] || return 64; util::_run-command
 docker::remove-all() { [[ "$#" -eq 0 ]] || return 64; docker::container::stop-all; docker::container::remove-all; docker::volume::remove-all; }
 
 ### Run an ADB command with an optional serial number.
-adb::_run() { [[ "$#" -ge 1 ]] || return 64; local serial='' args=() value=''; while [[ "$#" -gt 0 ]]; do if [[ "$1" == '-Serial' ]]; then [[ "$#" -ge 2 ]] || return 64; serial="$2"; shift 2; else args+=("$1"); shift; fi; done; [[ -n "$serial" ]] && args=(-s "$serial" "${args[@]}"); util::_run-command adb "${args[@]}"; }
+adb::_run() {
+  [[ "$#" -ge 1 ]] || return 64
+  local serial='' seen_serial=0
+  local args=()
+  while [[ "$#" -gt 0 ]]; do
+    if [[ "$1" == '-Serial' ]]; then
+      [[ "$#" -ge 2 && -n "$2" && "$seen_serial" -eq 0 ]] || return 64
+      serial="$2"
+      seen_serial=1
+      shift 2
+    else
+      args+=("$1")
+      shift
+    fi
+  done
+  [[ "$seen_serial" -eq 0 ]] || args=(-s "$serial" "${args[@]}")
+  util::_run-command adb "${args[@]}"
+}
 ### Wait for an ADB device to connect, optionally selected with -Serial.
 adb::device::wait() { adb::_run wait-for-device "$@"; }
 ### Copy files from an ADB device to the host.
@@ -666,28 +738,149 @@ adb::logcat::once() { adb::_run logcat -d "$@"; }
 ### Stream logs from the selected device.
 adb::logcat::continuous() { adb::_run logcat "$@"; }
 ### Reboot the selected device.
-adb::device::reboot() { adb::_run reboot "$@"; }
-### Write the first connected ADB device serial.
-adb::device::first() { [[ "$#" -eq 0 ]] || return 64; adb devices | awk 'NR>1 && $2=="device" {print $1; exit}'; }
-### List ADB devices and their connection details.
-adb::device::list() { [[ "$#" -eq 0 ]] || return 64; adb::_run devices -l; }
-### Wait up to TIMEOUT_SECONDS for a path on the device; return 75 on timeout.
-adb::device::wait-for-path() {
-  [[ "$#" -ge 1 && "$#" -le 3 ]] || return 64
-  local path="$1" timeout="${2:-30}" start=''
+adb::device::reboot() {
+  [[ "$#" -le 3 ]] || return 64
+  local timeout=60 serial='' start='' state='' disconnected=0
+  local serial_args=()
+  if [[ "$#" -ge 1 && "$1" != '-Serial' ]]; then timeout="$1"; shift; fi
+  [[ "$timeout" =~ ^[1-9][0-9]*$ ]] || return 64
+  if [[ "$#" -gt 0 ]]; then
+    [[ "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ]] || return 64
+    serial="$2"
+    serial_args=(-Serial "$serial")
+  fi
+  adb::_run reboot "${serial_args[@]}" || return "$?"
   start="$(date +%s)" || return 74
   while (( $(date +%s) - start < timeout )); do
-    adb::_run shell test -e "$path" >/dev/null 2>&1 && return 0
+    state="$(adb::_run get-state "${serial_args[@]}" 2>/dev/null)" || state=''
+    if [[ "$state" == device ]]; then
+      [[ "$disconnected" -eq 0 ]] || return 0
+    else
+      disconnected=1
+    fi
     sleep 1 || return 74
   done
   return 75
 }
-### Save a device screenshot to OUTPUT_PATH, which defaults to screen.png.
-adb::device::screen::capture-once() { [[ "$#" -le 2 ]] || return 64; local output="${1:-screen.png}"; adb::_run exec-out screencap -p >"$output"; }
-### Copy the requested device path to the host.
-adb::device::select-and-pull() { [[ "$#" -ge 1 ]] || return 64; adb::_run pull "$@"; }
-### Request bootloader unlocking through ADB.
-adb::device::bootloader::unlock() { adb::_run oem unlock "$@"; }
+### Write the first connected ADB device serial.
+adb::device::first() {
+  [[ "$#" -eq 0 ]] || return 64
+  local devices=''
+  devices="$(adb::device::list)" || return "$?"
+  [[ -n "$devices" ]] || return 1
+  printf '%s\n' "${devices%%$'\n'*}"
+}
+### List connected ADB device serials.
+adb::device::list() {
+  [[ "$#" -eq 0 ]] || return 64
+  local devices=''
+  devices="$(adb::_run devices)" || return "$?"
+  printf '%s\n' "$devices" | awk 'NR>1 && $2=="device" {print $1}'
+}
+### Wait up to TIMEOUT_SECONDS for a path on the device; return 75 on timeout.
+adb::device::wait-for-path() {
+  [[ "$#" -ge 1 && "$#" -le 4 && -n "$1" ]] || return 64
+  local path="$1" timeout=30 start='' quoted=''
+  local serial_args=()
+  shift
+  if [[ "$#" -gt 0 && "$1" != '-Serial' ]]; then timeout="$1"; shift; fi
+  [[ "$timeout" =~ ^[1-9][0-9]*$ ]] || return 64
+  if [[ "$#" -gt 0 ]]; then
+    [[ "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ]] || return 64
+    serial_args=(-Serial "$2")
+  fi
+  [[ "$path" != *$'\n'* && "$path" != *$'\r'* ]] || return 64
+  printf -v quoted '%q' "$path"
+  start="$(date +%s)" || return 74
+  while (( $(date +%s) - start < timeout )); do
+    adb::_run shell "test -e $quoted" "${serial_args[@]}" >/dev/null 2>&1 && return 0
+    sleep 1 || return 74
+  done
+  return 75
+}
+### Save one screenshot atomically and print its path.
+adb::device::screen::capture-once() {
+  [[ "$#" -le 3 ]] || return 64
+  local output='' stamp='' directory='' temporary=''
+  local serial_args=()
+  if [[ "$#" -gt 0 && "$1" != '-Serial' ]]; then output="$1"; shift; fi
+  if [[ "$#" -gt 0 ]]; then
+    [[ "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ]] || return 64
+    serial_args=(-Serial "$2")
+  fi
+  if [[ -z "$output" ]]; then
+    stamp="$(date +%Y%m%dT%H%M%S)" || return 74
+    output="${WORK_DIR:-.}/$stamp/$stamp-adb-image.png"
+  fi
+  directory="$(dirname -- "$output")" || return 74
+  mkdir -p -- "$directory" || return 74
+  temporary="$(mktemp "$directory/.bashstock-image.XXXXXX")" || return 74
+  if ! adb::_run exec-out screencap -p "${serial_args[@]}" >"$temporary" || [[ ! -s "$temporary" ]]; then
+    rm -f -- "$temporary"
+    return 75
+  fi
+  mv -f -- "$temporary" "$output" || { rm -f -- "$temporary"; return 74; }
+  printf '%s\n' "$output"
+}
+### Select one requested device path and pull it to the host.
+adb::device::select-and-pull() {
+  [[ "$#" -ge 1 ]] || return 64
+  local output='.' serial='' selected=''
+  local paths=() serial_args=()
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+      -OutputDirectory) [[ "$#" -ge 2 && -n "$2" ]] || return 64; output="$2"; shift 2 ;;
+      -Serial) [[ "$#" -ge 2 && -n "$2" && -z "$serial" ]] || return 64; serial="$2"; shift 2 ;;
+      --) shift; paths+=("$@"); break ;;
+      *) paths+=("$1"); shift ;;
+    esac
+  done
+  [[ "${#paths[@]}" -gt 0 ]] || return 64
+  [[ -z "$serial" ]] || serial_args=(-Serial "$serial")
+  selected="$(prompt::select-one 'Select a device path' "${paths[@]}")" || return "$?"
+  mkdir -p -- "$output" || return 74
+  adb::_run pull "$selected" "$output" "${serial_args[@]}"
+}
+# shellcheck disable=SC2329
+### Reboot the selected device into its bootloader.
+adb::device::bootloader::enter() {
+  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ) ]] || return 64
+  adb::_run reboot bootloader "$@"
+}
+### Request bootloader unlocking and wait for the device to reconnect.
+adb::device::bootloader::unlock() {
+  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ) ]] || return 64
+  command -v fastboot >/dev/null 2>&1 || return 69
+  local start='' ready=0
+  local fastboot_args=()
+  [[ "$#" -eq 0 ]] || fastboot_args=(-s "$2")
+  adb::device::bootloader::enter "$@" || return "$?"
+  start="$(date +%s)" || return 74
+  while (( $(date +%s) - start < 30 )); do
+    if fastboot "${fastboot_args[@]}" getvar version >/dev/null 2>&1; then
+      ready=1
+      break
+    fi
+    sleep 0.25 || return 74
+  done
+  [[ "$ready" -eq 1 ]] || return 75
+  fastboot "${fastboot_args[@]}" flashing unlock || return "$?"
+  adb::_wait-device 60 "$@"
+}
+### Wait for the selected device to return to the connected state.
+adb::_wait-device() {
+  [[ "$#" -eq 1 || ( "$#" -eq 3 && "$2" == '-Serial' && -n "$3" ) ]] || return 64
+  local timeout="$1" start='' state=''
+  [[ "$timeout" =~ ^[1-9][0-9]*$ ]] || return 64
+  shift
+  start="$(date +%s)" || return 74
+  while (( $(date +%s) - start < timeout )); do
+    state="$(adb::_run get-state "$@" 2>/dev/null)" || state=''
+    [[ "$state" != device ]] || return 0
+    sleep 1 || return 74
+  done
+  return 75
+}
 ### Disable dm-verity on the selected device.
 adb::device::verity::disable() { adb::_run disable-verity "$@"; }
 ### Remount the selected device partitions.
@@ -701,15 +894,75 @@ adb::device::slot::suffix() { adb::_run shell getprop ro.boot.slot_suffix "$@"; 
 ### Write the selected device kernel release.
 adb::device::build::kernel-version() { adb::_run shell uname -r "$@"; }
 ### Save repeated screenshots; MAX_COUNT of zero runs until interrupted.
-adb::device::screen::capture-continuous() { [[ "$#" -le 4 ]] || return 64; local directory="${1:-.}" interval="${2:-1}" max="${3:-0}" index=0; mkdir -p -- "$directory" || return 74; while [[ "$max" -eq 0 || "$index" -lt "$max" ]]; do adb::device::screen::capture-once "$directory/screen-${index}.png" "${4:-}" || return "$?"; index=$((index+1)); sleep "$interval" || return 74; done; }
+adb::device::screen::capture-continuous() {
+  [[ "$#" -le 5 ]] || return 64
+  local directory='./screencap-loop' interval=1 max=0 index=0
+  local serial_args=()
+  if [[ "$#" -gt 0 && "$1" != '-Serial' ]]; then directory="$1"; shift; fi
+  if [[ "$#" -gt 0 && "$1" != '-Serial' ]]; then interval="$1"; shift; fi
+  if [[ "$#" -gt 0 && "$1" != '-Serial' ]]; then max="$1"; shift; fi
+  [[ "$interval" =~ ^[0-9]+([.][0-9]+)?$ && "$interval" =~ [1-9] ]] || return 64
+  [[ "$max" =~ ^[0-9]+$ ]] || return 64
+  if [[ "$#" -gt 0 ]]; then
+    [[ "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ]] || return 64
+    serial_args=(-Serial "$2")
+  fi
+  mkdir -p -- "$directory" || return 74
+  while [[ "$max" -eq 0 || "$index" -lt "$max" ]]; do
+    adb::device::screen::capture-once "$directory/screen-${index}.png" "${serial_args[@]}" || return "$?"
+    index=$((index+1))
+    [[ "$max" -ne 0 && "$index" -ge "$max" ]] && break
+    sleep "$interval" || return 74
+  done
+}
 ### Write a device partition SHA-256 checksum.
-adb::device::partition::sha256() { [[ "$#" -ge 1 ]] || return 64; adb::_run shell sha256sum "$1"; }
-### Keep the selected device awake while charging.
-adb::wake::lock() { adb::_run shell svc power stayon true "$@"; }
-### Restore the selected device normal sleep behavior.
-adb::wake::unlock() { adb::_run shell svc power stayon false "$@"; }
-### Show the selected device power and wake lock state.
-adb::wake::list() { adb::_run shell dumpsys power "$@"; }
+adb::device::partition::sha256() {
+  [[ "$#" -eq 1 || "$#" -eq 3 ]] || return 64
+  local path="$1"
+  [[ "$path" =~ ^/dev/block/[A-Za-z0-9._/-]+$ && "$path" != *'..'* ]] || return 64
+  shift
+  if [[ "$#" -gt 0 ]]; then
+    [[ "$1" == '-Serial' && -n "$2" ]] || return 64
+  fi
+  adb::_run shell sha256sum "$path" "$@"
+}
+### Require a rooted ADB device for sysfs wake lock operations.
+adb::wake::_require-root() {
+  adb::_run root "$@" || return "$?"
+  adb::_wait-device 30 "$@" || return "$?"
+  local user_id=''
+  user_id="$(adb::_run shell id -u "$@")" || return "$?"
+  [[ "$user_id" == 0 ]] || return 69
+}
+### Hold a kernel wake lock using a tag, defaulting to debug.
+adb::wake::lock() {
+  [[ "$#" -le 3 ]] || return 64
+  local tag=debug
+  if [[ "$#" -gt 0 && "$1" != '-Serial' ]]; then tag="$1"; shift; fi
+  [[ "$tag" =~ ^[A-Za-z0-9_.-]+$ ]] || return 64
+  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ) ]] || return 64
+  adb::wake::_require-root "$@" || return "$?"
+  adb::_run shell "test -w /sys/power/wake_lock" "$@" || return 69
+  adb::_run shell "printf '%s' '$tag' > /sys/power/wake_lock" "$@"
+}
+### Release a kernel wake lock using the same tag.
+adb::wake::unlock() {
+  [[ "$#" -le 3 ]] || return 64
+  local tag=debug
+  if [[ "$#" -gt 0 && "$1" != '-Serial' ]]; then tag="$1"; shift; fi
+  [[ "$tag" =~ ^[A-Za-z0-9_.-]+$ ]] || return 64
+  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ) ]] || return 64
+  adb::wake::_require-root "$@" || return "$?"
+  adb::_run shell "test -w /sys/power/wake_unlock" "$@" || return 69
+  adb::_run shell "printf '%s' '$tag' > /sys/power/wake_unlock" "$@"
+}
+### Print active kernel wake locks.
+adb::wake::list() {
+  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ) ]] || return 64
+  adb::wake::_require-root "$@" || return "$?"
+  adb::_run shell "test -r /sys/power/wake_lock" "$@" || return 69
+  adb::_run shell "cat /sys/power/wake_lock" "$@"
+}
 
 ### Execute the process::ids-by-name utility.
 process::ids-by-name() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; util::_run-command pgrep -x "$1"; }
@@ -940,7 +1193,10 @@ selinux::generate-rule() { [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 6
 terminal::gnome-bash() { [[ "$#" -ge 0 ]] || return 64; util::_run-command gnome-terminal -- bash "${@}"; }
 
 ### Execute the shell::editor::set-default utility.
-shell::editor::set-default() { [[ "$#" -ge 1 ]] || return 64; env::set-variable EDITOR "$1"; }
+shell::editor::set-default() {
+  [[ "$#" -le 2 ]] || return 64
+  env::set-variable EDITOR "${1:-code --wait}" "${2:-bash}"
+}
 
 ### Set a string value for one top-level key in a macOS property list.
 ###
@@ -981,7 +1237,13 @@ textproto::set-scalar() {
 shell::completion::enable-ignore-case() { [[ "$#" -le 1 ]] || return 64; env::set-variable completion_ignore_case 1; }
 
 ### Execute the git::credentials::remove utility.
-git::credentials::remove() { [[ "$#" -eq 0 ]] || return 64; git config --global --unset-all credential.helper; }
+git::credentials::remove() {
+  [[ "$#" -eq 0 ]] || return 64
+  if git config --global --get-all credential.helper >/dev/null 2>&1; then
+    git config --global --unset-all credential.helper || return "$?"
+  fi
+  rm -f -- "$HOME/.git-credentials"
+}
 
 ### Execute the git::config::enable-origin-all-fetch utility.
 git::config::enable-origin-all-fetch() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'; }
@@ -1027,7 +1289,11 @@ ssh::key::generate-rsa4096() { [[ "$#" -le 6 ]] || return 64; ssh-keygen -t rsa 
 ssh::key::generate-ed25519() { [[ "$#" -le 6 ]] || return 64; ssh-keygen -t ed25519 "$@"; }
 
 ### Execute the ssh::kill-all utility.
-ssh::kill-all() { [[ "$#" -eq 0 ]] || return 64; ssh-add -D; }
+ssh::kill-all() {
+  [[ "$#" -eq 0 ]] || return 64
+  command -v pkill >/dev/null 2>&1 || return 69
+  pkill -u "$(id -un)" ssh
+}
 
 ### Execute the git::config::use-osx-keychain utility.
 git::config::use-osx-keychain() { [[ "$#" -eq 0 ]] || return 64; [[ "$(system::operating-system)" == darwin ]] || return 69; git config --global credential.helper osxkeychain; }
@@ -1039,8 +1305,54 @@ git-credential-manager::version::list() { [[ "$#" -eq 0 ]] || return 64; util::_
 git-credential-manager::_artifact-url() { [[ "$#" -le 1 ]] || return 64; printf 'https://github.com/git-ecosystem/git-credential-manager/releases/latest/download/%s
 ' "${1:-git-credential-manager.tar.gz}"; }
 
-### Install Git Credential Manager with Homebrew.
-git-credential-manager::install() { [[ "$#" -le 1 ]] || return 64; command -v brew >/dev/null 2>&1 || return 69; if [[ -n "${1:-}" ]]; then brew install --cask git-credential-manager; else brew install --cask git-credential-manager; fi; }
+### Install an official Git Credential Manager artifact for this OS and CPU.
+git-credential-manager::install() {
+  [[ "$#" -le 1 ]] || return 64
+  local version="${1:-}" platform='' architecture='' asset='' url='' temporary='' destination=''
+  [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
+  platform="$(package::_platform)" || return "$?"
+  case "${platform}" in
+    darwin) platform='osx' ;;
+    ubuntu | fedora) platform='linux' ;;
+  esac
+  architecture="$(uname -m)" || return 74
+  case "${architecture}" in
+    x86_64 | amd64) architecture='x64' ;;
+    aarch64 | arm64) architecture='arm64' ;;
+    *) return 69 ;;
+  esac
+  [[ -n "${version}" ]] || version="$(package::_github-release-versions git-ecosystem/git-credential-manager |
+    package::_latest-stable-version)" || return "$?"
+  asset="gcm-${platform}-${architecture}-${version}.tar.gz"
+  url="$(package::_github-release-asset-url git-ecosystem/git-credential-manager \
+    "${version}" "^${asset//./\\.}$")" || return "$?"
+  [[ -n "${url}" ]] || return 69
+  destination="${HOME}/.local/lib/git-credential-manager/${version}"
+  if [[ ! -x "${destination}/git-credential-manager" ]]; then
+    temporary="$(package::_temporary-directory)" || return "$?"
+    package::_download "${url}" "${temporary}/gcm.tar.gz" ||
+      { rm -rf -- "${temporary}"; return 74; }
+    mkdir -p -- "${temporary}/unpacked" ||
+      { rm -rf -- "${temporary}"; return 74; }
+    tar -xzf "${temporary}/gcm.tar.gz" -C "${temporary}/unpacked" ||
+      { rm -rf -- "${temporary}"; return 74; }
+    local actual_version=''
+    actual_version="$("${temporary}/unpacked/git-credential-manager" --version)" ||
+      { rm -rf -- "${temporary}"; return 69; }
+    [[ "${actual_version}" == "${version}" || "${actual_version}" == "${version}"+* ]] ||
+      { rm -rf -- "${temporary}"; return 69; }
+    mkdir -p -- "${HOME}/.local/lib/git-credential-manager" ||
+      { rm -rf -- "${temporary}"; return 74; }
+    mv -- "${temporary}/unpacked" "${destination}" ||
+      { rm -rf -- "${temporary}"; return 74; }
+    rm -rf -- "${temporary}"
+  fi
+  mkdir -p -- "${HOME}/.local/bin" || return 74
+  ln -sfn -- "${destination}/git-credential-manager" \
+    "${HOME}/.local/bin/git-credential-manager" || return 74
+  env::add-path "${HOME}/.local/bin" || return "$?"
+  "${destination}/git-credential-manager" configure
+}
 
 ### Execute the git::config::setup utility.
 git::config::setup() { [[ "$#" -le 2 ]] || return 64; [[ -n "${1:-}" ]] && git::config::set-email "$1"; [[ -n "${2:-}" ]] && git::config::set-username "$2"; git::config::set-default-branch main; git::config::enable-rebase-on-pull; git::config::enable-prune-fetch; }
@@ -1048,20 +1360,31 @@ git::config::setup() { [[ "$#" -le 2 ]] || return 64; [[ -n "${1:-}" ]] && git::
 ### Register the official Go package source for the current platform.
 go::repository::register() {
   [[ "$#" -eq 0 ]] || return 64
-  command -v brew >/dev/null 2>&1 || command -v apt-get >/dev/null 2>&1 || return 69
+  case "$(package::_platform)" in
+    darwin) command::require brew ;;
+    ubuntu) command::require apt-get ;;
+    fedora) command::require dnf ;;
+    *) return 69 ;;
+  esac
 }
 
 ### Install Go from the platform package source.
 go::install() {
   [[ "$#" -le 1 ]] || return 64
   go::repository::register || return "$?"
-  if command -v brew >/dev/null 2>&1; then
-    if [[ "$#" -eq 1 ]]; then brew install "go@$1"; else brew install go; fi
-  elif [[ "$#" -eq 1 ]]; then
-    sudo apt-get install -y "golang-$1"
-  else
-    sudo apt-get install -y golang
-  fi
+  local platform='' version="${1:-}"
+  platform="$(package::_platform)" || return "$?"
+  case "${platform}" in
+    darwin) package::_install-version go "${version}" ;;
+    ubuntu)
+      if [[ -n "${version}" ]]; then
+        package::_install "golang-${version}"
+      else
+        package::_install golang
+      fi
+      ;;
+    fedora) package::_install-version golang "${version}" ;;
+  esac
 }
 
 ### Install Rust using rustup and an optional toolchain version.
@@ -1088,16 +1411,20 @@ rust::versions() {
   if command -v rustup >/dev/null 2>&1; then rustup toolchain list; else command -v rustc >/dev/null 2>&1 || return 69; rustc --version; fi
 }
 
-### Discard Flutter SDK changes and switch to a tag or commit.
+### Keep Flutter SDK changes in a retrievable stash and switch versions.
 flutter::use-version() {
   [[ "$#" -le 2 ]] || return 64
   local version='' directory=''
-  if [[ "$#" -ge 1 ]]; then version="$1"; else version='stable'; fi
-  if [[ "$#" -ge 2 ]]; then directory="$2"; else directory="$HOME/flutter"; fi
+  if [[ "$#" -ge 1 ]]; then version="$1"; fi
+  if [[ "$#" -ge 2 ]]; then directory="$2"; else directory="$HOME/.local/flutter"; fi
   [[ -d "$directory/.git" ]] || return 66
-  git -C "$directory" reset --hard HEAD || return 75
-  git -C "$directory" clean -fdx || return 75
-  git -C "$directory" switch "$version"
+  [[ -n "$version" ]] || version="$(flutter::versions | package::_latest-stable-version)" || return "$?"
+  git -C "$directory" fetch --tags origin || return "$?"
+  if ! git -C "$directory" stash push --include-untracked; then
+    git -C "$directory" reset --hard HEAD || return "$?"
+    git -C "$directory" clean -fd || return "$?"
+  fi
+  git -C "$directory" switch --detach "$version"
 }
 
 ### Remove one JFrog CLI server configuration.
@@ -1111,15 +1438,35 @@ jfrog::config::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command jf con
 
 ### Register and verify a JFrog CLI server.
 jfrog::setup() {
-  [[ "$#" -eq 5 && -n "$1" && -n "$2" && -n "$3" && -n "$4" && -n "$5" ]] || return 64
-  util::_run-command jf config add "$1" --url "$2" --user "$3" --password "$5" --interactive=false || return "$?"
-  util::_run-command jf rt ping --server-id "$1"
+  [[ "$#" -eq 3 && -n "$1" && -n "$2" && -n "$3" && -n "${JFROG_ACCESS_TOKEN:-}" ]] || return 64
+  command -v jf >/dev/null 2>&1 || return 69
+  printf '%s\n' "$JFROG_ACCESS_TOKEN" |
+    env -u JFROG_ACCESS_TOKEN jf config add "$1" \
+      --url "$2" --user "$3" --access-token-stdin --interactive=false || return "$?"
+  env -u JFROG_ACCESS_TOKEN jf rt ping --server-id "$1"
 }
 
 ### Install the OpenCode command-line application.
 opencode::install() {
   [[ "$#" -le 1 ]] || return 64
-  if command -v brew >/dev/null 2>&1; then if [[ "$#" -eq 1 ]]; then brew install "opencode@$1"; else brew install opencode; fi; elif command -v npm >/dev/null 2>&1; then if [[ "$#" -eq 1 ]]; then npm install --global "opencode@$1"; else npm install --global opencode; fi; else return 69; fi
+  local version="${1:-}" platform='' available=''
+  [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
+  platform="$(package::_platform)" || return "$?"
+  if [[ "${platform}" == darwin ]]; then
+    if [[ -n "${version}" ]]; then
+      available="$(package::_brew-formula-stable-version anomalyco/tap/opencode)" || return "$?"
+      [[ "${available}" == "${version}" ]] || return 69
+    fi
+    package::_install anomalyco/tap/opencode || return "$?"
+    opencode --version
+  else
+    command::require npm || return "$?"
+    mkdir -p -- "${HOME}/.local" || return 74
+    npm install --global --prefix "${HOME}/.local" "opencode-ai${version:+@${version}}" ||
+      return "$?"
+    env::add-path "${HOME}/.local/bin" || return "$?"
+    "${HOME}/.local/bin/opencode" --version
+  fi
 }
 
 ### Log in to an Artifactory Docker registry using a token on standard input.
@@ -1194,9 +1541,6 @@ vscode::remove-user-data() {
   [[ -d "$directory" && ! -L "$directory" ]] || return 66
   directory::clear "$directory"
 }
-
-### Reboot a device into its bootloader.
-adb::device::bootloader::enter() { adb::_run reboot bootloader "$@"; }
 
 ### Set the default ADB device for later calls in the current shell by exporting ANDROID_SERIAL.
 adb::device::set-default() {

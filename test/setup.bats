@@ -207,6 +207,24 @@ use_fake_curl() {
   grep -Fqx "usermod -a -G docker $(id -un)" "${ROOT_LOG}"
 }
 
+@test "Docker on Fedora installs the official Buildx plugin when no RPM is available" {
+  use_platform fedora 34
+  record_root_commands
+  use_fake_root
+  use_fake_curl
+  dnf() {
+    if [[ "$1" == 'list' && "$2" == '--available' ]]; then return 1; fi
+  }
+  uname() { [[ "$1" == '-m' ]] && printf 'aarch64\n'; }
+  systemctl() { :; }
+  usermod() { :; }
+  run docker::install
+  [ "${status}" -eq 0 ]
+  grep -Fqx 'dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin' "${ROOT_LOG}"
+  grep -Fqx 'dnf upgrade -y docker-ce docker-ce-cli containerd.io docker-compose-plugin' "${ROOT_LOG}"
+  grep -Eq '^install -m 0755 .*/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx$' "${ROOT_LOG}"
+}
+
 @test "Docker versions order epoch releases after legacy releases" {
   use_platform ubuntu 18.04 bionic
   dpkg() { printf 'arm64\n'; }
@@ -308,16 +326,38 @@ use_fake_curl() {
   [ "$(<"${OPEN_LOG}")" = '-a Rancher Desktop' ]
 }
 
-@test "Node.js on Ubuntu rejects a major version the distribution does not provide" {
+@test "Node.js on Ubuntu lists complete OS versions and rejects unavailable versions" {
   use_platform ubuntu 24.04 noble
   record_root_commands
   apt-cache() {
     printf ' nodejs | 18.19.1+dfsg-6ubuntu5 | http://archive.ubuntu.com noble/universe amd64 Packages\n'
   }
-  run --separate-stderr node::install 22
+  run node::versions os
+  [ "${status}" -eq 0 ]
+  [ "${output}" = '18.19.1' ]
+  run --separate-stderr node::install 22.0.0 os
   [ "${status}" -eq 69 ]
-  [[ "${stderr}" == *'Node.js 18, not 22'* ]]
+  [[ "${stderr}" == *'Node.js 22.0.0 is unavailable from os.'* ]]
   [ ! -s "${ROOT_LOG}" ]
+}
+
+@test "Node.js official versions include complete stable releases for the CPU" {
+  use_platform ubuntu 18.04 bionic
+  CURL_BODY='[{"version":"v16.20.2","files":["linux-arm64"]},{"version":"v18.19.1","files":["linux-x64"]},{"version":"v17.0.0-rc1","files":["linux-arm64"]}]'
+  curl() { printf '%s' "$CURL_BODY"; }
+  uname() { [[ "$1" == '-m' ]] && printf 'aarch64\n'; }
+  run node::versions official
+  [ "${status}" -eq 0 ]
+  [ "${output}" = '16.20.2' ]
+}
+
+@test "Go installs from the Fedora package source" {
+  use_platform fedora 44
+  record_root_commands
+  dnf() { :; }
+  run go::install
+  [ "${status}" -eq 0 ]
+  [ "$(<"${ROOT_LOG}")" = 'dnf install -y golang' ]
 }
 
 @test "Microsoft Edge on Ubuntu installs the newest package from vendor metadata" {
@@ -436,31 +476,51 @@ gsettings_value() {
   [ "$(gsettings_value org.gnome.desktop.input-sources sources)" = "[('ibus', 'mozc-jp')]" ]
 }
 
-@test "Flutter installation replaces an SDK but keeps other directories" {
+@test "Flutter installation preserves existing SDK changes in a retrievable stash" {
   use_platform darwin
-  GIT_LOG="${BATS_TEST_TMPDIR}/git.log"
-  git() {
-    local argument='' last=''
-    for argument in "$@"; do last="${argument}"; done
-    printf '%s\n' "$*" >"${GIT_LOG}"
-    mkdir -p "${last}"
-  }
+  flutter::dependencies::install() { :; }
+  export HOME="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "${HOME}"
   local directory="${BATS_TEST_TMPDIR}/flutter"
   mkdir -p "${directory}"
   printf 'keep' >"${directory}/notes.txt"
   run --separate-stderr flutter::install 3.35.0 "${directory}"
   [ "${status}" -eq 73 ]
   [ "$(<"${directory}/notes.txt")" = 'keep' ]
-  [ ! -e "${GIT_LOG}" ]
 
   rm -rf "${directory}"
-  mkdir -p "${directory}/bin" "${directory}/.git"
+  git init -q "${directory}"
+  git -C "${directory}" config user.name test
+  git -C "${directory}" config user.email test@example.invalid
+  mkdir -p "${directory}/bin"
   printf '#!/bin/sh\n' >"${directory}/bin/flutter"
   chmod +x "${directory}/bin/flutter"
+  git -C "${directory}" add bin/flutter
+  git -C "${directory}" commit -qm initial
+  git -C "${directory}" tag 3.35.0
+  git clone -q --bare "${directory}" "${BATS_TEST_TMPDIR}/remote.git"
+  git -C "${directory}" remote add origin "${BATS_TEST_TMPDIR}/remote.git"
+  printf 'change\n' >>"${directory}/bin/flutter"
+  printf 'untracked\n' >"${directory}/untracked.txt"
   run flutter::install 3.35.0 "${directory}"
   [ "${status}" -eq 0 ]
-  [ ! -e "${directory}/bin/flutter" ]
-  [ "$(<"${GIT_LOG}")" = "clone --branch 3.35.0 https://github.com/flutter/flutter.git ${directory}" ]
+  [ -x "${directory}/bin/flutter" ]
+  [ ! -e "${directory}/untracked.txt" ]
+  [ -n "$(git -C "${directory}" stash list)" ]
+}
+
+@test "Flutter dependencies select the C++ development package provided by Ubuntu" {
+  use_platform ubuntu 18.04 bionic
+  record_root_commands
+  apt-get() { :; }
+  apt-cache() {
+    [[ "$1" == pkgnames ]] || return 1
+    printf 'libstdc++-7-dev\nlibstdc++-6-dev\n'
+  }
+  run flutter::dependencies::install
+  [ "${status}" -eq 0 ]
+  grep -Fq 'libstdc++-7-dev' "${ROOT_LOG}"
+  ! grep -Fq 'libstdc++-12-dev' "${ROOT_LOG}"
 }
 
 @test "GPG key generation keeps passphrases out of arguments and rejects invalid options" {

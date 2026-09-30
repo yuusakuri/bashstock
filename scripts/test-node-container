@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091
+
+set -euo pipefail
+
+# The Docker package suite has already installed curl, Perl, and Git.
+source /opt/bashstock.sh
+
+version='16.20.2'
+node::install "${version}" official
+test "$(node --version)" = "v${version}"
+node::install "${version}" official
+test "$(node --version)" = "v${version}"
+npm --version
+corepack --version
+pnpm --version
+test "$(pnpm config get store-dir)" = "${HOME}/.pnpm-store"

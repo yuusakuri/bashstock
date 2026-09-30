@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2317
+
+set -euo pipefail
+
+# Run on a disposable Ubuntu VM with systemd as PID 1.
+source ./dist/bashstock.sh
+version="$(docker::versions | tail -n 1)"
+test -n "${version}"
+docker::install "${version}"
+docker::install "${version}"
+test "$(dpkg-query -W -f='${Version}' docker-ce)" = "${version}"
+systemctl is-enabled docker
+systemctl is-active docker
+sudo docker info
+sudo docker run --rm hello-world

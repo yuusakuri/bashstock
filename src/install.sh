@@ -164,20 +164,63 @@ aws-vpn-client::log::open() {
   "${editor}" "$@"
 }
 
-### Write Node.js LTS major versions from the official release index in ascending order.
-node::versions() {
+### Write the artifact suffix used by official Node.js downloads.
+node::_official-platform() {
   [[ "$#" -eq 0 ]] || return 64
-  command::require perl || return "$?"
-  local json='' versions=''
-  json="$(package::_fetch https://nodejs.org/dist/index.json)" || return "$?"
-  versions="$(printf '%s' "${json}" | perl -MJSON::PP -e '
-    local $/;
-    my $data = eval { decode_json(<STDIN>) } or exit 74;
-    for my $release (@$data) {
-      next unless $release->{lts};
-      print "$1\n" if $release->{version} =~ /^v([0-9]+)\./;
-    }
-  ')" || return "$?"
+  local platform='' architecture=''
+  platform="$(package::_platform)" || return "$?"
+  case "${platform}" in
+    darwin) platform='darwin' ;;
+    ubuntu | fedora) platform='linux' ;;
+  esac
+  architecture="$(uname -m)" || return 74
+  case "${architecture}" in
+    x86_64 | amd64) architecture='x64' ;;
+    aarch64 | arm64) architecture='arm64' ;;
+    *) return 69 ;;
+  esac
+  printf '%s-%s\n' "${platform}" "${architecture}"
+}
+
+### Write complete stable Node.js versions from the selected source.
+node::versions() {
+  [[ "$#" -le 1 ]] || return 64
+  local source="${1:-os}" platform='' versions='' raw='' artifact='' json=''
+  [[ "${source}" == os || "${source}" == official ]] || return 64
+  platform="$(package::_platform)" || return "$?"
+  if [[ "${source}" == official ]]; then
+    command::require perl || return "$?"
+    artifact="$(node::_official-platform)" || return "$?"
+    if [[ "${artifact}" == darwin-* ]]; then artifact="osx-${artifact#darwin-}-tar"; fi
+    json="$(package::_fetch https://nodejs.org/dist/index.json)" || return "$?"
+    versions="$(printf '%s' "${json}" | perl -MJSON::PP -e '
+      my ($artifact) = @ARGV;
+      local $/;
+      my $data = eval { decode_json(<STDIN>) } or exit 74;
+      for my $release (@$data) {
+        next unless grep { $_ eq $artifact } @{$release->{files} || []};
+        print "$1\n" if $release->{version} =~ /^v([0-9]+\.[0-9]+\.[0-9]+)$/;
+      }
+    ' "${artifact}")" || return "$?"
+  elif [[ "${platform}" == darwin ]]; then
+    versions="$(package::_brew-formula-stable-version node)" || return "$?"
+    local formula='' formulae=''
+    formulae="$(brew info --json=v2 --formula node |
+      perl -MJSON::PP -e 'local $/; my $data = eval { decode_json(<STDIN>) } or exit 74; print "$_\n" for @{$data->{formulae}[0]{versioned_formulae} || []}')" || return "$?"
+    while IFS= read -r formula; do
+      [[ -n "${formula}" ]] || continue
+      raw="$(package::_brew-formula-stable-version "${formula}")" || return "$?"
+      versions+=$'\n'"${raw}"
+    done <<<"${formulae}"
+  else
+    versions="$(package::_versions nodejs)" || return "$?"
+    while IFS= read -r raw; do
+      [[ "${raw}" =~ ([0-9]+\.[0-9]+\.[0-9]+) ]] &&
+        printf '%s\n' "${BASH_REMATCH[1]}"
+    done <<<"${versions}" | package::_sort-versions
+    return
+  fi
+  [[ -n "${versions}" ]] || return 69
   printf '%s\n' "${versions}" | package::_sort-versions
 }
 
@@ -185,55 +228,112 @@ node::versions() {
 ###
 ### Arguments
 ###
-### * VERSION - Node.js major version. On macOS it defaults to the newest LTS
-###   major version. On Fedora it selects the nodejsVERSION stream when one
-###   exists. Otherwise Linux installs the distribution nodejs package, and a
-###   given VERSION must match its major version.
+### * VERSION - Complete major.minor.patch version from node::versions.
+### * SOURCE - os (default) or official.
 node::install() {
-  [[ "$#" -le 1 ]] || return 64
-  local version="${1:-}" platform='' stable='' formula='node' package='nodejs' available=''
-  [[ -z "${version}" || "${version}" =~ ^[0-9]+$ ]] || return 64
+  [[ "$#" -le 2 ]] || return 64
+  local version="${1:-}" source="${2:-os}" platform='' available='' raw='' selected=''
+  [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
+  [[ "${source}" == os || "${source}" == official ]] || return 64
   platform="$(package::_platform)" || return "$?"
-  if [[ -z "${version}" && "${platform}" != 'ubuntu' ]]; then
-    version="$(node::versions | package::_latest-stable-version)" || return "$?"
+  available="$(node::versions "${source}")" || return "$?"
+  if [[ -z "${version}" ]]; then
+    version="$(printf '%s\n' "${available}" | package::_latest-stable-version)" || return "$?"
   fi
-  case "${platform}" in
-    darwin)
-      stable="$(package::_brew-formula-stable-version node)" || return "$?"
-      [[ "${stable%%.*}" == "${version}" ]] || formula="node@${version}"
-      package::_install "${formula}" || return "$?"
-      if [[ "${formula}" != 'node' ]]; then
-        brew link --overwrite --force "${formula}" || return "$?"
-      fi
-      ;;
-    ubuntu | fedora)
-      if [[ "${platform}" == 'fedora' && -n "$(package::_versions "nodejs${version}" 2>/dev/null)" ]]; then
-        package="nodejs${version}"
-      elif [[ -n "${1:-}" ]]; then
-        available="$(package::_latest-version nodejs)" || return "$?"
-        available="${available#*:}"
-        if [[ "${available%%.*}" != "${version}" ]]; then
-          console::_write-error "The distribution provides Node.js ${available%%.*}, not ${version}."
-          return 69
-        fi
-      fi
-      package::_install "${package}" || return "$?"
-      ;;
-  esac
-  node::_enable-corepack "${platform}" || return "$?"
+  if ! grep -Fqx -- "${version}" <<<"${available}"; then
+    console::_write-error "Node.js ${version} is unavailable from ${source}."
+    return 69
+  fi
+  local major="${version%%.*}" minor="${version#*.}"
+  minor="${minor%%.*}"
+  if (( major < 16 || (major == 16 && minor < 14) )); then
+    console::_write-error "Node.js ${version} cannot run the required Corepack and pnpm releases."
+    return 69
+  fi
+  if [[ "${source}" == official ]]; then
+    node::_install-official "${version}" || return "$?"
+  elif [[ "${platform}" == darwin ]]; then
+    local formula='node' stable='' formulae='' candidate=''
+    stable="$(package::_brew-formula-stable-version node)" || return "$?"
+    if [[ "${version}" != "${stable}" ]]; then
+      formula=''
+      formulae="$(brew info --json=v2 --formula node |
+        perl -MJSON::PP -e 'local $/; my $data = eval { decode_json(<STDIN>) } or exit 74; print "$_\n" for @{$data->{formulae}[0]{versioned_formulae} || []}')" || return "$?"
+      while IFS= read -r candidate; do
+        [[ -n "${candidate}" ]] || continue
+        stable="$(package::_brew-formula-stable-version "${candidate}")" || return "$?"
+        if [[ "${version}" == "${stable}" ]]; then formula="${candidate}"; break; fi
+      done <<<"${formulae}"
+      [[ -n "${formula}" ]] || return 69
+    fi
+    package::_install "${formula}" || return "$?"
+    [[ "${formula}" == node ]] || brew link --overwrite --force "${formula}" || return "$?"
+  else
+    available="$(package::_versions nodejs)" || return "$?"
+    while IFS= read -r raw; do
+      if [[ "${raw}" =~ (^|[^0-9])${version}([^0-9]|$) ]]; then selected="${raw}"; fi
+    done <<<"${available}"
+    [[ -n "${selected}" ]] || return 69
+    if [[ "${platform}" == ubuntu ]]; then
+      [[ -n "$(package::_versions npm)" ]] || return 69
+    fi
+    package::_install "nodejs=${selected}" npm || return "$?"
+  fi
+  node::_enable-corepack "${platform}" "${source}" || return "$?"
   COREPACK_ENABLE_DOWNLOAD_PROMPT=0 pnpm config set store-dir "${HOME}/.pnpm-store"
 }
 
 ### Enable Corepack, installing it through npm when the Node.js release omits it.
 node::_enable-corepack() {
-  [[ "$#" -eq 1 ]] || return 64
+  [[ "$#" -eq 2 ]] || return 64
   local runner=()
-  [[ "$1" == 'darwin' ]] || runner=(command::run-as-root)
+  [[ "$1" == 'darwin' || "$2" == official ]] || runner=(command::run-as-root)
   if ! command -v corepack >/dev/null 2>&1; then
     command::require npm || return "$?"
-    ${runner[@]+"${runner[@]}"} npm install --global corepack || return "$?"
+    ${runner[@]+"${runner[@]}"} npm install --global corepack@0.20.0 || return "$?"
   fi
-  ${runner[@]+"${runner[@]}"} corepack enable
+  ${runner[@]+"${runner[@]}"} corepack enable || return "$?"
+  COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack prepare pnpm@8.15.9 --activate
+}
+
+### Install an official Node.js archive after confirming that its executables start.
+node::_install-official() {
+  [[ "$#" -eq 1 && "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
+  local version="$1" artifact='' temporary='' destination=''
+  artifact="$(node::_official-platform)" || return "$?"
+  destination="${HOME}/.local/lib/node/${version}"
+  if [[ ! -x "${destination}/bin/node" ]]; then
+    temporary="$(package::_temporary-directory)" || return "$?"
+    package::_download \
+      "https://nodejs.org/dist/v${version}/node-v${version}-${artifact}.tar.xz" \
+      "${temporary}/node.tar.xz" || { rm -rf -- "${temporary}"; return 74; }
+    mkdir -p -- "${temporary}/unpacked" || { rm -rf -- "${temporary}"; return 74; }
+    tar -xJf "${temporary}/node.tar.xz" --strip-components=1 -C "${temporary}/unpacked" ||
+      { rm -rf -- "${temporary}"; return 74; }
+    [[ "$("${temporary}/unpacked/bin/node" --version)" == "v${version}" ]] ||
+      { rm -rf -- "${temporary}"; return 69; }
+    PATH="${temporary}/unpacked/bin:${PATH}" "${temporary}/unpacked/bin/npm" --version >/dev/null ||
+      { rm -rf -- "${temporary}"; return 69; }
+    mkdir -p -- "${HOME}/.local/lib/node" || { rm -rf -- "${temporary}"; return 74; }
+    mv -- "${temporary}/unpacked" "${destination}" ||
+      { rm -rf -- "${temporary}"; return 74; }
+    rm -rf -- "${temporary}"
+  fi
+  ln -sfn -- "${destination}" "${HOME}/.local/lib/node/current" || return 74
+  local binary_directory="${HOME}/.local/lib/node/current/bin" escaped='' startup='' line=''
+  printf -v escaped '%q' "${binary_directory}"
+  line="__bashstock_node_bin=${escaped}; case \"\$PATH\" in \"\$__bashstock_node_bin\"|\"\$__bashstock_node_bin\":*) ;; *) PATH=\"\$__bashstock_node_bin:\$PATH\"; export PATH ;; esac; unset __bashstock_node_bin"
+  for startup in "${HOME}/.bashrc" "${HOME}/.zshrc"; do
+    [[ -e "${startup}" ]] || file::write-text "${startup}" '' || return "$?"
+    file::replace-text-or-append "${startup}" \
+      '^(__bashstock_node_bin=|__bashstock_path=.*\.local/lib/node/current/bin)' \
+      "${line}" || return "$?"
+  done
+  if [[ "${PATH}" != "${binary_directory}" && "${PATH}" != "${binary_directory}":* ]]; then
+    PATH="${binary_directory}:${PATH}"
+    export PATH
+    hash -r
+  fi
 }
 
 ### Write Docker Engine or Docker CLI versions available to the current platform.
@@ -342,19 +442,50 @@ docker::_install-ubuntu() {
 ### Install Docker Engine from the official repository on Fedora.
 docker::_install-fedora() {
   [[ "$#" -eq 1 ]] || return 64
-  local version="$1" cli_version="${1#*:}" repository=''
+  local version="$1" cli_version="${1#*:}" repository='' buildx_package='docker-buildx-plugin'
   command::run-as-root dnf remove -y docker docker-client docker-client-latest docker-common docker-latest \
     docker-latest-logrotate docker-logrotate docker-selinux docker-engine-selinux docker-engine >/dev/null 2>&1 || true
   repository="$(package::_fetch https://download.docker.com/linux/fedora/docker-ce.repo)" || return "$?"
   package::_dnf-register-repository docker-ce "${repository}"$'\n' || return "$?"
+  if ! dnf list --available docker-buildx-plugin >/dev/null 2>&1; then
+    buildx_package=''
+  fi
   package::_install "docker-ce${version:+=${version}}" "docker-ce-cli${cli_version:+=${cli_version}}" \
-    containerd.io docker-buildx-plugin docker-compose-plugin || return "$?"
+    containerd.io ${buildx_package:+"${buildx_package}"} docker-compose-plugin || return "$?"
   if [[ -z "${version}" ]]; then
     command::run-as-root dnf upgrade -y docker-ce docker-ce-cli containerd.io \
-      docker-buildx-plugin docker-compose-plugin || return "$?"
+      ${buildx_package:+"${buildx_package}"} docker-compose-plugin || return "$?"
+  fi
+  if [[ -z "${buildx_package}" ]]; then
+    docker::_install-buildx-plugin || return "$?"
   fi
   package::_enable-service docker || return "$?"
   package::_add-current-user-to-group docker
+}
+
+### Install the official Buildx CLI plugin when the Docker RPM repository does not package it.
+docker::_install-buildx-plugin() {
+  [[ "$#" -eq 0 ]] || return 64
+  local architecture='' directory='' status=0
+  architecture="$(package::_rpm-architecture)" || return "$?"
+  case "${architecture}" in
+    x86_64) architecture='amd64' ;;
+    aarch64) architecture='arm64' ;;
+    *) return 69 ;;
+  esac
+  directory="$(package::_temporary-directory)" || return "$?"
+  package::_download \
+    "https://github.com/docker/buildx/releases/download/v0.10.5/buildx-v0.10.5.linux-${architecture}" \
+    "${directory}/docker-buildx" || status="$?"
+  if [[ "${status}" -eq 0 ]]; then
+    command::run-as-root install -d -m 0755 /usr/local/lib/docker/cli-plugins || status=74
+  fi
+  if [[ "${status}" -eq 0 ]]; then
+    command::run-as-root install -m 0755 "${directory}/docker-buildx" \
+      /usr/local/lib/docker/cli-plugins/docker-buildx || status=74
+  fi
+  rm -rf -- "${directory}"
+  return "${status}"
 }
 
 ### Write Colima versions available from Homebrew.
@@ -444,8 +575,19 @@ ruby::_configure-shell() {
 ### * VERSION - Ruby version. Defaults to ruby::version::latest.
 ruby::install() {
   [[ "$#" -le 1 ]] || return 64
-  local version="${1:-}" rbenv=''
+  local version="${1:-}" rbenv='' platform=''
   [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
+  platform="$(package::_platform)" || return "$?"
+  case "${platform}" in
+    ubuntu)
+      package::_install build-essential autoconf bison libssl-dev libreadline-dev \
+        zlib1g-dev libyaml-dev libffi-dev || return "$?"
+      ;;
+    fedora)
+      package::_install gcc gcc-c++ make autoconf bison openssl-devel readline-devel \
+        zlib-devel libyaml-devel libffi-devel || return "$?"
+      ;;
+  esac
   ruby::_install-rbenv || return "$?"
   ruby::_configure-shell || return "$?"
   rbenv="$(ruby::_rbenv-command)" || return "$?"
@@ -862,7 +1004,7 @@ flutter::versions() {
 ### Install packages required to build Flutter applications.
 flutter::dependencies::install() {
   [[ "$#" -eq 0 ]] || return 64
-  local platform=''
+  local platform='' library=''
   platform="$(package::_platform)" || return "$?"
   case "${platform}" in
     darwin)
@@ -871,8 +1013,13 @@ flutter::dependencies::install() {
       ;;
     ubuntu)
       package::_refresh || return "$?"
+      command::require apt-cache || return "$?"
+      library="$(apt-cache pkgnames 'libstdc++-' |
+        awk '/^libstdc\+\+-[0-9]+-dev$/ {name=$0; sub(/^libstdc\+\+-/, "", $0); sub(/-dev$/, "", $0); print $0, name}' |
+        sort -n | tail -n 1 | awk '{print $2}')" || return 74
+      [[ -n "${library}" ]] || return 69
       package::_install curl git unzip xz-utils zip libglu1-mesa clang cmake ninja-build \
-        pkg-config libgtk-3-dev libstdc++-12-dev
+        pkg-config libgtk-3-dev "${library}"
       ;;
     fedora)
       package::_install curl git unzip xz zip mesa-libGLU clang cmake ninja-build \
@@ -881,10 +1028,9 @@ flutter::dependencies::install() {
   esac
 }
 
-### Install dependencies and clone a stable Flutter SDK.
+### Install dependencies and select a stable Flutter SDK version.
 ###
-### An existing Flutter SDK in INSTALL_DIRECTORY is replaced. Other nonempty
-### directories are rejected.
+### An existing Flutter repository retains its stash and ignored files.
 ###
 ### Arguments
 ###
@@ -900,14 +1046,20 @@ flutter::install() {
   fi
   if [[ -e "${directory}" ]]; then
     if [[ -x "${directory}/bin/flutter" && -d "${directory}/.git" ]]; then
-      rm -rf -- "${directory}" || return 74
+      flutter::use-version "${version}" "${directory}" || return "$?"
     elif ! path::is-empty-directory "${directory}"; then
       console::_write-error "Directory is not a Flutter SDK: ${directory}"
       return 73
     fi
   fi
   mkdir -p -- "$(path::directory-name "${directory}")" || return 74
-  git clone --branch "${version}" https://github.com/flutter/flutter.git "${directory}"
+  if [[ ! -d "${directory}/.git" ]]; then
+    git clone --branch "${version}" https://github.com/flutter/flutter.git "${directory}" ||
+      return "$?"
+  fi
+  [[ -x "${directory}/bin/flutter" ]] || return 69
+  env::add-path "${directory}/bin" || return "$?"
+  "${directory}/bin/flutter" --version
 }
 
 ### Set VLC as the default application for every MIME type it declares.

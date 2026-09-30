@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2317
+
+set -euo pipefail
+
+# This suite uses a disposable home, SDK, and AVD directory on a macOS runner.
+[[ "$(uname -s)" == Darwin ]] || exit 69
+[[ -n "${RUNNER_TEMP:-}" ]] || exit 64
+export HOME="${RUNNER_TEMP}/bashstock-android-home"
+export ANDROID_HOME="${HOME}/Library/Android/sdk"
+export ANDROID_SDK_ROOT="${ANDROID_HOME}"
+export ANDROID_USER_HOME="${HOME}/.android"
+mkdir -p "${HOME}"
+source ./dist/bashstock.sh
+
+android::sdk::install
+android::platform-tools::install
+android::sdk-platform::install 35
+android::build-tools::install 35.0.0
+android::command-line-tools::install
+android::emulator::install
+android::platform-tools::install
+android::build-tools::install 35.0.0
+
+"$(android::_cli-command)" --version
+"${ANDROID_HOME}/platform-tools/adb" version
+"${ANDROID_HOME}/platform-tools/fastboot" --version
+"${ANDROID_HOME}/build-tools/35.0.0/aapt2" version
+"${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --version
+"${ANDROID_HOME}/emulator/emulator" -version
+test -s "${ANDROID_HOME}/platforms/android-35/android.jar"
+
+name="bashstock_ci_${GITHUB_RUN_ID:-local}"
+android::avd::create "${name}" 35
+test "$(android::avd::list | grep -Fxc -- "${name}")" -eq 1
+if android::avd::create "${name}" 35; then
+  printf 'Existing AVD was overwritten without --replace.\n' >&2
+  exit 1
+fi
+serial="$(android::avd::start "${name}" '' 300 --headless)"
+test -n "${serial}"
+android::avd::stop "${name}"
+android::avd::delete "${name}"
+if android::avd::list | grep -Fqx -- "${name}"; then
+  printf 'AVD was not removed.\n' >&2
+  exit 1
+fi

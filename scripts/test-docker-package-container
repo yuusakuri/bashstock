@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091
+
+set -euo pipefail
+
+# Run inside a disposable Ubuntu or Fedora container. Service behavior is
+# exercised separately on a runner whose PID 1 is systemd.
+if [[ -f /etc/fedora-release ]]; then
+  if [[ "$(rpm -E %fedora)" == 34 ]]; then
+    cat >/etc/yum.repos.d/bashstock-archive.repo <<'REPO'
+[bashstock-fedora-archive]
+name=Fedora 34 official archive
+baseurl=https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/34/Everything/$basearch/os/
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-fedora-34-$basearch
+[bashstock-fedora-updates-archive]
+name=Fedora 34 updates official archive
+baseurl=https://archives.fedoraproject.org/pub/archive/fedora/linux/updates/34/Everything/$basearch/
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-fedora-34-$basearch
+REPO
+    for repository in /etc/yum.repos.d/*.repo; do
+      [[ "$repository" == */bashstock-archive.repo ]] ||
+        sed -i 's/^enabled=1/enabled=0/' "$repository"
+    done
+  fi
+  dnf install -y git curl ca-certificates perl perl-JSON-PP procps-ng sudo
+else
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y git curl ca-certificates perl \
+    libjson-pp-perl procps sudo
+fi
+
+mkdir -p /tmp/bashstock-test-bin
+cat >/tmp/bashstock-test-bin/systemctl <<'SYSTEMCTL'
+#!/usr/bin/env bash
+[[ "$*" == 'enable --now docker' ]] || exit 64
+printf '%s\n' "$*" >>/tmp/bashstock-systemctl.log
+SYSTEMCTL
+chmod +x /tmp/bashstock-test-bin/systemctl
+export PATH="/tmp/bashstock-test-bin:$PATH"
+touch /root/.bashrc /root/.zshrc
+source /opt/bashstock.sh
+
+versions="$(docker::versions)"
+[[ -n "$versions" ]]
+version="$(printf '%s\n' "$versions" | tail -n 1)"
+[[ -n "$version" ]]
+printf 'Docker selected version: %s\n' "$version"
+docker::install "$version"
+docker::install "$version"
+[[ "$(grep -Fxc -- 'enable --now docker' /tmp/bashstock-systemctl.log)" -eq 2 ]]
+docker --version
+docker compose version
+docker buildx version
+
+if [[ -f /etc/fedora-release ]]; then
+  [[ "$(stat -c %a /etc/yum.repos.d/docker-ce.repo)" == 644 ]]
+  installed="$(rpm -q --qf '%{EPOCH}:%{VERSION}-%{RELEASE}\n' docker-ce)"
+  [[ "$installed" == "$version" ]]
+else
+  [[ "$(stat -c %a /etc/apt/sources.list.d/docker.sources)" == 644 ]]
+  [[ "$(stat -c %a /etc/apt/keyrings/docker.asc)" == 644 ]]
+  installed="$(dpkg-query -W -f='${Version}' docker-ce)"
+  [[ "$installed" == "$version" ]]
+  apt-get update
+fi
