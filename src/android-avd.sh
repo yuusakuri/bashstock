@@ -242,15 +242,31 @@ android::avd::start() {
 
 ### Stop the named AVD, or the only running AVD when no name is given.
 android::avd::stop() {
-  [[ "$#" -le 1 ]] || return 64
-  local directory='' command=''
+  [[ "$#" -le 1 && ( "$#" -eq 0 || "$1" =~ ^[A-Za-z0-9._-]+$ ) ]] || return 64
+  local directory='' name="${1:-}" serial='' state='' identity='' listing='' selected=''
+  local started='' response=''
   directory="$(android::sdk::directory)" || return "$?"
-  command="$(android::_cli-command)" || return "$?"
-  if [[ "$#" -eq 0 ]]; then
-    "${command}" --no-metrics "--sdk=${directory}" emulator stop
-  else
-    "${command}" --no-metrics "--sdk=${directory}" emulator stop "$1"
-  fi
+  [[ -x "${directory}/platform-tools/adb" ]] || return 69
+  listing="$("${directory}/platform-tools/adb" devices)" || return "$?"
+  while read -r serial state; do
+    [[ "${serial}" =~ ^emulator-[0-9]+$ && "${state}" == device ]] || continue
+    identity="$("${directory}/platform-tools/adb" -s "${serial}" emu avd name)" || return "$?"
+    identity="${identity%%$'\n'*}"
+    identity="${identity%$'\r'}"
+    [[ -z "${name}" || "${identity}" == "${name}" ]] || continue
+    [[ -z "${selected}" ]] || return 64
+    selected="${serial}"
+  done <<<"${listing}"
+  [[ -n "${selected}" ]] || return 66
+  response="$("${directory}/platform-tools/adb" -s "${selected}" emu kill)" || return "$?"
+  [[ "${response}" == OK* ]] || return 75
+  started="$(date +%s)" || return 74
+  while (( $(date +%s) - started < 60 )); do
+    listing="$("${directory}/platform-tools/adb" devices)" || return "$?"
+    [[ "${listing}" != *"${selected}"* ]] && return 0
+    sleep 1 || return 74
+  done
+  return 75
 }
 
 ### Delete one named AVD without changing other AVDs.

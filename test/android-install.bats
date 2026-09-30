@@ -37,6 +37,15 @@ SCRIPT
   [ "$status" -eq 69 ]
 }
 
+@test "Android Emulator rejects unsupported Linux ARM before installing dependencies" {
+  platform::_identifier() { printf 'ubuntu\n'; }
+  uname() { [[ "$1" == '-m' ]] && printf 'aarch64\n'; }
+  package::_install() { printf 'installed\n' >"$BATS_TEST_TMPDIR/package.log"; }
+  run android::emulator::install
+  [ "$status" -eq 69 ]
+  [ ! -e "$BATS_TEST_TMPDIR/package.log" ]
+}
+
 @test "Android component installers keep the selected SDK and explicit revision" {
   export HOME="$BATS_TEST_TMPDIR/home"
   export ANDROID_HOME="$HOME/Android SDK verify"

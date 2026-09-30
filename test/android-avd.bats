@@ -77,3 +77,33 @@ SCRIPT
   [ "$status" -eq 69 ]
   [ ! -e "$ANDROID_AVD_HOME/another_avd.ini" ]
 }
+
+@test "AVD stop targets the named emulator and waits for disconnection" {
+  export HOME="$BATS_TEST_TMPDIR/home"
+  export ANDROID_HOME="$HOME/Android/Sdk"
+  export ANDROID_TEST_LOG="$BATS_TEST_TMPDIR/adb.log"
+  mkdir -p "$ANDROID_HOME/platform-tools"
+  cat >"$ANDROID_HOME/platform-tools/adb" <<'SCRIPT'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$ANDROID_TEST_LOG"
+case "$*" in
+  devices)
+    printf 'List of devices attached\n'
+    if [[ ! -f "${ANDROID_TEST_LOG}.stopped" ]]; then
+      printf 'emulator-5554\tdevice\nemulator-5556\tdevice\n'
+    fi
+    ;;
+  '-s emulator-5554 emu avd name') printf 'other\nOK\n' ;;
+  '-s emulator-5556 emu avd name') printf 'wanted\nOK\n' ;;
+  '-s emulator-5556 emu kill')
+    touch "${ANDROID_TEST_LOG}.stopped"
+    printf 'OK: killing emulator, bye bye\nOK\n'
+    ;;
+esac
+SCRIPT
+  chmod +x "$ANDROID_HOME/platform-tools/adb"
+  run android::avd::stop wanted
+  [ "$status" -eq 0 ]
+  grep -Fqx -- '-s emulator-5556 emu kill' "$ANDROID_TEST_LOG"
+  ! grep -Fqx -- '-s emulator-5554 emu kill' "$ANDROID_TEST_LOG"
+}

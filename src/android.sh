@@ -95,6 +95,7 @@ android::_sdk-install() {
   [[ "$#" -eq 2 && -n "$1" ]] || return 64
   local package="$1" revision="$2" command='' directory='' specification=''
   [[ -z "${revision}" || "${revision}" =~ ^[0-9]+(\.[0-9]+)*$ ]] || return 64
+  android::_cli-artifact >/dev/null || return "$?"
   directory="$(android::sdk::directory)" || return "$?"
   [[ "${directory}" == /* ]] || return 64
   command="$(android::_cli-command)" ||
@@ -146,10 +147,17 @@ android::build-tools::install() {
 ### Install the Android Emulator into the selected SDK.
 android::emulator::install() {
   [[ "$#" -le 1 ]] || return 64
+  local platform='' directory=''
+  android::_cli-artifact >/dev/null || return "$?"
+  platform="$(package::_platform)" || return "$?"
+  case "${platform}" in
+    ubuntu) package::_install libpulse0 || return "$?" ;;
+    fedora) package::_install pulseaudio-libs || return "$?" ;;
+  esac
   android::_sdk-install emulator "${1:-}" || return "$?"
-  local directory=''
   directory="$(android::sdk::directory)" || return "$?"
   [[ -x "${directory}/emulator/emulator" ]] || return 69
+  "${directory}/emulator/emulator" -version >/dev/null || return 69
 }
 
 ### Install SDK Command-line Tools and verify sdkmanager and avdmanager.
