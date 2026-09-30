@@ -11,6 +11,7 @@ export ANDROID_HOME="${HOME}/Library/Android/sdk"
 export ANDROID_SDK_ROOT="${ANDROID_HOME}"
 export ANDROID_USER_HOME="${HOME}/.android"
 mkdir -p "${HOME}"
+# shellcheck disable=SC1091 # The distribution is generated before this script runs.
 source ./dist/bashstock.sh
 
 android::sdk::install

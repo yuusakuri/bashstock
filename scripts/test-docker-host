@@ -4,6 +4,7 @@
 set -euo pipefail
 
 # Run on a disposable Ubuntu VM with systemd as PID 1.
+# shellcheck disable=SC1091 # The distribution is generated before this script runs.
 source ./dist/bashstock.sh
 version="$(docker::versions | tail -n 1)"
 test -n "${version}"
