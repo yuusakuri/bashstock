@@ -73,3 +73,19 @@ jobs:
       - name: Verify SDK components and AVD lifecycle
         shell: bash
         run: bash ./scripts/test-android-macos
+
+  android-linux:
+    name: Android SDK and AVD on Ubuntu 24.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
+        with:
+          submodules: recursive
+      - name: Build the standalone library
+        run: ./scripts/build
+      - name: Allow the emulator to use KVM
+        run: sudo chmod a+rw /dev/kvm
+      - name: Verify SDK components and AVD lifecycle
+        shell: bash
+        run: bash ./scripts/test-android-linux

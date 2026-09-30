@@ -195,7 +195,7 @@ android::avd::start() {
   [[ "$#" -le 4 ]] || return 64
   local name="${1:-}" port="${2:-}" timeout="${3:-180}" headless="${4:-}"
   local directory='' avds='' serial=''
-  local started='' process_id='' state='' completed=''
+  local started='' process_id='' state='' completed='' log=''
   [[ "${timeout}" =~ ^[1-9][0-9]*$ ]] || return 64
   [[ -z "${headless}" || "${headless}" == --headless ]] || return 64
   directory="$(android::sdk::directory)" || return "$?"
@@ -211,24 +211,32 @@ android::avd::start() {
   serial="emulator-${port}"
   local emulator_options=()
   [[ -z "${headless}" ]] || emulator_options=(-no-window -no-audio)
+  log="$(mktemp)" || return 74
   nohup "${directory}/emulator/emulator" -avd "${name}" -port "${port}" \
     "${emulator_options[@]}" \
-    >/dev/null 2>&1 </dev/null &
+    >"${log}" 2>&1 </dev/null &
   process_id="$!"
-  started="$(date +%s)" || return 74
+  started="$(date +%s)" || { rm -f -- "${log}"; return 74; }
   while (( $(date +%s) - started < timeout )); do
-    kill -0 "${process_id}" 2>/dev/null || return 75
+    if ! kill -0 "${process_id}" 2>/dev/null; then
+      cat -- "${log}" >&2
+      rm -f -- "${log}"
+      return 75
+    fi
     state="$("${directory}/platform-tools/adb" -s "${serial}" get-state 2>/dev/null)" || state=''
     if [[ "${state}" == device ]]; then
       completed="$("${directory}/platform-tools/adb" -s "${serial}" shell getprop \
         sys.boot_completed 2>/dev/null)" || completed=''
       if [[ "${completed}" == 1 ]]; then
+        rm -f -- "${log}"
         printf '%s\n' "${serial}"
         return 0
       fi
     fi
     sleep 1 || return 74
   done
+  cat -- "${log}" >&2
+  rm -f -- "${log}"
   return 75
 }
 
