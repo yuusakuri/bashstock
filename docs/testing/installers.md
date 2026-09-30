@@ -30,8 +30,8 @@
 | J01 | 公式配布物から Node.js 16.20.2 を導入し、同じ版で再実行する | 両方成功し、Node.js、npm、Corepack、pnpm が起動する | `scripts/test-node-container` |
 | J02 | OSのJDK最新版を導入・再実行し、小さなJavaプログラムをコンパイルして動かす | 版とJAVA_HOMEが一致し、実行結果が期待値になる | `scripts/test-jdk-go-container` |
 | J03 | OSのGoを導入・再実行し、小さなGoプログラムを動かす | 両方成功し、実行結果が期待値になる | 同上 |
-| R01 | 公式 Rust ツールチェーンを導入・再実行し、小さなプログラムをコンパイルして動かす | rustc と cargo が現在・再ログイン後のシェルで起動し、実行結果が期待値になる | `scripts/test-rust-container` |
-| R02 | Ruby 3.4.5 を導入・再実行し、小さなプログラムを動かす | 選んだ版の Ruby と gem が現在・再ログイン後のシェルで起動し、実行結果が期待値になる | `scripts/test-ruby-container` |
+| R01 | 公式 Rust ツールチェーンを導入・再実行し、小さなプログラムをコンパイルして動かす | rustc と cargo が起動し、プログラムが期待値を返す。起動設定を読んだ新しい Bash でも cargo が使える | `scripts/test-rust-container` |
+| R02 | Ruby 3.4.5 を導入・再実行し、小さなプログラムを動かす | 指定版の Ruby と gem が起動し、プログラムが期待値を返す。起動設定を読んだ新しい Bash でも Ruby が使える | `scripts/test-ruby-container` |
 | A01 | 専用のホームと SDK に Android CLI、Platform Tools、SDK Platform、Build Tools、Command-line Tools、Emulator を導入する | 各実行ファイルが起動し、`android.jar` が存在する | `scripts/test-android-macos` |
 | A02 | Platform Tools と Build Tools の導入を繰り返す | 二度目も成功し、実行ファイルが使える | 同上 |
 | A03 | API 35 の AVD を作り、同名でもう一度作る | 初回は成功し、二度目は既存の AVD を保持して失敗する | 同上 |
