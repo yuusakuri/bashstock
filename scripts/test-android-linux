@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091,SC2317
+
+set -euo pipefail
+
+# Run on a disposable Ubuntu VM with KVM available to the emulator.
+[[ "$(uname -s)" == Linux && -n "${RUNNER_TEMP:-}" ]] || exit 69
+[[ -c /dev/kvm && -r /dev/kvm && -w /dev/kvm ]] || exit 69
+export HOME="${RUNNER_TEMP}/bashstock-android-home"
+export ANDROID_HOME="${HOME}/Android/Sdk"
+export ANDROID_SDK_ROOT="${ANDROID_HOME}"
+export ANDROID_USER_HOME="${HOME}/.android"
+mkdir -p "${HOME}"
+source ./dist/bashstock.sh
+
+android::sdk::install
+android::platform-tools::install
+android::sdk-platform::install 35
+android::build-tools::install 35.0.0
+android::command-line-tools::install
+android::emulator::install
+android::platform-tools::install
+
+"$(android::_cli-command)" --version
+"${ANDROID_HOME}/platform-tools/adb" version
+"${ANDROID_HOME}/build-tools/35.0.0/aapt2" version
+"${ANDROID_HOME}/emulator/emulator" -version
+test -s "${ANDROID_HOME}/platforms/android-35/android.jar"
+
+name="bashstock_ci_${GITHUB_RUN_ID:-local}"
+android::avd::create "${name}" 35
+test "$(android::avd::list | grep -Fxc -- "${name}")" -eq 1
+serial="$(android::avd::start "${name}" '' 300 --headless)"
+test -n "${serial}"
+test "$(adb::device::first)" = "${serial}"
+test -n "$(adb::device::build::fingerprint -Serial "${serial}")"
+printf 'adb transfer verified\n' >"${RUNNER_TEMP}/host file.txt"
+adb::device::push "${RUNNER_TEMP}/host file.txt" '/data/local/tmp/bashstock ci file.txt' -Serial "${serial}"
+adb::device::wait-for-path '/data/local/tmp/bashstock ci file.txt' 30 -Serial "${serial}"
+adb::device::pull '/data/local/tmp/bashstock ci file.txt' "${RUNNER_TEMP}/pulled file.txt" -Serial "${serial}"
+cmp "${RUNNER_TEMP}/host file.txt" "${RUNNER_TEMP}/pulled file.txt"
+adb::device::screen::capture-once "${RUNNER_TEMP}/screen.png" -Serial "${serial}"
+test -s "${RUNNER_TEMP}/screen.png"
+adb::device::reboot 120 -Serial "${serial}"
+android::avd::stop "${name}"
+android::avd::delete "${name}"
+if android::avd::list | grep -Fqx -- "${name}"; then
+  printf 'AVD was not removed.\n' >&2
+  exit 1
+fi

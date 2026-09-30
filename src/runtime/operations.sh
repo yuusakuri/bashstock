@@ -24,11 +24,21 @@ bashstock::_dispatch-root() {
     append-text)
       file::append-text "$@"
       ;;
+    write-text)
+      [[ "$#" -eq 3 && "$3" =~ ^0?[0-7]{3}$ ]] || return 64
+      (umask "$3" && file::write-text "$1" "$2")
+      ;;
     replace-text)
       file::replace-text "$@"
       ;;
     replace-text-in-files)
       file::replace-text-in-files "$@"
+      ;;
+    replace-all-text)
+      file::replace-all-text "$@"
+      ;;
+    replace-all-text-in-files)
+      file::replace-all-text-in-files "$@"
       ;;
     replace-or-append-text)
       file::replace-or-append-text "$@"
@@ -53,11 +63,17 @@ bashstock::_dispatch-root() {
 
 ### Accept only the internal execution mode and require root privileges.
 bashstock::_main() {
+  if [[ "$#" -ge 1 && "$1" == '--internal-git-sequence-editor' ]]; then
+    shift
+    git::_sequence-editor "$@"
+    return "$?"
+  fi
   if [[ "$#" -lt 2 || "$1" != '--internal-root' ]]; then
     return 64
   fi
   case "$2" in
-    append-text | replace-text | replace-text-in-files | replace-or-append-text | \
+    append-text | write-text | replace-text | replace-all-text | \
+      replace-text-in-files | replace-all-text-in-files | replace-or-append-text | \
       create-system-user | create-login-user | change-owner-recursively) ;;
     *) return 64 ;;
   esac

@@ -132,6 +132,18 @@ path::is-writable() {
   [[ -w "$1" ]]
 }
 
+### Write a path's permission mode as an octal number.
+path::mode() {
+  if [[ "$#" -ne 1 || -z "$1" ]]; then
+    return 64
+  fi
+  if [[ ! -e "$1" && ! -L "$1" ]]; then
+    return 66
+  fi
+
+  platform::_path-mode "$1"
+}
+
 ### Write the extension of the final path component.
 path::extension() {
   if [[ "$#" -ne 1 ]]; then
@@ -328,8 +340,8 @@ path::config-home() {
   printf '%s/.config\n' "${HOME%/}"
 }
 
-### Validate a directory and the requested owner and group.
-path::_validate-ownership() {
+### Change directory ownership recursively through the root helper.
+path::change-owner-recursively() {
   if [[ "$#" -lt 2 || "$#" -gt 3 ]]; then
     return 64
   fi
@@ -343,7 +355,17 @@ path::_validate-ownership() {
     return 64
   fi
 
-  return 0
+  path::_validate-ownership "$@" || return "$?"
+  bashstock::_run-as-root change-owner-recursively "$@"
+}
+
+
+### Validate a directory and its requested owner and group.
+path::_validate-ownership() {
+  if [[ "$#" -lt 2 || "$#" -gt 3 ]]; then return 64; fi
+  if [[ ! -d "$1" || -L "$1" ]]; then return 66; fi
+  string::_require-non-empty-line "$2" || return "$?"
+  if [[ "$#" -eq 3 ]]; then string::_require-non-empty-line "$3" || return "$?"; fi
 }
 
 ### Change directory ownership recursively in a separate root process.

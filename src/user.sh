@@ -71,3 +71,16 @@ user::create-login-as-root() {
   user::_validate-login-creation "$@" || return "$?"
   bashstock::_run-as-root create-login-user "$@"
 }
+
+
+### Create a non-login system account.
+user::create-system() {
+  user::_validate-system-creation "$@" || return "$?"
+  bashstock::_run-as-root create-system-user "$@"
+}
+
+### Create a local login account.
+user::create-login() {
+  user::_validate-login-creation "$@" || return "$?"
+  bashstock::_run-as-root create-login-user "$@"
+}

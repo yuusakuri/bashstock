@@ -51,13 +51,48 @@ load test_helper
   local mode_after=''
   printf 'value=1 value=2\nvalue=3' >"${file}"
   chmod 640 "${file}"
-  mode_before="$(stat -f '%Lp' "${file}" 2>/dev/null || stat -c '%a' "${file}")"
+  mode_before="$(path::mode "${file}")"
 
   file::replace-text "${file}" 'value=[0-9]+' 'value=X'
   [ "$(<"${file}")" = $'value=X value=2\nvalue=X' ]
 
-  mode_after="$(stat -f '%Lp' "${file}" 2>/dev/null || stat -c '%a' "${file}")"
+  mode_after="$(path::mode "${file}")"
   [ "${mode_after}" = "${mode_before}" ]
+}
+
+@test "replace-text uses Bash ERE and keeps replacement text literal" {
+  local file="${BATS_TEST_TMPDIR}/input"
+  printf 'alpha=1 alpha=2\nfoo foo' >"${file}"
+
+  file::replace-all-text "${file}" 'alpha=[0-9]+' '$1\1&'
+  [ "$(<"${file}")" = $'$1\\1& $1\\1&\nfoo foo' ]
+
+  file::replace-text "${file}" 'foo$' 'end'
+  [ "$(<"${file}")" = $'$1\\1& $1\\1&\nfoo end' ]
+}
+
+@test "replace-text rejects expressions outside Bash ERE" {
+  local file="${BATS_TEST_TMPDIR}/input"
+  printf 'alpha=1' >"${file}"
+
+  run file::replace-text "${file}" '(?<=alpha)=[0-9]+' 'changed'
+  [ "${status}" -eq 64 ]
+  [ "$(<"${file}")" = 'alpha=1' ]
+
+  run file::replace-all-text "${file}" 'a*' 'changed'
+  [ "${status}" -eq 64 ]
+  [ "$(<"${file}")" = 'alpha=1' ]
+}
+
+@test "replace-text rejects NUL bytes without changing the file" {
+  local file="${BATS_TEST_TMPDIR}/input"
+  local original="${BATS_TEST_TMPDIR}/original"
+  printf 'alpha\0beta\n' >"${file}"
+  cp "${file}" "${original}"
+
+  run file::replace-text "${file}" 'alpha' 'changed'
+  [ "${status}" -eq 64 ]
+  cmp "${file}" "${original}"
 }
 
 @test "replace-text leaves a file unchanged when nothing matches" {
@@ -69,15 +104,19 @@ load test_helper
   [ "$(<"${file}")" = 'value=1' ]
 }
 
-@test "replace-or-append-text creates one complete line" {
+@test "replace-text-or-append replaces all matches or creates one complete line" {
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'value=1' >"${file}"
 
-  file::replace-or-append-text "${file}" '^other=.*$' 'other=2'
+  file::replace-text-or-append "${file}" '^other=.*$' 'other=2'
   [ "$(<"${file}")" = $'value=1\nother=2' ]
 
-  file::replace-or-append-text "${file}" '^other=.*$' 'other=3'
+  file::replace-text-or-append "${file}" '^other=.*$' 'other=3'
   [ "$(<"${file}")" = $'value=1\nother=3' ]
+
+  printf 'other=1 other=2' >"${file}"
+  file::replace-text-or-append "${file}" 'other=[0-9]+' 'other=X'
+  [ "$(<"${file}")" = 'other=X other=X' ]
 }
 
 @test "multi-file replacement validates every file before updating" {
@@ -95,6 +134,13 @@ load test_helper
   file::replace-text-in-files '^value=' 'value=X' "${first}" "${second}"
   [ "$(<"${first}")" = 'value=X1' ]
   [ "$(<"${second}")" = 'value=X2' ]
+
+  printf 'value=1 value=2' >"${first}"
+  printf 'value=3 value=4' >"${second}"
+  file::replace-all-text-in-files \
+    'value=[0-9]+' 'value=X' "${first}" "${second}"
+  [ "$(<"${first}")" = 'value=X value=X' ]
+  [ "$(<"${second}")" = 'value=X value=X' ]
 }
 
 @test "updating functions reject symbolic links" {

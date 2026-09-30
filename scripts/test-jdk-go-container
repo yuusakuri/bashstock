@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091
+
+set -euo pipefail
+
+# The Docker package suite has already installed Git, curl, and Perl.
+source /opt/bashstock.sh
+directory="$(mktemp -d)"
+trap 'rm -rf -- "$directory"' EXIT
+
+version="$(jdk::version::latest)"
+[[ -n "${version}" ]]
+jdk::install "${version}"
+jdk::install "${version}"
+[[ -x "${JAVA_HOME}/bin/java" && -x "${JAVA_HOME}/bin/javac" ]]
+cat >"${directory}/Hello.java" <<'JAVA'
+public class Hello {
+  public static void main(String[] args) {
+    System.out.println("jdk-ok");
+  }
+}
+JAVA
+"${JAVA_HOME}/bin/javac" "${directory}/Hello.java"
+[[ "$("${JAVA_HOME}/bin/java" -cp "${directory}" Hello)" == jdk-ok ]]
+printf 'JDK %s compiled and ran Java.\n' "${version}"
+
+go::install
+go::install
+cat >"${directory}/hello.go" <<'GO'
+package main
+import "fmt"
+func main() { fmt.Println("go-ok") }
+GO
+[[ "$(GO111MODULE=off go run "${directory}/hello.go")" == go-ok ]]
+go version

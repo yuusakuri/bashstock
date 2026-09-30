@@ -7,10 +7,12 @@ load test_helper
   local ifs_before=''
   local options_before=''
   local shell_options_before=''
+  local replacement_file="${BATS_TEST_TMPDIR}/replacement"
   directory_before="${PWD}"
   ifs_before="${IFS}"
   options_before="$(set +o)"
   shell_options_before="$(shopt -p)"
+  printf 'value=1' >"${replacement_file}"
   BASH_REMATCH=('caller-value')
 
   string::lower 'VALUE' >/dev/null
@@ -19,6 +21,7 @@ load test_helper
   path::normalize '/one/../two' >/dev/null
   array::unique one two one >/dev/null
   file::contains-match "${PROJECT_ROOT}/README.md" '^# ' >/dev/null
+  file::replace-text "${replacement_file}" 'value=[0-9]+' 'value=X'
 
   [ "${PWD}" = "${directory_before}" ]
   [ "${IFS}" = "${ifs_before}" ]

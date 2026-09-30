@@ -1,0 +1,94 @@
+name: Installer integration
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  docker-packages:
+    name: Docker, Node.js, JDK, Go, Rust, and Ruby on ${{ matrix.image }} (amd64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - ubuntu:18.04
+          - ubuntu:20.04
+          - ubuntu:22.04
+          - ubuntu:24.04
+          - ubuntu:26.04
+          - fedora:34
+          - fedora:44
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
+        with:
+          submodules: recursive
+      - name: Build the standalone library
+        run: ./scripts/build
+      - name: Verify Docker, Node.js, JDK, Go, Rust, and Ruby installations
+        run: |
+          docker run --rm --platform linux/amd64 \
+            -v "$PWD/dist/bashstock.sh:/opt/bashstock.sh:ro" \
+            -v "$PWD/scripts/test-docker-package-container:/opt/test-docker-package-container:ro" \
+            -v "$PWD/scripts/test-node-container:/opt/test-node-container:ro" \
+            -v "$PWD/scripts/test-jdk-go-container:/opt/test-jdk-go-container:ro" \
+            -v "$PWD/scripts/test-rust-container:/opt/test-rust-container:ro" \
+            -v "$PWD/scripts/test-ruby-container:/opt/test-ruby-container:ro" \
+            "${{ matrix.image }}" bash -c \
+            'bash /opt/test-docker-package-container && bash /opt/test-node-container && bash /opt/test-jdk-go-container && bash /opt/test-rust-container && bash /opt/test-ruby-container'
+
+  docker-service:
+    name: Docker service on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-22.04
+          - ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
+        with:
+          submodules: recursive
+      - name: Build the standalone library
+        run: ./scripts/build
+      - name: Verify Docker installation, service, and a container
+        shell: bash
+        run: bash ./scripts/test-docker-host
+
+  android-macos:
+    name: Android SDK and AVD on macOS
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
+        with:
+          submodules: recursive
+      - name: Build the standalone library
+        run: ./scripts/build
+      - name: Verify SDK components and AVD lifecycle
+        shell: bash
+        run: bash ./scripts/test-android-macos
+
+  android-linux:
+    name: Android SDK and AVD on Ubuntu 24.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
+        with:
+          submodules: recursive
+      - name: Build the standalone library
+        run: ./scripts/build
+      - name: Allow the emulator to use KVM
+        run: sudo chmod a+rw /dev/kvm
+      - name: Verify SDK components and AVD lifecycle
+        shell: bash
+        run: bash ./scripts/test-android-linux

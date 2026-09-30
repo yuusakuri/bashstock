@@ -106,8 +106,8 @@ Pure Bash Bibleから採用した関数と同じ責務を持つLobashモジュ�
 
 | 参照元 | 本プロジェクトの関数 | 機能 | Bash 3.2での実装規則と必須テスト |
 |---|---|---|---|
-| `date` | `time::utc-date-time-milliseconds`、`time::utc-date-time-seconds`、`time::utc-date`、`time::local-date-time-milliseconds`、`time::local-date-time-seconds`、`time::local-date` | 現在のUTC日時とローカル日時を、ミリ秒まで、秒まで、日までの固定形式で出力します。 | ロケールとOSの`date`実装へ依存せず、内部時計アダプターでUTCまたはプロセスのローカルタイムゾーンへ変換します。固定時刻、UTCオフセット、夏時間、日付の境界、うるう年、形式、引数過多を確認します。 |
-| `now` | `time::unix-milliseconds`、`time::monotonic-milliseconds`、`time::boottime-milliseconds` | Unixエポックからの経過ミリ秒、スリープを除外する単調時計、スリープを含むシステム起動後時計を整数で出力します。 | 実時間時計、OS固有の単調時計、OS固有の起動後時計を使い分けます。時計の進行、実時間時計の変更、整数形式、引数過多を確認します。 |
+| `date` | `time::utc-date-time-milliseconds-extended`、`time::utc-date-time-seconds-extended`、`time::utc-date-extended`、`time::local-date-time-milliseconds-extended`、`time::local-date-time-seconds-extended`、`time::local-date-extended` | 現在のUTC日時とローカル日時を、ミリ秒まで、秒まで、日までのISO 8601拡張形式で出力します。 | ロケールとOSの`date`実装へ依存せず、内部時計アダプターでUTCまたはプロセスのローカルタイムゾーンへ変換します。固定時刻、UTCオフセット、夏時間、日付の境界、うるう年、形式、引数過多を確認します。 |
+| `now` | `time::unix-milliseconds`、`time::monotonic-milliseconds`、`time::boot-time-milliseconds` | Unixエポックからの経過ミリ秒、スリープを除外する単調時計、スリープを含むシステム起動後時計を整数で出力します。 | 実時間時計、OS固有の単調時計、OS固有の起動後時計を使い分けます。時計の進行、実時間時計の変更、整数形式、引数過多を確認します。 |
 | `now_s` | `time::unix-seconds`、`time::unix-days` | Unixエポックからの経過時間を、秒単位または日単位の整数で出力します。 | 同じ呼び出しで取得したミリ秒値を単位の整数値へ切り捨てます。単位境界、実時間時計の変更、整数形式、引数過多を確認します。 |
 
 #### 時間APIの共通契約
@@ -115,13 +115,14 @@ Pure Bash Bibleから採用した関数と同じ責務を持つLobashモジュ�
 | 公開関数 | 時計 | 出力 |
 |---|---|---|
 | `time::monotonic-milliseconds` | スリープを除外する単調時計 | システムが動作した時間を0以上のミリ秒整数で出力します。実時間時計の変更による影響を受けません。 |
-| `time::boottime-milliseconds` | スリープを含む起動後時計 | システム起動後に経過した時間を0以上のミリ秒整数で出力します。実時間時計の変更による影響を受けません。 |
-| `time::utc-date-time-milliseconds` | 実時間時計 | UTC日時を`YYYY-MM-DDTHH:MM:SS.sssZ`形式で出力します。小数部は常に3桁です。 |
-| `time::utc-date-time-seconds` | 実時間時計 | UTC日時を`YYYY-MM-DDTHH:MM:SSZ`形式で出力します。 |
-| `time::utc-date` | 実時間時計 | UTCの日付を`YYYY-MM-DD`形式で出力します。 |
-| `time::local-date-time-milliseconds` | 実時間時計 | プロセスのローカル日時を`YYYY-MM-DDTHH:MM:SS.sss+HH:MM`または`YYYY-MM-DDTHH:MM:SS.sss-HH:MM`形式で出力します。小数部は常に3桁です。 |
-| `time::local-date-time-seconds` | 実時間時計 | プロセスのローカル日時を`YYYY-MM-DDTHH:MM:SS+HH:MM`または`YYYY-MM-DDTHH:MM:SS-HH:MM`形式で出力します。 |
-| `time::local-date` | 実時間時計 | プロセスのローカルタイムゾーンにおける日付を`YYYY-MM-DD`形式で出力します。 |
+| `time::boot-time-milliseconds` | スリープを含む起動後時計 | システム起動後に経過した時間を0以上のミリ秒整数で出力します。実時間時計の変更による影響を受けません。 |
+| `time::utc-date-time-milliseconds-extended` | 実時間時計 | UTC日時をISO 8601拡張形式の`YYYY-MM-DDTHH:MM:SS.sssZ`で出力します。小数部は常に3桁です。 |
+| `time::utc-date-time-seconds-extended` | 実時間時計 | UTC日時をISO 8601拡張形式の`YYYY-MM-DDTHH:MM:SSZ`で出力します。 |
+| `time::utc-date-extended` | 実時間時計 | UTCの日付をISO 8601拡張形式の`YYYY-MM-DD`で出力します。 |
+| `time::local-date-time-milliseconds-extended` | 実時間時計 | プロセスのローカル日時をISO 8601拡張形式の`YYYY-MM-DDTHH:MM:SS.sss+HH:MM`または`YYYY-MM-DDTHH:MM:SS.sss-HH:MM`で出力します。小数部は常に3桁です。 |
+| `time::local-date-time-seconds-extended` | 実時間時計 | プロセスのローカル日時をISO 8601拡張形式の`YYYY-MM-DDTHH:MM:SS+HH:MM`または`YYYY-MM-DDTHH:MM:SS-HH:MM`で出力します。 |
+| `time::local-date-extended` | 実時間時計 | プロセスのローカルタイムゾーンにおける日付をISO 8601拡張形式の`YYYY-MM-DD`で出力します。 |
+| `time::local-date-time-seconds-basic` | 実時間時計 | プロセスのローカル日時をISO 8601基本形式の`YYYYMMDDTHHMMSS`で出力します。ファイル名へ使用できるようにUTCオフセットを含めません。 |
 | `time::unix-milliseconds` | 実時間時計 | Unixエポックからの経過ミリ秒を10進整数で出力します。 |
 | `time::unix-seconds` | 実時間時計 | Unixエポックからの経過ミリ秒を1,000で割り、小数部分を切り捨てた10進整数を出力します。 |
 | `time::unix-days` | 実時間時計 | Unixエポックからの経過ミリ秒を86,400,000で割り、小数部分を切り捨てたUTCの経過日数を10進整数で出力します。 |
@@ -302,7 +303,7 @@ Pure Bash Bibleから採用した関数と同じ責務を持つLobashモジュ�
 | `parse_args` | 連想配列の定義からオプションと位置引数を解析します。 | 各公開関数の`while` / `case`と`arg::`検査関数が同じ責務を担当し、Bash 3.2に連想配列もないためです。 |
 | `parse_params` | オプションと位置引数を配列へ格納します。 | Lobashでも非推奨であり、`while` / `case`と`arg::`検査関数の責務と重複します。 |
 | `repeat` | 指定コマンドを指定回数だけ実行します。 | 任意コマンドの動的実行と副作用を隠すため、呼び出し側で通常のループを記述します。 |
-| `sedi` | GNU版とBSD版の`sed -i`差異を吸収してファイルを直接編集します。 | ファイルを破壊的に書き換え、任意の`sed`式も受け取るため、標準ライブラリの共通関数にしません。 |
+| `sedi` | GNU版とBSD版の`sed -i`差異を吸収してfileを直接編集します。 | 任意のsed program全体を受け取るAPIは提供しません。最初の一致は`file::replace-text FILE EXPRESSION REPLACEMENT`、全一致は`file::replace-all-text FILE EXPRESSION REPLACEMENT`で置換し、Bash ERE、literal置換、原子的更新へ契約を限定します。 |
 | `trap_error` | エラー発生時のファイル名と行番号を表示するトラップを設定します。 | グローバルな`ERR`トラップを上書きし、呼び出し側のエラー処理方針へ作用するためです。 |
 | `with_ifs` | 一時的な`IFS`を指定してコマンド文字列を実行します。 | コマンド文字列の評価が必要になり、入力をコードとして扱わない規則に反するためです。 |
 

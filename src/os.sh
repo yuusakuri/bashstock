@@ -38,6 +38,21 @@ platform::_identifier() {
   printf 'unknown\n'
 }
 
+### Write one value from /etc/os-release without evaluating the file.
+platform::_os-release-value() {
+  [[ "$#" -eq 1 && "$1" =~ ^[A-Z_]+$ ]] || return 64
+  [[ -r /etc/os-release ]] || return 66
+  local key='' value=''
+  while IFS='=' read -r key value; do
+    [[ "${key}" == "$1" ]] || continue
+    value="${value#\"}"
+    value="${value%\"}"
+    printf '%s\n' "${value}"
+    return 0
+  done </etc/os-release
+  return 1
+}
+
 ### Return unavailable until an operating-system provider defines user creation.
 platform::_create-system-user() {
   return 69
