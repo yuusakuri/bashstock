@@ -608,14 +608,16 @@ jdk::version::list() {
     darwin)
       versions="$(package::_brew-formula-versions openjdk)" || return "$?"
       while IFS= read -r name; do
-        [[ -n "${name}" ]] && printf '%s\n' "${name%%.*}"
+        if [[ -n "${name}" ]]; then printf '%s\n' "${name%%.*}"; fi
       done <<<"${versions}" | package::_sort-versions
       ;;
     ubuntu)
       command::require apt-cache || return "$?"
       versions="$(apt-cache pkgnames openjdk- 2>/dev/null)" || return 74
       while IFS= read -r name; do
-        [[ "${name}" =~ ^openjdk-([0-9]+)-jdk$ ]] && printf '%s\n' "${BASH_REMATCH[1]}"
+        if [[ "${name}" =~ ^openjdk-([0-9]+)-jdk$ ]]; then
+          printf '%s\n' "${BASH_REMATCH[1]}"
+        fi
       done <<<"${versions}" | package::_sort-versions
       ;;
     fedora)
@@ -623,7 +625,9 @@ jdk::version::list() {
       versions="$(dnf repoquery --quiet --queryformat $'%{name} %{version}\n' \
         'java-*-openjdk-devel' 2>/dev/null)" || return 74
       while IFS=' ' read -r name _; do
-        [[ "${name}" =~ ^java-([0-9]+)-openjdk-devel$ ]] && printf '%s\n' "${BASH_REMATCH[1]}"
+        if [[ "${name}" =~ ^java-([0-9]+)-openjdk-devel$ ]]; then
+          printf '%s\n' "${BASH_REMATCH[1]}"
+        fi
       done <<<"${versions}" | package::_sort-versions
       ;;
   esac

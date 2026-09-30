@@ -71,7 +71,9 @@ package::_sort-stable-versions() {
   local version=''
   while IFS= read -r version; do
     [[ -n "${version}" ]] || continue
-    package::_is-stable-version "${version}" && printf '%s\n' "${version}"
+    if package::_is-stable-version "${version}"; then
+      printf '%s\n' "${version}"
+    fi
   done | package::_sort-versions
 }
 

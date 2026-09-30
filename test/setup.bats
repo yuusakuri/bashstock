@@ -523,6 +523,18 @@ gsettings_value() {
   ! grep -Fq 'libstdc++-12-dev' "${ROOT_LOG}"
 }
 
+@test "JDK latest ignores unrelated package names with pipefail enabled" {
+  platform::_identifier() { printf 'ubuntu\n'; }
+  apt-cache() {
+    [[ "$*" == 'pkgnames openjdk-' ]] || return 64
+    printf 'openjdk-17-jdk\nopenjdk-21-jdk\nopenjdk-21-source\n'
+  }
+  set -o pipefail
+  run jdk::version::latest
+  [ "$status" -eq 0 ]
+  [ "$output" = 21 ]
+}
+
 @test "GPG key generation keeps passphrases out of arguments and rejects invalid options" {
   PARAMETERS="${BATS_TEST_TMPDIR}/parameters"
   gpg() {

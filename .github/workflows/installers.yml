@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   docker-packages:
-    name: Docker and Node.js on ${{ matrix.image }} (amd64)
+    name: Docker, Node.js, JDK, and Go on ${{ matrix.image }} (amd64)
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     strategy:
@@ -31,14 +31,15 @@ jobs:
           submodules: recursive
       - name: Build the standalone library
         run: ./scripts/build
-      - name: Verify Docker and official Node.js installations
+      - name: Verify Docker, Node.js, JDK, and Go installations
         run: |
           docker run --rm --platform linux/amd64 \
             -v "$PWD/dist/bashstock.sh:/opt/bashstock.sh:ro" \
             -v "$PWD/scripts/test-docker-package-container:/opt/test-docker-package-container:ro" \
             -v "$PWD/scripts/test-node-container:/opt/test-node-container:ro" \
+            -v "$PWD/scripts/test-jdk-go-container:/opt/test-jdk-go-container:ro" \
             "${{ matrix.image }}" bash -c \
-            'bash /opt/test-docker-package-container && bash /opt/test-node-container'
+            'bash /opt/test-docker-package-container && bash /opt/test-node-container && bash /opt/test-jdk-go-container'
 
   docker-service:
     name: Docker service on ${{ matrix.os }}

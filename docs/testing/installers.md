@@ -6,8 +6,8 @@
 
 | 環境 | 対象 |
 | --- | --- |
-| Ubuntu 18.04、20.04、22.04、24.04、26.04 の amd64 コンテナ | Docker と公式 Node.js の版指定、導入、再実行、CLI、APT リポジトリ |
-| Fedora 34、44 の amd64 コンテナ | Docker と公式 Node.js の版指定、導入、再実行、CLI、DNF リポジトリ |
+| Ubuntu 18.04、20.04、22.04、24.04、26.04 の amd64 コンテナ | Docker、公式 Node.js、JDK、Go の導入・再実行・起動とAPTリポジトリ |
+| Fedora 34、44 の amd64 コンテナ | Docker、公式 Node.js、JDK、Go の導入・再実行・起動とDNFリポジトリ |
 | Ubuntu 22.04、24.04 の GitHub Actions 実行環境 | Docker サービス、デーモン、コンテナ実行 |
 | macOS の GitHub Actions 実行環境 | Android SDK 構成要素、AVD の作成・削除。Hypervisor.Frameworkが使える実行環境では起動・停止も確認する |
 | Ubuntu 24.04 の GitHub Actions 実行環境 | Android SDK 構成要素、KVMを使うAVDの作成・起動・停止・削除 |
@@ -27,6 +27,8 @@
 | D06 | Ubuntu の systemd 上で同じ版を二度導入する | サービスが有効かつ起動中である | `Installer integration / docker-service` |
 | D07 | Docker デーモンで `hello-world` を動かす | イメージの取得とコンテナの実行が成功する | 同上 |
 | J01 | 公式配布物から Node.js 16.20.2 を導入し、同じ版で再実行する | 両方成功し、Node.js、npm、Corepack、pnpm が起動する | `scripts/test-node-container` |
+| J02 | OSのJDK最新版を導入・再実行し、小さなJavaプログラムをコンパイルして動かす | 版とJAVA_HOMEが一致し、実行結果が期待値になる | `scripts/test-jdk-go-container` |
+| J03 | OSのGoを導入・再実行し、小さなGoプログラムを動かす | 両方成功し、実行結果が期待値になる | 同上 |
 | A01 | 専用のホームと SDK に Android CLI、Platform Tools、SDK Platform、Build Tools、Command-line Tools、Emulator を導入する | 各実行ファイルが起動し、`android.jar` が存在する | `scripts/test-android-macos` |
 | A02 | Platform Tools と Build Tools の導入を繰り返す | 二度目も成功し、実行ファイルが使える | 同上 |
 | A03 | API 35 の AVD を作り、同名でもう一度作る | 初回は成功し、二度目は既存の AVD を保持して失敗する | 同上 |
