@@ -33,6 +33,7 @@
 | A02 | Platform Tools と Build Tools の導入を繰り返す | 二度目も成功し、実行ファイルが使える | 同上 |
 | A03 | API 35 の AVD を作り、同名でもう一度作る | 初回は成功し、二度目は既存の AVD を保持して失敗する | 同上 |
 | A04 | AVD を起動し、停止して削除する | Android の起動完了を確認でき、削除後に一覧から消える | `scripts/test-android-linux`、仮想化が使えるmacOS上の`scripts/test-android-macos` |
+| A05 | 起動したAVDへ空白を含む名前のファイルを送受信し、画面を保存して再起動する | 内容が一致し、画像が保存され、再起動後に端末が再接続する | `scripts/test-android-linux` |
 | N01 | 不正な引数、未対応 CPU、異なる SDK パスを渡す | 対応するエラーを返し、既存の導入先を変更しない | `test/android-install.bats` など |
 
 GitHub Actions の各ジョブは一つでも期待結果と異なれば失敗します。ジョブのログには選択した Docker の版と導入コマンドの結果が残ります。OS ごとの結果は `Installer integration` のジョブ名で区別します。
