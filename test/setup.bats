@@ -914,3 +914,48 @@ use_fake_sudoers() {
   run --separate-stderr ubuntu::download-server-iso 22.04.5 amd64 image.iso
   [ "${status}" -eq 69 ]
 }
+
+@test "Git Credential Manager installs the newest release that starts on this system" {
+  export HOME="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "${HOME}"
+  use_platform ubuntu 20.04 focal
+  uname() { printf 'x86_64\n'; }
+  ldconfig() { printf '\tlibicuuc.so.66 (libc6,x86-64) => /usr/lib/x86_64-linux-gnu/libicuuc.so.66\n'; }
+  git() { printf '%s\n' "$*" >>"${BATS_TEST_TMPDIR}/git.log"; }
+  ARCHIVES="${BATS_TEST_TMPDIR}/archives"
+  mkdir -p "${ARCHIVES}"
+  # 3.0.1 stands for a build that needs a newer C library than this system has.
+  for release in 2.9.1 3.0.1; do
+    mkdir -p "${ARCHIVES}/${release}"
+    if [[ "${release}" == 3.0.1 ]]; then
+      printf '#!/bin/sh\nexit 1\n' >"${ARCHIVES}/${release}/git-credential-manager"
+    else
+      printf '#!/bin/sh\n[ "$1" = --version ] && printf "%s+abc\\n" || true\n' "${release}" >"${ARCHIVES}/${release}/git-credential-manager"
+    fi
+    chmod +x "${ARCHIVES}/${release}/git-credential-manager"
+    tar -czf "${ARCHIVES}/gcm-linux-x64-${release}.tar.gz" -C "${ARCHIVES}/${release}" git-credential-manager
+  done
+  curl() {
+    local output='' url='' argument=''
+    while [[ "$#" -gt 0 ]]; do
+      case "$1" in
+        -o) output="$2"; shift 2 ;;
+        *) argument="$1"; shift; [[ "${argument}" != https://* ]] || url="${argument}" ;;
+      esac
+    done
+    case "${url}" in
+      https://api.github.com/*) printf '%s' '[{"tag_name":"v3.0.1"},{"tag_name":"v2.9.1"},{"tag_name":"v2.9.0-rc1"}]' ;;
+      */download/v*/gcm-linux-x64-*.tar.gz) cp -- "${ARCHIVES}/${url##*/}" "${output}" 2>/dev/null ;;
+      *) return 22 ;;
+    esac
+  }
+
+  run git-credential-manager::install
+  [ "${status}" -eq 0 ]
+  [ "$("${HOME}/.local/bin/git-credential-manager" --version)" = '2.9.1+abc' ]
+  [ ! -e "${HOME}/.local/lib/git-credential-manager/3.0.1" ]
+
+  run --separate-stderr git-credential-manager::install 3.0.1
+  [ "${status}" -eq 69 ]
+  [ ! -e "${HOME}/.local/lib/git-credential-manager/3.0.1" ]
+}

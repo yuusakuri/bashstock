@@ -1382,14 +1382,90 @@ git::config::use-osx-keychain() { [[ "$#" -eq 0 ]] || return 64; [[ "$(system::o
 ### Write the installed Git Credential Manager version.
 git-credential-manager::version::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command git-credential-manager --version; }
 
-### Write a Git Credential Manager asset URL from the latest release.
-git-credential-manager::_artifact-url() { [[ "$#" -le 1 ]] || return 64; printf 'https://github.com/git-ecosystem/git-credential-manager/releases/latest/download/%s
-' "${1:-git-credential-manager.tar.gz}"; }
+### Write the release asset names that may hold one Git Credential Manager version.
+###
+### Releases before 2.7 name the Linux x64 archive gcm-linux_amd64.VERSION.tar.gz.
+git-credential-manager::_asset-names() {
+  [[ "$#" -eq 3 ]] || return 64
+  printf 'gcm-%s-%s-%s.tar.gz\n' "$1" "$2" "$3"
+  [[ "$1" != linux || "$2" != x64 ]] || printf 'gcm-linux_amd64.%s.tar.gz\n' "$3"
+}
 
-### Install an official Git Credential Manager artifact for this OS and CPU.
+### Download one Git Credential Manager version and keep it when it starts on this system.
+###
+### Arguments
+###
+### * PLATFORM - osx or linux.
+### * ARCHITECTURE - x64 or arm64.
+### * VERSION - Release version.
+###
+### Returns 69 when no archive exists for the platform or the program cannot start here.
+git-credential-manager::_install-version() {
+  [[ "$#" -eq 3 ]] || return 64
+  local version="$3" destination='' temporary='' asset='' downloaded=0 actual_version=''
+  destination="${HOME}/.local/lib/git-credential-manager/${version}"
+  [[ ! -x "${destination}/git-credential-manager" ]] || return 0
+  temporary="$(package::_temporary-directory)" || return "$?"
+  while IFS= read -r asset; do
+    if package::_download \
+      "https://github.com/git-ecosystem/git-credential-manager/releases/download/v${version}/${asset}" \
+      "${temporary}/gcm.tar.gz" 2>/dev/null; then
+      downloaded=1
+      break
+    fi
+  done < <(git-credential-manager::_asset-names "$1" "$2" "${version}")
+  if [[ "${downloaded}" -eq 0 ]]; then
+    rm -rf -- "${temporary}"
+    return 69
+  fi
+  mkdir -p -- "${temporary}/unpacked" || { rm -rf -- "${temporary}"; return 74; }
+  tar -xzf "${temporary}/gcm.tar.gz" -C "${temporary}/unpacked" || { rm -rf -- "${temporary}"; return 74; }
+  # A build for a newer C library fails here, before anything is installed.
+  actual_version="$("${temporary}/unpacked/git-credential-manager" --version 2>/dev/null)" ||
+    { rm -rf -- "${temporary}"; return 69; }
+  [[ "${actual_version}" == "${version}" || "${actual_version}" == "${version}"+* ]] ||
+    { rm -rf -- "${temporary}"; return 69; }
+  mkdir -p -- "${HOME}/.local/lib/git-credential-manager" || { rm -rf -- "${temporary}"; return 74; }
+  mv -- "${temporary}/unpacked" "${destination}" || { rm -rf -- "${temporary}"; return 74; }
+  rm -rf -- "${temporary}"
+}
+
+### Install the ICU library that Git Credential Manager, a .NET program, needs on Linux.
+git-credential-manager::_install-icu() {
+  [[ "$#" -eq 0 ]] || return 64
+  local platform='' name=''
+  if command -v ldconfig >/dev/null 2>&1 && ldconfig -p 2>/dev/null | grep -q 'libicuuc\.so'; then
+    return 0
+  fi
+  platform="$(package::_platform)" || return "$?"
+  case "${platform}" in
+    ubuntu)
+      package::_refresh || return "$?"
+      # The package name carries the ICU major version, such as libicu60 on Ubuntu 18.04.
+      name="$(apt-cache pkgnames libicu 2>/dev/null | grep -E '^libicu[0-9]+$' | sort -V | tail -n 1)"
+      [[ -n "${name}" ]] || return 69
+      package::_install "${name}"
+      ;;
+    fedora)
+      package::_install libicu
+      ;;
+  esac
+}
+
+### Install an official Git Credential Manager release for this OS and CPU.
+###
+### Each release is built for a minimum C library: 3.0 needs glibc 2.34, so
+### Ubuntu 18.04 and 20.04 run 2.9. On Linux the ICU library is installed
+### first, because the program does not start without it. Without VERSION, releases are tried from
+### the newest until one starts on this system. A requested VERSION that does
+### not start returns 69 without installing anything.
+###
+### Arguments
+###
+### * VERSION - Optional major.minor.patch release.
 git-credential-manager::install() {
   [[ "$#" -le 1 ]] || return 64
-  local version="${1:-}" platform='' architecture='' asset='' url='' temporary='' destination=''
+  local version="${1:-}" platform='' architecture='' candidates='' candidate='' status=69
   [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
   platform="$(package::_platform)" || return "$?"
   case "${platform}" in
@@ -1402,37 +1478,30 @@ git-credential-manager::install() {
     aarch64 | arm64) architecture='arm64' ;;
     *) return 69 ;;
   esac
-  [[ -n "${version}" ]] || version="$(package::_github-release-versions git-ecosystem/git-credential-manager |
-    package::_latest-stable-version)" || return "$?"
-  asset="gcm-${platform}-${architecture}-${version}.tar.gz"
-  url="$(package::_github-release-asset-url git-ecosystem/git-credential-manager \
-    "${version}" "^${asset//./\\.}$")" || return "$?"
-  [[ -n "${url}" ]] || return 69
-  destination="${HOME}/.local/lib/git-credential-manager/${version}"
-  if [[ ! -x "${destination}/git-credential-manager" ]]; then
-    temporary="$(package::_temporary-directory)" || return "$?"
-    package::_download "${url}" "${temporary}/gcm.tar.gz" ||
-      { rm -rf -- "${temporary}"; return 74; }
-    mkdir -p -- "${temporary}/unpacked" ||
-      { rm -rf -- "${temporary}"; return 74; }
-    tar -xzf "${temporary}/gcm.tar.gz" -C "${temporary}/unpacked" ||
-      { rm -rf -- "${temporary}"; return 74; }
-    local actual_version=''
-    actual_version="$("${temporary}/unpacked/git-credential-manager" --version)" ||
-      { rm -rf -- "${temporary}"; return 69; }
-    [[ "${actual_version}" == "${version}" || "${actual_version}" == "${version}"+* ]] ||
-      { rm -rf -- "${temporary}"; return 69; }
-    mkdir -p -- "${HOME}/.local/lib/git-credential-manager" ||
-      { rm -rf -- "${temporary}"; return 74; }
-    mv -- "${temporary}/unpacked" "${destination}" ||
-      { rm -rf -- "${temporary}"; return 74; }
-    rm -rf -- "${temporary}"
+  if [[ "${platform}" == linux ]]; then
+    git-credential-manager::_install-icu || return "$?"
+  fi
+  if [[ -n "${version}" ]]; then
+    git-credential-manager::_install-version "${platform}" "${architecture}" "${version}" || return "$?"
+  else
+    candidates="$(package::_github-release-versions git-ecosystem/git-credential-manager)" || return "$?"
+    while IFS= read -r candidate; do
+      [[ -n "${candidate}" ]] || continue
+      status=0
+      git-credential-manager::_install-version "${platform}" "${architecture}" "${candidate}" || status="$?"
+      [[ "${status}" -eq 69 ]] || break
+    done < <(printf '%s\n' "${candidates}" | sed '1!G;h;$!d')
+    if [[ "${status}" -ne 0 ]]; then
+      [[ "${status}" -ne 69 ]] || console::_write-error 'No Git Credential Manager release starts on this system.'
+      return "${status}"
+    fi
+    version="${candidate}"
   fi
   mkdir -p -- "${HOME}/.local/bin" || return 74
-  ln -sfn -- "${destination}/git-credential-manager" \
+  ln -sfn -- "${HOME}/.local/lib/git-credential-manager/${version}/git-credential-manager" \
     "${HOME}/.local/bin/git-credential-manager" || return 74
   env::add-path "${HOME}/.local/bin" || return "$?"
-  "${destination}/git-credential-manager" configure
+  "${HOME}/.local/bin/git-credential-manager" configure
 }
 
 ### Execute the git::config::setup utility.
