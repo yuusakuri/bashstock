@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Run as the first process of a disposable privileged Ubuntu or Fedora
+# container. It installs systemd and the tools the checks need, creates the
+# sudo user tester, and then hands PID 1 over to systemd.
+if [[ -f /etc/fedora-release ]]; then
+  if [[ "$(rpm -E %fedora)" == 34 ]]; then
+    # Fedora 34 has reached its end of life; its packages remain in the official archive.
+    cat >/etc/yum.repos.d/bashstock-archive.repo <<'REPO'
+[bashstock-fedora-archive]
+name=Fedora 34 official archive
+baseurl=https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/34/Everything/$basearch/os/
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-fedora-34-$basearch
+[bashstock-fedora-updates-archive]
+name=Fedora 34 updates official archive
+baseurl=https://archives.fedoraproject.org/pub/archive/fedora/linux/updates/34/Everything/$basearch/
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-fedora-34-$basearch
+REPO
+    for repository in /etc/yum.repos.d/*.repo; do
+      [[ "$repository" == */bashstock-archive.repo ]] ||
+        sed -i 's/^enabled=1/enabled=0/' "$repository"
+    done
+  fi
+  dnf install -y systemd git curl ca-certificates perl perl-JSON-PP procps-ng sudo passwd
+  init=/usr/lib/systemd/systemd
+else
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y systemd systemd-sysv dbus git curl \
+    ca-certificates perl libjson-pp-perl procps sudo
+  init=/lib/systemd/systemd
+fi
+
+useradd --create-home --shell /bin/bash tester
+printf 'tester ALL=(ALL) NOPASSWD: ALL\n' >/etc/sudoers.d/tester
+chmod 0440 /etc/sudoers.d/tester
+touch /var/tmp/bashstock-container-ready
+exec "$init"

@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091
+
+set -euo pipefail
+
+# Run as the sudo user tester inside a container whose PID 1 is systemd,
+# started by scripts/boot-systemd-container.
+source /opt/bashstock.sh
+
+version="$(docker::versions | tail -n 1)"
+[[ -n "$version" ]]
+printf 'Docker selected version: %s\n' "$version"
+docker::install "$version"
+docker::install "$version"
+if [[ -f /etc/fedora-release ]]; then
+  [[ "$(rpm -q --qf '%{EPOCH}:%{VERSION}-%{RELEASE}' docker-ce)" == "$version" ]]
+else
+  [[ "$(dpkg-query -W -f='${Version}' docker-ce)" == "$version" ]]
+fi
+systemctl is-enabled docker
+systemctl is-active docker
+sudo docker info >/dev/null
+
+# The docker group applies to sessions that start after docker::install.
+id -nG "$(id -un)" | grep -qw docker
+sudo -iu "$(id -un)" docker run --rm hello-world | grep -F 'Hello from Docker!'

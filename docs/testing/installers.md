@@ -10,6 +10,7 @@
 | Ubuntu 20.04、22.04、24.04、26.04 の amd64・arm64 コンテナ | Claude Desktop の導入・更新とAnthropicのAPTリポジトリ |
 | Ubuntu 18.04〜26.04、Fedora 34・43・44 の amd64・arm64 コンテナ（別ジョブ） | Flutter SDK の導入・版の切替と Linux アプリのビルド・起動 |
 | Fedora 34、43、44 の amd64・arm64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby、pipx、VS Code、Google Chrome、Microsoft Edge の導入・再実行・起動とDNFリポジトリ |
+| Ubuntu 18.04〜26.04、Fedora 34・43・44 の amd64・arm64 で systemd を PID 1 にした特権コンテナ | Docker サービスの有効化・起動と一般ユーザーのコンテナ実行 |
 | Ubuntu 22.04、24.04 の amd64・arm64 GitHub Actions 実行環境 | Docker サービス、デーモン、コンテナ実行。DNS 管理方式の切替と Google Public DNS の設定 |
 | macOS の GitHub Actions 実行環境 | Android SDK 構成要素、AVD の作成・削除。Hypervisor.Frameworkが使える実行環境では起動・停止も確認する |
 | Ubuntu 24.04 の GitHub Actions 実行環境 | Android SDK 構成要素、KVMを使うAVDの作成・起動・停止・削除 |
@@ -29,6 +30,8 @@
 | D06 | Ubuntu の systemd 上で同じ版を二度導入する | サービスが有効かつ起動中である | `Installer integration / docker-service` |
 | D07 | Docker デーモンで `hello-world` を動かす | イメージの取得とコンテナの実行が成功する | 同上 |
 | D08 | 一つ前の版を指定して導入し、最新版を再び指定する | 両方の導入が成功し、各段階で実際の版が指定値と一致する | `scripts/test-docker-package-container` |
+| D09 | systemd を PID 1 にした各 OS のコンテナで、sudo を使う一般ユーザーが最新版を二度導入する | 導入済みの版が指定値と一致し、サービスが有効かつ起動中である | `scripts/test-docker-service-container` |
+| D10 | 導入後に始めたログインセッションで、sudo を使わずに `hello-world` を動かす | 利用者が docker グループに入り、コンテナの実行が成功する | 同上 |
 | J01 | 公式配布物から Node.js 16.20.2 を導入し、同じ版で再実行する | 両方成功し、Node.js、npm、Corepack、pnpm が起動する | `scripts/test-node-container` |
 | J04 | J01 の Node.js で OpenCode を二度導入する | 両方成功し、`$HOME/.local/bin/opencode --version` が版番号を表示する | 同上 |
 | J02 | OSのJDK最新版を導入・再実行し、小さなJavaプログラムをコンパイルして動かす | 版とJAVA_HOMEが一致し、実行結果が期待値になる | `scripts/test-jdk-go-container` |
