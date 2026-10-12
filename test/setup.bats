@@ -710,3 +710,53 @@ gsettings_value() {
   [ "${ANDROID_SERIAL}" = 'emulator-5554' ]
   unset ANDROID_SERIAL
 }
+
+### Run administrator commands below FAKE_ROOT and record them; sudo reports SUDO_RESULT.
+use_fake_sudoers() {
+  FAKE_ROOT="${BATS_TEST_TMPDIR}/root"
+  ROOT_LOG="${BATS_TEST_TMPDIR}/root.log"
+  SUDO_RESULT="${SUDO_RESULT:-0}"
+  mkdir -p "${FAKE_ROOT}"
+  : >"${ROOT_LOG}"
+  user::exists() { [[ "$1" != 'missing' ]]; }
+  # shellcheck disable=SC2317
+  command::run-as-root() {
+    printf '%s\n' "$*" >>"${ROOT_LOG}"
+    case "$1" in
+      visudo) return 0 ;;
+      sudo) return "${SUDO_RESULT}" ;;
+      install)
+        if [[ "$2" == '-d' ]]; then mkdir -p "${FAKE_ROOT}$5"; else cp -- "$4" "${FAKE_ROOT}$5"; fi
+        ;;
+      rm) rm -f -- "${FAKE_ROOT}${*: -1}" ;;
+    esac
+  }
+}
+
+@test "passwordless sudo is granted through a checked drop-in file without an editor" {
+  use_fake_sudoers
+  run sudo::passwordless::enable first.last
+  [ "${status}" -eq 0 ]
+  [ "$(<"${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-first_last")" = 'first.last ALL=(ALL) NOPASSWD: ALL' ]
+  grep -Eq '^visudo -c -q -f .*/rule$' "${ROOT_LOG}"
+  grep -Fqx 'install -m 0440 '"$(sed -n 's/^visudo -c -q -f //p' "${ROOT_LOG}")"' /etc/sudoers.d/zz-bashstock-passwordless-first_last' "${ROOT_LOG}"
+  grep -Fqx 'sudo -n -u first.last -- sudo -n -k true' "${ROOT_LOG}"
+
+  SUDO_USER='invoker'
+  run sudo::passwordless::enable
+  [ "${status}" -eq 0 ]
+  [ "$(<"${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-invoker")" = 'invoker ALL=(ALL) NOPASSWD: ALL' ]
+}
+
+@test "passwordless sudo leaves no rule when sudo still asks for a password" {
+  SUDO_RESULT=1
+  use_fake_sudoers
+  run --separate-stderr sudo::passwordless::enable alice
+  [ "${status}" -eq 69 ]
+  [ ! -e "${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-alice" ]
+
+  : >"${ROOT_LOG}"
+  run --separate-stderr sudo::passwordless::enable missing
+  [ "${status}" -eq 64 ]
+  [ ! -s "${ROOT_LOG}" ]
+}
