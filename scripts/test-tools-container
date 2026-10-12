@@ -51,8 +51,9 @@ fi
 
 if [[ "$ID" == ubuntu ]]; then
   printf '== Debian package from a URL\n'
-  deb::install-from-url https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep_14.1.1-1_amd64.deb
-  rg --version
+  # The statically linked fd package runs on every Ubuntu release and CPU.
+  deb::install-from-url "https://github.com/sharkdp/fd/releases/download/v10.2.0/fd-musl_10.2.0_$(dpkg --print-architecture).deb"
+  fd --version
 fi
 
 printf '== Git Credential Manager\n'

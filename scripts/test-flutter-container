@@ -67,7 +67,11 @@ if [[ "$ID" == ubuntu && "$VERSION_ID" == 18.04 ]]; then
   exit 0
 fi
 "$sdk" build linux --release
-bundle="$app/build/linux/x64/release/bundle/bashstock_app"
+case "$(uname -m)" in
+  x86_64) flutter_architecture=x64 ;;
+  *) flutter_architecture=arm64 ;;
+esac
+bundle="$app/build/linux/$flutter_architecture/release/bundle/bashstock_app"
 [[ -x "$bundle" ]]
 # The application keeps running on a virtual display until the timeout stops it.
 status=0

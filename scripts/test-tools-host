@@ -37,3 +37,11 @@ version="$(ubuntu::server-iso-versions amd64 | tail -n 1)"
 ubuntu::download-server-iso "$version" amd64 "$iso_directory/server.iso"
 [[ "$(stat -c %s "$iso_directory/server.iso")" -gt 1000000000 ]]
 rm -f -- "$iso_directory/server.iso"
+
+printf '== QMK CLI\n'
+qmk::cli::install
+qmk::cli::install
+qmk --version
+qmk setup --yes --home "$HOME/qmk_firmware"
+qmk compile --keyboard handwired/onekey/promicro --keymap default
+find "$HOME/qmk_firmware" -maxdepth 1 -name 'handwired_onekey_promicro_default.hex' | grep -q .

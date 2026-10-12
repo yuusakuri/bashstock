@@ -6,10 +6,10 @@
 
 | 環境 | 対象 |
 | --- | --- |
-| Ubuntu 18.04、20.04、22.04、24.04、26.04 の amd64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby、pipx、VS Code の導入・再実行・起動とAPTリポジトリ |
+| Ubuntu 18.04、20.04、22.04、24.04、26.04 の amd64・arm64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby、pipx、VS Code の導入・再実行・起動とAPTリポジトリ |
 | Ubuntu 20.04、22.04、24.04、26.04 の amd64 コンテナ | Claude Desktop の導入・更新とAnthropicのAPTリポジトリ |
 | Ubuntu 18.04〜26.04、Fedora 34・44 の amd64 コンテナ（別ジョブ） | Flutter SDK の導入・版の切替と Linux アプリのビルド・起動 |
-| Fedora 34、44 の amd64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby、pipx、VS Code の導入・再実行・起動とDNFリポジトリ |
+| Fedora 34、44 の amd64・arm64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby、pipx、VS Code の導入・再実行・起動とDNFリポジトリ |
 | Ubuntu 22.04、24.04 の GitHub Actions 実行環境 | Docker サービス、デーモン、コンテナ実行。DNS 管理方式の切替と Google Public DNS の設定 |
 | macOS の GitHub Actions 実行環境 | Android SDK 構成要素、AVD の作成・削除。Hypervisor.Frameworkが使える実行環境では起動・停止も確認する |
 | Ubuntu 24.04 の GitHub Actions 実行環境 | Android SDK 構成要素、KVMを使うAVDの作成・起動・停止・削除 |
@@ -58,6 +58,7 @@
 | F01 | Flutter を二度導入し、起動設定を読んだ新しい Bash から `flutter` を探す | 導入先の `flutter` が見つかり、最新の安定版を表示し、Dart も起動する | `scripts/test-flutter-container` |
 | F02 | 一つ前の安定版へ `flutter::use-version` で切り替え、版を省略して `flutter::install` で戻す | 各段階の版が指定どおりになる | 同上 |
 | F03 | Linux 向けアプリを作り、テストを実行し、リリースビルドして仮想ディスプレイで起動する | テストとビルドが成功し、アプリが終了せずに動き続ける。Flutter が Linux デスクトップに対応しない Ubuntu 18.04 ではテストまで行う | 同上 |
+| T09 | QMK CLI を二度導入し、ファームウェアの作業ツリーを用意して小さなキーボードのファームウェアをビルドする | 導入と `qmk doctor` が成功し、HEX ファイルが作られる | `scripts/test-tools-host` |
 | A01 | 専用のホームと SDK に Android CLI、Platform Tools、SDK Platform、Build Tools、Command-line Tools、Emulator を導入する | 各実行ファイルが起動し、`android.jar` が存在する | `scripts/test-android-macos` |
 | A02 | Platform Tools と Build Tools の導入を繰り返す | 二度目も成功し、実行ファイルが使える | 同上 |
 | A03 | API 35 の AVD を作り、同名でもう一度作る | 初回は成功し、二度目は既存の AVD を保持して失敗する | 同上 |
