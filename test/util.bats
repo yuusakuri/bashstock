@@ -414,7 +414,7 @@ TABLE
   printf 'needle here\n' >"$root/Sub Dir/Match.TXT"
   printf 'nothing\n' >"$root/other.txt"
   printf 'needle\0binary' >"$root/binary.bin"
-  [ "$(path::find '\.txt$' "$root" | tr '\0' '\n' | sort)" = "$(printf '%s\n%s' "$root/Sub Dir/Match.TXT" "$root/other.txt")" ]
+  [ "$(path::find '\.txt$' "$root" | tr '\0' '\n' | LC_ALL=C sort)" = "$(printf '%s\n%s' "$root/Sub Dir/Match.TXT" "$root/other.txt")" ]
   run path::find 'absent' "$root"
   [ "$status" -eq 1 ]
   run path::find '(' "$root"

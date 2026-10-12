@@ -238,33 +238,108 @@ net::interface::default() { [[ "$#" -eq 0 ]] || return 64; net::_default-interfa
 ### Write the first default-route gateway.
 net::gateway::default() { [[ "$#" -eq 0 ]] || return 64; net::_default-gateway; }
 
-### Write the primary private IPv4 address.
+### Write the primary RFC 1918 IPv4 address of an interface.
+###
+### Arguments
+###
+### * INTERFACE - Interface name. Defaults to the interface of the default route.
+###
+### Exit status
+###
+### 1 when the interface has no private IPv4 address.
 net::ip::private-v4() {
-  if [[ "$#" -gt 1 ]]; then return 64; fi
-  local interface="${1:-}" cidr='' address=''
-  if [[ -z "$interface" ]]; then
-    if [[ "$(system::operating-system)" == darwin ]]; then interface="$(route -n get default 2>/dev/null | awk '/interface:/{print $2; exit}')"; else interface="$(net::_default-interface)"; fi
+  [[ "$#" -le 1 ]] || return 64
+  local interface="${1:-}" address='' candidate='' cidr=''
+  if [[ -z "${interface}" ]]; then
+    if [[ "$(system::operating-system)" == darwin ]]; then
+      interface="$(route -n get default 2>/dev/null | awk '/interface:/ {print $2; exit}')"
+    else
+      interface="$(net::_default-interface)"
+    fi
   fi
-  [[ -n "$interface" ]] || return 69
-  if [[ "$(system::operating-system)" == darwin ]]; then address="$(ifconfig "$interface" 2>/dev/null | awk '/inet / && $2 !~ /^127\./ {print $2; exit}')"; else cidr="$(net::_interface-ipv4-cidr "$interface")" || return 69; address="${cidr%/*}"; fi
-  [[ -n "$address" ]] || return 1; printf '%s\n' "$address"
+  [[ -n "${interface}" ]] || return 69
+  while IFS= read -r candidate; do
+    case "${candidate}" in
+      10.* | 192.168.* | 172.1[6-9].* | 172.2[0-9].* | 172.3[01].*)
+        address="${candidate}"
+        break
+        ;;
+    esac
+  done < <(
+    if [[ "$(system::operating-system)" == darwin ]]; then
+      ifconfig "${interface}" 2>/dev/null | awk '$1 == "inet" {print $2}'
+    else
+      cidr="$(net::_interface-ipv4-cidr "${interface}" 2>/dev/null)" && printf '%s\n' "${cidr%/*}"
+      ip -o -4 addr show dev "${interface}" 2>/dev/null | awk '{sub(/\/.*/, "", $4); print $4}'
+    fi
+  )
+  [[ -n "${address}" ]] || return 1
+  printf '%s\n' "${address}"
 }
 
-### Write the primary private IPv6 address.
+### Write the primary unique local IPv6 address of an interface.
+###
+### Only addresses in fc00::/7 are considered, in the order the operating
+### system lists them, after removing the excluded prefixes.
+###
+### Arguments
+###
+### * INTERFACE - Interface name. Defaults to the interface of the default route.
+### * EXCLUDED_PREFIXES - Comma-separated address prefixes to skip. Defaults to
+###   fe80,fda6: link-local addresses and the auxiliary ULA of the reference network.
+###
+### Exit status
+###
+### 1 when no address remains.
 net::ip::private-v6() {
-  if [[ "$#" -gt 2 ]]; then return 64; fi
-  local interface="${1:-$(net::_default-interface)}" excluded="${2:-}" address=''
-  [[ -n "$interface" ]] || return 69
-  if [[ "$(system::operating-system)" == darwin ]]; then
-    address="$(ifconfig "$interface" 2>/dev/null | awk -v excluded="$excluded" '/inet6 / && $2 !~ /^fe80/ && $2 != excluded {print $2; exit}')"
-  else
-    address="$(ip -o -6 addr show dev "$interface" scope global 2>/dev/null | awk -v excluded="$excluded" '{sub(/\/.*/,"",$4); if ($4 != excluded) {print $4; exit}}')"
-  fi
-  [[ -n "$address" ]] || return 1; printf '%s\n' "$address"
+  [[ "$#" -le 2 ]] || return 64
+  local interface="${1:-}" excluded="${2-fe80,fda6}" candidate='' prefix='' skip='' lower=''
+  local prefixes=()
+  [[ -n "${interface}" ]] || interface="$(net::_default-interface)"
+  [[ -n "${interface}" ]] || return 69
+  IFS=',' read -r -a prefixes <<<"${excluded}"
+  while IFS= read -r candidate; do
+    candidate="${candidate%%%*}"
+    lower="$(string::lower "${candidate}")" || return "$?"
+    [[ "${lower}" == fc* || "${lower}" == fd* ]] || continue
+    skip=0
+    for prefix in "${prefixes[@]}"; do
+      [[ -n "${prefix}" && "${lower}" == "$(string::lower "${prefix}")"* ]] && skip=1
+    done
+    [[ "${skip}" -eq 0 ]] || continue
+    printf '%s\n' "${candidate}"
+    return 0
+  done < <(
+    if [[ "$(system::operating-system)" == darwin ]]; then
+      ifconfig "${interface}" 2>/dev/null | awk '$1 == "inet6" {print $2}'
+    else
+      ip -o -6 addr show dev "${interface}" 2>/dev/null | awk '{sub(/\/.*/, "", $4); print $4}'
+    fi
+  )
+  return 1
 }
 
-### Write the public IP address discovered through the configured service.
-net::ip::public() { [[ "$#" -eq 0 ]] || return 64; command -v curl >/dev/null 2>&1 || return 69; curl -fsS https://api.ipify.org || return 74; printf '\n'; }
+### Write the public IP address reported by ifconfig.me.
+###
+### curl is preferred and wget is used when curl is missing. The response
+### must be one IPv4 or IPv6 address; anything else returns 74.
+net::ip::public() {
+  [[ "$#" -eq 0 ]] || return 64
+  local address=''
+  if command -v curl >/dev/null 2>&1; then
+    address="$(curl -fsS --max-time 10 https://ifconfig.me)" || return 74
+  elif command -v wget >/dev/null 2>&1; then
+    address="$(wget -qO- --timeout=10 https://ifconfig.me)" || return 74
+  else
+    console::_write-error 'curl or wget is required.'
+    return 69
+  fi
+  if ! net::_is-ip-address "${address}"; then
+    console::_write-error 'ifconfig.me did not return an IP address.'
+    return 74
+  fi
+  printf '%s\n' "${address}"
+}
 
 ### Test whether a DNS name resolves.
 net::dns::test() {
@@ -1132,17 +1207,92 @@ ssh::key::add-all() {
 ### Add every detected private key in a directory to ssh-agent.
 ssh::key::add-all-private-keys() { ssh::key::add-all "$@"; }
 
-### Ping a host a bounded number of times.
-net::ping() { [[ "$#" -ge 0 && "$#" -le 3 ]] || return 64; local host="${1:-127.0.0.1}" attempts="${2:-1}" timeout="${3:-1}"; [[ "$attempts" =~ ^[1-9][0-9]*$ && "$timeout" =~ ^[1-9][0-9]*$ ]] || return 64; command -v ping >/dev/null 2>&1 || return 69; case "$(system::operating-system)" in darwin) ping -c "$attempts" -W $((timeout*1000)) "$host" ;; *) ping -c "$attempts" -W "$timeout" "$host" ;; esac; }
+### Send ICMP echo requests to a host.
+###
+### Arguments
+###
+### * HOST - Host name or address. Defaults to google.com.
+### * ATTEMPTS - Number of requests. Defaults to 3.
+### * TIMEOUT_SECONDS - Time to wait for each reply. Defaults to 5.
+net::ping() {
+  [[ "$#" -le 3 ]] || return 64
+  local host="${1:-google.com}" attempts="${2:-3}" timeout="${3:-5}"
+  [[ -n "${host}" && "${attempts}" =~ ^[1-9][0-9]*$ && "${timeout}" =~ ^[1-9][0-9]*$ ]] || return 64
+  command::require ping || return "$?"
+  case "$(system::operating-system)" in
+    # BSD ping takes the reply timeout in milliseconds.
+    darwin) ping -c "${attempts}" -W "$((timeout * 1000))" "${host}" ;;
+    linux) ping -c "${attempts}" -W "${timeout}" "${host}" ;;
+    *) return 69 ;;
+  esac
+}
 
-### Disable all active swap devices.
-swap::disable-all() { [[ "$#" -eq 0 ]] || return 64; command -v swapoff >/dev/null 2>&1 || return 69; swapoff -a; }
+### Test whether a string is one IPv4 or IPv6 address.
+net::_is-ip-address() {
+  [[ "$#" -eq 1 ]] || return 64
+  local octet='(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])'
+  [[ "$1" =~ ^${octet}\.${octet}\.${octet}\.${octet}$ ]] && return 0
+  [[ "$1" =~ ^[0-9A-Fa-f:.]+$ && "$1" == *:*:* && "$1" != *:::* ]]
+}
 
-### Remove swap files below a directory.
-swap::remove-all-files() { [[ "$#" -le 1 ]] || return 64; local directory="${1:-/}" path=''; while IFS= read -r -d '' path; do rm -f -- "$path" || return 74; done < <(find "$directory" -type f -name '*.swap' -print0 2>/dev/null); }
+### Disable every active swap area through administrator execution.
+swap::disable-all() {
+  [[ "$#" -eq 0 ]] || return 64
+  command::require swapoff || return "$?"
+  command::run-as-root swapoff --all
+}
 
-### Create a swap file of a requested size.
-swap::create() { [[ "$#" -ge 1 && "$#" -le 2 && "$1" =~ ^[1-9][0-9]*$ ]] || return 64; local size="$1" path="${2:-/swapfile}"; command -v fallocate >/dev/null 2>&1 || return 69; fallocate -l "$size" "$path" || return 74; chmod 600 -- "$path" || return 74; command -v mkswap >/dev/null 2>&1 || return 69; mkswap "$path" >/dev/null || return 74; swapon "$path"; }
+### Disable every swap file, remove its /etc/fstab entry, and delete it.
+###
+### Swap partitions are kept. The first failure stops the removal and is reported.
+swap::remove-all-files() {
+  [[ "$#" -eq 0 ]] || return 64
+  [[ -r /proc/swaps ]] || return 69
+  local path='' content=''
+  while IFS= read -r path; do
+    # /proc/swaps escapes spaces in paths as \040.
+    path="${path//\\040/ }"
+    command::run-as-root swapoff "${path}" || { console::_write-error "Could not disable ${path}."; return 74; }
+    if [[ -f /etc/fstab ]]; then
+      content="$(awk -v path="${path}" '$1 != path || $3 != "swap"' /etc/fstab)" || return 74
+      file::write-text /etc/fstab "${content}"$'\n' || { console::_write-error "Could not update /etc/fstab for ${path}."; return 74; }
+    fi
+    command::run-as-root rm -f -- "${path}" || { console::_write-error "Could not delete ${path}."; return 74; }
+  done < <(awk 'NR > 1 && $2 == "file" {print $1}' /proc/swaps)
+}
+
+### Create a swap file, enable it, and register it in /etc/fstab.
+###
+### The file is created and enabled through administrator execution.
+###
+### Arguments
+###
+### * SIZE_BYTES - Size of the file. Defaults to 8589934592 (8 GiB).
+### * PATH - Swap file path. Defaults to /swapfile; an existing path returns 73.
+swap::create() {
+  [[ "$#" -le 2 ]] || return 64
+  local size="${1:-8589934592}" path="${2:-/swapfile}"
+  [[ "${size}" =~ ^[1-9][0-9]*$ && "${path}" == /* ]] || return 64
+  [[ "$(system::operating-system)" == linux ]] || return 69
+  command::require mkswap || return "$?"
+  if [[ -e "${path}" || -L "${path}" ]]; then
+    console::_write-error "${path} already exists."
+    return 73
+  fi
+  if ! command::run-as-root fallocate -l "${size}" "${path}" 2>/dev/null; then
+    # Some file systems cannot preallocate; write zeros instead.
+    command::run-as-root dd if=/dev/zero of="${path}" bs=1M count="$(((size + 1048575) / 1048576))" status=none || {
+      command::run-as-root rm -f -- "${path}"
+      return 74
+    }
+  fi
+  command::run-as-root chmod 600 "${path}" || return 74
+  command::run-as-root mkswap "${path}" >/dev/null || return 74
+  command::run-as-root swapon "${path}" || return 74
+  if ! awk -v path="${path}" '$1 == path && $3 == "swap" {found = 1} END {exit !found}' /etc/fstab 2>/dev/null; then
+    file::append-text /etc/fstab "${path} none swap sw 0 0"$'\n' || return "$?"
+  fi
+}
 
 ### List active swap devices.
 swap::list() { [[ "$#" -eq 0 ]] || return 64; command -v swapon >/dev/null 2>&1 || return 69; swapon --show; }
@@ -1216,13 +1366,19 @@ file::_print-text() {
 }
 
 # shellcheck disable=SC2329
-### Test whether a TCP endpoint accepts a connection.
+### Test whether a TCP connection to HOST and PORT succeeds, without output.
+###
+### Arguments
+###
+### * HOST - Host name or address.
+### * PORT - TCP port.
+### * TIMEOUT_SECONDS - Connection timeout. Defaults to 10.
 net::tcp::test() {
   [[ "$#" -ge 2 && "$#" -le 3 && -n "$1" && "$2" =~ ^[0-9]+$ ]] || return 64
-  local timeout="${3:-5}"
+  local timeout="${3:-10}"
   [[ "${timeout}" =~ ^[1-9][0-9]*$ ]] || return 64
-  command -v nc >/dev/null 2>&1 || return 69
-  nc -z -w "${timeout}" "$1" "$2"
+  command::require nc || return "$?"
+  nc -z -w "${timeout}" "$1" "$2" >/dev/null 2>&1
 }
 
 ### Open a serial device with a configured baud rate.
@@ -1234,11 +1390,38 @@ serial::write() { [[ "$#" -eq 2 && -e "$1" ]] || return 64; printf '%s' "$2" >"$
 ### Write a command and terminator to a serial device.
 serial::write-command() { [[ "$#" -ge 2 && "$#" -le 4 && -e "$1" ]] || return 64; local device="$1" data="$2" terminator="${3:-cr}" wait="${4:-0}" suffix=''; case "$terminator" in none) suffix='' ;; cr) suffix=$'\r' ;; lf) suffix=$'\n' ;; crlf) suffix=$'\r\n' ;; *) return 64 ;; esac; printf '%s%s' "$data" "$suffix" >"$device" || return 74; [[ "$wait" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 64; [[ "$wait" == 0 ]] || sleep "$wait"; }
 
-### Open a named screen session attached to a serial device.
-screen::open-serial() { [[ "$#" -ge 1 && "$#" -le 3 ]] || return 64; local device="$1" baud="${2:-115200}" log="${3:-}"; serial::configure "$device" "$baud" || return "$?"; command -v screen >/dev/null 2>&1 || return 69; if [[ -n "$log" ]]; then screen -L -Logfile "$log" "$device" "$baud"; else screen "$device" "$baud"; fi; }
+### Open a serial device in GNU Screen through administrator execution and log the session.
+###
+### Arguments
+###
+### * DEVICE - Serial device path.
+### * BAUD_RATE - Baud rate. Defaults to 115200.
+### * LOG_FILE - Log file. Defaults to a file named with the date and time in ${TTY_LOG_DIR:-.}.
+screen::open-serial() {
+  [[ "$#" -ge 1 && "$#" -le 3 && -e "$1" ]] || return 64
+  local device="$1" baud="${2:-115200}" log="${3:-}" stamp=''
+  [[ "${baud}" =~ ^[1-9][0-9]*$ ]] || return 64
+  command::require screen || return "$?"
+  if [[ -z "${log}" ]]; then
+    stamp="$(time::local-date-time-seconds-basic)" || return "$?"
+    log="${TTY_LOG_DIR:-.}/${stamp}-screen.log"
+  fi
+  mkdir -p -- "$(path::directory-name "${log}")" || return 74
+  command::run-as-root screen -L -Logfile "${log}" "${device}" "${baud}"
+}
 
-### Terminate every GNU Screen session.
-screen::kill-all() { [[ "$#" -eq 0 ]] || return 64; command -v screen >/dev/null 2>&1 || return 69; screen -ls 2>/dev/null | awk '/[0-9]+\./ {print $1}' | while IFS= read -r session; do screen -S "$session" -X quit; done; }
+### End every GNU Screen process of every user through administrator execution.
+###
+### Having no Screen process is a success.
+screen::kill-all() {
+  [[ "$#" -eq 0 ]] || return 64
+  command::require pkill || return "$?"
+  local status=0
+  command::run-as-root pkill screen || status="$?"
+  # pkill returns 1 when no process matched.
+  [[ "${status}" -eq 1 ]] && return 0
+  return "${status}"
+}
 
 ### Run an external command while preserving its output and status.
 util::_run-command() { [[ "$#" -ge 1 ]] || return 64; command -v "$1" >/dev/null 2>&1 || return 69; local command_name="$1"; shift; command "$command_name" "$@"; }
@@ -1246,11 +1429,35 @@ util::_run-command() { [[ "$#" -ge 1 ]] || return 64; command -v "$1" >/dev/null
 ### Capture packets addressed to a host.
 net::capture-host() { [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64; local host="$1" interface="${2:-any}"; if tcpdump -i "$interface" host "$host" 2>/dev/null; then return 0; fi; command -v sudo >/dev/null 2>&1 || return 69; sudo tcpdump -i "$interface" host "$host"; }
 
-### Write a TCP port selected by the operating system.
-net::unused-port() { [[ "$#" -eq 0 ]] || return 64; command -v perl >/dev/null 2>&1 || return 69; perl -MSocket -e 'socket(my $s,PF_INET,SOCK_STREAM,getprotobyname("tcp")) or exit 69; bind($s,sockaddr_in(0,inet_aton("127.0.0.1"))) or exit 69; print (sockaddr_in(getsockname($s)))[0],"\n";' 2>/dev/null; }
+### Write a TCP port number the operating system reports as unused.
+###
+### A socket is bound to port 0 on the loopback address, and the port the
+### system assigned is written before the socket closes.
+net::unused-port() {
+  [[ "$#" -eq 0 ]] || return 64
+  command::require perl || return "$?"
+  perl -MSocket -e '
+    socket(my $socket, PF_INET, SOCK_STREAM, getprotobyname("tcp")) or exit 69;
+    bind($socket, pack_sockaddr_in(0, inet_aton("127.0.0.1"))) or exit 69;
+    my ($port) = unpack_sockaddr_in(getsockname($socket));
+    print "$port\n";
+  '
+}
 
-### Release processes holding a serial device.
-serial::release() { [[ "$#" -ge 1 && "$#" -le 2 && -e "$1" ]] || return 64; file::release "$@"; }
+### Release a serial device so another process, such as a Python tool, can open it.
+###
+### The reference implementation called file-close on the device, which
+### killed every holder at once; this follows file::release instead: SIGTERM
+### first, SIGKILL only for holders left after the timeout.
+###
+### Arguments
+###
+### * DEVICE - Serial device path.
+### * TIMEOUT_SECONDS - Time to wait after SIGTERM. Defaults to 2.
+serial::release() {
+  [[ "$#" -ge 1 && "$#" -le 2 && -e "$1" ]] || return 64
+  file::release "$@"
+}
 
 ### Initialize a repo manifest checkout.
 repo::init() { [[ "$#" -ge 3 && "$#" -le 4 ]] || return 64; util::_run-command repo init -u "$1" -b "$2" -m "$3" "${4:+--repo-url="$4"}"; }
@@ -1557,20 +1764,90 @@ process::ids-by-name() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; util::_run-co
 ### Execute the process::ids-by-name-regex utility.
 process::ids-by-name-regex() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; util::_run-command pgrep -f "$1"; }
 
-### Execute the process::threads-by-pid utility.
-process::threads-by-pid() { [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64; util::_run-command ps -M "$1"; }
+### Write the threads of one process.
+###
+### Linux uses ps -T and macOS ps -M.
+process::threads-by-pid() {
+  [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64
+  command::require ps || return "$?"
+  case "$(system::operating-system)" in
+    darwin) ps -M -p "$1" ;;
+    linux) ps -T -p "$1" ;;
+    *) return 69 ;;
+  esac
+}
 
-### Execute the process::threads-by-name utility.
-process::threads-by-name() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; local pids=''; pids="$(process::ids-by-name "$1")" || return "$?"; local id; while IFS= read -r id; do process::threads-by-pid "$id"; done <<<"$pids"; }
+### Write the first process ID whose executable name is NAME.
+process::_first-id-by-name() {
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  local process_ids=''
+  process_ids="$(process::ids-by-name "$1")" || return 1
+  [[ -n "${process_ids}" ]] || return 1
+  printf '%s\n' "${process_ids%%$'\n'*}"
+}
 
-### Execute the syscall::trace-by-pid utility.
-syscall::trace-by-pid() { [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64; if command -v strace >/dev/null 2>&1; then strace -p "$1"; elif command -v dtruss >/dev/null 2>&1; then sudo dtruss -p "$1"; else return 69; fi; }
+### Write the threads of the first process whose executable name is NAME.
+###
+### Exit status
+###
+### 1 when no process has the name.
+process::threads-by-name() {
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  local id=''
+  id="$(process::_first-id-by-name "$1")" || return "$?"
+  process::threads-by-pid "${id}"
+}
 
-### Execute the lib::trace-by-pid utility.
-lib::trace-by-pid() { [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64; if command -v ltrace >/dev/null 2>&1; then ltrace -p "$1"; else return 69; fi; }
+### Test whether tracing a process needs administrator execution.
+###
+### Tracing needs it when another user owns the process, or when Yama allows
+### tracing only of descendants.
+process::_trace-needs-root() {
+  [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64
+  local owner='' scope=0
+  [[ "${EUID}" -eq 0 ]] && return 1
+  owner="$(ps -o uid= -p "$1" 2>/dev/null | tr -d ' ')"
+  [[ -n "${owner}" && "${owner}" != "${EUID}" ]] && return 0
+  [[ -r /proc/sys/kernel/yama/ptrace_scope ]] && scope="$(</proc/sys/kernel/yama/ptrace_scope)"
+  [[ "${scope}" != 0 ]]
+}
 
-### Execute the gdb::attach-pid utility.
-gdb::attach-pid() { [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64; util::_run-command gdb -q -p "$1"; }
+### Attach strace to a process on Linux.
+###
+### Administrator execution is used only when the process cannot be traced
+### with the current permissions.
+syscall::trace-by-pid() {
+  [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64
+  [[ "$(system::operating-system)" == linux ]] || return 69
+  command::require strace || return "$?"
+  if process::_trace-needs-root "$1"; then
+    command::run-as-root strace -p "$1"
+  else
+    strace -p "$1"
+  fi
+}
+
+### Attach ltrace to a process on Linux.
+###
+### Administrator execution is used only when the process cannot be traced
+### with the current permissions.
+lib::trace-by-pid() {
+  [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64
+  [[ "$(system::operating-system)" == linux ]] || return 69
+  command::require ltrace || return "$?"
+  if process::_trace-needs-root "$1"; then
+    command::run-as-root ltrace -p "$1"
+  else
+    ltrace -p "$1"
+  fi
+}
+
+### Attach GDB in batch mode to a process and write the backtrace of every thread.
+gdb::attach-pid() {
+  [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64
+  command::require gdb || return "$?"
+  gdb -q -batch -p "$1" -ex 'thread apply all bt'
+}
 
 ### Execute the gdb::server::start utility.
 gdb::server::start() { [[ "$#" -ge 2 && "$2" =~ ^[0-9]+$ ]] || return 64; util::_run-command gdbserver ":$1" "$2" "${@:3}"; }
@@ -1767,8 +2044,30 @@ ruby::version::latest() {
 ### Install Rosetta on macOS and accept its license.
 rosetta::install() { [[ "$#" -eq 0 ]] || return 64; [[ "$(system::operating-system)" == darwin ]] || return 69; util::_run-command softwareupdate --install-rosetta --agree-to-license; }
 
-### Execute the net::dns::servers utility.
-net::dns::servers() { [[ "$#" -eq 0 ]] || return 64; awk '$1=="nameserver" {print $2}' /etc/resolv.conf; }
+### Write the configured IPv4 and IPv6 DNS servers, one per line.
+###
+### Linux uses the servers of systemd-resolved when resolvectl answers, and
+### otherwise the nameserver lines of /etc/resolv.conf. macOS uses scutil --dns.
+net::dns::servers() {
+  [[ "$#" -eq 0 ]] || return 64
+  local servers=''
+  case "$(system::operating-system)" in
+    darwin)
+      command::require scutil || return "$?"
+      servers="$(scutil --dns | awk '$1 ~ /^nameserver\[/ {print $3}')" || return 74
+      ;;
+    linux)
+      if command -v resolvectl >/dev/null 2>&1 && servers="$(resolvectl dns 2>/dev/null)"; then
+        servers="$(printf '%s\n' "${servers}" | awk '{sub(/^[^:]*: */, ""); for (i = 1; i <= NF; i++) {sub(/#.*/, "", $i); sub(/%.*/, "", $i); if ($i != "") print $i}}')"
+      else
+        [[ -r /etc/resolv.conf ]] || return 66
+        servers="$(awk '$1 == "nameserver" {print $2}' /etc/resolv.conf)"
+      fi
+      ;;
+    *) return 69 ;;
+  esac
+  printf '%s\n' "${servers}" | awk 'NF && !seen[$0]++'
+}
 
 ### Execute the utm::open utility.
 utm::open() { [[ "$#" -le 1 ]] || return 64; if [[ "$(system::operating-system)" == darwin ]]; then open -a UTM "${1:-}"; else util::_run-command utm "${1:-}"; fi; }
@@ -1779,14 +2078,29 @@ mozc::config::open() { [[ "$#" -eq 0 ]] || return 64; util::_run-command mozc_to
 ### Execute the archive::extract utility.
 archive::extract() { [[ "$#" -le 1 ]] || return 64; local path="${1:-.}" file; if [[ -f "$path" ]]; then archive::extract-file "$path"; else while IFS= read -r -d '' file; do archive::extract-file "$file" || return "$?"; done < <(archive::_find "$path"); fi; }
 
-### Execute the syscall::trace-by-name utility.
-syscall::trace-by-name() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; local pids=''; pids="$(process::ids-by-name "$1")" || return "$?"; local id; while IFS= read -r id; do syscall::trace-by-pid "$id"; done <<<"$pids"; }
+### Attach strace to the first process whose executable name is NAME.
+syscall::trace-by-name() {
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  local id=''
+  id="$(process::_first-id-by-name "$1")" || return "$?"
+  syscall::trace-by-pid "${id}"
+}
 
-### Execute the lib::trace-by-name utility.
-lib::trace-by-name() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; local pids=''; pids="$(process::ids-by-name "$1")" || return "$?"; local id; while IFS= read -r id; do lib::trace-by-pid "$id"; done <<<"$pids"; }
+### Attach ltrace to the first process whose executable name is NAME.
+lib::trace-by-name() {
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  local id=''
+  id="$(process::_first-id-by-name "$1")" || return "$?"
+  lib::trace-by-pid "${id}"
+}
 
-### Execute the gdb::attach-by-name utility.
-gdb::attach-by-name() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; local pid=''; pid="$(process::ids-by-name "$1" | head -n 1)"; [[ -n "$pid" ]] || return 1; gdb::attach-pid "$pid"; }
+### Attach GDB to the first process whose executable name is NAME.
+gdb::attach-by-name() {
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  local id=''
+  id="$(process::_first-id-by-name "$1")" || return "$?"
+  gdb::attach-pid "${id}"
+}
 
 ### Execute the jenkins::restart utility.
 jenkins::restart() { [[ "$#" -eq 0 ]] || return 64; util::_run-command systemctl restart jenkins; }

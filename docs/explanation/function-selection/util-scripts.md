@@ -103,8 +103,8 @@
 | `process-id-by-cmd-regex` | `process::ids-by-name-regex EXPRESSION` | 任意 | コマンドライン正規表現に一致するPIDを出力します。 | <ul><li>OSごとの`pgrep`差を内部で吸収します。</li></ul> | 各OSの`pgrep`で評価する正規表現契約を明記します。 |
 | `process-trace-by-pid` | `process::threads-by-pid PID` | 任意 | Linuxの`ps -T`でスレッド一覧を表示します。 | <ul><li>Linuxの`ps -T`直接実行を、OS別のthread一覧処理へ置き換えます。</li></ul> | OS別の`ps`から人間向けスレッド一覧を返します。 |
 | `process-trace-by-cmd` | `process::threads-by-name NAME` | 任意 | 実行名に一致するprocessのthread一覧を表示します。 | <ul><li>Linux版`ps`の固定optionを、OS別のthread一覧処理へ置き換えます。</li></ul> | `process::ids-by-name`の最初のPIDを`process::threads-by-pid`へ渡します。一致するprocessがなければ失敗します。 |
-| `systemcall-trace-by-pid` | `syscall::trace-by-pid PID` | 任意 | PIDへ`strace`を接続します。 | — | Linux専用`strace`の終了状態を返します。permission不足の場合だけ管理者権限で再実行します。 |
-| `library-trace-by-pid` | `lib::trace-by-pid PID` | 任意 | PIDへ`ltrace`を接続します。 | — | Linux専用`ltrace`を現在の権限で実行し、permission不足の場合だけ管理者権限で再実行します。 |
+| `systemcall-trace-by-pid` | `syscall::trace-by-pid PID` | 任意 | PIDへ`strace`を接続します。 | — | Linux専用`strace`の終了状態を返します。対象processを別の利用者が所有する場合、またはYamaの`ptrace_scope`が子孫以外の追跡を制限する場合だけ管理者権限で実行します。 |
+| `library-trace-by-pid` | `lib::trace-by-pid PID` | 任意 | PIDへ`ltrace`を接続します。 | — | Linux専用`ltrace`を現在の権限で実行します。対象processを別の利用者が所有する場合、またはYamaの`ptrace_scope`が子孫以外の追跡を制限する場合だけ管理者権限で実行します。 |
 | `gdb-attach-pid` | `gdb::attach-pid PID` | 任意 | PIDへGDBをバッチ接続して全スレッドのバックトレースを出力します。 | — | GDBをbatch modeで接続し、全threadのbacktraceを出力します。 |
 | `gdb-server` | `gdb::server::start PORT COMMAND [ARG...]` | 任意 | 指定ポートで`gdbserver`からコマンドを起動します。 | — | コマンド引数を配列で渡します。 |
 | `gdb-remote` | `gdb::connect ELF HOST PORT` | 任意 | ELFを読み込み、リモートGDBサーバーへ接続します。 | — | 接続先を必須にします。 |
@@ -164,8 +164,8 @@
 | `utm-open` | `utm::open` | 任意 | UTMアプリを起動します。 | — | macOS専用UTMアプリを起動します。 |
 | `mozc-config` | `mozc::config::open` | 任意 | Mozc設定画面を開きます。 | — | Linuxデスクトップ用設定画面を起動します。 |
 | `file-close` | `file::release FILE [TIMEOUT_SECONDS]` | 任意 | fileを使用中のprocessを終了して解放します。 | <ul><li>最初からSIGKILLを送らず、保持processへ先にSIGTERMを送ります。</li><li>固定0.5秒のsleepを、100ミリ秒間隔の解放確認へ置き換えます。</li><li>timeoutまでに解放されないprocessだけへSIGKILLを送ります。</li><li>timeoutの既定値を2秒にします。</li></ul> | `serial::release`と同じ終了手順を使用します。signal permissionが不足する場合だけ管理者権限を使用し、SIGKILL後も使用中なら終了状態75を返します。 |
-| `net-ip-global` | `net::ip::public` | 任意 | `ifconfig.me`から公開IP addressを取得します。 | <ul><li>案内文を標準出力へ書かず、IP addressだけを出力します。</li><li>応答が一つの正しいIPv4またはIPv6 addressであることを検証します。</li></ul> | 接続先は参照元と同じ`ifconfig.me`です。`curl`を優先し、なければ`wget`を使用します。 |
-| `screen-kill-all` | `screen::kill-all` | 任意 | 全GNU Screen processを管理者権限で終了します。 | — | 操作自体が全利用者のprocessを対象にするため、`-as-root`を付けず管理者権限で`pkill screen`を実行します。 |
+| `net-ip-global` | `net::ip::public` | 任意 | `ifconfig.me`から公開IP addressを取得します。 | <ul><li>案内文を標準出力へ書かず、IP addressだけを出力します。</li><li>応答が一つの正しいIPv4またはIPv6 addressであることを検証します。</li></ul> | 接続先は参照元と同じ`ifconfig.me`です。`curl`を優先し、なければ`wget`を使用します。応答がIP addressでなければ終了状態74を返します。 |
+| `screen-kill-all` | `screen::kill-all` | 任意 | 全GNU Screen processを管理者権限で終了します。 | — | 操作自体が全利用者のprocessを対象にするため、`-as-root`を付けず管理者権限で`pkill screen`を実行します。対象のprocessがない場合も成功します。 |
 | `archive-expand` | `archive::extract [PATH]` | 任意 | directory以下の全archiveを再帰抽出します。 | <ul><li>各archiveを事前検査する`archive::extract-file`へ委譲します。</li></ul> | `PATH`の規定値は`.`です。通常fileなら一件を、directoryなら配下の対応archiveを再帰列挙して、それぞれ既定の派生directoryへ抽出します。 |
 | `git-reset-prev` | `git::commit::discard [DIRECTORY]` | 任意 | 未commitの変更をstashへ保存し、最新commitとその変更を現在branchから破棄します。 | — | 参照元と同じ順序でstashを作成し、`git reset --hard HEAD^`を実行します。対象は既定で`HEAD`であるため、関数名へ`latest`を含めません。 |
 | `git-reset-origin` | `git::reset-remote [REMOTE] [DIRECTORY]` | 任意 | 現在branchをremoteの同名branchへhard resetします。 | <ul><li>固定remoteの`origin`を任意指定できるようにします。</li><li>全remoteではなく対象remoteだけをfetchします。</li></ul> | `REMOTE`の規定値は`origin`です。対象remoteをfetchし、現在branchを`REMOTE/CURRENT_BRANCH`へ`git reset --hard`で一致させます。 |
@@ -194,8 +194,8 @@
 | `ssh-dir-setup` | `ssh::setup-directory` | 任意 | `.ssh`を作成し、所有者とfile modeを一括設定します。 | — | 参照元と同じく`$HOME/.ssh`を作成して再帰chownし、directoryを700、通常fileを644、秘密鍵、config、authorized_keysを600にします。chownは他の利用者が所有する項目がある場合だけ管理者権限で実行します。秘密鍵はPEMまたはOpenSSHのheaderで判定し、passphraseを要求しません。 |
 | `net-test-google` | `net::ping [HOST] [ATTEMPTS] [TIMEOUT_SECONDS]` | 任意 | 指定hostへICMP echoを送信します。 | <ul><li>固定host、試行回数、無期限待機を上書き可能な既定値へ変更します。</li><li>BSD版とGNU版のping option差をOS別処理へ置き換えます。</li></ul> | `HOST`の規定値は`google.com`、`ATTEMPTS`は3、`TIMEOUT_SECONDS`は5です。 |
 | `swap-disable-all` | `swap::disable-all` | 任意 | 有効な全swapを無効にします。 | — | 操作自体に管理者権限が必要なため`-as-root`を付けません。UbuntuとFedoraで`swapoff --all`を実行します。 |
-| `swap-remove-all-files` | `swap::remove-all-files` | 任意 | 全swap fileを無効化し、永続設定とfileを削除します。 | <ul><li>swap file削除後も残る`fstab` entryを同じ処理で削除します。</li><li>途中失敗時に残りの対象へ進まず、診断と終了状態を返します。</li></ul> | 引数なしで全swap fileを対象にします。操作自体に管理者権限が必要なため`-as-root`を付けません。 |
-| `swap-create` | `swap::create [SIZE_BYTES] [PATH]` | 任意 | swap fileを作成して有効化し、永続設定へ登録します。 | <ul><li>GiB単位の入力をbyte単位へ変更します。</li><li>SIZE_BYTESに8,589,934,592の規定値を追加します。</li></ul> | `SIZE_BYTES`の規定値は8 GiB、`PATH`は`/swapfile`です。操作自体に管理者権限が必要なため`-as-root`を付けません。 |
+| `swap-remove-all-files` | `swap::remove-all-files` | 任意 | 全swap fileを無効化し、永続設定とfileを削除します。 | <ul><li>swap file削除後も残る`fstab` entryを同じ処理で削除します。</li><li>途中失敗時に残りの対象へ進まず、診断と終了状態を返します。</li></ul> | 引数なしで`/proc/swaps`の全swap fileを対象にし、swap partitionは残します。操作自体に管理者権限が必要なため`-as-root`を付けません。 |
+| `swap-create` | `swap::create [SIZE_BYTES] [PATH]` | 任意 | swap fileを作成して有効化し、永続設定へ登録します。 | <ul><li>GiB単位の入力をbyte単位へ変更します。</li><li>SIZE_BYTESに8,589,934,592の規定値を追加します。</li></ul> | `SIZE_BYTES`の規定値は8 GiB、`PATH`は`/swapfile`です。操作自体に管理者権限が必要なため`-as-root`を付けません。既存のPATHは終了状態73で拒否します。`fallocate`できないfile systemでは0を書き込んで作成し、`/etc/fstab`へ同じentryを重複なく登録します。 |
 | `sleep-disable` | `system::disable-sleep` | 標準 | system sleepを無効にします。 | <ul><li>macOS固定処理をOS別処理へ置き換えます。</li></ul> | 操作自体に管理者権限が必要なため`-as-root`を付けません。macOS、Ubuntu、FedoraのOS別処理を使用します。 |
 | `sleep-enable` | `system::enable-sleep` | 標準 | system sleepを有効にします。 | <ul><li>macOS固定処理をOS別処理へ置き換えます。</li></ul> | 操作自体に管理者権限が必要なため`-as-root`を付けません。固定した有効状態へ変更します。 |
 | `timezone-offset-to-posix-format` | `time::posix-timezone OFFSET` | 標準 | UTC offsetをPOSIXの`TZ`文字列へ変換します。 | <ul><li>符号だけを反転する文字列処理を、`Z`または`±HH:MM`形式の構文解析へ置き換えます。</li><li>時と分の範囲を検証し、分を失わずPOSIX規則の符号へ変換します。</li></ul> | `Z`、`+00:00`、`-00:00`は`UTC0`を出力します。それ以外は時を00から23、分を00から59として検証します。`+09:30`は`UTC-9:30`、`-05:00`は`UTC+5`を出力します。 |
