@@ -13,4 +13,4 @@ if [[ ! -x "${bats_command}" ]]; then
   exit 69
 fi
 
-exec "${bats_command}" "${project_root}/test"
+exec "${bats_command}" --print-output-on-failure "${project_root}/test"

@@ -34,13 +34,19 @@ git_test::edit-via-rebase-preserves-state() {
   options_before="$(set +o)"
   shell_options_before="$(shopt -p)"
   BASH_REMATCH=('caller-value')
-  git::commit::edit-via-rebase "${revision}" "${directory}" || return "$?"
+  local status=0
+  git::commit::edit-via-rebase "${revision}" "${directory}" || status="$?"
+  if [[ "${status}" -ne 0 ]]; then
+    printf 'edit-via-rebase returned %s\n' "${status}"
+    git -C "${directory}" status
+    return "${status}"
+  fi
 
-  [[ "${PWD}" == "${directory_before}" ]] &&
-    [[ "${IFS}" == "${ifs_before}" ]] &&
-    [[ "$(set +o)" == "${options_before}" ]] &&
-    [[ "$(shopt -p)" == "${shell_options_before}" ]] &&
-    [[ "${BASH_REMATCH[0]}" == 'caller-value' ]]
+  [[ "${PWD}" == "${directory_before}" ]] || { printf 'PWD changed\n'; return 1; }
+  [[ "${IFS}" == "${ifs_before}" ]] || { printf 'IFS changed\n'; return 1; }
+  [[ "$(set +o)" == "${options_before}" ]] || { printf 'set options changed\n'; return 1; }
+  [[ "$(shopt -p)" == "${shell_options_before}" ]] || { printf 'shopt changed\n'; return 1; }
+  [[ "${BASH_REMATCH[0]}" == 'caller-value' ]] || { printf 'BASH_REMATCH changed\n'; return 1; }
 }
 
 git_test::edit-via-rebase-in-directory() {
