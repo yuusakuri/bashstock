@@ -259,6 +259,23 @@ use_fake_curl() {
   grep -Fqx "usermod -a -G docker $(id -un)" "${ROOT_LOG}"
 }
 
+@test "Docker on Fedora removes only legacy packages installed under their own names" {
+  use_platform fedora 43
+  record_root_commands
+  use_fake_root
+  CURL_BODY=$'[docker-ce-stable]\nname=Docker CE Stable\n'
+  use_fake_curl
+  dnf() { :; }
+  systemctl() { :; }
+  usermod() { :; }
+  # docker-ce provides docker-engine; only the legacy docker package is installed by its name.
+  rpm() { [[ "$1" == -q && "$2" == docker ]]; }
+  run docker::install
+  [ "${status}" -eq 0 ]
+  grep -Fqx 'dnf remove -y docker' "${ROOT_LOG}"
+  [ "$(grep -c '^dnf remove' "${ROOT_LOG}")" -eq 1 ]
+}
+
 @test "Docker on Fedora installs the official Buildx plugin when no RPM is available" {
   use_platform fedora 34
   record_root_commands

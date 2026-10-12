@@ -443,9 +443,14 @@ docker::_install-ubuntu() {
 ### Install Docker Engine from the official repository on Fedora.
 docker::_install-fedora() {
   [[ "$#" -eq 1 ]] || return 64
-  local version="$1" cli_version="${1#*:}" repository='' buildx_package='docker-buildx-plugin'
-  command::run-as-root dnf remove -y docker docker-client docker-client-latest docker-common docker-latest \
-    docker-latest-logrotate docker-logrotate docker-selinux docker-engine-selinux docker-engine >/dev/null 2>&1 || true
+  local version="$1" cli_version="${1#*:}" repository='' buildx_package='docker-buildx-plugin' package=''
+  # dnf remove also matches what docker-ce provides, so only packages installed
+  # under these exact names are removed; otherwise a second run removes Docker.
+  for package in docker docker-client docker-client-latest docker-common docker-latest \
+    docker-latest-logrotate docker-logrotate docker-selinux docker-engine-selinux docker-engine; do
+    rpm -q "${package}" >/dev/null 2>&1 || continue
+    command::run-as-root dnf remove -y "${package}" >/dev/null 2>&1 || true
+  done
   repository="$(package::_fetch https://download.docker.com/linux/fedora/docker-ce.repo)" || return "$?"
   package::_dnf-register-repository docker-ce "${repository}"$'\n' || return "$?"
   if ! dnf list --available docker-buildx-plugin >/dev/null 2>&1; then

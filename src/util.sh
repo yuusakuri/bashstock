@@ -151,9 +151,10 @@ file::find-by-content() {
   find "${directory}" -type f -print0 |
     xargs -0 -P "${processes}" -n 64 grep -E -l --null "${binary_option}" -e "${expression}" -- >"${output}" 2>/dev/null ||
     status="$?"
-  # xargs reports 123 when a grep found nothing in its batch or could not read a file.
+  # GNU xargs reports 123 and BSD xargs 1 when a grep found nothing in its
+  # batch or could not read a file.
   case "${status}" in
-    0 | 123) ;;
+    0 | 1 | 123) ;;
     127) rm -f -- "${output}"; return 69 ;;
     *) rm -f -- "${output}"; return 74 ;;
   esac
@@ -1459,17 +1460,57 @@ serial::release() {
   file::release "$@"
 }
 
-### Initialize a repo manifest checkout.
-repo::init() { [[ "$#" -ge 3 && "$#" -le 4 ]] || return 64; util::_run-command repo init -u "$1" -b "$2" -m "$3" "${4:+--repo-url="$4"}"; }
+### Initialize a Google Repo workspace with shallow history.
+###
+### Arguments
+###
+### * URL - Manifest repository URL.
+### * BRANCH - Manifest branch.
+### * MANIFEST - Manifest file name.
+### * DIRECTORY - Workspace directory, created when missing. Defaults to the current directory.
+repo::init() {
+  [[ "$#" -ge 3 && "$#" -le 4 && -n "$1" && -n "$2" && -n "$3" ]] || return 64
+  local directory="${4:-.}"
+  command::require repo || return "$?"
+  mkdir -p -- "${directory}" || return 74
+  (cd -- "${directory}" && repo init --depth=1 -u "$1" -b "$2" -m "$3")
+}
 
-### Synchronize a repo checkout.
-repo::sync() { [[ "$#" -ge 1 && "$#" -le 3 ]] || return 64; local path="$1" jobs="${2:-}" directory="${3:-.}"; (cd "$directory" && if [[ -n "$jobs" ]]; then util::_run-command repo sync "$path" -j "$jobs"; else util::_run-command repo sync "$path"; fi); }
+### Synchronize one path of a Google Repo workspace, forcing the sync.
+###
+### Arguments
+###
+### * PATH - Project path to synchronize.
+### * JOBS - Parallel jobs. Defaults to 4.
+### * DIRECTORY - Workspace directory. Defaults to the current directory.
+repo::sync() {
+  [[ "$#" -ge 1 && "$#" -le 3 && -n "$1" ]] || return 64
+  local jobs="${2:-4}" directory="${3:-.}"
+  [[ "${jobs}" =~ ^[1-9][0-9]*$ ]] || return 64
+  command::require repo || return "$?"
+  (cd -- "${directory}" && repo sync --force-sync -j "${jobs}" "$1")
+}
 
-### Write a repository manifest.
-repo::write-manifest() { [[ "$#" -le 2 ]] || return 64; local output="${1:-}" directory="${2:-.}"; (cd "$directory" && if [[ -n "$output" ]]; then util::_run-command repo manifest -r -o "$output"; else util::_run-command repo manifest -r; fi); }
+### Write the current Google Repo manifest with revisions to a file.
+###
+### Arguments
+###
+### * OUTPUT - Output file. Defaults to ./manifest.xml.
+### * DIRECTORY - Workspace directory. Defaults to the current directory.
+repo::write-manifest() {
+  [[ "$#" -le 2 ]] || return 64
+  local output="${1:-./manifest.xml}" directory="${2:-.}"
+  command::require repo || return "$?"
+  [[ "${output}" == /* ]] || output="${PWD}/${output}"
+  (cd -- "${directory}" && repo manifest -r -o "${output}")
+}
 
-### Check a repository checkout.
-repo::check() { [[ "$#" -le 1 ]] || return 64; (cd "${1:-.}" && util::_run-command repo status); }
+### Run git fsck in every project of a Google Repo workspace.
+repo::check() {
+  [[ "$#" -le 1 ]] || return 64
+  command::require repo || return "$?"
+  (cd -- "${1:-.}" && repo forall -c 'git fsck')
+}
 
 ### List running Docker containers.
 docker::container::list-running() { [[ "$#" -eq 0 ]] || return 64; util::_run-command docker ps; }
@@ -1479,26 +1520,71 @@ docker::container::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command do
 
 ### Copy files between a Docker container and the host.
 docker::container::pull() { [[ "$#" -ge 2 && "$#" -le 3 ]] || return 64; local container="$1" source="$2" destination="${3:-.}"; util::_run-command docker cp "$container:$source" "$destination"; }
-### Execute the utility function.
-docker::container::push() { [[ "$#" -ge 2 && "$#" -le 3 ]] || return 64; local container="$1" source="$2" destination="${3:-/}"; util::_run-command docker cp "$source" "$container:$destination"; }
+### Copy a host path into a container.
+###
+### Arguments
+###
+### * CONTAINER - Container name or ID.
+### * HOST_PATH - Path on the host.
+### * CONTAINER_PATH - Destination in the container. Defaults to the working directory, ".".
+docker::container::push() {
+  [[ "$#" -ge 2 && "$#" -le 3 ]] || return 64
+  util::_run-command docker cp "$2" "$1:${3:-.}"
+}
 
-### Open a shell or command in a Docker container.
-docker::container::shell() { [[ "$#" -ge 1 ]] || return 64; local container="$1"; shift; if [[ "$#" -eq 0 ]]; then util::_run-command docker exec -it "$container" sh; else util::_run-command docker exec -it "$container" "$@"; fi; }
+### Run an interactive shell or a command in a container.
+###
+### Without COMMAND, Bash is used when the container has it and sh otherwise.
+docker::container::shell() {
+  [[ "$#" -ge 1 && -n "$1" ]] || return 64
+  local container="$1"
+  shift
+  if [[ "$#" -eq 0 ]]; then
+    util::_run-command docker exec -it "${container}" sh -c 'if command -v bash >/dev/null 2>&1; then exec bash; fi; exec sh'
+  else
+    util::_run-command docker exec -it "${container}" "$@"
+  fi
+}
 
-### Show Docker container logs.
-docker::container::logs() { [[ "$#" -eq 1 ]] || return 64; util::_run-command docker logs "$1"; }
+### Follow the log of a container.
+docker::container::logs() {
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  util::_run-command docker logs --follow "$1"
+}
 ### Execute the utility function.
 docker::container::stop() { [[ "$#" -eq 1 ]] || return 64; util::_run-command docker stop "$1"; }
 ### Execute the utility function.
 docker::container::start() { [[ "$#" -eq 1 ]] || return 64; util::_run-command docker start "$1"; }
 ### Execute the utility function.
 docker::container::stop-all() { [[ "$#" -eq 0 ]] || return 64; local ids=(); read -r -a ids <<<"$(docker ps -q)"; [[ "${#ids[@]}" -eq 0 ]] || util::_run-command docker stop "${ids[@]}"; }
-### Execute the utility function.
-docker::container::remove-all() { [[ "$#" -eq 0 ]] || return 64; local ids=(); read -r -a ids <<<"$(docker ps -aq)"; [[ "${#ids[@]}" -eq 0 ]] || util::_run-command docker rm "${ids[@]}"; }
-### Execute the utility function.
-docker::volume::remove-all() { [[ "$#" -eq 0 ]] || return 64; util::_run-command docker volume prune -f; }
-### Execute the utility function.
-docker::remove-all() { [[ "$#" -eq 0 ]] || return 64; docker::container::stop-all; docker::container::remove-all; docker::volume::remove-all; }
+### Remove every container, running or not.
+docker::container::remove-all() {
+  [[ "$#" -eq 0 ]] || return 64
+  command::require docker || return "$?"
+  local identifier='' identifiers=''
+  identifiers="$(docker ps -aq)" || return "$?"
+  while IFS= read -r identifier; do
+    [[ -n "${identifier}" ]] || continue
+    docker rm --force "${identifier}" >/dev/null || return "$?"
+  done <<<"${identifiers}"
+}
+### Remove every Docker volume.
+docker::volume::remove-all() {
+  [[ "$#" -eq 0 ]] || return 64
+  command::require docker || return "$?"
+  local volume='' volumes=''
+  volumes="$(docker volume ls -q)" || return "$?"
+  while IFS= read -r volume; do
+    [[ -n "${volume}" ]] || continue
+    docker volume rm --force "${volume}" >/dev/null || return "$?"
+  done <<<"${volumes}"
+}
+### Remove every container and then every volume, stopping at the first failure.
+docker::remove-all() {
+  [[ "$#" -eq 0 ]] || return 64
+  docker::container::remove-all || return "$?"
+  docker::volume::remove-all
+}
 
 ### Run an ADB command with an optional serial number.
 adb::_run() {
@@ -1675,10 +1761,35 @@ adb::_wait-device() {
   done
   return 75
 }
-### Disable dm-verity on the selected device.
-adb::device::verity::disable() { adb::_run disable-verity "$@"; }
-### Remount the selected device partitions.
-adb::device::partition::remount() { adb::_run remount "$@"; }
+### Disable dm-verity on a rooted device, reboot it, and wait until ADB reconnects.
+###
+### Arguments
+###
+### * -Serial SERIAL - Device serial. ADB chooses the device when omitted.
+adb::device::verity::disable() {
+  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ) ]] || return 64
+  adb::_run root "$@" || return "$?"
+  adb::_wait-device 60 "$@" || return "$?"
+  adb::_run disable-verity "$@" || return "$?"
+  adb::_run reboot "$@" || return "$?"
+  sleep 5 || return 74
+  adb::_wait-device 180 "$@"
+}
+### Make the system partitions of a rooted device writable.
+###
+### adb root and adb remount run first, and the root file system is then
+### remounted read-write.
+###
+### Arguments
+###
+### * -Serial SERIAL - Device serial. ADB chooses the device when omitted.
+adb::device::partition::remount() {
+  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ) ]] || return 64
+  adb::_run root "$@" || return "$?"
+  adb::_wait-device 60 "$@" || return "$?"
+  adb::_run remount "$@" || return "$?"
+  adb::_run shell 'mount -o rw,remount /' "$@"
+}
 ### Write the selected device build fingerprint.
 adb::device::build::fingerprint() { adb::_run shell getprop ro.build.fingerprint "$@"; }
 ### Write the selected device build timestamp as Unix seconds.
@@ -1870,11 +1981,19 @@ i2c::bus::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command i2cdetect -
 ### Execute the i2c::device::list utility.
 i2c::device::list() { [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64; util::_run-command i2cdetect -y "$1"; }
 
-### Execute the gpio::chip::list utility.
-gpio::chip::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command gpiochip list; }
+### Write the GPIO chips with gpiodetect.
+gpio::chip::list() {
+  [[ "$#" -eq 0 ]] || return 64
+  util::_run-command gpiodetect
+}
 
-### Execute the gpio::line::list utility.
-gpio::line::list() { [[ "$#" -le 1 ]] || return 64; local args=(line); [[ -n "${1:-}" ]] && args+=("${1}"); util::_run-command gpioinfo "${args[@]}"; }
+### Write the GPIO lines of one chip, or of every chip, with gpioinfo.
+gpio::line::list() {
+  [[ "$#" -le 1 ]] || return 64
+  local arguments=()
+  [[ -z "${1:-}" ]] || arguments+=("$1")
+  util::_run-command gpioinfo "${arguments[@]}"
+}
 
 ### Execute the usb::device::list utility.
 usb::device::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command lsusb; }
@@ -1882,8 +2001,16 @@ usb::device::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command lsusb; }
 ### Execute the pci::device::list utility.
 pci::device::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command lspci; }
 
-### Execute the asciidoc::html utility.
-asciidoc::html() { [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64; local input="$1" output="${2:-}"; local args=(-b html5); [[ -n "$output" ]] && args+=(-D "$output"); args+=("$input"); util::_run-command asciidoctor "${args[@]}"; }
+### Convert AsciiDoc to HTML with diagram support.
+###
+### Arguments
+###
+### * INPUT - AsciiDoc file.
+### * OUTPUT_DIRECTORY - Directory for the HTML. Defaults to the current directory.
+asciidoc::html() {
+  [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64
+  util::_run-command asciidoctor -r asciidoctor-diagram -b html5 -D "${2:-.}" "$1"
+}
 
 ### Execute the flutter::run-chrome-release utility.
 flutter::run-chrome-release() { [[ "$#" -le 1 ]] || return 64; (cd "${1:-.}" && util::_run-command flutter run --release -d chrome); }
@@ -1894,32 +2021,84 @@ flutter::run-linux-release() { [[ "$#" -le 1 ]] || return 64; (cd "${1:-.}" && u
 ### Execute the flutter::test utility.
 flutter::test() { [[ "$#" -ge 0 ]] || return 64; local directory='.'; [[ "$#" -gt 0 && -d "$1" ]] && { directory="$1"; shift; }; (cd "$directory" && util::_run-command flutter test "$@"); }
 
-### Execute the flutter::coverage utility.
-flutter::coverage() { [[ "$#" -le 2 ]] || return 64; local output="${1:-coverage/lcov.info}" directory="${2:-.}"; (cd "$directory" && util::_run-command flutter test --coverage); [[ -f "$directory/coverage/lcov.info" ]] && cp "$directory/coverage/lcov.info" "$output"; }
+### Run the Flutter tests with coverage and write the LCOV HTML report.
+###
+### Arguments
+###
+### * OUTPUT_DIRECTORY - Report directory. Defaults to coverage/html below DIRECTORY.
+### * DIRECTORY - Flutter project directory. Defaults to the current directory.
+flutter::coverage() {
+  [[ "$#" -le 2 ]] || return 64
+  local directory="${2:-.}" output="${1:-}"
+  command::require flutter || return "$?"
+  command::require genhtml || return "$?"
+  [[ -n "${output}" ]] || output="${directory%/}/coverage/html"
+  (cd -- "${directory}" && flutter test --coverage) || return "$?"
+  genhtml "${directory%/}/coverage/lcov.info" -o "${output}"
+}
 
-### Execute the systemd::file utility.
-systemd::file() { [[ "$#" -eq 1 ]] || return 64; util::_run-command systemctl cat "$1"; }
+### Write the path of the file that defines a systemd unit.
+systemd::file() {
+  [[ "$#" -eq 1 ]] || return 64
+  systemd::_require-unit "$1" || return "$?"
+  systemctl show --property=FragmentPath --value -- "$1"
+}
 
-### Execute the systemd::dependencies utility.
-systemd::dependencies() { [[ "$#" -eq 1 ]] || return 64; util::_run-command systemctl list-dependencies "$1"; }
+### Require Linux with systemctl and a valid unit name.
+systemd::_require-unit() {
+  [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9@._:\\-]+$ ]] || return 64
+  [[ "$(system::operating-system)" == linux ]] || return 69
+  command::require systemctl
+}
 
-### Execute the systemd::restart utility.
-systemd::restart() { [[ "$#" -eq 1 ]] || return 64; util::_run-command systemctl restart "$1"; }
+### Write the After, Requires, and Wants dependencies of a systemd unit as KEY=VALUE lines.
+systemd::dependencies() {
+  [[ "$#" -eq 1 ]] || return 64
+  systemd::_require-unit "$1" || return "$?"
+  systemctl show --property=After --property=Requires --property=Wants -- "$1"
+}
 
-### Execute the systemd::start utility.
-systemd::start() { [[ "$#" -eq 1 ]] || return 64; util::_run-command systemctl start "$1"; }
+### Restart a systemd unit through administrator execution.
+systemd::restart() {
+  [[ "$#" -eq 1 ]] || return 64
+  systemd::_require-unit "$1" || return "$?"
+  command::run-as-root systemctl restart -- "$1"
+}
 
-### Execute the systemd::stop utility.
-systemd::stop() { [[ "$#" -eq 1 ]] || return 64; util::_run-command systemctl stop "$1"; }
+### Start a systemd unit through administrator execution.
+systemd::start() {
+  [[ "$#" -eq 1 ]] || return 64
+  systemd::_require-unit "$1" || return "$?"
+  command::run-as-root systemctl start -- "$1"
+}
 
-### Execute the systemd::enable utility.
-systemd::enable() { [[ "$#" -eq 1 ]] || return 64; util::_run-command systemctl enable "$1"; }
+### Stop a systemd unit through administrator execution.
+systemd::stop() {
+  [[ "$#" -eq 1 ]] || return 64
+  systemd::_require-unit "$1" || return "$?"
+  command::run-as-root systemctl stop -- "$1"
+}
 
-### Execute the systemd::disable utility.
-systemd::disable() { [[ "$#" -eq 1 ]] || return 64; util::_run-command systemctl disable "$1"; }
+### Enable a systemd unit at boot through administrator execution.
+systemd::enable() {
+  [[ "$#" -eq 1 ]] || return 64
+  systemd::_require-unit "$1" || return "$?"
+  command::run-as-root systemctl enable -- "$1"
+}
 
-### Execute the systemd::status utility.
-systemd::status() { [[ "$#" -eq 1 ]] || return 64; util::_run-command systemctl status "$1"; }
+### Disable a systemd unit at boot through administrator execution.
+systemd::disable() {
+  [[ "$#" -eq 1 ]] || return 64
+  systemd::_require-unit "$1" || return "$?"
+  command::run-as-root systemctl disable -- "$1"
+}
+
+### Write the current state of a systemd unit and return the status of systemctl status.
+systemd::status() {
+  [[ "$#" -eq 1 ]] || return 64
+  systemd::_require-unit "$1" || return "$?"
+  systemctl status --no-pager -- "$1"
+}
 
 ### Execute the systemd::service::list utility.
 systemd::service::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command systemctl list-units --type=service; }
@@ -1936,11 +2115,37 @@ systemd::service::list-files() { [[ "$#" -eq 0 ]] || return 64; util::_run-comma
 ### Execute the gpg::decrypt utility.
 gpg::decrypt() { [[ "$#" -eq 1 && -f "$1" ]] || return 64; util::_run-command gpg --decrypt "$1"; }
 
-### Execute the gpg::public-key::armor utility.
-gpg::public-key::armor() { [[ "$#" -le 1 ]] || return 64; local args=(--armor --export); [[ -n "${1:-}" ]] && args+=("$1"); util::_run-command gpg "${args[@]}"; }
+### Write a public GPG key in ASCII armor.
+###
+### Arguments
+###
+### * FINGERPRINT - Key to export. Defaults to the first secret key.
+gpg::public-key::armor() {
+  [[ "$#" -le 1 ]] || return 64
+  local fingerprint="${1:-}" fingerprints=''
+  command::require gpg || return "$?"
+  if [[ -z "${fingerprint}" ]]; then
+    fingerprints="$(gpg::secret-key::fingerprints)" || return "$?"
+    fingerprint="${fingerprints%%$'\n'*}"
+  fi
+  gpg --armor --export -- "${fingerprint}"
+}
 
-### Execute the gpg::secret-key::fingerprints utility.
-gpg::secret-key::fingerprints() { [[ "$#" -eq 0 ]] || return 64; util::_run-command gpg --list-secret-keys --with-colons; }
+### Write the fingerprints of every primary secret GPG key, one per line.
+###
+### Exit status
+###
+### 1 when no secret key exists.
+gpg::secret-key::fingerprints() {
+  [[ "$#" -eq 0 ]] || return 64
+  command::require gpg || return "$?"
+  local listing='' fingerprints=''
+  listing="$(gpg --batch --list-secret-keys --with-colons 2>/dev/null)" || return 1
+  # Each sec record is followed by the fpr record of the primary key.
+  fingerprints="$(printf '%s\n' "${listing}" | awk -F: '$1 == "sec" {primary = 1; next} $1 == "fpr" && primary {print $10; primary = 0}')"
+  [[ -n "${fingerprints}" ]] || return 1
+  printf '%s\n' "${fingerprints}"
+}
 
 ### Execute the gpg::secret-key::list utility.
 gpg::secret-key::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command gpg --list-secret-keys; }
@@ -2017,11 +2222,39 @@ android::build-tools::latest-version() {
   printf '%s\n' "${versions##*$'\n'}"
 }
 
-### Execute the go::version::list utility.
-go::version::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command go version; }
+### Write the stable Go versions the platform package source offers, oldest first.
+###
+### Ubuntu lists the versioned golang-X.Y packages, Fedora the golang package,
+### and macOS the Homebrew go formulae. Each value is accepted by go::install.
+go::version::list() {
+  [[ "$#" -eq 0 ]] || return 64
+  local platform='' versions=''
+  platform="$(package::_platform)" || return "$?"
+  case "${platform}" in
+    ubuntu)
+      command::require apt-cache || return "$?"
+      versions="$(apt-cache pkgnames golang- 2>/dev/null | sed -n 's/^golang-\([0-9][0-9]*\.[0-9][0-9]*\)$/\1/p')"
+      ;;
+    fedora)
+      versions="$(package::_versions golang)" || return "$?"
+      versions="$(printf '%s\n' "${versions}" | sed -n 's/^\([0-9][0-9]*\.[0-9][0-9.]*\)-.*$/\1/p')"
+      ;;
+    darwin)
+      versions="$(package::_brew-formula-versions go)" || return "$?"
+      ;;
+  esac
+  versions="$(printf '%s\n' "${versions}" | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' | package::_sort-versions)"
+  [[ -n "${versions}" ]] || return 1
+  printf '%s\n' "${versions}"
+}
 
-### Execute the go::version::latest utility.
-go::version::latest() { [[ "$#" -eq 0 ]] || return 64; go::version::list; }
+### Write the newest stable Go version from go::version::list.
+go::version::latest() {
+  [[ "$#" -eq 0 ]] || return 64
+  local versions=''
+  versions="$(go::version::list)" || return "$?"
+  printf '%s\n' "${versions##*$'\n'}"
+}
 
 ### Write stable Ruby versions that rbenv can install in ascending order.
 ruby::version::list() {
@@ -2041,8 +2274,18 @@ ruby::version::latest() {
   ruby::version::list | package::_latest-stable-version
 }
 
-### Install Rosetta on macOS and accept its license.
-rosetta::install() { [[ "$#" -eq 0 ]] || return 64; [[ "$(system::operating-system)" == darwin ]] || return 69; util::_run-command softwareupdate --install-rosetta --agree-to-license; }
+### Install Rosetta on Apple silicon when it is missing, accepting its license.
+###
+### Intel Macs and Macs that already run x86_64 code succeed without changes.
+rosetta::install() {
+  [[ "$#" -eq 0 ]] || return 64
+  [[ "$(system::operating-system)" == darwin ]] || return 69
+  [[ "$(uname -m)" == arm64 ]] || return 0
+  if /usr/bin/arch -x86_64 /usr/bin/true >/dev/null 2>&1; then
+    return 0
+  fi
+  util::_run-command softwareupdate --install-rosetta --agree-to-license
+}
 
 ### Write the configured IPv4 and IPv6 DNS servers, one per line.
 ###
@@ -2069,11 +2312,26 @@ net::dns::servers() {
   printf '%s\n' "${servers}" | awk 'NF && !seen[$0]++'
 }
 
-### Execute the utm::open utility.
-utm::open() { [[ "$#" -le 1 ]] || return 64; if [[ "$(system::operating-system)" == darwin ]]; then open -a UTM "${1:-}"; else util::_run-command utm "${1:-}"; fi; }
+### Open the UTM application on macOS.
+utm::open() {
+  [[ "$#" -eq 0 ]] || return 64
+  [[ "$(system::operating-system)" == darwin ]] || return 69
+  open -a UTM
+}
 
-### Execute the mozc::config::open utility.
-mozc::config::open() { [[ "$#" -eq 0 ]] || return 64; util::_run-command mozc_tool; }
+### Open the Mozc settings dialog on a Linux desktop.
+mozc::config::open() {
+  [[ "$#" -eq 0 ]] || return 64
+  local tool=''
+  for tool in /usr/lib/mozc/mozc_tool /usr/libexec/mozc/mozc_tool /usr/lib64/mozc/mozc_tool; do
+    if [[ -x "${tool}" ]]; then
+      "${tool}" --mode=config_dialog
+      return
+    fi
+  done
+  command::require mozc_tool || return "$?"
+  mozc_tool --mode=config_dialog
+}
 
 ### Execute the archive::extract utility.
 archive::extract() { [[ "$#" -le 1 ]] || return 64; local path="${1:-.}" file; if [[ -f "$path" ]]; then archive::extract-file "$path"; else while IFS= read -r -d '' file; do archive::extract-file "$file" || return "$?"; done < <(archive::_find "$path"); fi; }
@@ -2102,11 +2360,28 @@ gdb::attach-by-name() {
   gdb::attach-pid "${id}"
 }
 
-### Execute the jenkins::restart utility.
-jenkins::restart() { [[ "$#" -eq 0 ]] || return 64; util::_run-command systemctl restart jenkins; }
+### Restart the Jenkins service through administrator execution.
+jenkins::restart() {
+  [[ "$#" -eq 0 ]] || return 64
+  systemd::restart jenkins.service
+}
 
-### Execute the sudo::start-keep-alive utility.
-sudo::start-keep-alive() { [[ "$#" -eq 0 ]] || return 64; util::_run-command sudo -v; }
+### Keep the sudo credentials of the calling process fresh in the background.
+###
+### sudo is authenticated once, and a background process renews the
+### credentials every 60 seconds until the calling process exits.
+sudo::start-keep-alive() {
+  [[ "$#" -eq 0 ]] || return 64
+  command::require sudo || return "$?"
+  local parent="$$"
+  sudo -v || return 77
+  (
+    while kill -0 "${parent}" 2>/dev/null; do
+      sleep 60
+      sudo -n -v 2>/dev/null || exit 0
+    done
+  ) >/dev/null 2>&1 &
+}
 
 ### Write the named user, or the user who invoked sudo, or the current user.
 sudo::passwordless::_user() {
@@ -2202,14 +2477,88 @@ storage::clear-trash() {
   done
 }
 
-### Execute the usb::partition::select utility.
-usb::partition::select() { [[ "$#" -eq 1 ]] || return 64; util::_run-command fdisk -l "$1"; }
+### Select a USB partition, or a USB disk without partitions, and write its device path.
+###
+### One candidate is selected automatically; several are offered for
+### interactive selection with their size, file system, and label.
+###
+### Exit status
+###
+### 1 when no USB block device is connected.
+usb::partition::select() {
+  [[ "$#" -eq 0 ]] || return 64
+  local candidates='' line='' selected=''
+  local choices=()
+  candidates="$(usb::_candidates)" || return "$?"
+  [[ -n "${candidates}" ]] || return 1
+  if [[ "${candidates}" != *$'\n'* ]]; then
+    printf '%s\n' "${candidates%%$'\t'*}"
+    return 0
+  fi
+  while IFS= read -r line; do
+    choices+=("${line//$'\t'/ }")
+  done <<<"${candidates}"
+  selected="$(prompt::select-one 'Select a USB device' "${choices[@]}")" || return "$?"
+  printf '%s\n' "${selected%% *}"
+}
 
-### Execute the usb::filesystem::repair utility.
-usb::filesystem::repair() { [[ "$#" -eq 1 ]] || return 64; util::_run-command fsck "$1"; }
+### Unmount every mount point of a block device through administrator execution.
+usb::_unmount() {
+  [[ "$#" -eq 1 && -b "$1" ]] || return 64
+  local mount_point=''
+  while IFS= read -r mount_point; do
+    [[ -n "${mount_point}" ]] || continue
+    command::run-as-root umount -- "${mount_point}" || return 74
+  done < <(lsblk -nro MOUNTPOINT "$1")
+}
 
-### Execute the usb::filesystem::format-fat32 utility.
-usb::filesystem::format-fat32() { [[ "$#" -eq 1 ]] || return 64; util::_run-command mkfs.vfat -F 32 "$1"; }
+### Write the USB block devices that can be selected: partitions, or disks without partitions.
+###
+### Each line holds the device path, the size, the file system type, and the label, separated by tabs.
+usb::_candidates() {
+  [[ "$#" -eq 0 ]] || return 64
+  [[ "$(system::operating-system)" == linux ]] || return 69
+  command::require lsblk || return "$?"
+  local disk='' name='' type='' fstype='' size='' label='' found=0
+  while IFS= read -r disk; do
+    found=0
+    while IFS=$'\t' read -r name type size fstype label; do
+      [[ "${type}" == part ]] || continue
+      found=1
+      printf '%s\t%s\t%s\t%s\n' "${name}" "${size}" "${fstype}" "${label}"
+    done < <(lsblk -lnpo NAME,TYPE,SIZE,FSTYPE,LABEL "${disk}" | awk 'BEGIN {OFS = "\t"} {print $1, $2, $3, $4, $5}')
+    if [[ "${found}" -eq 0 ]]; then
+      lsblk -dnpo NAME,SIZE,FSTYPE,LABEL "${disk}" | awk 'BEGIN {OFS = "\t"} {print $1, $2, $3, $4}'
+    fi
+  done < <(lsblk -dnpo NAME,TRAN | awk '$2 == "usb" {print $1}')
+}
+
+### Select a USB file system, unmount it, and repair it through administrator execution.
+###
+### FAT uses fsck.fat -a, exFAT fsck.exfat -a, and other types fsck -y.
+usb::filesystem::repair() {
+  [[ "$#" -eq 0 ]] || return 64
+  local device='' type=''
+  device="$(usb::partition::select)" || return "$?"
+  type="$(lsblk -no FSTYPE "${device}" | head -n 1)" || return 74
+  usb::_unmount "${device}" || return "$?"
+  case "${type}" in
+    vfat | fat | msdos) command::run-as-root fsck.fat -a "${device}" ;;
+    exfat) command::run-as-root fsck.exfat -a "${device}" ;;
+    *) command::run-as-root fsck -y "${device}" ;;
+  esac
+}
+
+### Select a USB partition, unmount it, and format it as FAT32 through administrator execution.
+###
+### Everything on the selected partition is erased.
+usb::filesystem::format-fat32() {
+  [[ "$#" -eq 0 ]] || return 64
+  local device=''
+  device="$(usb::partition::select)" || return "$?"
+  usb::_unmount "${device}" || return "$?"
+  command::run-as-root mkfs.vfat -F 32 "${device}"
+}
 
 ### Fetch a remote base branch, switch to the local branch, and rebase it onto the remote one.
 ###
@@ -2226,14 +2575,44 @@ git::rebase-base-branch() {
   git::_run-in-directory "${directory}" rebase "${remote}/${branch}"
 }
 
-### Execute the repo::reset utility.
-repo::reset() { [[ "$#" -le 1 ]] || return 64; (cd "${1:-.}" && util::_run-command repo forall -c 'git reset --hard && git clean -fd'); }
+### Hard reset every project of a Google Repo workspace and remove untracked files.
+###
+### Every uncommitted change in every project is discarded. Ignored files are kept.
+repo::reset() {
+  [[ "$#" -le 1 ]] || return 64
+  command::require repo || return "$?"
+  (cd -- "${1:-.}" && repo forall -c 'git reset --hard && git clean -fd')
+}
 
-### Execute the selinux::generate-rule utility.
-selinux::generate-rule() { [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64; local output="${2:-}"; local args=(-a -i "$1"); [[ -n "$output" ]] && args+=(-o "$output"); util::_run-command audit2allow "${args[@]}"; }
+### Generate SELinux allow rules from the AVC denials of an audit log.
+###
+### Arguments
+###
+### * INPUT_FILE - Audit log.
+### * OUTPUT_FILE - Rule file. Defaults to selinux.txt next to INPUT_FILE.
+selinux::generate-rule() {
+  [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64
+  local output="${2:-$(path::directory-name "$1")/selinux.txt}" denials=''
+  command::require audit2allow || return "$?"
+  denials="$(grep -F 'avc:' -- "$1")" || {
+    console::_write-error "No AVC denial in $1."
+    return 1
+  }
+  printf '%s\n' "${denials}" | audit2allow >"${output}"
+}
 
-### Execute the terminal::gnome-bash utility.
-terminal::gnome-bash() { [[ "$#" -ge 0 ]] || return 64; util::_run-command gnome-terminal -- bash "${@}"; }
+### Start an interactive Bash in a new GNOME Terminal window.
+###
+### When COMMAND is given, it runs with its arguments first, and the
+### interactive shell starts after it ends.
+terminal::gnome-bash() {
+  command::require gnome-terminal || return "$?"
+  if [[ "$#" -eq 0 ]]; then
+    gnome-terminal -- bash -i
+  else
+    gnome-terminal -- bash -c '"$@"; exec bash -i' bash "$@"
+  fi
+}
 
 ### Set the default editor of new Bash and Zsh sessions and the current process.
 ###
@@ -2414,21 +2793,145 @@ git::config::use-gpg-credential-store() {
 ### Execute the git::config::use-credential-manager utility.
 git::config::use-credential-manager() { [[ "$#" -eq 0 ]] || return 64; git config --global credential.helper manager; }
 
-### Execute the pass::store::remove utility.
-pass::store::remove() { [[ "$#" -le 1 ]] || return 64; local directory="${1:-$HOME/.password-store}"; [[ -d "$directory" ]] || return 66; directory::clear "$directory"; }
+### Remove a pass store and everything in it.
+###
+### Arguments
+###
+### * STORE_DIRECTORY - Store to remove. Defaults to PASSWORD_STORE_DIR, then $HOME/.password-store.
+pass::store::remove() {
+  [[ "$#" -le 1 ]] || return 64
+  local directory=''
+  directory="$(pass::store::_directory "$@")" || return "$?"
+  [[ -n "${directory}" && "${directory}" != / && ! -L "${directory}" ]] || return 64
+  [[ -d "${directory}" ]] || return 66
+  rm -rf -- "${directory}" || return 74
+}
 
-### Execute the pass::store::init utility.
-pass::store::init() { [[ "$#" -le 2 ]] || return 64; local fingerprint="${1:-}" directory="${2:-$HOME/.password-store}"; mkdir -p -- "$directory" || return 74; [[ -n "$fingerprint" ]] && printf '%s
-' "$fingerprint" >"$directory/.gpg-id" || return 64; }
+### Write the pass store directory: the argument, PASSWORD_STORE_DIR, or $HOME/.password-store.
+pass::store::_directory() {
+  [[ "$#" -le 1 ]] || return 64
+  printf '%s\n' "${1:-${PASSWORD_STORE_DIR:-${HOME}/.password-store}}"
+}
 
-### Execute the gpg::setup utility.
-gpg::setup() { [[ "$#" -ge 0 ]] || return 64; command -v gpg >/dev/null 2>&1 || return 69; gpg --version >/dev/null; }
+### Initialize a pass store for a GPG key without removing an existing store.
+###
+### Arguments
+###
+### * FINGERPRINT - GPG key. Defaults to the first secret key.
+### * STORE_DIRECTORY - Store directory. Defaults to PASSWORD_STORE_DIR, then $HOME/.password-store.
+pass::store::init() {
+  [[ "$#" -le 2 ]] || return 64
+  local fingerprint="${1:-}" directory='' fingerprints=''
+  command::require pass || return "$?"
+  directory="$(pass::store::_directory "${2:-}")" || return "$?"
+  if [[ -z "${fingerprint}" ]]; then
+    fingerprints="$(gpg::secret-key::fingerprints)" || return "$?"
+    fingerprint="${fingerprints%%$'\n'*}"
+  fi
+  PASSWORD_STORE_DIR="${directory}" pass init "${fingerprint}"
+}
 
-### Execute the ssh::key::generate-rsa4096 utility.
-ssh::key::generate-rsa4096() { [[ "$#" -le 6 ]] || return 64; ssh-keygen -t rsa -b 4096 "$@"; }
+### Create a GPG key and use it for pass, Git credentials, and Git commit signing.
+###
+### The options are passed to gpg::key::generate. pass is installed and its
+### store initialized with the new key, Git Credential Manager stores
+### credentials with GPG, Git signs commits with the key, and the public key is
+### written in ASCII armor. The first failing step stops the setup.
+###
+### Arguments
+###
+### * OPTIONS - Options of gpg::key::generate.
+gpg::setup() {
+  local before='' after='' fingerprint='' candidate=''
+  before="$(gpg::secret-key::fingerprints 2>/dev/null)" || before=''
+  gpg::key::generate "$@" || return "$?"
+  after="$(gpg::secret-key::fingerprints)" || return "$?"
+  while IFS= read -r candidate; do
+    grep -Fqx -- "${candidate}" <<<"${before}" || fingerprint="${candidate}"
+  done <<<"${after}"
+  [[ -n "${fingerprint}" ]] || return 74
+  pass::install || return "$?"
+  pass::store::init "${fingerprint}" || return "$?"
+  git::config::use-gpg-credential-store || return "$?"
+  git config --global user.signingkey "${fingerprint}" || return "$?"
+  git config --global commit.gpgsign true || return "$?"
+  gpg::public-key::armor "${fingerprint}"
+}
 
-### Execute the ssh::key::generate-ed25519 utility.
-ssh::key::generate-ed25519() { [[ "$#" -le 6 ]] || return 64; ssh-keygen -t ed25519 "$@"; }
+### Generate a 4096-bit RSA SSH key and write its public key.
+###
+### An existing key is replaced only after confirmation on the controlling
+### terminal; without a terminal it is kept and 73 is returned.
+###
+### Arguments
+###
+### * -Comment COMMENT - Key comment. Defaults to an empty comment.
+### * -Output FILE - Private key path. Defaults to $HOME/.ssh/id_rsa.
+### * -PassphraseFd FD - File descriptor to read the passphrase from. Defaults to no passphrase.
+ssh::key::generate-rsa4096() {
+  ssh::key::_generate rsa id_rsa "$@"
+}
+
+### Generate an SSH key and write its public key.
+ssh::key::_generate() {
+  local type="$1" default_name="$2" comment='' output='' passphrase_fd='' passphrase=''
+  local arguments=()
+  shift 2
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+      -Comment | -Output | -PassphraseFd)
+        arg::require-next "$#" "$1" || return "$?"
+        case "$1" in
+          -Comment) comment="$2" ;;
+          -Output) output="$2" ;;
+          -PassphraseFd) passphrase_fd="$2" ;;
+        esac
+        shift 2
+        ;;
+      *) arg::unknown "$1" || return "$?" ;;
+    esac
+  done
+  [[ -z "${passphrase_fd}" || "${passphrase_fd}" =~ ^[0-9]+$ ]] || return 64
+  command::require ssh-keygen || return "$?"
+  output="${output:-${HOME}/.ssh/${default_name}}"
+  mkdir -p -- "$(path::directory-name "${output}")" || return 74
+  if [[ -e "${output}" || -e "${output}.pub" ]]; then
+    if ! terminal::is-available; then
+      console::_write-error "${output} exists; run in a terminal to confirm overwriting it."
+      return 73
+    fi
+    [[ "$(prompt::confirm "Overwrite ${output}?" no </dev/tty)" == yes ]] || return 73
+    rm -f -- "${output}" "${output}.pub" || return 74
+  fi
+  case "${type}" in
+    rsa) arguments=(-t rsa -b 4096) ;;
+    ed25519) arguments=(-t ed25519) ;;
+  esac
+  if [[ -n "${passphrase_fd}" ]]; then
+    IFS= read -r -u "${passphrase_fd}" passphrase || [[ -n "${passphrase}" ]] || return 66
+    # ssh-keygen reads the passphrase and its confirmation from a standard input that is not a terminal.
+    printf '%s\n%s\n' "${passphrase}" "${passphrase}" |
+      ssh-keygen "${arguments[@]}" -C "${comment}" -f "${output}" -q || return "$?"
+    passphrase=''
+  else
+    ssh-keygen "${arguments[@]}" -C "${comment}" -f "${output}" -N '' -q </dev/null || return "$?"
+  fi
+  cat -- "${output}.pub"
+}
+
+### Generate an Ed25519 SSH key and write its public key.
+###
+### An existing key is replaced only after confirmation on the controlling
+### terminal; without a terminal it is kept and 73 is returned.
+###
+### Arguments
+###
+### * -Comment COMMENT - Key comment. Defaults to an empty comment.
+### * -Output FILE - Private key path. Defaults to $HOME/.ssh/id_ed25519.
+### * -PassphraseFd FD - File descriptor to read the passphrase from. Defaults to no passphrase.
+ssh::key::generate-ed25519() {
+  ssh::key::_generate ed25519 id_ed25519 "$@"
+}
 
 ### Execute the ssh::kill-all utility.
 ssh::kill-all() {
@@ -2636,10 +3139,13 @@ rust::install() {
   env::add-path "$HOME/.cargo/bin"
 }
 
-### List installed or available Rust toolchains.
+### Write the stable Rust versions, oldest first, from the rust-lang/rust releases.
 rust::versions() {
   [[ "$#" -eq 0 ]] || return 64
-  if command -v rustup >/dev/null 2>&1; then rustup toolchain list; else command -v rustc >/dev/null 2>&1 || return 69; rustc --version; fi
+  local versions=''
+  versions="$(package::_github-release-versions rust-lang/rust)" || return "$?"
+  [[ -n "${versions}" ]] || return 1
+  printf '%s\n' "${versions}"
 }
 
 ### Keep Flutter SDK changes in a retrievable stash and switch versions.
@@ -2775,13 +3281,25 @@ swap::ensure-total-size() {
   swap::create "$add" "$path"
 }
 
-### Remove VS Code user data from an optional profile directory.
+### Remove the VS Code user data directory.
+###
+### VS Code is not checked for running instances.
+###
+### Arguments
+###
+### * PROFILE_DIRECTORY - Directory to remove. Defaults to the standard user data directory.
 vscode::remove-user-data() {
   [[ "$#" -le 1 ]] || return 64
   local directory=''
-  if [[ "$#" -eq 1 ]]; then directory="$1"; elif [[ "$(system::operating-system)" == darwin ]]; then directory="$HOME/Library/Application Support/Code"; else directory="$HOME/.config/Code"; fi
-  [[ -d "$directory" && ! -L "$directory" ]] || return 66
-  directory::clear "$directory"
+  if [[ "$#" -eq 1 ]]; then
+    directory="$1"
+  elif [[ "$(system::operating-system)" == darwin ]]; then
+    directory="${HOME}/Library/Application Support/Code"
+  else
+    directory="${HOME}/.config/Code"
+  fi
+  [[ -n "${directory}" && "${directory}" != / && -d "${directory}" && ! -L "${directory}" ]] || return 66
+  rm -rf -- "${directory}" || return 74
 }
 
 ### Set the default ADB device for later calls in the current shell by exporting ANDROID_SERIAL.
