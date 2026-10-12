@@ -7,6 +7,7 @@
 | 環境 | 対象 |
 | --- | --- |
 | Ubuntu 18.04、20.04、22.04、24.04、26.04 の amd64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby の導入・再実行・起動とAPTリポジトリ |
+| Ubuntu 20.04、22.04、24.04、26.04 の amd64 コンテナ | Claude Desktop の導入・更新とAnthropicのAPTリポジトリ |
 | Fedora 34、44 の amd64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby の導入・再実行・起動とDNFリポジトリ |
 | Ubuntu 22.04、24.04 の GitHub Actions 実行環境 | Docker サービス、デーモン、コンテナ実行 |
 | macOS の GitHub Actions 実行環境 | Android SDK 構成要素、AVD の作成・削除。Hypervisor.Frameworkが使える実行環境では起動・停止も確認する |
@@ -32,6 +33,11 @@
 | J03 | OSのGoを導入・再実行し、小さなGoプログラムを動かす | 両方成功し、実行結果が期待値になる | 同上 |
 | R01 | 公式 Rust ツールチェーンを導入・再実行し、小さなプログラムをコンパイルして動かす | rustc と cargo が起動し、プログラムが期待値を返す。起動設定を読んだ新しい Bash でも cargo が使える | `scripts/test-rust-container` |
 | R02 | Ruby 3.4.5 を導入・再実行し、小さなプログラムを動かす | 指定版の Ruby と gem が起動し、プログラムが期待値を返す。起動設定を読んだ新しい Bash でも Ruby が使える | `scripts/test-ruby-container` |
+| C01 | Ubuntu 22.04 以降で `claude-desktop::versions` の一つ前の版を指定して二度導入する | 両方成功し、導入済みの版が指定値と一致する | `scripts/test-claude-desktop-container` |
+| C02 | 版を省略して再び導入する | 最新版へ更新され、`claude-desktop` コマンドが存在する | 同上 |
+| C03 | リポジトリ定義と鍵を検査する | 公式手順と同じ定義が一件だけあり、鍵の権限が 0644 で、`apt-get update` がエラーも警告も出さない | 同上 |
+| C04 | Ubuntu 20.04 で導入する | 終了状態 69 を返し、リポジトリを登録せず、パッケージも導入しない | 同上 |
+| C05 | 公開指紋と異なる署名鍵を受け取る | 終了状態 65 を返し、リポジトリを登録せず、パッケージも導入しない | `test/setup.bats` |
 | A01 | 専用のホームと SDK に Android CLI、Platform Tools、SDK Platform、Build Tools、Command-line Tools、Emulator を導入する | 各実行ファイルが起動し、`android.jar` が存在する | `scripts/test-android-macos` |
 | A02 | Platform Tools と Build Tools の導入を繰り返す | 二度目も成功し、実行ファイルが使える | 同上 |
 | A03 | API 35 の AVD を作り、同名でもう一度作る | 初回は成功し、二度目は既存の AVD を保持して失敗する | 同上 |

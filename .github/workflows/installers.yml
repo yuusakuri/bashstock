@@ -43,6 +43,31 @@ jobs:
             "${{ matrix.image }}" bash -c \
             'bash /opt/test-docker-package-container && bash /opt/test-node-container && bash /opt/test-jdk-go-container && bash /opt/test-rust-container && bash /opt/test-ruby-container'
 
+  claude-desktop:
+    name: Claude Desktop on ${{ matrix.image }} (amd64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - ubuntu:20.04
+          - ubuntu:22.04
+          - ubuntu:24.04
+          - ubuntu:26.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
+        with:
+          submodules: recursive
+      - name: Build the standalone library
+        run: ./scripts/build
+      - name: Verify Claude Desktop installation from Anthropic's APT repository
+        run: |
+          docker run --rm --platform linux/amd64 \
+            -v "$PWD/dist/bashstock.sh:/opt/bashstock.sh:ro" \
+            -v "$PWD/scripts/test-claude-desktop-container:/opt/test-claude-desktop-container:ro" \
+            "${{ matrix.image }}" bash /opt/test-claude-desktop-container
+
   docker-service:
     name: Docker service on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}

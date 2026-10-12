@@ -1309,6 +1309,102 @@ chrome::install() {
   package::_install-version google-chrome-stable "${1:-}"
 }
 
+### Require an Ubuntu release that Claude Desktop supports.
+claude-desktop::_require-release() {
+  [[ "$#" -eq 0 ]] || return 64
+  local version=''
+  package::_require-platform ubuntu || return "$?"
+  version="$(platform::_os-release-value VERSION_ID)" || return 69
+  if [[ ! "${version}" =~ ^([0-9]+)\. ]] || ((10#${BASH_REMATCH[1]} < 22)); then
+    console::_write-error 'Claude Desktop requires Ubuntu 22.04 or later.'
+    return 69
+  fi
+}
+
+### Write the Debian architecture when Claude Desktop publishes packages for it.
+claude-desktop::_architecture() {
+  [[ "$#" -eq 0 ]] || return 64
+  local architecture=''
+  architecture="$(package::_deb-architecture)" || return "$?"
+  case "${architecture}" in
+    amd64 | arm64)
+      printf '%s\n' "${architecture}"
+      ;;
+    *)
+      console::_write-error "Claude Desktop does not provide packages for ${architecture}."
+      return 69
+      ;;
+  esac
+}
+
+### Register Anthropic's APT repository as the Claude Desktop documentation describes.
+###
+### The signing key must have the published fingerprint. The key and source
+### paths match the ones the claude-desktop package uses, so the package keeps
+### this source file instead of adding a second entry with another key path.
+claude-desktop::_register-repository() {
+  [[ "$#" -eq 0 ]] || return 64
+  local keyring='/usr/share/keyrings/claude-desktop-archive-keyring.asc'
+  local directory='' fingerprints='' status=0
+  command::require gpg || return "$?"
+  directory="$(package::_temporary-directory)" || return "$?"
+  package::_download https://downloads.claude.ai/claude-desktop/key.asc "${directory}/key.asc" || status="$?"
+  if [[ "${status}" -eq 0 ]]; then
+    # A separate GPG home keeps the inspection out of the user's keyring.
+    mkdir -m 0700 -- "${directory}/gnupg" || status=74
+  fi
+  if [[ "${status}" -eq 0 ]]; then
+    fingerprints="$(GNUPGHOME="${directory}/gnupg" gpg --batch --with-colons --show-keys "${directory}/key.asc" 2>/dev/null |
+      awk -F: '$1 == "pub" { primary = 1; next } primary && $1 == "fpr" { print $10; primary = 0 }')" || status=74
+  fi
+  if [[ "${status}" -eq 0 && "${fingerprints}" != '31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE' ]]; then
+    console::_write-error 'The downloaded Claude Desktop signing key is not the published Anthropic key.'
+    status=65
+  fi
+  if [[ "${status}" -eq 0 ]]; then
+    command::run-as-root install -d -m 0755 /usr/share/keyrings || status=74
+  fi
+  if [[ "${status}" -eq 0 ]]; then
+    command::run-as-root install -m 0644 "${directory}/key.asc" "${keyring}" || status=74
+  fi
+  rm -rf -- "${directory}"
+  [[ "${status}" -eq 0 ]] || return "${status}"
+
+  file::write-text /etc/apt/sources.list.d/claude-desktop.list \
+    "deb [arch=amd64,arm64 signed-by=${keyring}] https://downloads.claude.ai/claude-desktop/apt/stable stable main"$'\n' ||
+    return "$?"
+  package::_refresh
+}
+
+### Write Claude Desktop versions available for the current CPU.
+claude-desktop::versions() {
+  [[ "$#" -eq 0 ]] || return 64
+  local architecture='' index_entries=''
+  claude-desktop::_require-release || return "$?"
+  architecture="$(claude-desktop::_architecture)" || return "$?"
+  index_entries="$(package::_deb-index-entries \
+    "https://downloads.claude.ai/claude-desktop/apt/stable/dists/stable/main/binary-${architecture}/Packages.gz" \
+    claude-desktop)" || return "$?"
+  printf '%s\n' "${index_entries}" | cut -f 1 | package::_sort-versions
+}
+
+### Install Claude Desktop on Ubuntu 22.04 or later from Anthropic's APT repository.
+###
+### Later releases arrive through the system's regular APT upgrades.
+###
+### Arguments
+###
+### * VERSION - Optional package version from claude-desktop::versions.
+claude-desktop::install() {
+  [[ "$#" -le 1 ]] || return 64
+  claude-desktop::_require-release || return "$?"
+  claude-desktop::_architecture >/dev/null || return "$?"
+  package::_refresh || return "$?"
+  package::_install ca-certificates curl gnupg || return "$?"
+  claude-desktop::_register-repository || return "$?"
+  package::_install-version claude-desktop "${1:-}"
+}
+
 ### Write GIMP versions available to the current platform.
 gimp::versions() {
   [[ "$#" -eq 0 ]] || return 64

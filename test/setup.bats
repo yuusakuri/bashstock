@@ -191,6 +191,58 @@ use_fake_curl() {
   ! grep -q '^dnf install ' "${ROOT_LOG}"
 }
 
+@test "Claude Desktop installs from Anthropic's repository only with the published signing key" {
+  use_platform ubuntu 24.04 noble
+  record_root_commands
+  apt-get() { :; }
+  use_fake_root
+  use_fake_curl
+  dpkg() { [[ "$1" == '--print-architecture' ]] && printf 'arm64\n'; }
+  gpg() {
+    printf 'pub:-:4096:1:BAA929FF1A7ECACE:1774907248:::-:::scESC::::::23::0:\n'
+    printf 'fpr:::::::::%s:\n' "${KEY_FINGERPRINT}"
+    printf 'sub:-:4096:1:0123456789ABCDEF:1774907248::::::s::::::23:\n'
+    printf 'fpr:::::::::0000000000000000000000000123456789ABCDEF:\n'
+  }
+
+  KEY_FINGERPRINT='0000000000000000000000000000000000000000'
+  run --separate-stderr claude-desktop::install
+  [ "${status}" -eq 65 ]
+  [ ! -e "${FAKE_ROOT}/etc/apt/sources.list.d/claude-desktop.list" ]
+  ! grep -q 'claude-desktop' "${ROOT_LOG}"
+
+  : >"${ROOT_LOG}"
+  KEY_FINGERPRINT='31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE'
+  run claude-desktop::install 2.31226.1
+  [ "${status}" -eq 0 ]
+  [ "$(<"${FAKE_ROOT}/etc/apt/sources.list.d/claude-desktop.list")" = 'deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/claude-desktop-archive-keyring.asc] https://downloads.claude.ai/claude-desktop/apt/stable stable main' ]
+  grep -Eq '^install -m 0644 .*/key\.asc /usr/share/keyrings/claude-desktop-archive-keyring\.asc$' "${ROOT_LOG}"
+  [ "$(tail -n 1 "${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades claude-desktop=2.31226.1' ]
+}
+
+@test "Claude Desktop changes nothing on unsupported releases and CPUs" {
+  record_root_commands
+  use_fake_root
+  dpkg() { [[ "$1" == '--print-architecture' ]] && printf '%s\n' "${ARCHITECTURE}"; }
+
+  ARCHITECTURE='amd64'
+  use_platform ubuntu 20.04 focal
+  run --separate-stderr claude-desktop::install
+  [ "${status}" -eq 69 ]
+
+  use_platform fedora 44
+  run --separate-stderr claude-desktop::install
+  [ "${status}" -eq 69 ]
+
+  ARCHITECTURE='armhf'
+  use_platform ubuntu 24.04 noble
+  run --separate-stderr claude-desktop::install
+  [ "${status}" -eq 69 ]
+
+  [ ! -s "${ROOT_LOG}" ]
+  [ ! -e "${FAKE_ROOT}/etc/apt/sources.list.d/claude-desktop.list" ]
+}
+
 @test "Docker on Fedora accepts the engine epoch without imposing it on the CLI" {
   use_platform fedora 43
   record_root_commands
