@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   docker-packages:
-    name: Docker, Node.js, JDK, Go, Rust, and Ruby on ${{ matrix.image }} (amd64)
+    name: Docker, Node.js, JDK, Go, Rust, Ruby, pipx, and VS Code on ${{ matrix.image }} (amd64)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -31,7 +31,7 @@ jobs:
           submodules: recursive
       - name: Build the standalone library
         run: ./scripts/build
-      - name: Verify Docker, Node.js, JDK, Go, Rust, and Ruby installations
+      - name: Verify Docker, Node.js, JDK, Go, Rust, Ruby, pipx, and VS Code installations
         run: |
           docker run --rm --platform linux/amd64 \
             -v "$PWD/dist/bashstock.sh:/opt/bashstock.sh:ro" \
@@ -40,8 +40,10 @@ jobs:
             -v "$PWD/scripts/test-jdk-go-container:/opt/test-jdk-go-container:ro" \
             -v "$PWD/scripts/test-rust-container:/opt/test-rust-container:ro" \
             -v "$PWD/scripts/test-ruby-container:/opt/test-ruby-container:ro" \
+            -v "$PWD/scripts/test-pipx-container:/opt/test-pipx-container:ro" \
+            -v "$PWD/scripts/test-vscode-container:/opt/test-vscode-container:ro" \
             "${{ matrix.image }}" bash -c \
-            'bash /opt/test-docker-package-container && bash /opt/test-node-container && bash /opt/test-jdk-go-container && bash /opt/test-rust-container && bash /opt/test-ruby-container'
+            'bash /opt/test-docker-package-container && bash /opt/test-node-container && bash /opt/test-jdk-go-container && bash /opt/test-rust-container && bash /opt/test-ruby-container && bash /opt/test-pipx-container && bash /opt/test-vscode-container'
 
   claude-desktop:
     name: Claude Desktop on ${{ matrix.image }} (amd64)

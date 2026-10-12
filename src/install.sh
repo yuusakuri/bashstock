@@ -709,16 +709,130 @@ jdk::_install-fedora() {
   printf '%s\n' "${home}"
 }
 
-### Write pipx versions available to the current platform.
-pipx::versions() {
+### Write the major.minor.patch version of the Python 3 interpreter.
+pipx::_python-version() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_versions pipx
+  command::require python3 || return "$?"
+  python3 -c 'import sys; print("%d.%d.%d" % sys.version_info[:3])' || return 74
+}
+
+### Write pipx releases on PyPI whose Requires-Python accepts PYTHON_VERSION.
+pipx::_official-versions() {
+  [[ "$#" -eq 1 && "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
+  command::require perl || return "$?"
+  local json='' versions=''
+  json="$(package::_fetch https://pypi.org/pypi/pipx/json)" || return "$?"
+  versions="$(printf '%s' "${json}" | perl -MJSON::PP -e '
+    my @python = split /\./, shift;
+    sub compare {
+      my ($left, $right) = @_;
+      for my $index (0 .. ($#$left > $#$right ? $#$left : $#$right)) {
+        my $difference = ($left->[$index] // 0) <=> ($right->[$index] // 0);
+        return $difference if $difference;
+      }
+      return 0;
+    }
+    # Accepts the PEP 440 operators that Requires-Python uses; anything else rejects the release.
+    sub accepts {
+      my ($specifiers) = @_;
+      for my $specifier (split /\s*,\s*/, $specifiers) {
+        next if $specifier eq "";
+        $specifier =~ /^(~=|==|!=|<=|>=|<|>)\s*([0-9]+(?:\.[0-9]+)*)(\.\*)?$/ or return 0;
+        my ($operator, $wildcard) = ($1, $3);
+        my @version = split /\./, $2;
+        if ($wildcard) {
+          my $same = compare([@python[0 .. $#version]], \@version) == 0;
+          return 0 if ($operator eq "==" && !$same) || ($operator eq "!=" && $same);
+          return 0 if $operator ne "==" && $operator ne "!=";
+          next;
+        }
+        my $order = compare(\@python, \@version);
+        return 0 if $operator eq ">=" && $order < 0;
+        return 0 if $operator eq ">" && $order <= 0;
+        return 0 if $operator eq "<=" && $order > 0;
+        return 0 if $operator eq "<" && $order >= 0;
+        return 0 if $operator eq "==" && $order != 0;
+        return 0 if $operator eq "!=" && $order == 0;
+        if ($operator eq "~=") {
+          return 0 if $order < 0 || @version < 2;
+          return 0 if compare([@python[0 .. $#version - 1]], [@version[0 .. $#version - 1]]) != 0;
+        }
+      }
+      return 1;
+    }
+    local $/;
+    my $data = eval { decode_json(<STDIN>) } or exit 74;
+    while (my ($release, $files) = each %{$data->{releases} || {}}) {
+      my @files = grep { !$_->{yanked} } @$files;
+      next unless @files && $release =~ /^[0-9]+(?:\.[0-9]+)*$/;
+      print "$release\n" if accepts($files[0]{requires_python} // "");
+    }
+  ' "$1")" || return "$?"
+  printf '%s\n' "${versions}" | package::_sort-stable-versions
+}
+
+### Write pipx versions available from the selected source.
+###
+### The official source lists the PyPI releases that the installed Python 3
+### can run.
+###
+### Arguments
+###
+### * SOURCE - os (default) or official.
+pipx::versions() {
+  [[ "$#" -le 1 ]] || return 64
+  local source="${1:-os}" python_version=''
+  [[ "${source}" == os || "${source}" == official ]] || return 64
+  if [[ "${source}" == os ]]; then
+    package::_versions pipx
+    return
+  fi
+  python_version="$(pipx::_python-version)" || return "$?"
+  pipx::_official-versions "${python_version}"
 }
 
 ### Install pipx and add the pipx application directory to PATH.
+###
+### The os source installs the package of the system package manager. The
+### official source installs the release from PyPI for the current user with
+### pip, as the pipx documentation describes for systems without a package.
+### A source that cannot provide pipx returns an error instead of switching to
+### the other source.
+###
+### Arguments
+###
+### * VERSION - Optional version from pipx::versions for the same SOURCE.
+### * SOURCE - os (default) or official.
 pipx::install() {
-  [[ "$#" -le 1 ]] || return 64
-  package::_install-version pipx "${1:-}" || return "$?"
+  [[ "$#" -le 2 ]] || return 64
+  local version="${1:-}" source="${2:-os}" platform='' versions='' installed=''
+  [[ "${source}" == os || "${source}" == official ]] || return 64
+  platform="$(package::_platform)" || return "$?"
+  if [[ "${source}" == os ]]; then
+    versions="$(pipx::versions os)" || return "$?"
+    if [[ -z "${versions}" ]]; then
+      console::_write-error 'The system packages do not provide pipx; use the official source.'
+      return 69
+    fi
+    package::_install-version pipx "${version}" || return "$?"
+  else
+    case "${platform}" in
+      ubuntu) package::_refresh && package::_install python3-pip python3-venv || return "$?" ;;
+      fedora) package::_install python3-pip || return "$?" ;;
+      *)
+        console::_write-error 'Install pipx from Homebrew with the os source on macOS.'
+        return 69
+        ;;
+    esac
+    versions="$(pipx::versions official)" || return "$?"
+    version="$(package::_select-listed-version "${versions}" "${version}" pipx)" || return "$?"
+    python3 -m pip install --user "pipx==${version}" || return "$?"
+    installed="$("${HOME}/.local/bin/pipx" --version)" || return 69
+    if [[ "${installed}" != "${version}" ]]; then
+      console::_write-error "pip installed pipx ${installed} instead of ${version}."
+      return 69
+    fi
+  fi
   mkdir -p -- "${HOME}/.local/bin" || return 74
   env::add-path "${HOME}/.local/bin"
 }
@@ -1219,7 +1333,7 @@ gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 ### Write VS Code versions available to the current platform.
 vscode::versions() {
   [[ "$#" -eq 0 ]] || return 64
-  local platform='' architecture='' index_entries=''
+  local platform='' architecture=''
   platform="$(package::_platform)" || return "$?"
   case "${platform}" in
     darwin)
@@ -1227,10 +1341,9 @@ vscode::versions() {
       ;;
     ubuntu)
       architecture="$(package::_deb-architecture)" || return "$?"
-      index_entries="$(package::_deb-index-entries \
+      package::_deb-runnable-versions \
         "https://packages.microsoft.com/repos/code/dists/stable/main/binary-${architecture}/Packages.gz" \
-        code)" || return "$?"
-      printf '%s\n' "${index_entries}" | cut -f 1 | package::_sort-versions
+        code
       ;;
     fedora)
       package::_rpm-repository-versions https://packages.microsoft.com/yumrepos/vscode code
@@ -1239,6 +1352,9 @@ vscode::versions() {
 }
 
 ### Install VS Code from the Microsoft repository or Homebrew.
+###
+### On Ubuntu, a version is accepted only when the installed C library can run it,
+### and an omitted version selects the newest such build.
 vscode::install() {
   [[ "$#" -le 1 ]] || return 64
   local platform=''
@@ -1247,8 +1363,14 @@ vscode::install() {
     package::_install-cask visual-studio-code "${1:-}"
     return
   fi
+  local version="${1:-}" versions=''
+  if [[ "${platform}" == 'ubuntu' ]]; then
+    # APT would pick the newest build even when the installed C library cannot run it.
+    versions="$(vscode::versions)" || return "$?"
+    version="$(package::_select-listed-version "${versions}" "${version}" 'VS Code')" || return "$?"
+  fi
   vscode::_register-repository "${platform}" || return "$?"
-  package::_install-version code "${1:-}"
+  package::_install-version code "${version}"
 }
 
 ### Register the Google Chrome repository for the current Linux platform.
@@ -1275,7 +1397,7 @@ gpgkey=https://dl.google.com/linux/linux_signing_key.pub
 ### Write Google Chrome versions available to the current platform.
 chrome::versions() {
   [[ "$#" -eq 0 ]] || return 64
-  local platform='' architecture='' index_entries=''
+  local platform='' architecture=''
   platform="$(package::_platform)" || return "$?"
   case "${platform}" in
     darwin)
@@ -1283,10 +1405,9 @@ chrome::versions() {
       ;;
     ubuntu)
       architecture="$(package::_deb-architecture)" || return "$?"
-      index_entries="$(package::_deb-index-entries \
+      package::_deb-runnable-versions \
         "https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-${architecture}/Packages" \
-        google-chrome-stable)" || return "$?"
-      printf '%s\n' "${index_entries}" | cut -f 1 | package::_sort-versions
+        google-chrome-stable
       ;;
     fedora)
       architecture="$(package::_rpm-architecture)" || return "$?"
@@ -1297,6 +1418,9 @@ chrome::versions() {
 }
 
 ### Install Google Chrome from the Google repository or Homebrew.
+###
+### On Ubuntu, a version is accepted only when the installed C library can run it,
+### and an omitted version selects the newest such build.
 chrome::install() {
   [[ "$#" -le 1 ]] || return 64
   local platform=''
@@ -1305,8 +1429,14 @@ chrome::install() {
     package::_install-cask google-chrome "${1:-}"
     return
   fi
+  local version="${1:-}" versions=''
+  if [[ "${platform}" == 'ubuntu' ]]; then
+    # APT would pick the newest build even when the installed C library cannot run it.
+    versions="$(chrome::versions)" || return "$?"
+    version="$(package::_select-listed-version "${versions}" "${version}" 'Google Chrome')" || return "$?"
+  fi
   chrome::_register-repository "${platform}" || return "$?"
-  package::_install-version google-chrome-stable "${1:-}"
+  package::_install-version google-chrome-stable "${version}"
 }
 
 ### Require an Ubuntu release that Claude Desktop supports.

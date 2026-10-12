@@ -779,3 +779,92 @@ use_fake_sudoers() {
   [ "${status}" -eq 64 ]
   [ ! -s "${ROOT_LOG}" ]
 }
+
+@test "Supabase ignores release tags of other components when it selects the newest CLI" {
+  use_platform ubuntu 24.04 noble
+  curl() {
+    printf '%s' '[{"tag_name":"config-v0.10.0","draft":false,"prerelease":false},
+      {"tag_name":"v2.119.1","draft":false,"prerelease":false},
+      {"tag_name":"v2.118.0","draft":false,"prerelease":false}]'
+  }
+  run supabase::versions
+  [ "${status}" -eq 0 ]
+  [ "${output}" = $'2.118.0\n2.119.1' ]
+}
+
+@test "VS Code on an old Ubuntu installs the newest build its C library can run" {
+  use_platform ubuntu 18.04 bionic
+  record_root_commands
+  use_fake_root
+  apt-get() { :; }
+  INDEX="${BATS_TEST_TMPDIR}/Packages"
+  printf '%s\n' \
+    'Package: code' 'Version: 1.85.2-1705561292' 'Depends: libc6 (>= 2.14), libc6 (>= 2.17), libgtk-3-0' '' \
+    'Package: code' 'Version: 1.86.0-1706698139' 'Depends: libc6 (>= 2.17), libc6 (>= 2.28)' '' \
+    'Package: code-insiders' 'Version: 1.90.0-1' 'Depends: libc6 (>= 2.14)' >"${INDEX}"
+  gzip -c "${INDEX}" >"${INDEX}.gz"
+  CURL_FILE="${INDEX}.gz"
+  use_fake_curl
+  dpkg() {
+    case "$1" in
+      --print-architecture) printf 'amd64\n' ;;
+      # The installed version is at least the requirement when it sorts last.
+      --compare-versions) [[ "$(printf '%s\n%s\n' "$2" "$4" | sort -V | tail -n 1)" == "$2" ]] ;;
+    esac
+  }
+  dpkg-query() { printf '2.27-3ubuntu1.6'; }
+
+  run vscode::versions
+  [ "${status}" -eq 0 ]
+  [ "${output}" = '1.85.2-1705561292' ]
+
+  run vscode::install
+  [ "${status}" -eq 0 ]
+  [ "$(tail -n 1 "${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades code=1.85.2-1705561292' ]
+
+  : >"${ROOT_LOG}"
+  run --separate-stderr vscode::install 1.86.0-1706698139
+  [ "${status}" -eq 69 ]
+  [ ! -s "${ROOT_LOG}" ]
+}
+
+@test "pipx installs from PyPI the newest release the local Python can run" {
+  export HOME="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "${HOME}"
+  use_platform ubuntu 18.04 bionic
+  record_root_commands
+  apt-get() { :; }
+  apt-cache() { :; }
+  PIP_LOG="${BATS_TEST_TMPDIR}/pip.log"
+  python3() {
+    if [[ "$1" == '-c' ]]; then printf '3.6.9\n'; return; fi
+    printf '%s\n' "$*" >>"${PIP_LOG}"
+    mkdir -p "${HOME}/.local/bin"
+    printf '#!/bin/sh\nprintf "%%s\\n" "%s"\n' "${5#pipx==}" >"${HOME}/.local/bin/pipx"
+    chmod +x "${HOME}/.local/bin/pipx"
+  }
+  curl() {
+    printf '%s' '{"releases":{
+      "0.17.0":[{"requires_python":">=3.6","yanked":false}],
+      "1.0.0":[{"requires_python":">=3.6","yanked":false}],
+      "1.1.0":[{"requires_python":">=3.7","yanked":false}],
+      "1.2.0b1":[{"requires_python":">=3.6","yanked":false}],
+      "1.0.1":[{"requires_python":">=3.6","yanked":true}]}}'
+  }
+
+  run --separate-stderr pipx::install
+  [ "${status}" -eq 69 ]
+  [ ! -e "${PIP_LOG}" ]
+
+  run pipx::versions official
+  [ "${status}" -eq 0 ]
+  [ "${output}" = $'0.17.0\n1.0.0' ]
+
+  run pipx::install '' official
+  [ "${status}" -eq 0 ]
+  [ "$(<"${PIP_LOG}")" = '-m pip install --user pipx==1.0.0' ]
+  grep -Fqx 'env DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip python3-venv' "${ROOT_LOG}"
+
+  run --separate-stderr pipx::install 1.1.0 official
+  [ "${status}" -eq 69 ]
+}

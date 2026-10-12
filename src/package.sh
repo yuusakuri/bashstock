@@ -86,6 +86,28 @@ package::_latest-stable-version() {
   printf '%s\n' "${versions##*$'\n'}"
 }
 
+### Write the requested version when the list offers it, or the newest stable listed version.
+###
+### Arguments
+###
+### * VERSIONS - Newline-separated versions that can be installed on this system.
+### * VERSION - Requested version, or an empty value for the newest stable version.
+### * NAME - Product name used in diagnostics.
+package::_select-listed-version() {
+  [[ "$#" -eq 3 && -n "$3" ]] || return 64
+  if [[ -z "$2" ]]; then
+    if ! printf '%s\n' "$1" | package::_latest-stable-version; then
+      console::_write-error "No $3 version can run on this system."
+      return 69
+    fi
+  elif grep -Fqx -- "$2" <<<"$1"; then
+    printf '%s\n' "$2"
+  else
+    console::_write-error "$3 $2 cannot be installed on this system."
+    return 69
+  fi
+}
+
 ### Create a private temporary directory and write its path.
 package::_temporary-directory() {
   [[ "$#" -eq 0 ]] || return 64
@@ -316,7 +338,8 @@ package::_github-release-versions() {
       next if $release->{draft} || $release->{prerelease};
       my $tag = $release->{tag_name};
       $tag =~ s/^v(?=[0-9])//;
-      print "$tag\n";
+      # Repositories also tag other components, such as config-v0.10.0 in supabase/cli.
+      print "$tag\n" if $tag =~ /^[0-9]+(?:\.[0-9]+)*$/;
     }
   ')" || return "$?"
   printf '%s\n' "${versions}" | package::_sort-stable-versions
@@ -346,22 +369,25 @@ package::_github-release-asset-url() {
   ' "$2" "$3"
 }
 
+### Download an APT Packages index to a file, decompressing a .gz index.
+package::_deb-index-download() {
+  [[ "$#" -eq 2 && "$1" == https://* && -n "$2" ]] || return 64
+  if [[ "$1" != *.gz ]]; then
+    package::_download "$1" "$2"
+    return
+  fi
+  package::_download "$1" "$2.gz" || return "$?"
+  command::require gzip || return "$?"
+  gzip -dc -- "$2.gz" >"$2" || return 74
+}
+
 ### Write VERSION and FILENAME pairs of one package from an APT Packages index URL.
 package::_deb-index-entries() {
   [[ "$#" -eq 2 && "$1" == https://* && -n "$2" ]] || return 64
   command::require perl || return "$?"
-  local directory='' index='' status=0
+  local directory='' status=0
   directory="$(package::_temporary-directory)" || return "$?"
-  index="${directory}/Packages"
-  if [[ "$1" == *.gz ]]; then
-    package::_download "$1" "${index}.gz" || status="$?"
-    if [[ "${status}" -eq 0 ]]; then
-      command::require gzip || status="$?"
-      [[ "${status}" -ne 0 ]] || gzip -dc -- "${index}.gz" >"${index}" || status=74
-    fi
-  else
-    package::_download "$1" "${index}" || status="$?"
-  fi
+  package::_deb-index-download "$1" "${directory}/Packages" || status="$?"
   if [[ "${status}" -eq 0 ]]; then
     perl -e '
       my $name = shift;
@@ -372,10 +398,61 @@ package::_deb-index-entries() {
         next unless defined $field{package} && $field{package} eq $name;
         print "$field{version}\t$field{filename}\n";
       }
-    ' "$2" <"${index}" || status=74
+    ' "$2" <"${directory}/Packages" || status=74
   fi
   rm -rf -- "${directory}"
   return "${status}"
+}
+
+### Write versions of one package from an APT Packages index that the installed C library can run.
+###
+### A version is kept when every libc6 version its Depends and Pre-Depends
+### require is satisfied by the installed libc6, so an old release is offered
+### the newest build it can start instead of one that fails to install.
+package::_deb-runnable-versions() {
+  [[ "$#" -eq 2 && "$1" == https://* && -n "$2" ]] || return 64
+  command::require perl || return "$?"
+  command::require dpkg || return "$?"
+  local directory='' status=0 requirement_lines='' libc='' version='' required='' supported=''
+  libc="$(dpkg-query -W -f='${Version}' libc6 2>/dev/null)" || return 69
+  directory="$(package::_temporary-directory)" || return "$?"
+  package::_deb-index-download "$1" "${directory}/Packages" || status="$?"
+  if [[ "${status}" -eq 0 ]]; then
+    requirement_lines="$(perl -e '
+      my $name = shift;
+      local $/ = "";
+      while (my $stanza = <STDIN>) {
+        my %field;
+        $field{lc $1} = $2 while $stanza =~ /^([A-Za-z-]+):\s*(.*)$/mg;
+        next unless defined $field{package} && $field{package} eq $name;
+        my $depends = join ", ", grep { defined } @field{qw(pre-depends depends)};
+        my @required = $depends =~ /(?:^|[,|]\s*)libc6\s*\(\s*>[>=]\s*([^)\s]+)\s*\)/g;
+        print join("\t", $field{version}, @required), "\n";
+      }
+    ' "$2" <"${directory}/Packages")" || status=74
+  fi
+  rm -rf -- "${directory}"
+  [[ "${status}" -eq 0 ]] || return "${status}"
+
+  # dpkg compares each distinct requirement once; the answers are kept in a newline-separated list.
+  local accepted=$'\n' rejected=$'\n' fields=()
+  while IFS= read -r version; do
+    [[ -n "${version}" ]] || continue
+    IFS=$'\t' read -r -a fields <<<"${version}"
+    supported=1
+    for required in "${fields[@]:1}"; do
+      [[ "${accepted}" != *$'\n'"${required}"$'\n'* ]] || continue
+      if [[ "${rejected}" == *$'\n'"${required}"$'\n'* ]]; then supported=0; break; fi
+      if dpkg --compare-versions "${libc}" ge "${required}"; then
+        accepted+="${required}"$'\n'
+      else
+        rejected+="${required}"$'\n'
+        supported=0
+        break
+      fi
+    done
+    [[ "${supported}" -eq 0 ]] || printf '%s\n' "${fields[0]}"
+  done <<<"${requirement_lines}" | package::_sort-versions
 }
 
 ### Write versions of one package from an RPM repository without registering it.

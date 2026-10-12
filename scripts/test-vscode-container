@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091
+
+set -euo pipefail
+
+source /opt/bashstock.sh
+latest="$(vscode::versions | tail -n 1)"
+[[ -n "$latest" ]]
+printf 'VS Code version: %s\n' "$latest"
+source /etc/os-release
+if [[ "$ID" == ubuntu && "$VERSION_ID" == 18.04 ]]; then
+  # VS Code 1.86 and later need glibc 2.28; Ubuntu 18.04 has 2.27.
+  [[ "$latest" == 1.85.* ]]
+fi
+
+vscode::install
+vscode::install "$latest"
+if [[ "$ID" == ubuntu ]]; then
+  installed="$(dpkg-query -W -f='${Version}' code)"
+else
+  installed="$(rpm -q --qf '%{EVR}' code)"
+fi
+[[ "$installed" == "$latest" ]]
+
+# VS Code refuses to start as root without its own sandbox and data directory.
+data_directory="$(mktemp -d)"
+[[ "$(code --no-sandbox --user-data-dir "$data_directory" --version | head -n 1)" == "${latest%%-*}" ]]

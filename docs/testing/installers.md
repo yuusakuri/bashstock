@@ -6,9 +6,9 @@
 
 | 環境 | 対象 |
 | --- | --- |
-| Ubuntu 18.04、20.04、22.04、24.04、26.04 の amd64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby の導入・再実行・起動とAPTリポジトリ |
+| Ubuntu 18.04、20.04、22.04、24.04、26.04 の amd64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby、pipx、VS Code の導入・再実行・起動とAPTリポジトリ |
 | Ubuntu 20.04、22.04、24.04、26.04 の amd64 コンテナ | Claude Desktop の導入・更新とAnthropicのAPTリポジトリ |
-| Fedora 34、44 の amd64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby の導入・再実行・起動とDNFリポジトリ |
+| Fedora 34、44 の amd64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby、pipx、VS Code の導入・再実行・起動とDNFリポジトリ |
 | Ubuntu 22.04、24.04 の GitHub Actions 実行環境 | Docker サービス、デーモン、コンテナ実行 |
 | macOS の GitHub Actions 実行環境 | Android SDK 構成要素、AVD の作成・削除。Hypervisor.Frameworkが使える実行環境では起動・停止も確認する |
 | Ubuntu 24.04 の GitHub Actions 実行環境 | Android SDK 構成要素、KVMを使うAVDの作成・起動・停止・削除 |
@@ -33,6 +33,9 @@
 | J03 | OSのGoを導入・再実行し、小さなGoプログラムを動かす | 両方成功し、実行結果が期待値になる | 同上 |
 | R01 | 公式 Rust ツールチェーンを導入・再実行し、小さなプログラムをコンパイルして動かす | rustc と cargo が起動し、プログラムが期待値を返す。起動設定を読んだ新しい Bash でも cargo が使える | `scripts/test-rust-container` |
 | R02 | Ruby 3.4.5 を導入・再実行し、小さなプログラムを動かす | 指定版の Ruby と gem が起動し、プログラムが期待値を返す。起動設定を読んだ新しい Bash でも Ruby が使える | `scripts/test-ruby-container` |
+| P01 | Ubuntu 18.04 以外で OS のパッケージから pipx を導入・再実行する | 両方成功し、起動設定を読んだ新しい Bash の `pipx --version` が最新の提供版と一致し、`pipx list` が動く | `scripts/test-pipx-container` |
+| P02 | Ubuntu 18.04 で配布元を省略して導入し、続けて `official` を指定して二度導入する | 省略時は終了状態 69 を返す。`official` では Python 3.6 で動く最新の pipx が入り、`pipx list` が動く | 同上 |
+| V01 | 各 OS で版を省略して VS Code を導入し、`vscode::versions` の最新版を指定して再実行する | 導入済みの版が一覧の最新版と一致し、`code --version` が同じ版を表示する。Ubuntu 18.04 では glibc 2.27 で動く 1.85 系が選ばれる | `scripts/test-vscode-container` |
 | C01 | Ubuntu 22.04 以降で `claude-desktop::versions` の一つ前の版を指定して二度導入する | 両方成功し、導入済みの版が指定値と一致する | `scripts/test-claude-desktop-container` |
 | C02 | 版を省略して再び導入する | 最新版へ更新され、`claude-desktop` コマンドが存在する | 同上 |
 | C03 | リポジトリ定義と鍵を検査する | 公式手順と同じ定義が一件だけあり、鍵の権限が 0644 で、`apt-get update` がエラーも警告も出さない | 同上 |
