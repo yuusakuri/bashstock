@@ -380,7 +380,7 @@ mac::_install-homebrew() {
   [[ "${status}" -eq 0 ]] || return "${status}"
   setup::_ensure-file "${HOME}/.zshrc" || return "$?"
   # shellcheck disable=SC2016 # The startup file evaluates brew shellenv later.
-  file::replace-text-or-append "${HOME}/.zshrc" 'brew shellenv' 'eval "$(/opt/homebrew/bin/brew shellenv)"' || return "$?"
+  file::replace-text-or-append "${HOME}/.zshrc" '^.*brew shellenv.*$' 'eval "$(/opt/homebrew/bin/brew shellenv)"' || return "$?"
   PATH="/opt/homebrew/bin:/opt/homebrew/sbin:${PATH}"
   export PATH
 }
@@ -445,7 +445,7 @@ mac::setup() {
   setup::_run-step env::dotenv::register "${HOME}/.env" || status="${status/#0/$?}"
   setup::_run-step shell::editor::set-default 'code --wait' || status="${status/#0/$?}"
   setup::_ensure-file "${HOME}/.zshrc" || status="${status/#0/$?}"
-  setup::_run-step file::replace-text-or-append "${HOME}/.zshrc" 'setopt interactivecomments' \
+  setup::_run-step file::replace-text-or-append "${HOME}/.zshrc" '^setopt interactivecomments.*$' \
     'setopt interactivecomments' || status="${status/#0/$?}"
   setup::_run-step env::set-variable HOMEBREW_CASK_OPTS --no-quarantine || status="${status/#0/$?}"
   mkdir -p -- "${HOME}/.local/bin" || status="${status/#0/$?}"

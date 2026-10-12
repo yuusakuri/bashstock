@@ -327,7 +327,7 @@ node::_install-official() {
   for startup in "${HOME}/.bashrc" "${HOME}/.zshrc"; do
     [[ -e "${startup}" ]] || file::write-text "${startup}" '' || return "$?"
     file::replace-text-or-append "${startup}" \
-      '^(__bashstock_node_bin=|__bashstock_path=.*\.local/lib/node/current/bin)' \
+      '^(__bashstock_node_bin=|__bashstock_path=.*\.local/lib/node/current/bin).*$' \
       "${line}" || return "$?"
   done
   if [[ "${PATH}" != "${binary_directory}" && "${PATH}" != "${binary_directory}":* ]]; then
@@ -559,10 +559,10 @@ ruby::_configure-shell() {
     startup="${HOME}/.${shell}rc"
     [[ -e "${startup}" ]] || : >"${startup}" || return 74
     if [[ -d "${root}/bin" ]]; then
-      file::replace-text-or-append "${startup}" '^export PATH=.*\.rbenv/bin' \
+      file::replace-text-or-append "${startup}" '^export PATH=.*\.rbenv/bin.*$' \
         "export PATH=\"${root}/bin:\${PATH}\"" || return "$?"
     fi
-    file::replace-text-or-append "${startup}" 'rbenv init' "eval \"\$(rbenv init - ${shell})\"" || return "$?"
+    file::replace-text-or-append "${startup}" '^.*rbenv init.*$' "eval \"\$(rbenv init - ${shell})\"" || return "$?"
   done
   [[ ! -d "${root}/bin" || ":${PATH}:" == *":${root}/bin:"* ]] || PATH="${root}/bin:${PATH}"
   [[ ":${PATH}:" == *":${root}/shims:"* ]] || PATH="${root}/shims:${PATH}"
@@ -798,7 +798,8 @@ pipx::versions() {
 ### official source installs the release from PyPI for the current user with
 ### pip, as the pipx documentation describes for systems without a package.
 ### A source that cannot provide pipx returns an error instead of switching to
-### the other source.
+### the other source. On Ubuntu, python3-venv is installed with either source,
+### because pipx creates a virtual environment for every application.
 ###
 ### Arguments
 ###
@@ -816,6 +817,10 @@ pipx::install() {
       return 69
     fi
     package::_install-version pipx "${version}" || return "$?"
+    if [[ "${platform}" == ubuntu ]]; then
+      # Ubuntu ships venv separately, and the pipx package of 20.04 does not require it.
+      package::_install python3-venv || return "$?"
+    fi
   else
     case "${platform}" in
       ubuntu) package::_refresh && package::_install python3-pip python3-venv || return "$?" ;;

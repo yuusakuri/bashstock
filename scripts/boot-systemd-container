@@ -37,6 +37,8 @@ else
 fi
 
 useradd --create-home --shell /bin/bash tester
+# Fedora images ship without /etc/shadow, and PAM refuses sudo for a user it cannot find there.
+pwconv
 printf 'tester ALL=(ALL) NOPASSWD: ALL\n' >/etc/sudoers.d/tester
 chmod 0440 /etc/sudoers.d/tester
 touch /var/tmp/bashstock-container-ready

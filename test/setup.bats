@@ -906,6 +906,21 @@ use_fake_sudoers() {
   [ "${status}" -eq 69 ]
 }
 
+@test "pipx from Ubuntu packages also installs venv for its applications" {
+  export HOME="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "${HOME}"
+  use_platform ubuntu 20.04 focal
+  record_root_commands
+  apt-get() { :; }
+  apt-cache() {
+    [[ "$1" == madison ]] || return 0
+    printf ' %s | 0.12.3.1-2ubuntu1 | http://archive.ubuntu.com focal/universe amd64 Packages\n' "$2"
+  }
+  run pipx::install
+  [ "${status}" -eq 0 ]
+  grep -Fqx 'env DEBIAN_FRONTEND=noninteractive apt-get install -y python3-venv' "${ROOT_LOG}"
+}
+
 @test "Ubuntu Server ISOs come from published checksums and never replace a file with a bad download" {
   ISO_BODY='iso image'
   ISO_SUM="$(printf '%s' "${ISO_BODY}" | { sha256sum 2>/dev/null || shasum -a 256; } | cut -d ' ' -f 1)"
@@ -1060,4 +1075,16 @@ use_fake_sudoers() {
   GITHUB_TOKEN='' run supabase::versions
   [ "${status}" -eq 0 ]
   ! grep -q 'stdin:' "${CURL_LOG}"
+}
+
+@test "rbenv startup lines stay valid when the shell is configured again" {
+  HOME="${BATS_TEST_TMPDIR}/home"
+  unset RBENV_ROOT
+  mkdir -p "$HOME/.rbenv/bin"
+  ruby::_configure-shell
+  ruby::_configure-shell
+  [ "$(grep -c 'rbenv/bin' "$HOME/.bashrc")" -eq 1 ]
+  [ "$(grep -c 'rbenv init' "$HOME/.bashrc")" -eq 1 ]
+  grep -Fqx "export PATH=\"$HOME/.rbenv/bin:\${PATH}\"" "$HOME/.bashrc"
+  bash -n "$HOME/.bashrc"
 }

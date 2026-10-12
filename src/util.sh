@@ -221,8 +221,35 @@ system::disable-sleep() { [[ "$#" -eq 0 ]] || return 64; case "$(system::operati
 ### Write a POSIX TZ string for an offset in seconds.
 time::posix-timezone() { [[ "$#" -eq 1 && "$1" =~ ^-?[0-9]+$ ]] || return 64; local offset="$1" sign='+' abs='' hours='' minutes=''; if ((offset < 0)); then sign='-'; abs=$((-offset)); else abs="$offset"; fi; hours=$((abs/3600)); minutes=$(((abs%3600)/60)); printf 'UTC%s%d:%02d\n' "$sign" "$hours" "$minutes"; }
 
-### Merge the contents of one directory into another directory.
-directory::merge() { [[ "$#" -eq 2 && -d "$1" ]] || return 64; command -v cp >/dev/null 2>&1 || return 69; mkdir -p -- "$2" || return 74; cp -R "$1"/. "$2"/ || return 74; }
+### Merge every entry of SOURCE into DESTINATION by moving it, then remove SOURCE.
+###
+### Directories are merged recursively. A file or symbolic link in SOURCE
+### replaces the entry with the same name in DESTINATION. Symbolic links are
+### never followed. The first failure stops the merge.
+###
+### Arguments
+###
+### * SOURCE - Directory to empty and remove.
+### * DESTINATION - Directory to receive the entries; created when missing.
+directory::merge() {
+  [[ "$#" -eq 2 && -d "$1" && ! -L "$1" && -n "$2" ]] || return 64
+  local source="$1" destination="$2" entry='' name='' target=''
+  if [[ -L "${destination}" || (-e "${destination}" && ! -d "${destination}") ]]; then return 64; fi
+  mkdir -p -- "${destination}" || return 74
+  while IFS= read -r -d '' entry; do
+    name="${entry##*/}"
+    target="${destination}/${name}"
+    if [[ -d "${entry}" && ! -L "${entry}" && -d "${target}" && ! -L "${target}" ]]; then
+      directory::merge "${entry}" "${target}" || return "$?"
+      continue
+    fi
+    if [[ -e "${target}" || -L "${target}" ]]; then
+      rm -rf -- "${target}" || return 74
+    fi
+    mv -- "${entry}" "${target}" || return 74
+  done < <(find "${source}" -mindepth 1 -maxdepth 1 -print0)
+  rmdir -- "${source}" || return 74
+}
 
 ### Create a directory named with the current date and time.
 directory::create-with-date-time() { if [[ "$#" -gt 1 ]]; then return 64; fi; local dir="${1:-.}" name=''; [[ -d "$dir" ]] || return 66; name="$(time::local-date-time-seconds-basic)" || return "$?"; mkdir -- "$dir/$name" || return 74; printf '%s\n' "$dir/$name"; }
@@ -423,8 +450,103 @@ git::reset-remote() { [[ "$#" -le 2 ]] || return 64; local remote="${1:-origin}"
 ### Pull the configured base branch with fast-forward-only semantics.
 git::pull-base-branch() { [[ "$#" -le 2 ]] || return 64; local base="${1:-main}" directory="${2:-.}" current=''; current="$(git::branch::current "$directory")" || return 65; git::_run-in-directory "$directory" checkout "$base" -- || return "$?"; if ! git::_run-in-directory "$directory" pull --ff-only origin "$base"; then git::_run-in-directory "$directory" checkout "$current" -- >/dev/null 2>&1 || true; return 75; fi; git::_run-in-directory "$directory" checkout "$current" -- || return 75; git::_run-in-directory "$directory" rebase "$base"; }
 
-### Import simple KEY=VALUE entries from a dotenv file.
-env::dotenv::import() { [[ "$#" -eq 1 && -f "$1" && ! -L "$1" ]] || return 64; local line key value; while IFS= read -r line || [[ -n "$line" ]]; do [[ -z "$line" || "$line" == \#* ]] && continue; [[ "$line" == *=* ]] || return 64; key="${line%%=*}"; value="${line#*=}"; [[ "$key" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] || return 64; if [[ "$value" == \"*\" && "$value" == *\" ]]; then value="${value:1:${#value}-2}"; fi; export "${key}=${value}"; done <"$1"; }
+### Import the variables of a dotenv file into the current process.
+###
+### The file is parsed as data and never executed. Every line is validated
+### before any variable changes; see env::dotenv::_entries for the syntax.
+###
+### Arguments
+###
+### * FILE - Regular dotenv file.
+###
+### Exit status
+###
+### 65 when a line is not valid dotenv syntax.
+env::dotenv::import() {
+  [[ "$#" -eq 1 && -f "$1" && ! -L "$1" ]] || return 64
+  env::dotenv::_entries "$1" >/dev/null || return "$?"
+  local __bashstock_dotenv_key='' __bashstock_dotenv_value=''
+  while IFS= read -r -d '' __bashstock_dotenv_key && IFS= read -r -d '' __bashstock_dotenv_value; do
+    printf -v "${__bashstock_dotenv_key}" '%s' "${__bashstock_dotenv_value}"
+    export "${__bashstock_dotenv_key?}"
+  done < <(env::dotenv::_entries "$1")
+}
+
+### Write export commands for a dotenv file that Bash and Zsh can evaluate.
+env::dotenv::_export-commands() {
+  [[ "$#" -eq 1 ]] || return 64
+  env::dotenv::_entries "$1" >/dev/null || return "$?"
+  local key='' value='' quoted=''
+  while IFS= read -r -d '' key && IFS= read -r -d '' value; do
+    printf -v quoted '%q' "${value}"
+    printf 'export %s=%s\n' "${key}" "${quoted}"
+  done < <(env::dotenv::_entries "$1")
+}
+
+### Write the KEY and VALUE of every assignment in a dotenv file as NUL-separated pairs.
+###
+### Blank lines and lines starting with # are skipped, and an assignment may
+### start with export. Unquoted values end at an unescaped # preceded by a
+### blank and lose surrounding blanks. Single-quoted values are literal.
+### Double-quoted values accept the escapes \n, \t, \r, \", \\, and \$. The
+### whole file is validated before anything is written; a malformed line
+### returns 65 and writes nothing.
+env::dotenv::_entries() {
+  [[ "$#" -eq 1 && -f "$1" && ! -L "$1" ]] || return 64
+  local line='' key='' rest='' value='' character='' quote='' index=0 length=0 number=0
+  local entry_keys=() entry_values=()
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    number=$((number + 1))
+    line="${line%$'\r'}"
+    rest="${line#"${line%%[![:space:]]*}"}"
+    [[ -z "${rest}" || "${rest}" == \#* ]] && continue
+    [[ "${rest}" =~ ^export[[:space:]]+ ]] && rest="${rest#"${BASH_REMATCH[0]}"}"
+    if [[ ! "${rest}" =~ ^([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=[[:space:]]* ]]; then
+      console::_write-error "Invalid dotenv assignment on line ${number} of $1."
+      return 65
+    fi
+    key="${BASH_REMATCH[1]}"
+    rest="${rest#"${BASH_REMATCH[0]}"}"
+    value=''
+    quote="${rest:0:1}"
+    if [[ "${quote}" == "'" || "${quote}" == '"' ]]; then
+      length="${#rest}"
+      index=1
+      while ((index < length)); do
+        character="${rest:index:1}"
+        if [[ "${character}" == "${quote}" ]]; then
+          break
+        fi
+        if [[ "${quote}" == '"' && "${character}" == "\\" ]] && ((index + 1 < length)); then
+          index=$((index + 1))
+          case "${rest:index:1}" in
+            n) character=$'\n' ;;
+            t) character=$'\t' ;;
+            r) character=$'\r' ;;
+            '"' | "\\" | '$') character="${rest:index:1}" ;;
+            *) character="\\${rest:index:1}" ;;
+          esac
+        fi
+        value+="${character}"
+        index=$((index + 1))
+      done
+      rest="${rest:index+1}"
+      rest="${rest#"${rest%%[![:space:]]*}"}"
+      if ((index >= length)) || [[ -n "${rest}" && "${rest}" != \#* ]]; then
+        console::_write-error "Unterminated or trailing text in the dotenv value on line ${number} of $1."
+        return 65
+      fi
+    else
+      [[ "${rest}" =~ ^(.*[^[:space:]])?[[:space:]]+# ]] && rest="${BASH_REMATCH[1]}"
+      value="${rest%"${rest##*[![:space:]]}"}"
+    fi
+    entry_keys+=("${key}")
+    entry_values+=("${value}")
+  done <"$1"
+  for index in "${!entry_keys[@]}"; do
+    printf '%s\0%s\0' "${entry_keys[index]}" "${entry_values[index]}"
+  done
+}
 
 ### Set an environment variable for the current shell.
 env::set-variable() {
@@ -436,7 +558,7 @@ env::set-variable() {
   for shell in "${_util_shells[@]}"; do
     case "$shell" in bash) rc="$HOME/.bashrc" ;; zsh) rc="$HOME/.zshrc" ;; esac
     if [[ ! -e "$rc" ]]; then file::write-text "$rc" '' || return "$?"; fi
-    file::replace-text-or-append "$rc" "^export ${name}=" "export ${name}=${quoted}" || return "$?"
+    file::replace-text-or-append "$rc" "^export ${name}=.*$" "export ${name}=${quoted}" || return "$?"
   done
   export "${name}=${value}"
 }
@@ -458,14 +580,71 @@ env::add-path() {
   case ":${PATH:-}:" in *":$path:"*) ;; *) PATH="${PATH:+${PATH}:}${path}"; export PATH ;; esac
 }
 
-### Register a dotenv file in selected shell startup files.
-env::dotenv::register() { [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" && ! -L "$1" ]] || return 64; local file="$1" shells="${2:-bash,zsh}" shell rc line; IFS=',' read -r -a _util_shells <<<"$shells"; for shell in "${_util_shells[@]}"; do case "$shell" in bash) rc="$HOME/.bashrc" ;; zsh) rc="$HOME/.zshrc" ;; *) return 64 ;; esac; line="env::dotenv::import '$file'"; file::contains-match "$rc" "^${line//./\\.}$" 2>/dev/null || file::append-text "$rc" "${line}\n" || return "$?"; done; }
+### Load a dotenv file in every new Bash and Zsh session.
+###
+### Bash startup files load BashStock and call env::dotenv::import. Zsh cannot
+### load a Bash library, so its startup file asks Bash for the parsed values
+### and evaluates the resulting export commands. Each startup file receives the
+### line once, and the file is always read as data.
+###
+### Arguments
+###
+### * FILE - Regular dotenv file. A relative path is stored as an absolute path.
+### * SHELLS - Comma-separated bash and zsh. Defaults to bash,zsh.
+env::dotenv::register() {
+  [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" && ! -L "$1" ]] || return 64
+  local file="$1" shells="${2:-bash,zsh}" shell='' rc='' line='' library='' quoted_file=''
+  [[ "${shells}" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] || return 64
+  [[ "${file}" == /* ]] || file="${PWD}/${file}"
+  file="$(path::normalize "${file}")" || return "$?"
+  printf -v quoted_file '%q' "${file}"
+  printf -v library '%q' "${_BASHSTOCK_FILE}"
+  local _util_shells=()
+  IFS=',' read -r -a _util_shells <<<"${shells}"
+  for shell in "${_util_shells[@]}"; do
+    case "${shell}" in
+      bash)
+        rc="${HOME}/.bashrc"
+        line="[ -r ${library} ] && . ${library} && env::dotenv::import ${quoted_file}"
+        ;;
+      zsh)
+        rc="${HOME}/.zshrc"
+        line="[ -r ${library} ] && eval \"\$(bash -c '. \"\$1\" && env::dotenv::_export-commands \"\$2\"' bashstock ${library} ${quoted_file})\""
+        ;;
+    esac
+    if [[ ! -f "${rc}" ]] || ! grep -Fqx -- "${line}" "${rc}"; then
+      file::append-text "${rc}" "${line}"$'\n' || return "$?"
+    fi
+  done
+}
 
 ### Create a symbolic link in a user's local bin directory.
 symlink::create-in-local-bin() { [[ "$#" -ge 1 && "$#" -le 3 && -e "$1" ]] || return 64; local source="$1" name="${2:-$(basename -- "$1")}" directory="${3:-$HOME/.local/bin}"; mkdir -p -- "$directory" || return 74; symlink::create "$source" "$directory/$name"; }
 
-### Prepare an SSH directory with restrictive permissions.
-ssh::setup-directory() { [[ "$#" -eq 0 ]] || return 64; mkdir -p -- "$HOME/.ssh" || return 74; chmod 700 -- "$HOME/.ssh" || return 74; }
+### Create $HOME/.ssh and give it and its files the modes SSH expects.
+###
+### Entries owned by another user are first given back to the current user
+### through administrator execution. Directories become 700 and files 644,
+### except private keys, config, and authorized_keys, which become 600. A
+### private key is recognized by its PEM or OpenSSH header, so no passphrase
+### is ever requested.
+ssh::setup-directory() {
+  [[ "$#" -eq 0 ]] || return 64
+  local directory="${HOME}/.ssh" path='' header=''
+  mkdir -p -- "${directory}" || return 74
+  if [[ -n "$(find "${directory}" ! -user "$(id -u)" -print 2>/dev/null | head -n 1)" ]]; then
+    command::run-as-root chown -R "$(id -u):$(id -g)" "${directory}" || return 74
+  fi
+  find "${directory}" -type d -exec chmod 700 {} + || return 74
+  while IFS= read -r -d '' path; do
+    header=''
+    IFS= read -r header <"${path}" 2>/dev/null || true
+    case "${path##*/}:${header}" in
+      config:* | authorized_keys:* | *:'-----BEGIN '*'PRIVATE KEY-----') chmod 600 -- "${path}" || return 74 ;;
+      *) chmod 644 -- "${path}" || return 74 ;;
+    esac
+  done < <(find "${directory}" -type f -print0)
+}
 
 ### Replace one marker-managed SSH Host block and validate the resulting configuration.
 ssh::config::_write-block() {
@@ -1081,8 +1260,47 @@ gpg::secret-key::fingerprints() { [[ "$#" -eq 0 ]] || return 64; util::_run-comm
 ### Execute the gpg::secret-key::list utility.
 gpg::secret-key::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command gpg --list-secret-keys; }
 
-### Execute the user::directory::create-english-links utility.
-user::directory::create-english-links() { [[ "$#" -le 1 ]] || return 64; local directory="${1:-$HOME}"; [[ -d "$directory" ]] || return 66; local name target; for name in Desktop Documents Downloads Music Pictures Videos; do target="$directory/$name"; [[ -e "$target" ]] || ln -s "$directory/$name" "$target" 2>/dev/null || true; done; }
+### Link the English XDG user directory names to the directories of the current locale.
+###
+### Each standard XDG directory is resolved with xdg-user-dir. A localized
+### directory that does not exist is skipped and never created. An existing
+### English directory is merged into the localized one, overwriting entries
+### with the same name, and then replaced by the link.
+###
+### Arguments
+###
+### * HOME_DIRECTORY - Home directory to update. Defaults to $HOME.
+###
+### Exit status
+###
+### 73 when an English name is held by something other than a directory or link.
+user::directory::create-english-links() {
+  [[ "$#" -le 1 ]] || return 64
+  local home="${1:-${HOME}}" pair='' key='' name='' localized='' english='' status=0
+  [[ -d "${home}" ]] || return 66
+  command::require xdg-user-dir || return "$?"
+  for pair in DESKTOP:Desktop DOWNLOAD:Downloads TEMPLATES:Templates PUBLICSHARE:Public \
+    DOCUMENTS:Documents MUSIC:Music PICTURES:Pictures VIDEOS:Videos; do
+    key="${pair%%:*}"
+    name="${pair#*:}"
+    localized="$(HOME="${home}" XDG_CONFIG_HOME="${home}/.config" xdg-user-dir "${key}")" || return 74
+    english="${home}/${name}"
+    [[ -d "${localized}" && ! -L "${localized}" ]] || continue
+    [[ "${localized%/}" != "${home%/}" && "${localized}" != "${english}" ]] || continue
+    if [[ -L "${english}" ]]; then
+      [[ "$(readlink -- "${english}")" != "${localized}" ]] || continue
+      rm -f -- "${english}" || return 74
+    elif [[ -d "${english}" ]]; then
+      directory::merge "${english}" "${localized}" || return "$?"
+    elif [[ -e "${english}" ]]; then
+      console::_write-error "Not linking ${english}: it is not a directory."
+      status=73
+      continue
+    fi
+    ln -s -- "${localized}" "${english}" || return 74
+  done
+  return "${status}"
+}
 
 ### Write available stable Android Build Tools versions in ascending order.
 ### Use Android CLI when available, otherwise use sdkmanager.
@@ -1273,10 +1491,15 @@ selinux::generate-rule() { [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 6
 ### Execute the terminal::gnome-bash utility.
 terminal::gnome-bash() { [[ "$#" -ge 0 ]] || return 64; util::_run-command gnome-terminal -- bash "${@}"; }
 
-### Execute the shell::editor::set-default utility.
+### Set the default editor of new Bash and Zsh sessions and the current process.
+###
+### Arguments
+###
+### * EDITOR - Editor command. Defaults to code --wait.
+### * SHELLS - Comma-separated bash and zsh. Defaults to bash,zsh.
 shell::editor::set-default() {
   [[ "$#" -le 2 ]] || return 64
-  env::set-variable EDITOR "${1:-code --wait}" "${2:-bash}"
+  env::set-variable EDITOR "${1:-code --wait}" "${2:-bash,zsh}"
 }
 
 ### Set a string value for one top-level key in a macOS property list.
@@ -1314,8 +1537,40 @@ textproto::set-scalar() {
   file::replace-text-or-append "$1" "^$2[[:space:]]*:.*$" "$2: $3"
 }
 
-### Execute the shell::completion::enable-ignore-case utility.
-shell::completion::enable-ignore-case() { [[ "$#" -le 1 ]] || return 64; env::set-variable completion_ignore_case 1; }
+### Make Bash and Zsh completion ignore letter case.
+###
+### Bash reads the setting from $HOME/.inputrc. A new .inputrc first includes
+### /etc/inputrc, because Readline stops reading the system file once a
+### personal one exists. Zsh receives a matcher-list zstyle in $HOME/.zshrc.
+###
+### Arguments
+###
+### * SHELLS - Comma-separated bash and zsh. Defaults to bash,zsh.
+shell::completion::enable-ignore-case() {
+  [[ "$#" -le 1 ]] || return 64
+  local shells="${1:-bash,zsh}" shell='' line=''
+  [[ "${shells}" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] || return 64
+  local _util_shells=()
+  IFS=',' read -r -a _util_shells <<<"${shells}"
+  for shell in "${_util_shells[@]}"; do
+    case "${shell}" in
+      bash)
+        if [[ ! -e "${HOME}/.inputrc" ]]; then
+          if [[ -r /etc/inputrc ]]; then line=$'$include /etc/inputrc\n'; else line=''; fi
+          file::write-text "${HOME}/.inputrc" "${line}" || return "$?"
+        fi
+        file::replace-text-or-append "${HOME}/.inputrc" '^set[[:space:]]+completion-ignore-case[[:space:]].*$' \
+          'set completion-ignore-case on' || return "$?"
+        ;;
+      zsh)
+        line="zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'"
+        if [[ ! -f "${HOME}/.zshrc" ]] || ! grep -Fqx -- "${line}" "${HOME}/.zshrc"; then
+          file::append-text "${HOME}/.zshrc" "${line}"$'\n' || return "$?"
+        fi
+        ;;
+    esac
+  done
+}
 
 ### Execute the git::credentials::remove utility.
 git::credentials::remove() {
@@ -1332,23 +1587,85 @@ git::config::enable-origin-all-fetch() { [[ "$#" -le 1 ]] || return 64; git::_ru
 ### Execute the git::config::enable-prune-fetch utility.
 git::config::enable-prune-fetch() { [[ "$#" -eq 0 ]] || return 64; git config --global fetch.prune true; }
 
-### Execute the git::config::set-default-branch utility.
-git::config::set-default-branch() { [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9._/-]+$ ]] || return 64; git config --global init.defaultBranch "$1"; }
+### Set the default branch name of new repositories.
+###
+### Arguments
+###
+### * BRANCH - Branch name. Defaults to main.
+git::config::set-default-branch() {
+  [[ "$#" -le 1 ]] || return 64
+  local branch="${1:-main}"
+  git check-ref-format --branch "${branch}" >/dev/null 2>&1 || return 64
+  git config --global init.defaultBranch "${branch}"
+}
 
 ### Execute the git::config::enable-rebase-on-pull utility.
 git::config::enable-rebase-on-pull() { [[ "$#" -eq 0 ]] || return 64; git config --global pull.rebase true; }
 
-### Execute the git::config::set-email utility.
-git::config::set-email() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; git config --global user.email "$1"; }
+### Set the global Git email address.
+###
+### Arguments
+###
+### * EMAIL - Email address. Defaults to GIT_EMAIL, then to input from the
+###   controlling terminal. When none is available, an existing global value
+###   is kept and a missing one returns 66.
+git::config::set-email() {
+  [[ "$#" -le 1 ]] || return 64
+  git::config::_set-identity user.email "${1:-}" GIT_EMAIL 'email address'
+}
 
-### Execute the git::config::set-username utility.
-git::config::set-username() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; git config --global user.name "$1"; }
+### Read a Git identity value from an argument, an environment variable, or the terminal.
+###
+### The current global value is kept when none of these sources is available.
+git::config::_set-identity() {
+  [[ "$#" -eq 4 ]] || return 64
+  local key="$1" value="$2" variable="$3" label="$4"
+  [[ -n "${value}" ]] || value="${!variable:-}"
+  if [[ -z "${value}" ]] && terminal::is-available; then
+    printf 'Git %s: ' "${label}" >/dev/tty
+    IFS= read -r value </dev/tty || return 74
+  fi
+  if [[ -z "${value}" ]]; then
+    git config --global --get "${key}" >/dev/null && return 0
+    console::_write-error "Set the Git ${label} with an argument or ${variable}."
+    return 66
+  fi
+  string::_require-one-line "${value}" || return "$?"
+  git config --global "${key}" "${value}"
+}
 
-### Execute the git::config::set-http-buffer utility.
-git::config::set-http-buffer() { [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64; git config --global http.postBuffer "$1"; }
+### Set the global Git user name.
+###
+### Arguments
+###
+### * USERNAME - Display name. Defaults to GIT_USERNAME, then to input from the
+###   controlling terminal. When none is available, an existing global value
+###   is kept and a missing one returns 66.
+git::config::set-username() {
+  [[ "$#" -le 1 ]] || return 64
+  git::config::_set-identity user.name "${1:-}" GIT_USERNAME 'user name'
+}
 
-### Execute the git::config::use-gpg-credential-store utility.
-git::config::use-gpg-credential-store() { [[ "$#" -eq 0 ]] || return 64; git config --global credential.helper 'gpg --decrypt'; }
+### Set the global Git HTTP post buffer.
+###
+### Arguments
+###
+### * SIZE_BYTES - Buffer size in bytes. Defaults to 524288000 (500 MiB).
+git::config::set-http-buffer() {
+  [[ "$#" -le 1 ]] || return 64
+  local size="${1:-524288000}"
+  [[ "${size}" =~ ^(0|[1-9][0-9]*)$ ]] || return 64
+  git config --global http.postBuffer "${size}"
+}
+
+### Make Git Credential Manager store credentials with GPG and pass.
+###
+### The guidance for initializing the pass store is written to standard error.
+git::config::use-gpg-credential-store() {
+  [[ "$#" -eq 0 ]] || return 64
+  git config --global credential.credentialStore gpg || return "$?"
+  console::_write-error 'Git Credential Manager now stores credentials with pass; initialize it with pass::store::init FINGERPRINT.'
+}
 
 ### Execute the git::config::use-credential-manager utility.
 git::config::use-credential-manager() { [[ "$#" -eq 0 ]] || return 64; git config --global credential.helper manager; }
@@ -1504,8 +1821,20 @@ git-credential-manager::install() {
   "${HOME}/.local/bin/git-credential-manager" configure
 }
 
-### Execute the git::config::setup utility.
-git::config::setup() { [[ "$#" -le 2 ]] || return 64; [[ -n "${1:-}" ]] && git::config::set-email "$1"; [[ -n "${2:-}" ]] && git::config::set-username "$2"; git::config::set-default-branch main; git::config::enable-rebase-on-pull; git::config::enable-prune-fetch; }
+### Apply the user identity and the standard global Git settings.
+###
+### Arguments
+###
+### * EMAIL - Email address passed to git::config::set-email.
+### * USERNAME - Display name passed to git::config::set-username.
+git::config::setup() {
+  [[ "$#" -le 2 ]] || return 64
+  git::config::set-email "${1:-}" || return "$?"
+  git::config::set-username "${2:-}" || return "$?"
+  git::config::set-default-branch main || return "$?"
+  git::config::enable-rebase-on-pull || return "$?"
+  git::config::enable-prune-fetch
+}
 
 ### Register the official Go package source for the current platform.
 go::repository::register() {

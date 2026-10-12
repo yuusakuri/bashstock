@@ -137,3 +137,187 @@ bats_require_minimum_version 1.5.0
   [ "${status}" -eq 0 ]
   [ "${output}" = "$key" ]
 }
+
+@test "dotenv import parses quoting and comments as data and validates before exporting" {
+  local file="${BATS_TEST_TMPDIR}/values.env"
+  printf '%s\n' \
+    '# comment' \
+    '' \
+    'export BASHSTOCK_PLAIN=plain value   # trailing comment' \
+    "BASHSTOCK_SINGLE='a \$HOME \\n literal'" \
+    'BASHSTOCK_DOUBLE="tab\there \"quoted\" \$HOME" # comment' \
+    'BASHSTOCK_HASH=a#b' \
+    'BASHSTOCK_EMPTY=' >"$file"
+  printf 'BASHSTOCK_CRLF=value\r\n' >>"$file"
+  env::dotenv::import "$file"
+  [ "$BASHSTOCK_PLAIN" = 'plain value' ]
+  [ "$BASHSTOCK_SINGLE" = 'a $HOME \n literal' ]
+  [ "$BASHSTOCK_DOUBLE" = $'tab\there "quoted" $HOME' ]
+  [ "$BASHSTOCK_HASH" = 'a#b' ]
+  [ -z "$BASHSTOCK_EMPTY" ]
+  [ "$BASHSTOCK_CRLF" = value ]
+  run bash -c 'printf "%s" "$BASHSTOCK_DOUBLE"'
+  [ "$output" = $'tab\there "quoted" $HOME' ]
+
+  local invalid="${BATS_TEST_TMPDIR}/invalid.env"
+  printf 'BASHSTOCK_FIRST=changed\nBASHSTOCK_SECOND="unterminated\n' >"$invalid"
+  BASHSTOCK_FIRST=original
+  run --separate-stderr env::dotenv::import "$invalid"
+  [ "$status" -eq 65 ]
+  [[ "$stderr" == *'line 2'* ]]
+  env::dotenv::import "$invalid" 2>/dev/null || true
+  [ "$BASHSTOCK_FIRST" = original ]
+  printf '1BAD=value\n' >"$invalid"
+  run env::dotenv::import "$invalid"
+  [ "$status" -eq 65 ]
+}
+
+@test "dotenv registration loads the file in new Bash and Zsh sessions once" {
+  HOME="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "$HOME/project"
+  printf 'BASHSTOCK_REGISTERED="from dotenv"\n' >"$HOME/project/my values.env"
+  cd "$HOME/project"
+  env::dotenv::register 'my values.env'
+  env::dotenv::register "$HOME/project/./my values.env"
+  [ "$(grep -c 'env::dotenv::import' "$HOME/.bashrc")" -eq 1 ]
+  [ "$(grep -c 'env::dotenv::_export-commands' "$HOME/.zshrc")" -eq 1 ]
+  grep -Fq "$(printf '%q' "$HOME/project/my values.env")" "$HOME/.bashrc"
+  run env -i HOME="$HOME" PATH="$PATH" bash -c 'source "$HOME/.bashrc"; printf "%s" "$BASHSTOCK_REGISTERED"'
+  [ "$output" = 'from dotenv' ]
+  if command -v zsh >/dev/null 2>&1; then
+    run env -i HOME="$HOME" PATH="$PATH" zsh -c 'source "$HOME/.zshrc"; printf "%s" "$BASHSTOCK_REGISTERED"'
+    [ "$output" = 'from dotenv' ]
+  fi
+  run env::dotenv::register "$HOME/project/my values.env" fish
+  [ "$status" -eq 64 ]
+}
+
+@test "editor and completion settings reach new shells without duplicates" {
+  HOME="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "$HOME"
+  shell::editor::set-default
+  shell::editor::set-default
+  [ "$EDITOR" = 'code --wait' ]
+  [ "$(grep -c '^export EDITOR=' "$HOME/.bashrc")" -eq 1 ]
+  [ "$(grep -c '^export EDITOR=' "$HOME/.zshrc")" -eq 1 ]
+  run env -i HOME="$HOME" bash -c 'source "$HOME/.bashrc"; printf "%s" "$EDITOR"' </dev/null
+  [ "$output" = 'code --wait' ]
+  shell::editor::set-default vim bash
+  run env -i HOME="$HOME" bash -c 'source "$HOME/.bashrc"; printf "%s" "$EDITOR"' </dev/null
+  [ "$output" = vim ]
+
+  shell::completion::enable-ignore-case
+  shell::completion::enable-ignore-case
+  [ "$(grep -c '^set completion-ignore-case on$' "$HOME/.inputrc")" -eq 1 ]
+  if [[ -r /etc/inputrc ]]; then [ "$(head -n 1 "$HOME/.inputrc")" = '$include /etc/inputrc' ]; fi
+  [ "$(grep -cF "zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'" "$HOME/.zshrc")" -eq 1 ]
+  [ "$(INPUTRC="$HOME/.inputrc" bash -ic 'bind -v' 2>/dev/null | grep 'completion-ignore-case')" = 'set completion-ignore-case on' ]
+}
+
+@test "English user directory links point to the localized XDG directories" {
+  local home="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "$home/デスクトップ" "$home/ドキュメント/kept" "$home/Documents/.hidden-dir" "$home/画像" "$home/Music"
+  printf 'english\n' >"$home/Documents/report.txt"
+  printf 'old\n' >"$home/ドキュメント/report.txt"
+  printf 'hidden\n' >"$home/Documents/.hidden-dir/file"
+  printf 'not a directory\n' >"$home/Pictures"
+  xdg-user-dir() {
+    case "$1" in
+      DESKTOP) printf '%s\n' "$HOME/デスクトップ" ;;
+      DOCUMENTS) printf '%s\n' "$HOME/ドキュメント" ;;
+      PICTURES) printf '%s\n' "$HOME/画像" ;;
+      MUSIC) printf '%s\n' "$HOME/Music" ;;
+      VIDEOS) printf '%s\n' "$HOME/ビデオ" ;;
+      *) printf '%s\n' "$HOME" ;;
+    esac
+  }
+  run --separate-stderr user::directory::create-english-links "$home"
+  [ "$status" -eq 73 ]
+  [[ "$stderr" == *"$home/Pictures"* ]]
+  [ "$(readlink "$home/Desktop")" = "$home/デスクトップ" ]
+  [ "$(readlink "$home/Documents")" = "$home/ドキュメント" ]
+  [ "$(<"$home/ドキュメント/report.txt")" = english ]
+  [ -d "$home/ドキュメント/kept" ]
+  [ "$(<"$home/ドキュメント/.hidden-dir/file")" = hidden ]
+  [ -f "$home/Pictures" ]
+  [ -d "$home/Music" ] && [ ! -L "$home/Music" ]
+  [ ! -e "$home/Videos" ] && [ ! -e "$home/ビデオ" ]
+
+  rm -f "$home/Pictures"
+  run user::directory::create-english-links "$home"
+  [ "$status" -eq 0 ]
+  [ "$(readlink "$home/Pictures")" = "$home/画像" ]
+}
+
+@test "SSH directory setup applies the modes SSH expects" {
+  HOME="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "$HOME/.ssh/sockets"
+  printf -- '-----BEGIN OPENSSH PRIVATE KEY-----\nkey\n' >"$HOME/.ssh/id_ed25519"
+  printf -- '-----BEGIN RSA PRIVATE KEY-----\nkey\n' >"$HOME/.ssh/legacy"
+  printf 'ssh-ed25519 AAAA user\n' >"$HOME/.ssh/id_ed25519.pub"
+  : >"$HOME/.ssh/config"
+  : >"$HOME/.ssh/authorized_keys"
+  : >"$HOME/.ssh/known_hosts"
+  chmod 777 "$HOME/.ssh" "$HOME/.ssh/sockets" "$HOME/.ssh"/*
+  ssh::setup-directory
+  mode() { case "$(uname -s)" in Darwin) stat -f '%Lp' "$1" ;; *) stat -c '%a' "$1" ;; esac; }
+  [ "$(mode "$HOME/.ssh")" = 700 ]
+  [ "$(mode "$HOME/.ssh/sockets")" = 700 ]
+  [ "$(mode "$HOME/.ssh/id_ed25519")" = 600 ]
+  [ "$(mode "$HOME/.ssh/legacy")" = 600 ]
+  [ "$(mode "$HOME/.ssh/config")" = 600 ]
+  [ "$(mode "$HOME/.ssh/authorized_keys")" = 600 ]
+  [ "$(mode "$HOME/.ssh/id_ed25519.pub")" = 644 ]
+  [ "$(mode "$HOME/.ssh/known_hosts")" = 644 ]
+}
+
+@test "Git identity comes from arguments, the environment, or the existing value" {
+  HOME="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "$HOME"
+  unset GIT_CONFIG_GLOBAL GIT_EMAIL GIT_USERNAME
+  terminal::is-available() { return 1; }
+  run --separate-stderr git::config::set-email
+  [ "$status" -eq 66 ]
+  [[ "$stderr" == *GIT_EMAIL* ]]
+  git::config::set-email first@example.invalid
+  [ "$(git config --global user.email)" = first@example.invalid ]
+  GIT_EMAIL=second@example.invalid git::config::set-email
+  [ "$(git config --global user.email)" = second@example.invalid ]
+  git::config::set-email
+  [ "$(git config --global user.email)" = second@example.invalid ]
+  run git::config::set-email $'two\nlines'
+  [ "$status" -eq 64 ]
+
+  GIT_USERNAME='Test User' git::config::setup
+  [ "$(git config --global user.name)" = 'Test User' ]
+  [ "$(git config --global init.defaultBranch)" = main ]
+  [ "$(git config --global pull.rebase)" = true ]
+  [ "$(git config --global fetch.prune)" = true ]
+  git::config::set-http-buffer
+  [ "$(git config --global http.postBuffer)" = 524288000 ]
+  run git::config::set-default-branch 'bad..name'
+  [ "$status" -eq 64 ]
+  run --separate-stderr git::config::use-gpg-credential-store
+  [ "$status" -eq 0 ]
+  [ "$(git config --global credential.credentialStore)" = gpg ]
+  [[ "$stderr" == *pass::store::init* ]]
+}
+
+@test "directory merge moves every entry, overwrites conflicts, and removes the source" {
+  local source="${BATS_TEST_TMPDIR}/source" destination="${BATS_TEST_TMPDIR}/destination"
+  mkdir -p "$source/nested" "$destination/nested"
+  printf 'new\n' >"$source/nested/same"
+  printf 'old\n' >"$destination/nested/same"
+  printf 'kept\n' >"$destination/nested/other"
+  printf 'hidden\n' >"$source/.hidden"
+  ln -s /nonexistent "$source/link"
+  run directory::merge "$source" "$destination"
+  [ "$status" -eq 0 ]
+  [ ! -e "$source" ]
+  [ "$(<"$destination/nested/same")" = new ]
+  [ "$(<"$destination/nested/other")" = kept ]
+  [ "$(<"$destination/.hidden")" = hidden ]
+  [ "$(readlink "$destination/link")" = /nonexistent ]
+  run directory::merge "${BATS_TEST_TMPDIR}/missing" "$destination"
+  [ "$status" -eq 64 ]
+}

@@ -21,6 +21,8 @@ systemctl is-enabled docker
 systemctl is-active docker
 sudo docker info >/dev/null
 
-# The docker group applies to sessions that start after docker::install.
+# The docker group applies to sessions that start after docker::install. sudo
+# reuses the caller's groups when the target is the same user, so su starts the
+# new login session.
 id -nG "$(id -un)" | grep -qw docker
-sudo -iu "$(id -un)" docker run --rm hello-world | grep -F 'Hello from Docker!'
+sudo su -l "$(id -un)" -c 'docker run --rm hello-world' | grep -F 'Hello from Docker!'

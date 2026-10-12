@@ -215,12 +215,13 @@ jobs:
         run: ./scripts/build
       - name: Boot a privileged container whose PID 1 is systemd
         run: |
-          # Docker keeps its data on a volume because overlayfs cannot stack on the container's own root.
+          # Docker and containerd keep their data on volumes because overlayfs cannot stack on the container's own root.
           docker run -d --name bashstock --privileged --cgroupns=host \
             --platform linux/${{ matrix.arch }} \
             --tmpfs /run --tmpfs /run/lock \
             -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
             -v bashstock-docker:/var/lib/docker \
+            -v bashstock-containerd:/var/lib/containerd \
             -v "$PWD/dist/bashstock.sh:/opt/bashstock.sh:ro" \
             -v "$PWD/scripts/boot-systemd-container:/opt/boot-systemd-container:ro" \
             -v "$PWD/scripts/test-docker-service-container:/opt/test-docker-service-container:ro" \
