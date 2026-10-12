@@ -323,3 +323,157 @@ bats_require_minimum_version 1.5.0
   run directory::merge "${BATS_TEST_TMPDIR}/missing" "$destination"
   [ "$status" -eq 64 ]
 }
+
+@test "POSIX time zones invert the ISO offset sign and keep minutes" {
+  local offset='' expected=''
+  while read -r offset expected; do
+    run time::posix-timezone "$offset"
+    [ "$status" -eq 0 ]
+    [ "$output" = "$expected" ]
+  done <<'TABLE'
+Z UTC0
++00:00 UTC0
+-00:00 UTC0
++09:00 UTC-9
++09:30 UTC-9:30
+-05:00 UTC+5
+-03:45 UTC+3:45
+TABLE
+  for offset in 3600 +24:00 +09:60 +9:00 UTC; do
+    run time::posix-timezone "$offset"
+    [ "$status" -eq 64 ]
+  done
+}
+
+@test "date-time directories get a numbered suffix when the name exists" {
+  local parent="${BATS_TEST_TMPDIR}/parent"
+  mkdir -p "$parent"
+  time::local-date-time-seconds-basic() { printf '20260102T030405\n'; }
+  run directory::create-with-date-time "$parent"
+  [ "$output" = "$parent/20260102T030405" ]
+  run directory::create-with-date-time "$parent"
+  [ "$output" = "$parent/20260102T030405-2" ]
+  run directory::create-with-date-time "$parent"
+  [ "$output" = "$parent/20260102T030405-3" ]
+  [ -d "$parent/20260102T030405-3" ]
+}
+
+@test "directory clear refuses the root, the home directory, empty names, and links" {
+  HOME="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "$HOME/data/.hidden" "${BATS_TEST_TMPDIR}/target"
+  printf 'kept\n' >"${BATS_TEST_TMPDIR}/target/file"
+  ln -s "${BATS_TEST_TMPDIR}/target" "${BATS_TEST_TMPDIR}/link"
+  run directory::clear /
+  [ "$status" -eq 64 ]
+  run directory::clear "$HOME"
+  [ "$status" -eq 64 ]
+  run directory::clear "$HOME/data/.."
+  [ "$status" -eq 64 ]
+  run directory::clear ''
+  [ "$status" -eq 64 ]
+  run directory::clear "${BATS_TEST_TMPDIR}/link"
+  [ "$status" -eq 64 ]
+  [ -f "${BATS_TEST_TMPDIR}/target/file" ]
+  run directory::clear "$HOME/data"
+  [ "$status" -eq 0 ]
+  [ -d "$HOME/data" ] && [ -z "$(ls -A "$HOME/data")" ]
+}
+
+@test "archive extraction uses the archive name and refuses escaping links" {
+  local work="${BATS_TEST_TMPDIR}/work"
+  mkdir -p "$work/content/dir" "$work/evil"
+  printf 'value\n' >"$work/content/dir/file"
+  ln -s file "$work/content/dir/inner-link"
+  tar -czf "$work/good.tgz" -C "$work/content" .
+  run archive::extract-file "$work/good.tgz"
+  [ "$status" -eq 0 ]
+  [ "$(<"$work/good/dir/file")" = value ]
+  [ "$(readlink "$work/good/dir/inner-link")" = file ]
+  [ -z "$(find "$work/good" -name '.bashstock-extract.*')" ]
+  printf 'old\n' >"$work/good/dir/file"
+  run archive::extract-file "$work/good.tgz" "$work/good"
+  [ "$(<"$work/good/dir/file")" = value ]
+
+  ln -s ../../outside "$work/evil/escape"
+  tar -czf "$work/bad.tar.gz" -C "$work/evil" .
+  run --separate-stderr archive::extract-file "$work/bad.tar.gz"
+  [ "$status" -eq 65 ]
+  [[ "$stderr" == *escape* ]]
+  [ -d "$work/bad" ] && [ -z "$(ls -A "$work/bad")" ]
+  if command -v zip >/dev/null 2>&1 && command -v unzip >/dev/null 2>&1; then
+    (cd "$work/content" && zip -qry "$work/good.zip" .)
+    run archive::extract-file "$work/good.zip"
+    [ "$status" -eq 0 ]
+    [ "$(<"$work/good/dir/file")" = value ]
+  fi
+}
+
+@test "path and content searches write NUL-separated matches" {
+  local root="${BATS_TEST_TMPDIR}/search"
+  mkdir -p "$root/Sub Dir"
+  printf 'needle here\n' >"$root/Sub Dir/Match.TXT"
+  printf 'nothing\n' >"$root/other.txt"
+  printf 'needle\0binary' >"$root/binary.bin"
+  [ "$(path::find '\.txt$' "$root" | tr '\0' '\n' | sort)" = "$(printf '%s\n%s' "$root/Sub Dir/Match.TXT" "$root/other.txt")" ]
+  run path::find 'absent' "$root"
+  [ "$status" -eq 1 ]
+  run path::find '(' "$root"
+  [ "$status" -eq 64 ]
+
+  [ "$(file::find-by-content 'need+le' "$root" 2 | tr '\0' '\n')" = "$root/Sub Dir/Match.TXT" ]
+  [ "$(file::find-by-content 'needle' "$root" 1 include | tr '\0' '\n' | wc -l | tr -d ' ')" -eq 2 ]
+  run file::find-by-content 'absent' "$root"
+  [ "$status" -eq 1 ]
+  run file::find-by-content 'needle' "$root" 1 maybe
+  [ "$status" -eq 64 ]
+}
+
+@test "latest file by name breaks ties by path bytes" {
+  local root="${BATS_TEST_TMPDIR}/latest"
+  mkdir -p "$root"
+  printf 'a\n' >"$root/b.log"
+  printf 'a\n' >"$root/a.log"
+  printf 'a\n' >"$root/old.log"
+  touch -t 202601010000 "$root/a.log" "$root/b.log"
+  touch -t 202501010000 "$root/old.log"
+  run file::latest-by-name '\.log$' "$root"
+  [ "$output" = "$root/a.log" ]
+  touch -t 202602010000 "$root/b.log"
+  run file::latest-by-name '\.log$' "$root"
+  [ "$output" = "$root/b.log" ]
+}
+
+@test "symbolic links point to absolute paths and replace only links" {
+  local work="${BATS_TEST_TMPDIR}/links"
+  mkdir -p "$work/first" "$work/second"
+  cd "$work"
+  run symlink::create first current
+  [ "$status" -eq 0 ]
+  [ "$(readlink "$work/current")" = "$work/first" ]
+  run symlink::create "$work/second" current
+  [ "$status" -eq 0 ]
+  [ "$(readlink "$work/current")" = "$work/second" ]
+  [ ! -e "$work/second/second" ]
+  run symlink::create first second
+  [ "$status" -eq 73 ]
+  run symlink::create missing other
+  [ "$status" -eq 66 ]
+}
+
+@test "tree with contents writes directories and text files only" {
+  local root="${BATS_TEST_TMPDIR}/tree"
+  mkdir -p "$root/sub/deeper"
+  printf 'top text' >"$root/top.txt"
+  printf 'deep text\n' >"$root/sub/deeper/deep.txt"
+  printf '\x00\x01\x02\x03' >"$root/sub/data.bin"
+  command -v file >/dev/null 2>&1 || skip 'file is not installed'
+  run file::tree-with-contents "$root"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$root/sub"* ]]
+  [[ "$output" == *"==> $root/top.txt <=="$'\n''top text'* ]]
+  [[ "$output" == *'deep text'* ]]
+  [[ "$output" != *data.bin* ]]
+  run file::tree-with-contents "$root" 1 1
+  [[ "$output" != *'deep text'* ]]
+  [[ "$output" == *'top text'* ]]
+}

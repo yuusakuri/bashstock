@@ -26,15 +26,21 @@ storage::usage() {
   df -h "$path"
 }
 
-### Show the largest direct entries in a directory.
+### Write the largest entries of a directory, including the directory itself, in human-readable sizes.
+###
+### Directory sizes include everything below them.
+###
+### Arguments
+###
+### * DIRECTORY - Directory to inspect. Defaults to the current directory.
+### * MAX_ENTRIES - Number of entries to write. Defaults to 10.
 storage::largest-entries() {
-  if [[ "$#" -gt 2 ]]; then return 64; fi
+  [[ "$#" -le 2 ]] || return 64
   local directory="${1:-.}" max="${2:-10}"
-  [[ -d "$directory" && "$max" =~ ^[1-9][0-9]*$ ]] || return 64
-  command -v du >/dev/null 2>&1 || return 69
-  command -v sort >/dev/null 2>&1 || return 69
-  command -v head >/dev/null 2>&1 || return 69
-  du -sk "$directory"/* 2>/dev/null | sort -nr | head -n "$max"
+  [[ -d "${directory}" && "${max}" =~ ^[1-9][0-9]*$ ]] || return 64
+  command::require du || return "$?"
+  command::require sort || return "$?"
+  du -h -a -d 1 -- "${directory}" 2>/dev/null | sort -hr | head -n "${max}"
 }
 
 ### Write the total physical memory in bytes.
@@ -108,45 +114,122 @@ file::write-text() {
   if ! mv -f -- "$temporary" "$file"; then rm -f -- "$temporary"; return 74; fi
 }
 
-### Find regular files whose contents match a Perl expression.
+### Write the regular files below a directory whose content matches an ERE, separated by NUL.
+###
+### The files are searched in parallel by grep -E.
+###
+### Arguments
+###
+### * EXPRESSION - Extended regular expression evaluated by grep -E.
+### * DIRECTORY - Directory to search. Defaults to the current directory.
+### * MAX_PROCESSES - Parallel grep processes. Defaults to the number of online CPUs.
+### * BINARY_MODE - skip (default) ignores binary files; include searches them as text.
+###
+### Exit status
+###
+### 1 when no file matches; 64 when EXPRESSION is not a valid expression.
 file::find-by-content() {
-  if [[ "$#" -lt 1 || "$#" -gt 4 ]]; then return 64; fi
-  local expression="$1" directory="${2:-.}" max="${3:-1}" binary="${4:-0}"
-  [[ -d "$directory" && "$max" =~ ^[1-9][0-9]*$ && "$binary" =~ ^[01]$ ]] || return 64
-  command -v find >/dev/null 2>&1 || return 69
-  command -v perl >/dev/null 2>&1 || return 69
-  local path=''
-  while IFS= read -r -d '' path; do
-    if [[ "$binary" -eq 0 ]] && ! file::_require-no-nul "$path"; then continue; fi
-    perl -e 'my($p,$e)=@ARGV; open my $f,"<",$p or exit 2; local $/; my $s=<$f>; my $r=eval{qr/$e/}; exit 2 if $@; exit($s =~ $r ? 0 : 1)' -- "$path" "$expression" 2>/dev/null && printf '%s\n' "$path"
-  done < <(find "$directory" -type f -print0)
+  [[ "$#" -ge 1 && "$#" -le 4 && -n "$1" ]] || return 64
+  local expression="$1" directory="${2:-.}" processes="${3:-}" binary="${4:-skip}" output='' status=0
+  local binary_option=''
+  [[ -d "${directory}" ]] || return 66
+  case "${binary}" in
+    skip) binary_option='-I' ;;
+    include) binary_option='-a' ;;
+    *) return 64 ;;
+  esac
+  command::require grep || return "$?"
+  command::require xargs || return "$?"
+  if [[ -z "${processes}" ]]; then
+    processes="$(getconf _NPROCESSORS_ONLN 2>/dev/null)" || processes=1
+  fi
+  [[ "${processes}" =~ ^[1-9][0-9]*$ ]] || return 64
+  grep -E -e "${expression}" </dev/null >/dev/null 2>&1 || status="$?"
+  [[ "${status}" -ne 2 ]] || return 64
+  output="$(mktemp "${TMPDIR:-/tmp}/bashstock-find.XXXXXX")" || return 74
+  status=0
+  find "${directory}" -type f -print0 |
+    xargs -0 -P "${processes}" -n 64 grep -E -l --null "${binary_option}" -e "${expression}" -- >"${output}" 2>/dev/null ||
+    status="$?"
+  # xargs reports 123 when a grep found nothing in its batch or could not read a file.
+  case "${status}" in
+    0 | 123) ;;
+    127) rm -f -- "${output}"; return 69 ;;
+    *) rm -f -- "${output}"; return 74 ;;
+  esac
+  if [[ ! -s "${output}" ]]; then
+    rm -f -- "${output}"
+    return 1
+  fi
+  cat -- "${output}"
+  rm -f -- "${output}"
 }
 
-### Print the newest regular file whose name matches an expression.
+### Write the most recently modified regular file whose base name matches a Bash ERE.
+###
+### Files modified at the same second are ordered by their path bytes, and the
+### first one is written.
+###
+### Arguments
+###
+### * EXPRESSION - Extended regular expression matched against base names.
+### * DIRECTORY - Directory to search recursively. Defaults to the current directory.
 file::latest-by-name() {
-  if [[ "$#" -lt 1 || "$#" -gt 2 ]]; then return 64; fi
-  local expression="$1" directory="${2:-.}" path='' newest='' newest_time=0 current_time=''
-  [[ -d "$directory" ]] || return 66
+  [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64
+  local expression="$1" directory="${2:-.}" path='' newest='' newest_time=0 current_time='' LC_ALL=C
+  [[ -d "${directory}" ]] || return 66
   while IFS= read -r -d '' path; do
-    [[ "$(basename -- "$path")" =~ $expression ]] || continue
-    current_time="$(file::modified-time-unix-seconds "$path" 2>/dev/null)" || continue
-    if [[ -z "$newest" || "$current_time" -gt "$newest_time" ]]; then newest="$path"; newest_time="$current_time"; fi
-  done < <(find "$directory" -type f -print0)
-  [[ -n "$newest" ]] || return 1; printf '%s\n' "$newest"
+    [[ "${path##*/}" =~ ${expression} ]] || continue
+    current_time="$(file::modified-time-unix-seconds "${path}" 2>/dev/null)" || continue
+    if [[ -z "${newest}" ]] || ((current_time > newest_time)) ||
+      { ((current_time == newest_time)) && [[ "${path}" < "${newest}" ]]; }; then
+      newest="${path}"
+      newest_time="${current_time}"
+    fi
+  done < <(find "${directory}" -type f -print0)
+  [[ -n "${newest}" ]] || return 1
+  printf '%s\n' "${newest}"
 }
 
-### Create a symbolic link after validating both paths.
+### Create or replace a symbolic link that points to the absolute path of an existing SOURCE.
+###
+### An existing symbolic link at LINK is replaced; a file or directory there is
+### kept and returns 73. Administrator execution is used only when the parent
+### directory of LINK is not writable.
+###
+### Arguments
+###
+### * SOURCE - Existing path the link points to.
+### * LINK - Path of the link.
 symlink::create() {
-  if [[ "$#" -ne 2 || -z "$1" || -z "$2" || -e "$2" || -L "$2" ]]; then return 64; fi
-  command -v ln >/dev/null 2>&1 || return 69
-  ln -s -- "$1" "$2" || return 74
+  [[ "$#" -eq 2 && -n "$1" && -n "$2" ]] || return 64
+  local source="$1" link="${2%/}" parent=''
+  [[ -e "${source}" || -L "${source}" ]] || return 66
+  [[ "${source}" == /* ]] || source="${PWD}/${source}"
+  source="$(path::normalize "${source}")" || return "$?"
+  if [[ -e "${link}" && ! -L "${link}" ]]; then
+    console::_write-error "${link} exists and is not a symbolic link."
+    return 73
+  fi
+  parent="$(path::directory-name "${link}")" || return "$?"
+  [[ -d "${parent}" ]] || return 66
+  if [[ -w "${parent}" ]]; then
+    ln -sfn -- "${source}" "${link}" || return 74
+  else
+    command::run-as-root ln -sfn -- "${source}" "${link}" || return 74
+  fi
 }
 
-### Remove one symbolic link.
+### Remove a symbolic link, using administrator execution only when its directory is not writable.
 symlink::remove() {
-  if [[ "$#" -ne 1 || ! -L "$1" ]]; then return 64; fi
-  command -v rm >/dev/null 2>&1 || return 69
-  rm -f -- "$1" || return 74
+  [[ "$#" -eq 1 && -L "${1%/}" ]] || return 64
+  local link="${1%/}" parent=''
+  parent="$(path::directory-name "${link}")" || return "$?"
+  if [[ -w "${parent}" ]]; then
+    rm -f -- "${link}" || return 74
+  else
+    command::run-as-root rm -f -- "${link}" || return 74
+  fi
 }
 
 ### Write the first default-route interface.
@@ -218,8 +301,36 @@ system::enable-sleep() { [[ "$#" -eq 0 ]] || return 64; case "$(system::operatin
 ### Disable system sleep.
 system::disable-sleep() { [[ "$#" -eq 0 ]] || return 64; case "$(system::operating-system)" in darwin) sudo pmset -a sleep 0 ;; linux) command -v systemctl >/dev/null 2>&1 || return 69; sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target ;; *) return 69 ;; esac; }
 
-### Write a POSIX TZ string for an offset in seconds.
-time::posix-timezone() { [[ "$#" -eq 1 && "$1" =~ ^-?[0-9]+$ ]] || return 64; local offset="$1" sign='+' abs='' hours='' minutes=''; if ((offset < 0)); then sign='-'; abs=$((-offset)); else abs="$offset"; fi; hours=$((abs/3600)); minutes=$(((abs%3600)/60)); printf 'UTC%s%d:%02d\n' "$sign" "$hours" "$minutes"; }
+### Write the POSIX TZ string for a UTC offset.
+###
+### POSIX TZ offsets have the opposite sign of ISO 8601 offsets, so +09:30
+### becomes UTC-9:30 and -05:00 becomes UTC+5.
+###
+### Arguments
+###
+### * OFFSET - Z or an offset in the form +HH:MM or -HH:MM, with HH up to 23
+###   and MM up to 59.
+time::posix-timezone() {
+  [[ "$#" -eq 1 ]] || return 64
+  local sign='' hours=0 minutes=0 text=''
+  if [[ "$1" == Z ]]; then
+    printf 'UTC0\n'
+    return 0
+  fi
+  [[ "$1" =~ ^([+-])([0-9]{2}):([0-9]{2})$ ]] || return 64
+  sign="${BASH_REMATCH[1]}"
+  hours=$((10#${BASH_REMATCH[2]}))
+  minutes=$((10#${BASH_REMATCH[3]}))
+  ((hours <= 23 && minutes <= 59)) || return 64
+  if ((hours == 0 && minutes == 0)); then
+    printf 'UTC0\n'
+    return 0
+  fi
+  if [[ "${sign}" == + ]]; then sign='-'; else sign='+'; fi
+  text="UTC${sign}${hours}"
+  ((minutes == 0)) || text+="$(printf ':%02d' "${minutes}")"
+  printf '%s\n' "${text}"
+}
 
 ### Merge every entry of SOURCE into DESTINATION by moving it, then remove SOURCE.
 ###
@@ -251,14 +362,61 @@ directory::merge() {
   rmdir -- "${source}" || return 74
 }
 
-### Create a directory named with the current date and time.
-directory::create-with-date-time() { if [[ "$#" -gt 1 ]]; then return 64; fi; local dir="${1:-.}" name=''; [[ -d "$dir" ]] || return 66; name="$(time::local-date-time-seconds-basic)" || return "$?"; mkdir -- "$dir/$name" || return 74; printf '%s\n' "$dir/$name"; }
+### Create a directory named with the local date and time and write its path.
+###
+### The name has the form YYYYMMDDTHHMMSS. When that name exists, a suffix
+### counting from -2 is added.
+###
+### Arguments
+###
+### * DIRECTORY - Parent directory. Defaults to the current directory.
+directory::create-with-date-time() {
+  [[ "$#" -le 1 ]] || return 64
+  local directory="${1:-.}" name='' path='' index=2
+  [[ -d "${directory}" ]] || return 66
+  name="$(time::local-date-time-seconds-basic)" || return "$?"
+  path="${directory%/}/${name}"
+  until mkdir -- "${path}" 2>/dev/null; do
+    [[ -e "${path}" || -L "${path}" ]] || return 74
+    path="${directory%/}/${name}-${index}"
+    index=$((index + 1))
+  done
+  printf '%s\n' "${path}"
+}
 
-### Remove directory contents while preserving the directory itself.
-directory::clear() { if [[ "$#" -gt 1 || ! -d "${1:-.}" ]]; then return 64; fi; local dir="${1:-.}" entry=''; for entry in "$dir"/* "$dir"/.[!.]* "$dir"/..?*; do [[ -e "$entry" || -L "$entry" ]] || continue; rm -rf -- "$entry" || return 74; done; }
+### Remove every entry of a directory, including hidden ones, and keep the directory.
+###
+### An empty name, the file system root, the home directory, and a symbolic
+### link are refused, because a link would empty the directory it points to.
+###
+### Arguments
+###
+### * DIRECTORY - Directory to empty. Defaults to the current directory.
+directory::clear() {
+  [[ "$#" -le 1 ]] || return 64
+  local directory="${1-.}" physical='' home=''
+  [[ -n "${directory}" && -d "${directory}" && ! -L "${directory%/}" ]] || return 64
+  physical="$(cd -P -- "${directory}" && pwd -P)" || return 66
+  home="$(cd -P -- "${HOME:-/}" 2>/dev/null && pwd -P)" || home=''
+  if [[ "${physical}" == / || "${physical}" == "${home}" ]]; then
+    console::_write-error "Refusing to clear ${physical}."
+    return 64
+  fi
+  find "${physical}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + || return 74
+}
 
-### Write the configured POSIX timezone continuously with the current time.
-time::status-continuous() { [[ "$#" -eq 0 ]] || return 64; while :; do time::local-date-time-seconds-extended || return "$?"; sleep 1 || return 74; done; }
+### Write the elapsed time since boot and the local time every three seconds until stopped.
+time::status-continuous() {
+  [[ "$#" -eq 0 ]] || return 64
+  local milliseconds='' now=''
+  while :; do
+    milliseconds="$(time::boot-time-milliseconds)" || return "$?"
+    now="$(time::local-date-time-seconds-extended)" || return "$?"
+    printf 'Seconds since boot: %d.%03d\nLocal date and time: %s\n' \
+      "$((milliseconds / 1000))" "$((milliseconds % 1000))" "${now}"
+    sleep 3 || return 74
+  done
+}
 
 ### Open an editor for a file, using sudoedit only when required.
 file::edit() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; if [[ -e "$1" && ! -f "$1" ]]; then return 66; fi; if [[ -w "$1" || (! -e "$1" && -w "$(path::directory-name "$1")") ]]; then "${EDITOR:-vi}" "$1"; else command -v sudoedit >/dev/null 2>&1 || return 69; sudoedit "$1"; fi; }
@@ -298,8 +456,65 @@ archive::_find() { [[ "$#" -le 1 ]] || return 64; find "${1:-.}" -type f \( -nam
 ### Verify and remove one archive file when it is invalid.
 archive::_remove-broken-file() { [[ "$#" -eq 1 && -f "$1" ]] || return 64; archive::verify "$1" >/dev/null 2>&1 || { rm -f -- "$1"; return 1; }; }
 
-### Extract one archive into a destination directory.
-archive::extract-file() { [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64; local file="$1" dest="${2:-${1%.tar.gz}}" entry=''; mkdir -p -- "$dest" || return 74; case "$file" in *.tar.gz|*.tgz) while IFS= read -r entry; do [[ "$entry" != /* && "$entry" != ../* && "$entry" != */../* ]] || return 65; done < <(tar -tzf "$file" 2>/dev/null) || return 65; tar -xzf "$file" -C "$dest" ;; *.zip) command -v unzip >/dev/null 2>&1 || return 69; while IFS= read -r entry; do [[ "$entry" != /* && "$entry" != ../* && "$entry" != */../* ]] || return 65; done < <(unzip -Z1 "$file" 2>/dev/null) || return 65; unzip -o "$file" -d "$dest" ;; *) return 64 ;; esac; }
+### Extract one tar.gz, tgz, or zip archive.
+###
+### Entry names that are absolute or climb with .. are refused before
+### extraction. The archive is extracted into a staging directory inside the
+### destination, and a symbolic link that points outside the destination
+### discards the extraction with 65. Existing files are overwritten.
+###
+### Arguments
+###
+### * PATH - Archive file.
+### * DESTINATION - Output directory. Defaults to PATH without its archive extension.
+archive::extract-file() {
+  [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64
+  local file="$1" destination="${2:-}" listing='' entry='' staging='' link='' target='' resolved='' status=0
+  case "${file}" in
+    *.tar.gz) destination="${destination:-${file%.tar.gz}}" ;;
+    *.tgz) destination="${destination:-${file%.tgz}}" ;;
+    *.zip) destination="${destination:-${file%.zip}}" ;;
+    *) return 64 ;;
+  esac
+  case "${file}" in
+    *.zip)
+      command::require unzip || return "$?"
+      listing="$(unzip -Z1 "${file}" 2>/dev/null)" || return 65
+      ;;
+    *)
+      command::require tar || return "$?"
+      listing="$(tar -tzf "${file}" 2>/dev/null)" || return 65
+      ;;
+  esac
+  while IFS= read -r entry; do
+    if [[ "${entry}" == /* || "${entry}" == .. || "${entry}" == ../* || "${entry}" == */../* || "${entry}" == */.. ]]; then
+      console::_write-error "Refusing archive entry outside the destination: ${entry}"
+      return 65
+    fi
+  done <<<"${listing}"
+  mkdir -p -- "${destination}" || return 74
+  staging="$(mktemp -d "${destination%/}/.bashstock-extract.XXXXXX")" || return 74
+  case "${file}" in
+    *.zip) unzip -oq "${file}" -d "${staging}" || status=65 ;;
+    *) tar -xzf "${file}" -C "${staging}" || status=65 ;;
+  esac
+  if [[ "${status}" -eq 0 ]]; then
+    while IFS= read -r -d '' link; do
+      target="$(readlink -- "${link}")" || { status=74; break; }
+      resolved="$(path::normalize "$(path::directory-name "${link#"${staging}"/}")/${target}")" || { status=74; break; }
+      if [[ "${target}" == /* || "${resolved}" == .. || "${resolved}" == ../* ]]; then
+        console::_write-error "Refusing symbolic link outside the destination: ${link#"${staging}"/} -> ${target}"
+        status=65
+        break
+      fi
+    done < <(find "${staging}" -type l -print0)
+  fi
+  if [[ "${status}" -ne 0 ]]; then
+    rm -rf -- "${staging}"
+    return "${status}"
+  fi
+  directory::merge "${staging}" "${destination}"
+}
 
 ### Compress paths into a gzip-compressed tar archive.
 archive::compress-tar-gzip() { [[ "$#" -ge 1 ]] || return 64; local output='' paths=() path=''; while [[ "$#" -gt 0 ]]; do if [[ "$1" == '-Output' ]]; then [[ "$#" -ge 2 ]] || return 64; output="$2"; shift 2; else paths+=("$1"); shift; fi; done; [[ "${#paths[@]}" -gt 0 ]] || return 64; [[ -n "$output" ]] || output="${paths[0]}.tar.gz"; command -v tar >/dev/null 2>&1 || return 69; tar -czf "$output" "${paths[@]}"; }
@@ -932,14 +1147,73 @@ swap::create() { [[ "$#" -ge 1 && "$#" -le 2 && "$1" =~ ^[1-9][0-9]*$ ]] || retu
 ### List active swap devices.
 swap::list() { [[ "$#" -eq 0 ]] || return 64; command -v swapon >/dev/null 2>&1 || return 69; swapon --show; }
 
-### Find paths whose basename matches an expression.
-path::find() { [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64; local expression="$1" directory="${2:-.}"; [[ -d "$directory" ]] || return 66; find "$directory" -name "$expression" -print; }
+### Write the paths below a directory that match a case-insensitive Bash ERE, separated by NUL.
+###
+### Arguments
+###
+### * EXPRESSION - Extended regular expression evaluated by Bash on each path.
+### * DIRECTORY - Directory to search. Defaults to the current directory.
+###
+### Exit status
+###
+### 1 when no path matches; 64 when EXPRESSION is not a valid expression.
+path::find() {
+  [[ "$#" -ge 1 && "$#" -le 2 && -n "$1" ]] || return 64
+  local expression="$1" directory="${2:-.}" path='' found=1 status=0
+  [[ -d "${directory}" ]] || return 66
+  # [[ =~ ]] returns 2 for an invalid expression.
+  # shellcheck disable=SC2319
+  [[ '' =~ ${expression} ]] || status="$?"
+  [[ "${status}" -ne 2 ]] || return 64
+  (
+    shopt -s nocasematch
+    while IFS= read -r -d '' path; do
+      if [[ "${path}" =~ ${expression} ]]; then
+        printf '%s\0' "${path}"
+        found=0
+      fi
+    done < <(find "${directory}" -print0)
+    exit "${found}"
+  )
+}
 
-### Print a directory tree with the contents of text files.
-file::tree-with-contents() { [[ "$#" -le 3 ]] || return 64; local path="${1:-.}" min="${2:-0}" max="${3:-}" file=''; local tree_args=("$path"); [[ -e "$path" && "$min" =~ ^[0-9]+$ ]] || return 64; tree_args+=(-mindepth "$min"); [[ -z "$max" || "$max" =~ ^[0-9]+$ ]] || return 64; [[ -z "$max" ]] || tree_args+=(-maxdepth "$max"); find "${tree_args[@]}" -print; while IFS= read -r -d '' file; do file::_require-no-nul "$file" 2>/dev/null || continue; printf '\n--- %s ---\n' "$file"; cat -- "$file"; done < <(find "$path" -type f -print0); }
+### Write the directories and text files below a path, with the contents of each text file.
+###
+### Directories are written as paths. Regular files whose MIME type is text/*
+### are written by file::_print-text; other files are skipped.
+###
+### Arguments
+###
+### * PATH - Starting path. Defaults to the current directory.
+### * MIN_DEPTH - Minimum depth below PATH. Defaults to 1.
+### * MAX_DEPTH - Maximum depth below PATH. Unlimited when omitted.
+file::tree-with-contents() {
+  [[ "$#" -le 3 ]] || return 64
+  local path="${1:-.}" minimum="${2:-1}" maximum="${3:-}" entry=''
+  [[ -e "${path}" ]] || return 66
+  [[ "${minimum}" =~ ^[0-9]+$ && ( -z "${maximum}" || "${maximum}" =~ ^[0-9]+$ ) ]] || return 64
+  command::require file || return "$?"
+  local arguments=("${path}" -mindepth "${minimum}")
+  [[ -z "${maximum}" ]] || arguments+=(-maxdepth "${maximum}")
+  while IFS= read -r -d '' entry; do
+    if [[ -d "${entry}" && ! -L "${entry}" ]]; then
+      printf '%s\n' "${entry}"
+    elif [[ -f "${entry}" && ! -L "${entry}" ]]; then
+      file::_print-text "${entry}" || return "$?"
+    fi
+  done < <(find "${arguments[@]}" -print0)
+}
 
-### Print a text file without changing its contents.
-file::_print-text() { [[ "$#" -eq 1 ]] || return 64; file::_require-existing "$1" || return "$?"; cat -- "$1"; }
+### Write a text file between header lines; files of other MIME types write nothing.
+file::_print-text() {
+  [[ "$#" -eq 1 && -f "$1" ]] || return 64
+  local type=''
+  type="$(file --brief --mime-type -- "$1")" || return 74
+  [[ "${type}" == text/* ]] || return 0
+  printf '==> %s <==\n' "$1"
+  cat -- "$1" || return 74
+  [[ -z "$(tail -c 1 -- "$1")" ]] || printf '\n'
+}
 
 # shellcheck disable=SC2329
 ### Test whether a TCP endpoint accepts a connection.
@@ -1601,8 +1875,18 @@ sudo::passwordless::disable() {
   command::run-as-root rm -f -- "${file}" || return 74
 }
 
-### Execute the storage::clear-trash utility.
-storage::clear-trash() { [[ "$#" -eq 0 ]] || return 64; local trash="$HOME/.local/share/Trash"; [[ "$(system::operating-system)" == darwin ]] && trash="$HOME/.Trash"; directory::clear "$trash"; }
+### Empty the Linux desktop trash of the current user through administrator execution.
+###
+### The entries directly under Trash/files and Trash/info are removed.
+storage::clear-trash() {
+  [[ "$#" -eq 0 ]] || return 64
+  [[ "$(system::operating-system)" == linux ]] || return 69
+  local trash="${XDG_DATA_HOME:-${HOME}/.local/share}/Trash" part=''
+  for part in files info; do
+    [[ -d "${trash}/${part}" ]] || continue
+    command::run-as-root find "${trash}/${part}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + || return 74
+  done
+}
 
 ### Execute the usb::partition::select utility.
 usb::partition::select() { [[ "$#" -eq 1 ]] || return 64; util::_run-command fdisk -l "$1"; }
