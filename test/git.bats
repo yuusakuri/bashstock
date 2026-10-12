@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
 load test_helper
+bats_require_minimum_version 1.5.0
 
 git_test::create-repository() {
   local directory="$1"
@@ -177,4 +178,123 @@ git_test::edit-via-rebase-in-directory() {
   [ "$(git -C "${repository}" rev-parse "${root}^{commit}")" = "${root}" ]
   [ "$(git -C "${repository}" rev-parse "${main}^{commit}")" = "${main}" ]
   [ ! -d "${repository}/.git/rebase-merge" ]
+}
+
+### Create a bare remote with one commit on main and a clone that tracks it.
+git_test::create-remote-and-clone() {
+  local remote="$1" clone="$2" seed="${BATS_TEST_TMPDIR}/seed"
+  # Settings of the machine, such as commit signing, must not change the results.
+  export GIT_CONFIG_GLOBAL="${BATS_TEST_TMPDIR}/gitconfig"
+  : >"${GIT_CONFIG_GLOBAL}"
+  git init --quiet --bare "${remote}"
+  git_test::create-repository "${seed}"
+  git -C "${seed}" checkout --quiet -b main
+  git_test::commit "${seed}" first first >/dev/null
+  git -C "${seed}" push --quiet "${remote}" main
+  git -C "${remote}" symbolic-ref HEAD refs/heads/main
+  git clone --quiet "${remote}" "${clone}"
+  git -C "${clone}" config user.name 'BashStock Test'
+  git -C "${clone}" config user.email 'bashstock@example.invalid'
+}
+
+@test "stash push keeps untracked files and the message" {
+  local repository="${BATS_TEST_TMPDIR}/repository"
+  git_test::create-repository "${repository}"
+  git_test::commit "${repository}" first first >/dev/null
+  printf 'changed\n' >"${repository}/value"
+  printf 'new\n' >"${repository}/untracked"
+  run git::stash::push 'work in progress' "${repository}"
+  [ "${status}" -eq 0 ]
+  [ ! -e "${repository}/untracked" ]
+  [ -z "$(git -C "${repository}" status --porcelain)" ]
+  [[ "$(git -C "${repository}" stash list)" == *'work in progress'* ]]
+  git -C "${repository}" stash pop --quiet
+  [ "$(<"${repository}/untracked")" = new ]
+}
+
+@test "commit patches and cherry-picks fetch a missing commit and verify it" {
+  local remote="${BATS_TEST_TMPDIR}/remote.git" clone="${BATS_TEST_TMPDIR}/clone" other="${BATS_TEST_TMPDIR}/other" root='' second=''
+  git_test::create-remote-and-clone "${remote}" "${clone}"
+  git clone --quiet "${remote}" "${other}"
+  git -C "${other}" config user.name 'BashStock Test'
+  git -C "${other}" config user.email 'bashstock@example.invalid'
+  git -C "${other}" checkout --quiet -b topic
+  second="$(git_test::commit "${other}" second second)"
+  git -C "${other}" push --quiet origin topic
+  root="$(git -C "${clone}" rev-list --max-parents=0 HEAD)"
+
+  run git::commit::patch "${root}" origin "${clone}"
+  [ "${status}" -eq 0 ]
+  [[ "${output}" == *'+first'* ]]
+  run git::commit::patch "${second}" origin "${clone}"
+  [ "${status}" -eq 0 ]
+  [[ "${output}" == *'-first'*'+second'* ]]
+  run git::cherry-pick "${second}" origin "${clone}"
+  [ "${status}" -eq 0 ]
+  [ "$(<"${clone}/value")" = second ]
+  run --separate-stderr git::cherry-pick 0123456789abcdef0123456789abcdef01234567 origin "${clone}"
+  [ "${status}" -ne 0 ]
+}
+
+@test "pull, reset, delete, and Gerrit pushes default to the current branch and origin" {
+  local remote="${BATS_TEST_TMPDIR}/remote.git" clone="${BATS_TEST_TMPDIR}/clone" other="${BATS_TEST_TMPDIR}/other"
+  git_test::create-remote-and-clone "${remote}" "${clone}"
+  git clone --quiet "${remote}" "${other}"
+  git -C "${other}" config user.name 'BashStock Test'
+  git -C "${other}" config user.email 'bashstock@example.invalid'
+  git_test::commit "${other}" remote remote >/dev/null
+  git -C "${other}" push --quiet origin main
+
+  printf 'local\n' >"${clone}/local"
+  git -C "${clone}" add local
+  git -C "${clone}" commit --quiet -m local
+  run git::pull-rebase '' '' "${clone}"
+  [ "${status}" -eq 0 ]
+  [ "$(git -C "${clone}" log --format=%s -n 3 | tr '\n' ' ')" = 'local remote first ' ]
+
+  printf 'dirty\n' >"${clone}/value"
+  run git::reset-remote '' "${clone}"
+  [ "${status}" -eq 0 ]
+  [ "$(git -C "${clone}" rev-parse HEAD)" = "$(git -C "${remote}" rev-parse main)" ]
+
+  git -C "${clone}" checkout --quiet -b topic
+  git -C "${clone}" push --quiet origin topic
+  run git::remote::delete-branch '' '' "${clone}"
+  [ "${status}" -eq 0 ]
+  ! git -C "${remote}" rev-parse --verify --quiet refs/heads/topic
+
+  git -C "${clone}" checkout --quiet main
+  run gerrit::push-review '' '' "${clone}"
+  [ "${status}" -eq 0 ]
+  git -C "${remote}" rev-parse --verify --quiet refs/for/main
+  git_test::commit "${clone}" wip wip >/dev/null
+  run gerrit::push-review-wip stable '' "${clone}"
+  [ "${status}" -eq 0 ]
+  git -C "${remote}" rev-parse --verify --quiet 'refs/for/stable%wip'
+}
+
+@test "base branch rebase and unshallow fetch use every remote by default" {
+  local upstream="${BATS_TEST_TMPDIR}/upstream.git" clone="${BATS_TEST_TMPDIR}/clone" other="${BATS_TEST_TMPDIR}/other" shallow="${BATS_TEST_TMPDIR}/shallow"
+  git_test::create-remote-and-clone "${upstream}" "${clone}"
+  git -C "${clone}" remote rename origin upstream
+  git clone --quiet "${upstream}" "${other}"
+  git -C "${other}" config user.name 'BashStock Test'
+  git -C "${other}" config user.email 'bashstock@example.invalid'
+  git_test::commit "${other}" second second >/dev/null
+  git_test::commit "${other}" third third >/dev/null
+  git -C "${other}" push --quiet origin main
+  git -C "${clone}" checkout --quiet -b feature
+  run git::rebase-base-branch '' '' "${clone}"
+  [ "${status}" -eq 0 ]
+  [ "$(git -C "${clone}" branch --show-current)" = main ]
+  [ "$(git -C "${clone}" rev-parse HEAD)" = "$(git -C "${upstream}" rev-parse main)" ]
+
+  git clone --quiet --depth 1 "file://${upstream}" "${shallow}"
+  [ "$(git -C "${shallow}" rev-parse --is-shallow-repository)" = true ]
+  git -C "${shallow}" remote add mirror "file://${upstream}"
+  run git::fetch-unshallow '' "${shallow}"
+  [ "${status}" -eq 0 ]
+  [ "$(git -C "${shallow}" rev-parse --is-shallow-repository)" = false ]
+  [ "$(git -C "${shallow}" rev-list --count HEAD)" -eq 3 ]
+  git -C "${shallow}" rev-parse --verify --quiet refs/remotes/mirror/main
 }

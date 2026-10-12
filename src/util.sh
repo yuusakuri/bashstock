@@ -355,8 +355,43 @@ git::diff::latest-patch() { [[ "$#" -le 1 ]] || return 64; git::_run-in-director
 ### Show file names changed by the latest commit.
 git::diff::latest-files() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" show --format= --name-only HEAD; }
 
-### Show the unified patch introduced by a commit.
-git::commit::patch() { [[ "$#" -ge 1 && "$#" -le 3 ]] || return 64; local revision="$1" remote="${2:-origin}" directory="${3:-.}"; git::_run-in-directory "$directory" cat-file -e "${revision}^{commit}" 2>/dev/null || git::_run-in-directory "$directory" fetch "$remote" "$revision" || return 69; local parent='' empty_tree=''; parent="$(git::_run-in-directory "$directory" rev-list --parents -n 1 "$revision" | awk '{print $2}')"; if [[ -n "$parent" ]]; then git::_run-in-directory "$directory" diff "$parent" "$revision"; else empty_tree="$(git::_run-in-directory "$directory" mktree </dev/null)" || return 75; git::_run-in-directory "$directory" diff "$empty_tree" "$revision"; fi; }
+### Write the unified diff that one commit introduced.
+###
+### The commit is fetched from REMOTE only when the repository lacks it, and it
+### is compared with its first parent, or with the empty tree for a root commit.
+###
+### Arguments
+###
+### * REVISION - Commit to show.
+### * REMOTE - Remote to fetch a missing commit from. Defaults to origin.
+### * DIRECTORY - Repository directory. Defaults to the current directory.
+git::commit::patch() {
+  [[ "$#" -ge 1 && "$#" -le 3 && -n "$1" ]] || return 64
+  local revision="$1" remote="${2:-origin}" directory="${3:-.}" parent='' empty_tree=''
+  git::_require-commit "${revision}" "${remote}" "${directory}" || return "$?"
+  parent="$(git::_run-in-directory "${directory}" rev-parse --verify --quiet "${revision}^1")" || parent=''
+  if [[ -z "${parent}" ]]; then
+    empty_tree="$(git::_run-in-directory "${directory}" hash-object -t tree /dev/null)" || return 74
+    parent="${empty_tree}"
+  fi
+  git::_run-in-directory "${directory}" diff "${parent}" "${revision}"
+}
+
+### Make a commit available locally, fetching it from a remote only when it is missing.
+###
+### Exit status
+###
+### 1 when the remote does not provide the commit either.
+git::_require-commit() {
+  [[ "$#" -eq 3 ]] || return 64
+  local revision="$1" remote="$2" directory="$3"
+  git::_run-in-directory "${directory}" cat-file -e "${revision}^{commit}" 2>/dev/null && return 0
+  git::_run-in-directory "${directory}" fetch "${remote}" "${revision}" || return 69
+  if ! git::_run-in-directory "${directory}" cat-file -e "${revision}^{commit}" 2>/dev/null; then
+    console::_write-error "Commit ${revision} is not available from ${remote}."
+    return 1
+  fi
+}
 
 ### Revert a commit without creating a commit.
 git::commit::revert-without-commit() { [[ "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:-.}" revert --no-commit "${1:-HEAD}"; }
@@ -367,14 +402,47 @@ git::commit::revert() { [[ "$#" -le 2 ]] || return 64; git::_run-in-directory "$
 ### Fetch one remote or all remotes.
 git::fetch() { [[ "$#" -le 2 ]] || return 64; local remote="${1:-}" directory="${2:-.}"; if [[ -n "$remote" ]]; then git::_run-in-directory "$directory" fetch "$remote"; else git::_run-in-directory "$directory" fetch --all; fi; }
 
-### Convert a shallow clone to a complete clone.
-git::fetch-unshallow() { [[ "$#" -le 2 ]] || return 64; local remote="${1:-origin}" directory="${2:-.}"; git::_run-in-directory "$directory" fetch "$remote" --unshallow; }
+### Convert a shallow clone into a complete history.
+###
+### Arguments
+###
+### * REMOTE - Remote to fetch. Defaults to every remote.
+### * DIRECTORY - Repository directory. Defaults to the current directory.
+git::fetch-unshallow() {
+  [[ "$#" -le 2 ]] || return 64
+  local directory="${2:-.}" remote='' remotes=''
+  if [[ -n "${1:-}" ]]; then
+    remotes="$1"
+  else
+    remotes="$(git::_run-in-directory "${directory}" remote)" || return "$?"
+    [[ -n "${remotes}" ]] || return 66
+  fi
+  while IFS= read -r remote; do
+    # Only the first fetch can unshallow; later remotes complete normally.
+    if [[ "$(git::_run-in-directory "${directory}" rev-parse --is-shallow-repository)" == true ]]; then
+      git::_run-in-directory "${directory}" fetch --unshallow "${remote}" || return "$?"
+    else
+      git::_run-in-directory "${directory}" fetch "${remote}" || return "$?"
+    fi
+  done <<<"${remotes}"
+}
 
 ### Show a stash patch.
 git::stash::patch() { [[ "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:-.}" stash show --patch "${1:-stash@{0}}"; }
 
-### Stash working-tree changes with an optional message.
-git::stash::push() { [[ "$#" -le 2 ]] || return 64; local directory="${2:-.}"; if [[ -n "${1:-}" ]]; then git::_run-in-directory "$directory" stash push -m "$1"; else git::_run-in-directory "$directory" stash push; fi; }
+### Save tracked changes and untracked files in a new stash.
+###
+### Arguments
+###
+### * MESSAGE - Optional stash message.
+### * DIRECTORY - Repository directory. Defaults to the current directory.
+git::stash::push() {
+  [[ "$#" -le 2 ]] || return 64
+  local directory="${2:-.}"
+  local arguments=(stash push --include-untracked)
+  [[ -z "${1:-}" ]] || arguments+=(-m "$1")
+  git::_run-in-directory "${directory}" "${arguments[@]}"
+}
 
 ### Apply and remove a stash.
 git::stash::pop() { [[ "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:-.}" stash pop "${1:-stash@{0}}"; }
@@ -385,11 +453,33 @@ git::stash::drop() { [[ "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:
 ### Reset a working tree to a revision.
 git::reset() { [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:-.}" reset --hard "$1"; }
 
-### Pull a branch using rebase.
-git::pull-rebase() { [[ "$#" -le 3 ]] || return 64; local branch="${1:-}" remote="${2:-}" directory="${3:-.}" args=(pull --rebase); [[ -n "$remote" ]] && args+=("$remote"); [[ -n "$branch" ]] && args+=("$branch"); git::_run-in-directory "$directory" "${args[@]}"; }
+### Update a branch from a remote with rebase.
+###
+### Arguments
+###
+### * BRANCH - Remote branch to pull. Defaults to the current branch.
+### * REMOTE - Remote name. Defaults to origin.
+### * DIRECTORY - Repository directory. Defaults to the current directory.
+git::pull-rebase() {
+  [[ "$#" -le 3 ]] || return 64
+  local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
+  [[ -n "${branch}" ]] || branch="$(git::branch::current "${directory}")" || return "$?"
+  git::_run-in-directory "${directory}" pull --rebase "${remote}" "${branch}"
+}
 
-### Cherry-pick a revision, fetching it when necessary.
-git::cherry-pick() { [[ "$#" -ge 1 && "$#" -le 3 ]] || return 64; local revision="$1" remote="${2:-origin}" directory="${3:-.}"; git::_run-in-directory "$directory" cat-file -e "${revision}^{commit}" 2>/dev/null || git::_run-in-directory "$directory" fetch "$remote" "$revision" || return 69; git::_run-in-directory "$directory" cherry-pick "$revision"; }
+### Apply one commit, fetching it from a remote only when the repository lacks it.
+###
+### Arguments
+###
+### * REVISION - Commit to apply.
+### * REMOTE - Remote to fetch a missing commit from. Defaults to origin.
+### * DIRECTORY - Repository directory. Defaults to the current directory.
+git::cherry-pick() {
+  [[ "$#" -ge 1 && "$#" -le 3 && -n "$1" ]] || return 64
+  local revision="$1" remote="${2:-origin}" directory="${3:-.}"
+  git::_require-commit "${revision}" "${remote}" "${directory}" || return "$?"
+  git::_run-in-directory "${directory}" cherry-pick "${revision}"
+}
 
 ### Continue an in-progress cherry-pick.
 git::cherry-pick-continue() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" cherry-pick --continue; }
@@ -423,14 +513,47 @@ git::push::force-with-lease() {
   git::_run-in-directory "$directory" push --force-with-lease "$remote" "$branch"
 }
 
-### Push a branch for review.
-gerrit::push-review() { [[ "$#" -le 3 ]] || return 64; git::push "${1:-HEAD:refs/for/main}" "${2:-origin}" "${3:-.}"; }
+### Push the current HEAD to a Gerrit review reference.
+###
+### Arguments
+###
+### * BRANCH - Target branch of the review. Defaults to the current branch.
+### * REMOTE - Remote name. Defaults to origin.
+### * DIRECTORY - Repository directory. Defaults to the current directory.
+gerrit::push-review() {
+  [[ "$#" -le 3 ]] || return 64
+  local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
+  [[ -n "${branch}" ]] || branch="$(git::branch::current "${directory}")" || return "$?"
+  git::_run-in-directory "${directory}" push "${remote}" "HEAD:refs/for/${branch}"
+}
 
-### Push a work-in-progress branch for review.
-gerrit::push-review-wip() { [[ "$#" -le 3 ]] || return 64; local branch="${1:-HEAD:refs/for/main%wip}"; git::push "$branch" "${2:-origin}" "${3:-.}"; }
+### Push the current HEAD to a Gerrit review reference as work in progress.
+###
+### Arguments
+###
+### * BRANCH - Target branch of the review. Defaults to the current branch.
+### * REMOTE - Remote name. Defaults to origin.
+### * DIRECTORY - Repository directory. Defaults to the current directory.
+gerrit::push-review-wip() {
+  [[ "$#" -le 3 ]] || return 64
+  local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
+  [[ -n "${branch}" ]] || branch="$(git::branch::current "${directory}")" || return "$?"
+  git::_run-in-directory "${directory}" push "${remote}" "HEAD:refs/for/${branch}%wip"
+}
 
-### Delete a branch from a remote.
-git::remote::delete-branch() { [[ "$#" -le 3 ]] || return 64; git::_run-in-directory "${3:-.}" push "${2:-origin}" --delete "$1"; }
+### Delete a branch on a remote.
+###
+### Arguments
+###
+### * BRANCH - Branch to delete. Defaults to the current branch.
+### * REMOTE - Remote name. Defaults to origin.
+### * DIRECTORY - Repository directory. Defaults to the current directory.
+git::remote::delete-branch() {
+  [[ "$#" -le 3 ]] || return 64
+  local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
+  [[ -n "${branch}" ]] || branch="$(git::branch::current "${directory}")" || return "$?"
+  git::_run-in-directory "${directory}" push "${remote}" --delete "${branch}"
+}
 
 ### Update all submodules recursively.
 git::submodule::update-all() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" submodule update --init --recursive; }
@@ -444,8 +567,19 @@ git::commit::discard() {
   git::_run-in-directory "$directory" reset --hard HEAD^
 }
 
-### Fetch a remote and reset its remote-tracking branch.
-git::reset-remote() { [[ "$#" -le 2 ]] || return 64; local remote="${1:-origin}" directory="${2:-.}"; git::_run-in-directory "$directory" fetch "$remote"; git::_run-in-directory "$directory" reset --hard "$remote/$(git::branch::current "$directory")"; }
+### Hard reset the current branch to the branch with the same name on a remote.
+###
+### Arguments
+###
+### * REMOTE - Remote name. Defaults to origin.
+### * DIRECTORY - Repository directory. Defaults to the current directory.
+git::reset-remote() {
+  [[ "$#" -le 2 ]] || return 64
+  local remote="${1:-origin}" directory="${2:-.}" branch=''
+  branch="$(git::branch::current "${directory}")" || return "$?"
+  git::_run-in-directory "${directory}" fetch "${remote}" || return "$?"
+  git::_run-in-directory "${directory}" reset --hard "${remote}/${branch}"
+}
 
 ### Pull the configured base branch with fast-forward-only semantics.
 git::pull-base-branch() { [[ "$#" -le 2 ]] || return 64; local base="${1:-main}" directory="${2:-.}" current=''; current="$(git::branch::current "$directory")" || return 65; git::_run-in-directory "$directory" checkout "$base" -- || return "$?"; if ! git::_run-in-directory "$directory" pull --ff-only origin "$base"; then git::_run-in-directory "$directory" checkout "$current" -- >/dev/null 2>&1 || true; return 75; fi; git::_run-in-directory "$directory" checkout "$current" -- || return 75; git::_run-in-directory "$directory" rebase "$base"; }
@@ -640,8 +774,8 @@ ssh::setup-directory() {
     header=''
     IFS= read -r header <"${path}" 2>/dev/null || true
     case "${path##*/}:${header}" in
-      config:* | authorized_keys:* | *:'-----BEGIN '*'PRIVATE KEY-----') chmod 600 -- "${path}" || return 74 ;;
-      *) chmod 644 -- "${path}" || return 74 ;;
+      config:* | authorized_keys:* | *:'-----BEGIN '*'PRIVATE KEY-----') chmod 600 "${path}" || return 74 ;;
+      *) chmod 644 "${path}" || return 74 ;;
     esac
   done < <(find "${directory}" -type f -print0)
 }
@@ -1479,8 +1613,20 @@ usb::filesystem::repair() { [[ "$#" -eq 1 ]] || return 64; util::_run-command fs
 ### Execute the usb::filesystem::format-fat32 utility.
 usb::filesystem::format-fat32() { [[ "$#" -eq 1 ]] || return 64; util::_run-command mkfs.vfat -F 32 "$1"; }
 
-### Execute the git::rebase-base-branch utility.
-git::rebase-base-branch() { [[ "$#" -le 3 ]] || return 64; git::_run-in-directory "${3:-.}" rebase "${2:-origin}" "${1:-main}"; }
+### Fetch a remote base branch, switch to the local branch, and rebase it onto the remote one.
+###
+### Arguments
+###
+### * BRANCH - Base branch. Defaults to main.
+### * REMOTE - Remote name. Defaults to upstream.
+### * DIRECTORY - Repository directory. Defaults to the current directory.
+git::rebase-base-branch() {
+  [[ "$#" -le 3 ]] || return 64
+  local branch="${1:-main}" remote="${2:-upstream}" directory="${3:-.}"
+  git::_run-in-directory "${directory}" fetch "${remote}" || return "$?"
+  git::_run-in-directory "${directory}" checkout "${branch}" -- || return "$?"
+  git::_run-in-directory "${directory}" rebase "${remote}/${branch}"
+}
 
 ### Execute the repo::reset utility.
 repo::reset() { [[ "$#" -le 1 ]] || return 64; (cd "${1:-.}" && util::_run-command repo forall -c 'git reset --hard && git clean -fd'); }
@@ -1496,10 +1642,10 @@ terminal::gnome-bash() { [[ "$#" -ge 0 ]] || return 64; util::_run-command gnome
 ### Arguments
 ###
 ### * EDITOR - Editor command. Defaults to code --wait.
-### * SHELLS - Comma-separated bash and zsh. Defaults to bash,zsh.
+### * SHELLS - Comma-separated bash and zsh. Defaults to bash.
 shell::editor::set-default() {
   [[ "$#" -le 2 ]] || return 64
-  env::set-variable EDITOR "${1:-code --wait}" "${2:-bash,zsh}"
+  env::set-variable EDITOR "${1:-code --wait}" "${2:-bash}"
 }
 
 ### Set a string value for one top-level key in a macOS property list.

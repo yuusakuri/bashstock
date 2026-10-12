@@ -1911,8 +1911,10 @@ qmk::toolbox::install() {
 
 ### Install the QMK CLI with the official installer and diagnose the environment.
 ###
-### The CLI offers `qmk doctor` only after `qmk setup` has prepared the
-### firmware tree, so a fresh installation confirms `qmk --version` instead.
+### `qmk --version` always confirms the installation. The CLI offers
+### `qmk doctor` only after `qmk setup` has prepared the firmware tree, so the
+### diagnosis also runs when that tree exists. Warnings from the diagnosis are
+### reported without failing; errors return its status.
 ###
 ### Arguments
 ###
@@ -1937,11 +1939,11 @@ qmk::cli::install() {
   # The installer puts qmk in $HOME/.local/bin and asks for a new shell otherwise.
   env::add-path "${HOME}/.local/bin" || return "$?"
   command::require qmk || return "$?"
+  qmk --version || return "$?"
   # qmk doctor exists only once `qmk setup` has prepared the firmware tree.
   if qmk doctor --help >/dev/null 2>&1; then
-    qmk doctor
-  else
-    qmk --version
+    # doctor exits 1 when it found only warnings, such as missing udev rules.
+    qmk doctor || [[ "$?" -eq 1 ]]
   fi
 }
 

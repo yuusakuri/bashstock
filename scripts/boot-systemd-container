@@ -27,7 +27,9 @@ REPO
         sed -i 's/^enabled=1/enabled=0/' "$repository"
     done
   fi
-  dnf install -y systemd git curl ca-certificates perl perl-JSON-PP procps-ng sudo passwd
+  dnf install -y systemd git curl ca-certificates perl perl-JSON-PP procps-ng sudo passwd authselect
+  # Container images leave the system-auth PAM stack that sudo includes unconfigured.
+  authselect select local --force || authselect select minimal --force
   init=/usr/lib/systemd/systemd
 else
   apt-get update

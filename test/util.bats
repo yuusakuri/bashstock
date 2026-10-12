@@ -199,6 +199,8 @@ bats_require_minimum_version 1.5.0
   shell::editor::set-default
   [ "$EDITOR" = 'code --wait' ]
   [ "$(grep -c '^export EDITOR=' "$HOME/.bashrc")" -eq 1 ]
+  [ ! -e "$HOME/.zshrc" ]
+  shell::editor::set-default 'code --wait' bash,zsh
   [ "$(grep -c '^export EDITOR=' "$HOME/.zshrc")" -eq 1 ]
   run env -i HOME="$HOME" bash -c 'source "$HOME/.bashrc"; printf "%s" "$EDITOR"' </dev/null
   [ "$output" = 'code --wait' ]

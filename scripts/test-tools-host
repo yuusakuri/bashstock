@@ -45,3 +45,6 @@ qmk --version
 qmk setup --yes --home "$HOME/qmk_firmware"
 qmk compile --keyboard handwired/onekey/promicro --keymap default
 find "$HOME/qmk_firmware" -maxdepth 1 -name 'handwired_onekey_promicro_default.hex' | grep -q .
+# With the firmware tree in place, installing again also runs qmk doctor.
+qmk::cli::install 2>&1 | tee /tmp/bashstock-qmk-install.log
+grep -F 'QMK Doctor is checking your environment' /tmp/bashstock-qmk-install.log
