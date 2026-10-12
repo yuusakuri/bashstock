@@ -6,11 +6,11 @@
 
 | 環境 | 対象 |
 | --- | --- |
-| Ubuntu 18.04、20.04、22.04、24.04、26.04 の amd64・arm64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby、pipx、VS Code の導入・再実行・起動とAPTリポジトリ |
-| Ubuntu 20.04、22.04、24.04、26.04 の amd64 コンテナ | Claude Desktop の導入・更新とAnthropicのAPTリポジトリ |
-| Ubuntu 18.04〜26.04、Fedora 34・44 の amd64 コンテナ（別ジョブ） | Flutter SDK の導入・版の切替と Linux アプリのビルド・起動 |
-| Fedora 34、44 の amd64・arm64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby、pipx、VS Code の導入・再実行・起動とDNFリポジトリ |
-| Ubuntu 22.04、24.04 の GitHub Actions 実行環境 | Docker サービス、デーモン、コンテナ実行。DNS 管理方式の切替と Google Public DNS の設定 |
+| Ubuntu 18.04、20.04、22.04、24.04、26.04 の amd64・arm64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby、pipx、VS Code、Google Chrome、Microsoft Edge の導入・再実行・起動とAPTリポジトリ |
+| Ubuntu 20.04、22.04、24.04、26.04 の amd64・arm64 コンテナ | Claude Desktop の導入・更新とAnthropicのAPTリポジトリ |
+| Ubuntu 18.04〜26.04、Fedora 34・43・44 の amd64・arm64 コンテナ（別ジョブ） | Flutter SDK の導入・版の切替と Linux アプリのビルド・起動 |
+| Fedora 34、43、44 の amd64・arm64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby、pipx、VS Code、Google Chrome、Microsoft Edge の導入・再実行・起動とDNFリポジトリ |
+| Ubuntu 22.04、24.04 の amd64・arm64 GitHub Actions 実行環境 | Docker サービス、デーモン、コンテナ実行。DNS 管理方式の切替と Google Public DNS の設定 |
 | macOS の GitHub Actions 実行環境 | Android SDK 構成要素、AVD の作成・削除。Hypervisor.Frameworkが使える実行環境では起動・停止も確認する |
 | Ubuntu 24.04 の GitHub Actions 実行環境 | Android SDK 構成要素、KVMを使うAVDの作成・起動・停止・削除 |
 | macOS、Ubuntu、Fedora の Bats テスト | 引数境界、失敗時の状態、Git と Android の公開動作 |
@@ -35,9 +35,12 @@
 | J03 | OSのGoを導入・再実行し、小さなGoプログラムを動かす | 両方成功し、実行結果が期待値になる | 同上 |
 | R01 | 公式 Rust ツールチェーンを導入・再実行し、小さなプログラムをコンパイルして動かす | rustc と cargo が起動し、プログラムが期待値を返す。起動設定を読んだ新しい Bash でも cargo が使える | `scripts/test-rust-container` |
 | R02 | Ruby 3.4.5 を導入・再実行し、小さなプログラムを動かす | 指定版の Ruby と gem が起動し、プログラムが期待値を返す。起動設定を読んだ新しい Bash でも Ruby が使える | `scripts/test-ruby-container` |
-| P01 | Ubuntu 18.04 以外で OS のパッケージから pipx を導入・再実行する | 両方成功し、起動設定を読んだ新しい Bash の `pipx --version` が最新の提供版と一致し、`pipx list` が動く | `scripts/test-pipx-container` |
+| P01 | Ubuntu 18.04 以外で OS のパッケージから pipx を導入・再実行する | 両方成功し、起動設定を読んだ新しい Bash の `pipx --version` が最新の提供版と一致し、`pipx list` が動く。pipx で導入したアプリケーションが起動設定の PATH から起動する | `scripts/test-pipx-container` |
 | P02 | Ubuntu 18.04 で配布元を省略して導入し、続けて `official` を指定して二度導入する | 省略時は終了状態 69 を返す。`official` では Python 3.6 で動く最新の pipx が入り、`pipx list` が動く | 同上 |
 | V01 | 各 OS で版を省略して VS Code を導入し、`vscode::versions` の最新版を指定して再実行する | 導入済みの版が一覧の最新版と一致し、`code --version` が同じ版を表示する。Ubuntu 18.04 では glibc 2.27 で動く 1.85 系が選ばれる | `scripts/test-vscode-container` |
+| B01 | 仮想ディスプレイで VS Code を起動する | VS Code のウィンドウが表示される | `scripts/test-browsers-container` |
+| B02 | Google Chrome を導入し、ヘッドレスで HTML を描画してから仮想ディスプレイで起動する | 描画結果に元の要素が含まれ、ウィンドウが表示される | 同上 |
+| B03 | amd64 で Microsoft Edge を導入し、仮想ディスプレイで起動する。arm64 では導入を試す | amd64 ではウィンドウが表示される。arm64 では Microsoft が Linux 版を公開していないため終了状態 69 を返す | 同上 |
 | C01 | Ubuntu 22.04 以降で `claude-desktop::versions` の一つ前の版を指定して二度導入する | 両方成功し、導入済みの版が指定値と一致する | `scripts/test-claude-desktop-container` |
 | C02 | 版を省略して再び導入する | 最新版へ更新され、`claude-desktop` コマンドが存在する | 同上 |
 | C03 | リポジトリ定義と鍵を検査する | 公式手順と同じ定義が一件だけあり、鍵の権限が 0644 で、`apt-get update` がエラーも警告も出さない | 同上 |
@@ -49,7 +52,7 @@
 | N04 | DNS 管理方式を判別できないコンテナで `net::dns::use-google` を実行する | 終了状態 69 を返し、設定ファイルを作らない | `Installer integration / dns` |
 | T01 | 各 OS で pass を二度導入し、使い捨ての鍵で項目を暗号化して取り出す | 両方の導入が成功し、取り出した値が保存した値と一致する | `scripts/test-tools-container` |
 | T02 | Graphviz と PlantUML を導入し、DOT とシーケンス図を SVG に変換する | 生成した SVG に図の要素が含まれる | 同上 |
-| T03 | GIMP と G'MIC プラグインを導入する。OS にプラグインのパッケージがない Ubuntu 26.04 では、配布元を省略した場合と `official` を指定した場合を試す | `gimp --version` が動き、G'MIC が GIMP のプラグインディレクトリに入る。Ubuntu 26.04 の省略時は終了状態 69、`official` では GIMP 3 用のプラグインが入る | 同上 |
+| T03 | GIMP と G'MIC プラグインを導入する。OS にプラグインのパッケージがない Ubuntu 26.04 では、配布元を省略した場合と `official` を指定した場合を試す | `gimp --version` が動き、G'MIC が GIMP のプラグインディレクトリに入る。Ubuntu 26.04 の省略時は終了状態 69、`official` では amd64 に GIMP 3 用のプラグインが入り、公式配布物のない arm64 では終了状態 69 を返す | 同上 |
 | T04 | Ubuntu で URL の deb を導入する | 依存関係を解決して導入され、コマンドが動く | 同上 |
 | T05 | Git Credential Manager を二度導入する | 公式配布物の版が動き、Git の credential helper に登録される | 同上 |
 | T06 | Ubuntu の実行環境で SSH サーバーを二度導入し、鍵で localhost に接続する | サービスが有効かつ起動中で、接続したコマンドの結果が返る | `scripts/test-tools-host` |
@@ -58,7 +61,7 @@
 | F01 | Flutter を二度導入し、起動設定を読んだ新しい Bash から `flutter` を探す | 導入先の `flutter` が見つかり、最新の安定版を表示し、Dart も起動する | `scripts/test-flutter-container` |
 | F02 | 一つ前の安定版へ `flutter::use-version` で切り替え、版を省略して `flutter::install` で戻す | 各段階の版が指定どおりになる | 同上 |
 | F03 | Linux 向けアプリを作り、テストを実行し、リリースビルドして仮想ディスプレイで起動する | テストとビルドが成功し、アプリが終了せずに動き続ける。Flutter が Linux デスクトップに対応しない Ubuntu 18.04 ではテストまで行う | 同上 |
-| T09 | QMK CLI を二度導入し、ファームウェアの作業ツリーを用意して小さなキーボードのファームウェアをビルドする | 導入と `qmk doctor` が成功し、HEX ファイルが作られる | `scripts/test-tools-host` |
+| T09 | QMK CLI を二度導入し、ファームウェアの作業ツリーを用意して小さなキーボードのファームウェアをビルドする | 導入と起動確認が成功し、HEX ファイルが作られる | `scripts/test-tools-host` |
 | A01 | 専用のホームと SDK に Android CLI、Platform Tools、SDK Platform、Build Tools、Command-line Tools、Emulator を導入する | 各実行ファイルが起動し、`android.jar` が存在する | `scripts/test-android-macos` |
 | A02 | Platform Tools と Build Tools の導入を繰り返す | 二度目も成功し、実行ファイルが使える | 同上 |
 | A03 | API 35 の AVD を作り、同名でもう一度作る | 初回は成功し、二度目は既存の AVD を保持して失敗する | 同上 |

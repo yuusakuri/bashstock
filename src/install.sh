@@ -1748,7 +1748,7 @@ microsoft-edge::_artifact-url() {
 ### Write Microsoft Edge versions available to the current platform.
 microsoft-edge::versions() {
   [[ "$#" -eq 0 ]] || return 64
-  local platform='' index='' index_entries=''
+  local platform='' index=''
   platform="$(package::_platform)" || return "$?"
   case "${platform}" in
     darwin)
@@ -1756,8 +1756,7 @@ microsoft-edge::versions() {
       ;;
     ubuntu)
       index="$(microsoft-edge::_index-url)" || return "$?"
-      index_entries="$(package::_deb-index-entries "${index}" microsoft-edge-stable)" || return "$?"
-      printf '%s\n' "${index_entries}" | cut -f 1 | package::_sort-versions
+      package::_deb-runnable-versions "${index}" microsoft-edge-stable
       ;;
     fedora)
       package::_rpm-repository-versions https://packages.microsoft.com/yumrepos/edge microsoft-edge-stable
@@ -1766,16 +1765,23 @@ microsoft-edge::versions() {
 }
 
 ### Install Microsoft Edge from vendor metadata, the vendor repository, or Homebrew.
+###
+### On Linux, a version is accepted only when Microsoft publishes it for the
+### running CPU, and on Ubuntu only when the installed C library can run it.
+### Microsoft builds Edge for Linux on amd64 only, so arm64 returns 69.
 microsoft-edge::install() {
   [[ "$#" -le 1 ]] || return 64
-  local platform='' url=''
+  local platform='' url='' versions='' version="${1:-}"
   platform="$(package::_platform)" || return "$?"
+  if [[ "${platform}" == 'darwin' ]]; then
+    package::_install-cask microsoft-edge "${version}"
+    return
+  fi
+  versions="$(microsoft-edge::versions)" || return "$?"
+  version="$(package::_select-listed-version "${versions}" "${version}" 'Microsoft Edge')" || return "$?"
   case "${platform}" in
-    darwin)
-      package::_install-cask microsoft-edge "${1:-}"
-      ;;
     ubuntu)
-      url="$(microsoft-edge::_artifact-url "${1:-}")" || return "$?"
+      url="$(microsoft-edge::_artifact-url "${version}")" || return "$?"
       deb::install-from-url "${url}"
       ;;
     fedora)
@@ -1786,7 +1792,7 @@ enabled=1
 gpgcheck=1
 gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 " || return "$?"
-      package::_install-version microsoft-edge-stable "${1:-}"
+      package::_install-version microsoft-edge-stable "${version}"
       ;;
   esac
 }

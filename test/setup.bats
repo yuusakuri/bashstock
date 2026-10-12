@@ -424,22 +424,44 @@ use_fake_curl() {
   [ "$(<"${ROOT_LOG}")" = 'dnf install -y golang' ]
 }
 
-@test "Microsoft Edge on Ubuntu installs the newest package from vendor metadata" {
+@test "Microsoft Edge on Ubuntu installs the newest package the C library can run" {
   use_platform ubuntu 24.04 noble
   CURL_FILE="${BATS_TEST_TMPDIR}/Packages.gz"
   printf '%s\n' \
-    'Package: microsoft-edge-stable' 'Version: 153.0.1-1' 'Filename: pool/main/m/edge_153.0.1-1_amd64.deb' '' \
-    'Package: microsoft-edge-stable' 'Version: 154.0.2-1' 'Filename: pool/main/m/edge_154.0.2-1_amd64.deb' '' \
-    'Package: microsoft-edge-beta' 'Version: 155.0.1-1' 'Filename: pool/main/m/beta_155.0.1-1_amd64.deb' |
+    'Package: microsoft-edge-stable' 'Version: 153.0.1-1' 'Depends: libc6 (>= 2.17)' 'Filename: pool/main/m/edge_153.0.1-1_amd64.deb' '' \
+    'Package: microsoft-edge-stable' 'Version: 154.0.2-1' 'Depends: libc6 (>= 2.17)' 'Filename: pool/main/m/edge_154.0.2-1_amd64.deb' '' \
+    'Package: microsoft-edge-stable' 'Version: 155.0.1-1' 'Depends: libc6 (>= 2.42)' 'Filename: pool/main/m/edge_155.0.1-1_amd64.deb' '' \
+    'Package: microsoft-edge-beta' 'Version: 156.0.1-1' 'Filename: pool/main/m/beta_156.0.1-1_amd64.deb' |
     gzip -c >"${CURL_FILE}"
   use_fake_curl
-  dpkg() { [[ "$1" == '--print-architecture' ]] && printf 'amd64\n'; }
+  dpkg() {
+    case "$1" in
+      --print-architecture) printf 'amd64\n' ;;
+      --compare-versions) [[ "$(printf '%s\n%s\n' "$2" "$4" | sort -V | tail -n 1)" == "$2" ]] ;;
+    esac
+  }
+  dpkg-query() { printf '2.39-0ubuntu8'; }
   deb::install-from-url() { printf '%s\n' "$*"; }
+  run microsoft-edge::versions
+  [ "${output}" = $'153.0.1-1\n154.0.2-1' ]
   run microsoft-edge::install
   [ "${status}" -eq 0 ]
   [ "${output}" = 'https://packages.microsoft.com/repos/edge/pool/main/m/edge_154.0.2-1_amd64.deb' ]
   run microsoft-edge::install 153.0.1-1
   [ "${output}" = 'https://packages.microsoft.com/repos/edge/pool/main/m/edge_153.0.1-1_amd64.deb' ]
+  run --separate-stderr microsoft-edge::install 155.0.1-1
+  [ "${status}" -eq 69 ]
+}
+
+@test "Microsoft Edge refuses a CPU without published Linux packages" {
+  use_platform fedora 44
+  record_root_commands
+  uname() { [[ "$1" == '-m' ]] && printf 'aarch64\n'; }
+  dnf() { :; }
+  run --separate-stderr microsoft-edge::install
+  [ "${status}" -eq 69 ]
+  [[ "${stderr}" == *'No Microsoft Edge version can run on this system.'* ]]
+  [ ! -s "${ROOT_LOG}" ]
 }
 
 @test "APT package search selects the package with the newest version suffix" {

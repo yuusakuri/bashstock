@@ -15,7 +15,7 @@ env:
 
 jobs:
   docker-packages:
-    name: Docker, languages, VS Code, and tools on ${{ matrix.image }} (${{ matrix.arch }})
+    name: Docker, languages, editors, browsers, and tools on ${{ matrix.image }} (${{ matrix.arch }})
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 60
     strategy:
@@ -31,6 +31,7 @@ jobs:
           - ubuntu:24.04
           - ubuntu:26.04
           - fedora:34
+          - fedora:43
           - fedora:44
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
@@ -38,7 +39,7 @@ jobs:
           submodules: recursive
       - name: Build the standalone library
         run: ./scripts/build
-      - name: Verify Docker, languages, VS Code, and tools installations
+      - name: Verify Docker, languages, editors, browsers, and tools installations
         run: |
           docker run --rm --platform linux/${{ matrix.arch }} -e GITHUB_TOKEN \
             -v "$PWD/dist/bashstock.sh:/opt/bashstock.sh:ro" \
@@ -50,8 +51,9 @@ jobs:
             -v "$PWD/scripts/test-pipx-container:/opt/test-pipx-container:ro" \
             -v "$PWD/scripts/test-vscode-container:/opt/test-vscode-container:ro" \
             -v "$PWD/scripts/test-tools-container:/opt/test-tools-container:ro" \
+            -v "$PWD/scripts/test-browsers-container:/opt/test-browsers-container:ro" \
             "${{ matrix.image }}" bash -c \
-            'bash /opt/test-docker-package-container && bash /opt/test-node-container && bash /opt/test-jdk-go-container && bash /opt/test-rust-container && bash /opt/test-ruby-container && bash /opt/test-pipx-container && bash /opt/test-vscode-container && bash /opt/test-tools-container'
+            'bash /opt/test-docker-package-container && bash /opt/test-node-container && bash /opt/test-jdk-go-container && bash /opt/test-rust-container && bash /opt/test-ruby-container && bash /opt/test-pipx-container && bash /opt/test-vscode-container && bash /opt/test-browsers-container && bash /opt/test-tools-container'
 
   flutter:
     name: Flutter on ${{ matrix.image }} (${{ matrix.arch }})
@@ -70,6 +72,7 @@ jobs:
           - ubuntu:24.04
           - ubuntu:26.04
           - fedora:34
+          - fedora:43
           - fedora:44
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
@@ -122,6 +125,8 @@ jobs:
         os:
           - ubuntu-22.04
           - ubuntu-24.04
+          - ubuntu-22.04-arm
+          - ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
         with:
@@ -166,6 +171,8 @@ jobs:
         os:
           - ubuntu-22.04
           - ubuntu-24.04
+          - ubuntu-22.04-arm
+          - ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
         with:

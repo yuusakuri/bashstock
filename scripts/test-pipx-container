@@ -22,3 +22,6 @@ printf 'pipx version: %s\n' "$latest"
 installed="$(bash -c 'source "$HOME/.bashrc"; pipx --version')"
 [[ "$latest" == "$installed" || "$latest" == "$installed"-* || "$latest" == *:"$installed"-* ]]
 pipx list
+
+# An application installed by pipx starts from the PATH that pipx::install configured.
+bash -c 'source "$HOME/.bashrc"; pipx install pycowsay && pycowsay bashstock' | grep -F bashstock
