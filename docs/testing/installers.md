@@ -57,7 +57,7 @@
 | T08 | 最新の Ubuntu Server ISO を取得する | 公式 `SHA256SUMS` と一致した ISO が保存される | 同上 |
 | F01 | Flutter を二度導入し、起動設定を読んだ新しい Bash から `flutter` を探す | 導入先の `flutter` が見つかり、最新の安定版を表示し、Dart も起動する | `scripts/test-flutter-container` |
 | F02 | 一つ前の安定版へ `flutter::use-version` で切り替え、版を省略して `flutter::install` で戻す | 各段階の版が指定どおりになる | 同上 |
-| F03 | Linux 向けアプリを作り、テストを実行し、リリースビルドして仮想ディスプレイで起動する | テストとビルドが成功し、アプリが終了せずに動き続ける | 同上 |
+| F03 | Linux 向けアプリを作り、テストを実行し、リリースビルドして仮想ディスプレイで起動する | テストとビルドが成功し、アプリが終了せずに動き続ける。Flutter が Linux デスクトップに対応しない Ubuntu 18.04 ではテストまで行う | 同上 |
 | A01 | 専用のホームと SDK に Android CLI、Platform Tools、SDK Platform、Build Tools、Command-line Tools、Emulator を導入する | 各実行ファイルが起動し、`android.jar` が存在する | `scripts/test-android-macos` |
 | A02 | Platform Tools と Build Tools の導入を繰り返す | 二度目も成功し、実行ファイルが使える | 同上 |
 | A03 | API 35 の AVD を作り、同名でもう一度作る | 初回は成功し、二度目は既存の AVD を保持して失敗する | 同上 |

@@ -61,6 +61,11 @@ app="$(mktemp -d)/bashstock_app"
 "$sdk" create --platforms=linux "$app"
 cd "$app"
 "$sdk" test
+source /etc/os-release
+if [[ "$ID" == ubuntu && "$VERSION_ID" == 18.04 ]]; then
+  # Flutter supports Linux desktop builds on Ubuntu 20.04 and later only.
+  exit 0
+fi
 "$sdk" build linux --release
 bundle="$app/build/linux/x64/release/bundle/bashstock_app"
 [[ -x "$bundle" ]]

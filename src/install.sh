@@ -1192,6 +1192,11 @@ flutter::dependencies::install() {
 ###
 ### An existing Flutter repository retains its stash and ignored files.
 ###
+### Limitation: Flutter builds Linux desktop applications on Ubuntu 20.04 and
+### later only. Ubuntu 18.04 installs the SDK and runs Dart code and tests,
+### but `flutter build linux` stops there because it needs CMake 3.13 and the
+### release provides 3.10.
+###
 ### Arguments
 ###
 ### * VERSION - Flutter release tag. Defaults to the newest stable release.
