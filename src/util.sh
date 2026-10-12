@@ -421,7 +421,7 @@ git::commit::discard() {
 git::reset-remote() { [[ "$#" -le 2 ]] || return 64; local remote="${1:-origin}" directory="${2:-.}"; git::_run-in-directory "$directory" fetch "$remote"; git::_run-in-directory "$directory" reset --hard "$remote/$(git::branch::current "$directory")"; }
 
 ### Pull the configured base branch with fast-forward-only semantics.
-git::pull-base-branch() { [[ "$#" -le 2 ]] || return 64; local base="${1:-main}" directory="${2:-.}" current=''; current="$(git::branch::current "$directory")" || return 65; git::_run-in-directory "$directory" switch "$base" || return "$?"; if ! git::_run-in-directory "$directory" pull --ff-only origin "$base"; then git::_run-in-directory "$directory" switch "$current" >/dev/null 2>&1 || true; return 75; fi; git::_run-in-directory "$directory" switch "$current" || return 75; git::_run-in-directory "$directory" rebase "$base"; }
+git::pull-base-branch() { [[ "$#" -le 2 ]] || return 64; local base="${1:-main}" directory="${2:-.}" current=''; current="$(git::branch::current "$directory")" || return 65; git::_run-in-directory "$directory" checkout "$base" -- || return "$?"; if ! git::_run-in-directory "$directory" pull --ff-only origin "$base"; then git::_run-in-directory "$directory" checkout "$current" -- >/dev/null 2>&1 || true; return 75; fi; git::_run-in-directory "$directory" checkout "$current" -- || return 75; git::_run-in-directory "$directory" rebase "$base"; }
 
 ### Import simple KEY=VALUE entries from a dotenv file.
 env::dotenv::import() { [[ "$#" -eq 1 && -f "$1" && ! -L "$1" ]] || return 64; local line key value; while IFS= read -r line || [[ -n "$line" ]]; do [[ -z "$line" || "$line" == \#* ]] && continue; [[ "$line" == *=* ]] || return 64; key="${line%%=*}"; value="${line#*=}"; [[ "$key" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] || return 64; if [[ "$value" == \"*\" && "$value" == *\" ]]; then value="${value:1:${#value}-2}"; fi; export "${key}=${value}"; done <"$1"; }
@@ -1582,7 +1582,8 @@ flutter::use-version() {
     git -C "$directory" reset --hard HEAD || return "$?"
     git -C "$directory" clean -fd || return "$?"
   fi
-  git -C "$directory" switch --detach "$version"
+  # checkout instead of switch keeps Git 2.17 on Ubuntu 18.04 working.
+  git -C "$directory" -c advice.detachedHead=false checkout --detach "$version"
 }
 
 ### Remove one JFrog CLI server configuration.
