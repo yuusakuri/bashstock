@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   docker-packages:
-    name: Docker, Node.js, JDK, Go, Rust, Ruby, pipx, and VS Code on ${{ matrix.image }} (amd64)
+    name: Docker, languages, VS Code, and tools on ${{ matrix.image }} (amd64)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -31,7 +31,7 @@ jobs:
           submodules: recursive
       - name: Build the standalone library
         run: ./scripts/build
-      - name: Verify Docker, Node.js, JDK, Go, Rust, Ruby, pipx, and VS Code installations
+      - name: Verify Docker, languages, VS Code, and tools installations
         run: |
           docker run --rm --platform linux/amd64 \
             -v "$PWD/dist/bashstock.sh:/opt/bashstock.sh:ro" \
@@ -42,8 +42,9 @@ jobs:
             -v "$PWD/scripts/test-ruby-container:/opt/test-ruby-container:ro" \
             -v "$PWD/scripts/test-pipx-container:/opt/test-pipx-container:ro" \
             -v "$PWD/scripts/test-vscode-container:/opt/test-vscode-container:ro" \
+            -v "$PWD/scripts/test-tools-container:/opt/test-tools-container:ro" \
             "${{ matrix.image }}" bash -c \
-            'bash /opt/test-docker-package-container && bash /opt/test-node-container && bash /opt/test-jdk-go-container && bash /opt/test-rust-container && bash /opt/test-ruby-container && bash /opt/test-pipx-container && bash /opt/test-vscode-container'
+            'bash /opt/test-docker-package-container && bash /opt/test-node-container && bash /opt/test-jdk-go-container && bash /opt/test-rust-container && bash /opt/test-ruby-container && bash /opt/test-pipx-container && bash /opt/test-vscode-container && bash /opt/test-tools-container'
 
   claude-desktop:
     name: Claude Desktop on ${{ matrix.image }} (amd64)
@@ -99,6 +100,20 @@ jobs:
       - name: Switch between systemd-resolved and NetworkManager and use Google Public DNS
         shell: bash
         run: bash ./scripts/test-dns-host
+
+  tools-host:
+    name: OpenSSH, Supabase, and Ubuntu ISO on ubuntu-24.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
+        with:
+          submodules: recursive
+      - name: Build the standalone library
+        run: ./scripts/build
+      - name: Verify the SSH server, the Supabase local stack, and the ISO checksum
+        shell: bash
+        run: bash ./scripts/test-tools-host
 
   docker-service:
     name: Docker service on ${{ matrix.os }}

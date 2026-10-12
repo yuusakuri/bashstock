@@ -1814,7 +1814,8 @@ net::dns::_manager() {
 net::dns::_backup-resolv-conf() {
   [[ "$#" -eq 1 && "$1" == /* ]] || return 64
   [[ -e /etc/resolv.conf || -L /etc/resolv.conf ]] || return 0
-  if [[ -L /etc/resolv.conf && "$(readlink /etc/resolv.conf)" == "$1" ]]; then
+  # Ubuntu links resolv.conf relatively, so compare the resolved paths.
+  if [[ -L /etc/resolv.conf && "$(readlink -f /etc/resolv.conf)" == "$(readlink -f "$1")" ]]; then
     return 0
   fi
   local stamp=''

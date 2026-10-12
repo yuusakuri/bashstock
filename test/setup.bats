@@ -871,3 +871,46 @@ use_fake_sudoers() {
   run --separate-stderr pipx::install 1.1.0 official
   [ "${status}" -eq 69 ]
 }
+
+@test "Ubuntu Server ISOs come from published checksums and never replace a file with a bad download" {
+  ISO_BODY='iso image'
+  ISO_SUM="$(printf '%s' "${ISO_BODY}" | { sha256sum 2>/dev/null || shasum -a 256; } | cut -d ' ' -f 1)"
+  curl() {
+    local output='' url='' argument=''
+    while [[ "$#" -gt 0 ]]; do
+      case "$1" in
+        -o) output="$2"; shift 2 ;;
+        *) argument="$1"; shift; [[ "${argument}" != https://* ]] || url="${argument}" ;;
+      esac
+    done
+    case "${url}" in
+      */meta-release-lts) printf 'Dist: noble\nVersion: 24.04.5 LTS\n\nDist: jammy\nVersion: 22.04.5 LTS\n' ;;
+      https://releases.ubuntu.com/24.04/SHA256SUMS)
+        printf '%s *ubuntu-24.04.5-live-server-amd64.iso\n' "${ISO_SUM}"
+        printf '%s *ubuntu-24.04.5-desktop-amd64.iso\n' "${ISO_SUM}"
+        ;;
+      https://releases.ubuntu.com/22.04/SHA256SUMS) return 22 ;;
+      https://releases.ubuntu.com/24.04/ubuntu-24.04.5-live-server-amd64.iso) printf '%s' "${ISO_BODY}" >"${output}" ;;
+      *) return 22 ;;
+    esac
+  }
+  cd "${BATS_TEST_TMPDIR}"
+
+  run ubuntu::server-iso-versions amd64
+  [ "${status}" -eq 0 ]
+  [ "${output}" = '24.04.5' ]
+
+  run ubuntu::download-server-iso '' amd64 image.iso
+  [ "${status}" -eq 0 ]
+  [ "$(<image.iso)" = "${ISO_BODY}" ]
+
+  printf 'previous image' >image.iso
+  ISO_BODY='corrupted image'
+  run --separate-stderr ubuntu::download-server-iso 24.04.5 amd64 image.iso
+  [ "${status}" -eq 65 ]
+  [ "$(<image.iso)" = 'previous image' ]
+  [ "$(find . -name 'image.iso.*' | wc -l)" -eq 0 ]
+
+  run --separate-stderr ubuntu::download-server-iso 22.04.5 amd64 image.iso
+  [ "${status}" -eq 69 ]
+}

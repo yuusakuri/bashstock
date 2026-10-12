@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2317
+
+set -euo pipefail
+
+# Run on a disposable GitHub Actions Ubuntu runner with systemd and Docker.
+# shellcheck disable=SC1091 # The distribution is generated before this script runs.
+source ./dist/bashstock.sh
+
+printf '== OpenSSH server\n'
+ssh-server::install
+ssh-server::install
+systemctl is-enabled ssh
+systemctl is-active ssh
+mkdir -p ~/.ssh && chmod 700 ~/.ssh
+ssh-keygen -q -t ed25519 -N '' -f ~/.ssh/bashstock-ci
+cat ~/.ssh/bashstock-ci.pub >>~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+[[ "$(ssh -i ~/.ssh/bashstock-ci -o BatchMode=yes -o StrictHostKeyChecking=accept-new localhost 'printf connected')" == connected ]]
+
+printf '== Supabase CLI\n'
+supabase::install
+supabase::install
+supabase --version
+project="$(mktemp -d)"
+(
+  cd "$project"
+  supabase init
+  supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+  supabase status
+  supabase stop --no-backup
+)
+
+printf '== Ubuntu Server ISO\n'
+iso_directory="$(mktemp -d)"
+version="$(ubuntu::server-iso-versions amd64 | tail -n 1)"
+ubuntu::download-server-iso "$version" amd64 "$iso_directory/server.iso"
+[[ "$(stat -c %s "$iso_directory/server.iso")" -gt 1000000000 ]]
+rm -f -- "$iso_directory/server.iso"

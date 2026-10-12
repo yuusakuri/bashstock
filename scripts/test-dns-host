@@ -14,6 +14,8 @@ resolved_link=/run/systemd/resolve/stub-resolv.conf
 google_dropin=/etc/systemd/resolved.conf.d/90-bashstock-google.conf
 
 printf '== systemd-resolved\n'
+ls -l /etc/resolv.conf
+set -x
 [[ "$(net::dns::manager)" == systemd-resolved ]]
 net::dns::use-systemd-resolved
 net::dns::use-systemd-resolved

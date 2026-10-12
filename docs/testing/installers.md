@@ -46,6 +46,14 @@
 | N02 | NetworkManager を入れ、ダミー接続と WireGuard 接続がある状態で `net::dns::use-network-manager` と `net::dns::use-google` を実行し、NetworkManager を再起動する | `resolv.conf` が NetworkManager の実行時ファイルを指し、元のリンクがバックアップされる。ダミー接続だけに Google Public DNS と ignore-auto-dns が設定され、WireGuard 接続の DNS は変わらない。再起動後も設定が残る | 同上 |
 | N03 | `net::dns::use-systemd-resolved` で戻す | systemd-resolved が管理し、Google Public DNS で名前解決できる | 同上 |
 | N04 | DNS 管理方式を判別できないコンテナで `net::dns::use-google` を実行する | 終了状態 69 を返し、設定ファイルを作らない | `Installer integration / dns` |
+| T01 | 各 OS で pass を二度導入し、使い捨ての鍵で項目を暗号化して取り出す | 両方の導入が成功し、取り出した値が保存した値と一致する | `scripts/test-tools-container` |
+| T02 | Graphviz と PlantUML を導入し、DOT とシーケンス図を SVG に変換する | 生成した SVG に図の要素が含まれる | 同上 |
+| T03 | GIMP と G'MIC プラグインを導入する | `gimp --version` が動き、G'MIC が GIMP のプラグインディレクトリに入る | 同上 |
+| T04 | Ubuntu で URL の deb を導入する | 依存関係を解決して導入され、コマンドが動く | 同上 |
+| T05 | Git Credential Manager を二度導入する | 公式配布物の版が動き、Git の credential helper に登録される | 同上 |
+| T06 | Ubuntu の実行環境で SSH サーバーを二度導入し、鍵で localhost に接続する | サービスが有効かつ起動中で、接続したコマンドの結果が返る | `scripts/test-tools-host` |
+| T07 | Supabase CLI を二度導入し、使い捨てのプロジェクトで `supabase init`・`start`・`status`・`stop` を実行する | すべて成功する | 同上 |
+| T08 | 最新の Ubuntu Server ISO を取得する | 公式 `SHA256SUMS` と一致した ISO が保存される | 同上 |
 | A01 | 専用のホームと SDK に Android CLI、Platform Tools、SDK Platform、Build Tools、Command-line Tools、Emulator を導入する | 各実行ファイルが起動し、`android.jar` が存在する | `scripts/test-android-macos` |
 | A02 | Platform Tools と Build Tools の導入を繰り返す | 二度目も成功し、実行ファイルが使える | 同上 |
 | A03 | API 35 の AVD を作り、同名でもう一度作る | 初回は成功し、二度目は既存の AVD を保持して失敗する | 同上 |

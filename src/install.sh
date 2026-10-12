@@ -931,43 +931,10 @@ utm::_copy-application() {
 ### Write supported Ubuntu LTS versions from the Ubuntu release metadata.
 ###
 ### Releases newer than the last upgrade-supported release are included because
-### the metadata enables upgrades only after the first point release is tested.
-ubuntu::server-iso-versions() {
-  [[ "$#" -eq 0 ]] || return 64
-  command::require perl || return "$?"
-  local metadata='' versions=''
-  metadata="$(package::_fetch https://changelogs.ubuntu.com/meta-release-lts)" || return "$?"
-  versions="$(printf '%s\n' "${metadata}" | perl -e '
-    local $/ = "";
-    my @releases;
-    while (my $stanza = <STDIN>) {
-      my ($version) = $stanza =~ /^Version:\s*([0-9.]+)/m or next;
-      my ($supported) = $stanza =~ /^Supported:\s*([01])/m;
-      push @releases, [$version, $supported // 0];
-    }
-    my $last_supported = -1;
-    $releases[$_][1] and $last_supported = $_ for 0 .. $#releases;
-    for my $index (0 .. $#releases) {
-      print "$releases[$index][0]\n" if $releases[$index][1] || $index > $last_supported;
-    }
-  ')" || return 74
-  printf '%s\n' "${versions}" | package::_sort-versions
-}
-
-### Download the Ubuntu Server live ISO image.
-###
-### Arguments
-###
-### * VERSION - Ubuntu LTS version. Defaults to the newest supported LTS version.
-### * ARCHITECTURE - amd64 or arm64. Defaults to the current machine.
-### * OUTPUT_PATH - Destination file. Defaults to the official file name in the current directory.
-ubuntu::download-server-iso() {
-  [[ "$#" -le 3 ]] || return 64
-  local version="${1:-}" architecture="${2:-}" output="${3:-}" series='' name='' url=''
-  if [[ -z "${version}" ]]; then
-    version="$(ubuntu::server-iso-versions | package::_latest-stable-version)" || return "$?"
-  fi
-  [[ "${version}" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || return 64
+### Write the Ubuntu Server ISO architecture for the current machine, or validate one.
+ubuntu::_server-iso-architecture() {
+  [[ "$#" -le 1 ]] || return 64
+  local architecture="${1:-}"
   if [[ -z "${architecture}" ]]; then
     case "$(uname -m)" in
       x86_64 | amd64) architecture='amd64' ;;
@@ -975,15 +942,89 @@ ubuntu::download-server-iso() {
       *) return 69 ;;
     esac
   fi
-  series="$(printf '%s' "${version}" | cut -d . -f 1-2)"
-  name="ubuntu-${version}-live-server-${architecture}.iso"
-  case "${architecture}" in
-    amd64) url="https://releases.ubuntu.com/${series}/${name}" ;;
-    arm64) url="https://cdimage.ubuntu.com/releases/${series}/release/${name}" ;;
+  [[ "${architecture}" == amd64 || "${architecture}" == arm64 ]] || return 64
+  printf '%s\n' "${architecture}"
+}
+
+### Write the directory URL that publishes Ubuntu Server ISOs of one LTS series.
+ubuntu::_server-iso-directory() {
+  [[ "$#" -eq 2 && "$1" =~ ^[0-9]+\.[0-9]+$ ]] || return 64
+  case "$2" in
+    amd64) printf 'https://releases.ubuntu.com/%s/\n' "$1" ;;
+    arm64) printf 'https://cdimage.ubuntu.com/releases/%s/release/\n' "$1" ;;
     *) return 64 ;;
   esac
+}
+
+### Write SHA-256 and file name pairs of the live server ISOs that one LTS series publishes.
+ubuntu::_server-iso-checksums() {
+  [[ "$#" -eq 2 ]] || return 64
+  local directory='' sums=''
+  directory="$(ubuntu::_server-iso-directory "$1" "$2")" || return "$?"
+  sums="$(package::_fetch "${directory}SHA256SUMS" 2>/dev/null)" || return 0
+  printf '%s\n' "${sums}" |
+    awk -v arch="$2" '$2 ~ ("^\\*?ubuntu-[0-9.]+-live-server-" arch "\\.iso$") { sub(/^\*/, "", $2); print $1 "\t" $2 }'
+}
+
+### Write the Ubuntu Server LTS versions whose live server ISO is published for an architecture.
+###
+### The LTS series come from the Ubuntu release metadata, and each version is
+### taken from the official SHA256SUMS of its series, so every listed version
+### can be downloaded.
+###
+### Arguments
+###
+### * ARCHITECTURE - amd64 or arm64. Defaults to the current machine.
+ubuntu::server-iso-versions() {
+  [[ "$#" -le 1 ]] || return 64
+  local architecture='' metadata='' series='' versions=''
+  architecture="$(ubuntu::_server-iso-architecture "${1:-}")" || return "$?"
+  metadata="$(package::_fetch https://changelogs.ubuntu.com/meta-release-lts)" || return "$?"
+  while IFS= read -r series; do
+    [[ -n "${series}" ]] || continue
+    versions+="$(ubuntu::_server-iso-checksums "${series}" "${architecture}" |
+      sed -E 's/^[^\t]*\tubuntu-([0-9.]+)-live-server-.*/\1/')"$'\n'
+  done < <(printf '%s\n' "${metadata}" | sed -nE 's/^Version:[[:space:]]*([0-9]+\.[0-9]+).*/\1/p' | sort -u)
+  versions="$(printf '%s' "${versions}" | package::_sort-versions)"
+  [[ -n "${versions}" ]] || return 69
+  printf '%s\n' "${versions}"
+}
+
+### Download an Ubuntu Server live ISO and check it against the official SHA256SUMS.
+###
+### The image is written to a temporary file next to OUTPUT_PATH and moved into
+### place only after its checksum matches, so a failed download or a corrupted
+### image leaves an existing file unchanged.
+###
+### Arguments
+###
+### * VERSION - Version from ubuntu::server-iso-versions. Defaults to the newest one.
+### * ARCHITECTURE - amd64 or arm64. Defaults to the current machine.
+### * OUTPUT_PATH - Destination file. Defaults to the official file name in the current directory.
+ubuntu::download-server-iso() {
+  [[ "$#" -le 3 ]] || return 64
+  local version="${1:-}" architecture='' output="${3:-}" versions='' series='' name='' directory=''
+  local checksum='' temporary='' status=0
+  architecture="$(ubuntu::_server-iso-architecture "${2:-}")" || return "$?"
+  versions="$(ubuntu::server-iso-versions "${architecture}")" || return "$?"
+  version="$(package::_select-listed-version "${versions}" "${version}" 'Ubuntu Server ISO')" || return "$?"
+  series="$(printf '%s' "${version}" | cut -d . -f 1-2)"
+  name="ubuntu-${version}-live-server-${architecture}.iso"
+  checksum="$(ubuntu::_server-iso-checksums "${series}" "${architecture}" | awk -F '\t' -v name="${name}" '$2 == name {print $1}')"
+  [[ "${checksum}" =~ ^[0-9a-f]{64}$ ]] || return 74
+  directory="$(ubuntu::_server-iso-directory "${series}" "${architecture}")" || return "$?"
   [[ -n "${output}" ]] || output="./${name}"
-  package::_download "${url}" "${output}" || return "$?"
+  temporary="$(mktemp "${output}.XXXXXX")" || return 74
+  package::_download "${directory}${name}" "${temporary}" || status="$?"
+  if [[ "${status}" -eq 0 ]] && ! file::verify-sha256 "${temporary}" "${checksum}"; then
+    console::_write-error "The downloaded ${name} does not match the official SHA256SUMS."
+    status=65
+  fi
+  if [[ "${status}" -eq 0 ]]; then
+    mv -f -- "${temporary}" "${output}" || status=74
+  fi
+  rm -f -- "${temporary}"
+  [[ "${status}" -eq 0 ]] || return "${status}"
   printf '%s\n' "${output}"
 }
 
