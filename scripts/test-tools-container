@@ -31,12 +31,22 @@ plantuml -tsvg "$work/sequence.puml"
 grep -F Hello "$work/sequence.svg"
 
 printf '== GIMP and G'"'"'MIC\n'
-gimp::install
-gimp --version
-if [[ "$ID" == ubuntu ]]; then
-  dpkg -L gimp-gmic | grep -E '/gimp/[0-9.]+/plug-ins/'
+if [[ "$ID" == ubuntu && -z "$(gimp::gmic::versions)" ]]; then
+  # Ubuntu 26.04 ships GIMP 3 without a G'MIC plugin package.
+  status=0
+  gimp::install || status="$?"
+  [[ "$status" -eq 69 ]]
+  gimp::install '' official
+  gimp --version
+  dpkg -L gmic | grep -E '/gimp/3\.0/plug-ins/gmic_gimp_qt/gmic_gimp_qt$'
 else
-  rpm -ql gmic-gimp | grep -E '/gimp/[0-9.]+/plug-ins/'
+  gimp::install
+  gimp --version
+  if [[ "$ID" == ubuntu ]]; then
+    dpkg -L gimp-gmic | grep -E '/gimp/[0-9.]+/plug-ins/'
+  else
+    rpm -ql gmic-gimp | grep -E '/gimp/[0-9.]+/plug-ins/'
+  fi
 fi
 
 if [[ "$ID" == ubuntu ]]; then

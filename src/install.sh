@@ -1597,9 +1597,14 @@ gimp::versions() {
   fi
 }
 
-### Install GIMP, and the G'MIC plugin on platforms whose package manager provides it.
+### Install GIMP, and on Linux the G'MIC plugin from the selected source.
+###
+### Arguments
+###
+### * VERSION - Optional GIMP version from gimp::versions.
+### * GMIC_SOURCE - os (default) or official; see gimp::gmic::install.
 gimp::install() {
-  [[ "$#" -le 1 ]] || return 64
+  [[ "$#" -le 2 ]] || return 64
   local platform=''
   platform="$(package::_platform)" || return "$?"
   if [[ "${platform}" == 'darwin' ]]; then
@@ -1607,7 +1612,7 @@ gimp::install() {
     return
   fi
   package::_install-version gimp "${1:-}" || return "$?"
-  gimp::gmic::install
+  gimp::gmic::install '' "${2:-os}"
 }
 
 ### Write the G'MIC GIMP plugin package name for the current platform.
@@ -1625,20 +1630,77 @@ gimp::gmic::_package-name() {
   esac
 }
 
-### Write G'MIC GIMP plugin versions available to the current platform.
-gimp::gmic::versions() {
+### Write version and URL pairs of the official G'MIC packages for this Ubuntu release and CPU.
+gimp::gmic::_official-entries() {
   [[ "$#" -eq 0 ]] || return 64
-  local package=''
-  package="$(gimp::gmic::_package-name)" || return "$?"
-  package::_versions "${package}"
+  local release='' codename='' architecture='' listing=''
+  package::_require-platform ubuntu || return "$?"
+  release="$(platform::_os-release-value VERSION_ID)" || return 69
+  codename="$(platform::_os-release-value UBUNTU_CODENAME 2>/dev/null ||
+    platform::_os-release-value VERSION_CODENAME)" || return 69
+  architecture="$(package::_deb-architecture)" || return "$?"
+  listing="$(package::_fetch https://gmic.eu/files/linux/)" || return "$?"
+  printf '%s\n' "${listing}" |
+    grep -oE "gmic_[0-9.]+_ubuntu${release//./-}_${codename}_${architecture}\.deb" |
+    sort -u |
+    sed -E 's|^gmic_([0-9.]+)_.*$|\1\thttps://gmic.eu/files/linux/&|'
+}
+
+### Write G'MIC GIMP plugin versions available from the selected source.
+###
+### Arguments
+###
+### * SOURCE - os (default) or official.
+gimp::gmic::versions() {
+  [[ "$#" -le 1 ]] || return 64
+  local source="${1:-os}" package='' official_entries=''
+  case "${source}" in
+    os)
+      package="$(gimp::gmic::_package-name)" || return "$?"
+      package::_versions "${package}"
+      ;;
+    official)
+      official_entries="$(gimp::gmic::_official-entries)" || return "$?"
+      printf '%s\n' "${official_entries}" | cut -f 1 | package::_sort-versions
+      ;;
+    *) return 64 ;;
+  esac
 }
 
 ### Install the G'MIC GIMP plugin.
+###
+### The os source installs the plugin package of the system package manager.
+### Ubuntu 26.04 ships GIMP 3 without one, so the official source installs the
+### G'MIC project's package for the running Ubuntu release, which contains the
+### GIMP 3 plugin. A source that cannot provide the plugin returns 69 instead
+### of switching to the other source.
+###
+### Arguments
+###
+### * VERSION - Optional version from gimp::gmic::versions for the same SOURCE.
+### * SOURCE - os (default) or official. The official source supports Ubuntu.
 gimp::gmic::install() {
-  [[ "$#" -le 1 ]] || return 64
-  local package=''
-  package="$(gimp::gmic::_package-name)" || return "$?"
-  package::_install-version "${package}" "${1:-}"
+  [[ "$#" -le 2 ]] || return 64
+  local version="${1:-}" source="${2:-os}" package='' versions='' official_entries='' url=''
+  case "${source}" in
+    os)
+      package="$(gimp::gmic::_package-name)" || return "$?"
+      versions="$(package::_versions "${package}")" || return "$?"
+      if [[ -z "${versions}" ]]; then
+        console::_write-error "The system packages do not provide the G'MIC GIMP plugin; use the official source."
+        return 69
+      fi
+      package::_install-version "${package}" "${version}"
+      ;;
+    official)
+      official_entries="$(gimp::gmic::_official-entries)" || return "$?"
+      versions="$(printf '%s\n' "${official_entries}" | cut -f 1)"
+      version="$(package::_select-listed-version "${versions}" "${version}" "G'MIC")" || return "$?"
+      url="$(printf '%s\n' "${official_entries}" | awk -F '\t' -v version="${version}" '$1 == version {print $2; exit}')"
+      deb::install-from-url "${url}"
+      ;;
+    *) return 64 ;;
+  esac
 }
 
 ### Write the Microsoft Edge Debian package index URL for the current architecture.

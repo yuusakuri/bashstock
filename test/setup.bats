@@ -959,3 +959,34 @@ use_fake_sudoers() {
   [ "${status}" -eq 69 ]
   [ ! -e "${HOME}/.local/lib/git-credential-manager/3.0.1" ]
 }
+
+@test "G'MIC uses the official package only when that source is requested" {
+  use_platform ubuntu 26.04 resolute
+  record_root_commands
+  apt-get() { :; }
+  apt-cache() { :; }
+  dpkg() { [[ "$1" == '--print-architecture' ]] && printf 'amd64\n'; }
+  dpkg-deb() { printf 'amd64\n'; }
+  curl() {
+    local output=''
+    while [[ "$#" -gt 0 ]]; do
+      if [[ "$1" == -o ]]; then output="$2"; shift 2; else shift; fi
+    done
+    if [[ -n "${output}" ]]; then printf 'package' >"${output}"; return; fi
+    printf '<a href="gmic_4.0.4_ubuntu26-04_resolute_amd64.deb">'
+    printf '<a href="gmic_4.0.5_ubuntu26-04_resolute_amd64.deb">'
+    printf '<a href="gmic_4.0.5_ubuntu24-04_noble_amd64.deb">'
+  }
+
+  run --separate-stderr gimp::gmic::install
+  [ "${status}" -eq 69 ]
+  [ ! -s "${ROOT_LOG}" ]
+
+  run gimp::gmic::versions official
+  [ "${status}" -eq 0 ]
+  [ "${output}" = $'4.0.4\n4.0.5' ]
+
+  run gimp::gmic::install '' official
+  [ "${status}" -eq 0 ]
+  grep -Eq '^env DEBIAN_FRONTEND=noninteractive apt-get install -y /.*/package\.deb$' "${ROOT_LOG}"
+}

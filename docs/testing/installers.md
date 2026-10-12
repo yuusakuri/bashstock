@@ -48,7 +48,7 @@
 | N04 | DNS 管理方式を判別できないコンテナで `net::dns::use-google` を実行する | 終了状態 69 を返し、設定ファイルを作らない | `Installer integration / dns` |
 | T01 | 各 OS で pass を二度導入し、使い捨ての鍵で項目を暗号化して取り出す | 両方の導入が成功し、取り出した値が保存した値と一致する | `scripts/test-tools-container` |
 | T02 | Graphviz と PlantUML を導入し、DOT とシーケンス図を SVG に変換する | 生成した SVG に図の要素が含まれる | 同上 |
-| T03 | GIMP と G'MIC プラグインを導入する | `gimp --version` が動き、G'MIC が GIMP のプラグインディレクトリに入る | 同上 |
+| T03 | GIMP と G'MIC プラグインを導入する。OS にプラグインのパッケージがない Ubuntu 26.04 では、配布元を省略した場合と `official` を指定した場合を試す | `gimp --version` が動き、G'MIC が GIMP のプラグインディレクトリに入る。Ubuntu 26.04 の省略時は終了状態 69、`official` では GIMP 3 用のプラグインが入る | 同上 |
 | T04 | Ubuntu で URL の deb を導入する | 依存関係を解決して導入され、コマンドが動く | 同上 |
 | T05 | Git Credential Manager を二度導入する | 公式配布物の版が動き、Git の credential helper に登録される | 同上 |
 | T06 | Ubuntu の実行環境で SSH サーバーを二度導入し、鍵で localhost に接続する | サービスが有効かつ起動中で、接続したコマンドの結果が返る | `scripts/test-tools-host` |
