@@ -141,3 +141,24 @@ record_root_commands() {
   [ "$status" -eq 0 ]
   [ ! -e "$work/Code" ]
 }
+
+@test "textproto updates only the top-level scalar and refuses ambiguous files" {
+  local file="${BATS_TEST_TMPDIR}/config.textproto"
+  printf '%s\n' '# mode: comment' 'inner {' '  mode: NESTED' '  label: "brace } in string"' '}' 'mode: OLD # keep' 'other: 1' >"$file"
+  run textproto::set-scalar "$file" mode NEW
+  [ "$status" -eq 0 ]
+  [ "$(<"$file")" = "$(printf '%s\n' '# mode: comment' 'inner {' '  mode: NESTED' '  label: "brace } in string"' '}' 'mode: NEW' 'other: 1')" ]
+  run textproto::set-scalar "$file" added 'true'
+  [ "$(tail -n 1 "$file")" = 'added: true' ]
+
+  printf 'mode: A\nmode: B\n' >"$file"
+  run textproto::set-scalar "$file" mode C
+  [ "$status" -eq 65 ]
+  [ "$(<"$file")" = $'mode: A\nmode: B' ]
+  printf 'mode {\n  value: 1\n}\n' >"$file"
+  run textproto::set-scalar "$file" mode C
+  [ "$status" -eq 65 ]
+  printf 'open {\n' >"$file"
+  run textproto::set-scalar "$file" mode C
+  [ "$status" -eq 65 ]
+}

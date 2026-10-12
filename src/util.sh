@@ -497,7 +497,20 @@ time::status-continuous() {
 ### Open an editor for a file, using sudoedit only when required.
 file::edit() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; if [[ -e "$1" && ! -f "$1" ]]; then return 66; fi; if [[ -w "$1" || (! -e "$1" && -w "$(path::directory-name "$1")") ]]; then "${EDITOR:-vi}" "$1"; else command -v sudoedit >/dev/null 2>&1 || return 69; sudoedit "$1"; fi; }
 
-### Release a file held by another process.
+### Release a file held by other processes.
+###
+### Each holder receives SIGTERM, and holders left after the timeout receive
+### SIGKILL. A signal the current user may not send is sent through
+### administrator execution.
+###
+### Arguments
+###
+### * FILE - File to release.
+### * TIMEOUT_SECONDS - Time to wait after SIGTERM. Defaults to 2.
+###
+### Exit status
+###
+### 75 when the file is still open after SIGKILL.
 file::release() {
   [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64
   command -v lsof >/dev/null 2>&1 || return 69
@@ -505,14 +518,14 @@ file::release() {
   start="$(date +%s)" || return 74
   while read -r pid; do
     [[ -n "$pid" ]] || continue
-    kill -TERM "$pid" 2>/dev/null || true
+    kill -TERM "$pid" 2>/dev/null || command::run-as-root kill -TERM "$pid" 2>/dev/null || true
   done < <(lsof -t -- "$1" 2>/dev/null)
   while (( $(date +%s) - start < timeout )); do
     lsof -t -- "$1" >/dev/null 2>&1 || return 0
     sleep 0.1
   done
   while read -r pid; do
-    kill -KILL "$pid" 2>/dev/null || true
+    kill -KILL "$pid" 2>/dev/null || command::run-as-root kill -KILL "$pid" 2>/dev/null || true
   done < <(lsof -t -- "$1" 2>/dev/null)
   lsof -t -- "$1" >/dev/null 2>&1 && return 75
 }
@@ -1551,12 +1564,21 @@ docker::container::logs() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   util::_run-command docker logs --follow "$1"
 }
-### Execute the utility function.
+### Stop a container.
 docker::container::stop() { [[ "$#" -eq 1 ]] || return 64; util::_run-command docker stop "$1"; }
-### Execute the utility function.
+### Start a container.
 docker::container::start() { [[ "$#" -eq 1 ]] || return 64; util::_run-command docker start "$1"; }
-### Execute the utility function.
-docker::container::stop-all() { [[ "$#" -eq 0 ]] || return 64; local ids=(); read -r -a ids <<<"$(docker ps -q)"; [[ "${#ids[@]}" -eq 0 ]] || util::_run-command docker stop "${ids[@]}"; }
+### Stop every running container; having none is a success.
+docker::container::stop-all() {
+  [[ "$#" -eq 0 ]] || return 64
+  command::require docker || return "$?"
+  local identifier='' identifiers=''
+  identifiers="$(docker ps -q)" || return "$?"
+  while IFS= read -r identifier; do
+    [[ -n "${identifier}" ]] || continue
+    docker stop "${identifier}" >/dev/null || return "$?"
+  done <<<"${identifiers}"
+}
 ### Remove every container, running or not.
 docker::container::remove-all() {
   [[ "$#" -eq 0 ]] || return 64
@@ -1869,10 +1891,10 @@ adb::wake::list() {
   adb::_run shell "cat /sys/power/wake_lock" "$@"
 }
 
-### Execute the process::ids-by-name utility.
+### Write the IDs of the processes whose executable name is exactly NAME, one per line.
 process::ids-by-name() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; util::_run-command pgrep -x "$1"; }
 
-### Execute the process::ids-by-name-regex utility.
+### Write the IDs of the processes whose command line matches an ERE evaluated by pgrep -f.
 process::ids-by-name-regex() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; util::_run-command pgrep -f "$1"; }
 
 ### Write the threads of one process.
@@ -1960,25 +1982,25 @@ gdb::attach-pid() {
   gdb -q -batch -p "$1" -ex 'thread apply all bt'
 }
 
-### Execute the gdb::server::start utility.
-gdb::server::start() { [[ "$#" -ge 2 && "$2" =~ ^[0-9]+$ ]] || return 64; util::_run-command gdbserver ":$1" "$2" "${@:3}"; }
+### Start COMMAND with its arguments under gdbserver listening on PORT.
+gdb::server::start() { [[ "$#" -ge 2 && "$1" =~ ^[0-9]+$ && -n "$2" ]] || return 64; util::_run-command gdbserver ":$1" "${@:2}"; }
 
-### Execute the gdb::connect utility.
+### Load ELF in GDB and connect to the GDB server at HOST and PORT.
 gdb::connect() { [[ "$#" -eq 3 && -f "$1" && "$3" =~ ^[0-9]+$ ]] || return 64; util::_run-command gdb "$1" -ex "target remote $2:$3"; }
 
-### Execute the gdb::run-until utility.
-gdb::run-until() { [[ "$#" -ge 2 ]] || return 64; util::_run-command gdb "$1" -ex "break $2" -ex run "${@:3}"; }
+### Run ELF in GDB with optional program arguments and stop at SYMBOL.
+gdb::run-until() { [[ "$#" -ge 2 && -f "$1" && -n "$2" ]] || return 64; util::_run-command gdb -ex "break $2" -ex run --args "$1" "${@:3}"; }
 
-### Execute the gdb::core::open utility.
+### Open ELF and a core dump in GDB.
 gdb::core::open() { [[ "$#" -eq 2 && -f "$1" && -f "$2" ]] || return 64; util::_run-command gdb "$1" "$2"; }
 
-### Execute the device-tree::node::list utility.
+### Write the node paths of the Linux device tree.
 device-tree::node::list() { [[ "$#" -eq 0 ]] || return 64; [[ -d /sys/firmware/devicetree/base ]] || return 66; find /sys/firmware/devicetree/base -mindepth 1 -print; }
 
-### Execute the i2c::bus::list utility.
+### Write the I2C buses with i2cdetect -l.
 i2c::bus::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command i2cdetect -l; }
 
-### Execute the i2c::device::list utility.
+### Write the devices on one I2C bus with i2cdetect -y.
 i2c::device::list() { [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64; util::_run-command i2cdetect -y "$1"; }
 
 ### Write the GPIO chips with gpiodetect.
@@ -1995,10 +2017,10 @@ gpio::line::list() {
   util::_run-command gpioinfo "${arguments[@]}"
 }
 
-### Execute the usb::device::list utility.
+### Write the USB devices with lsusb.
 usb::device::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command lsusb; }
 
-### Execute the pci::device::list utility.
+### Write the PCI devices with lspci.
 pci::device::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command lspci; }
 
 ### Convert AsciiDoc to HTML with diagram support.
@@ -2012,13 +2034,13 @@ asciidoc::html() {
   util::_run-command asciidoctor -r asciidoctor-diagram -b html5 -D "${2:-.}" "$1"
 }
 
-### Execute the flutter::run-chrome-release utility.
+### Run a Flutter project in Chrome in release mode.
 flutter::run-chrome-release() { [[ "$#" -le 1 ]] || return 64; (cd "${1:-.}" && util::_run-command flutter run --release -d chrome); }
 
-### Execute the flutter::run-linux-release utility.
+### Run a Flutter project as a Linux desktop application in release mode.
 flutter::run-linux-release() { [[ "$#" -le 1 ]] || return 64; (cd "${1:-.}" && util::_run-command flutter run --release -d linux); }
 
-### Execute the flutter::test utility.
+### Run the Flutter tests of a project with optional flutter test arguments.
 flutter::test() { [[ "$#" -ge 0 ]] || return 64; local directory='.'; [[ "$#" -gt 0 && -d "$1" ]] && { directory="$1"; shift; }; (cd "$directory" && util::_run-command flutter test "$@"); }
 
 ### Run the Flutter tests with coverage and write the LCOV HTML report.
@@ -2100,19 +2122,19 @@ systemd::status() {
   systemctl status --no-pager -- "$1"
 }
 
-### Execute the systemd::service::list utility.
+### Write every loaded systemd service, including stopped ones.
 systemd::service::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command systemctl list-units --type=service; }
 
-### Execute the systemd::service::list-running utility.
+### Write the running systemd services.
 systemd::service::list-running() { [[ "$#" -eq 0 ]] || return 64; util::_run-command systemctl list-units --type=service --state=running; }
 
-### Execute the systemd::service::list-failed utility.
+### Write the failed systemd services.
 systemd::service::list-failed() { [[ "$#" -eq 0 ]] || return 64; util::_run-command systemctl list-units --type=service --state=failed; }
 
-### Execute the systemd::service::list-files utility.
+### Write every systemd service unit file and its enablement state.
 systemd::service::list-files() { [[ "$#" -eq 0 ]] || return 64; util::_run-command systemctl list-unit-files --type=service; }
 
-### Execute the gpg::decrypt utility.
+### Decrypt a GPG file to standard output without adding a newline.
 gpg::decrypt() { [[ "$#" -eq 1 && -f "$1" ]] || return 64; util::_run-command gpg --decrypt "$1"; }
 
 ### Write a public GPG key in ASCII armor.
@@ -2147,7 +2169,7 @@ gpg::secret-key::fingerprints() {
   printf '%s\n' "${fingerprints}"
 }
 
-### Execute the gpg::secret-key::list utility.
+### Write the secret GPG keys in the human-readable GPG format.
 gpg::secret-key::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command gpg --list-secret-keys; }
 
 ### Link the English XDG user directory names to the directories of the current locale.
@@ -2333,7 +2355,7 @@ mozc::config::open() {
   mozc_tool --mode=config_dialog
 }
 
-### Execute the archive::extract utility.
+### Extract one archive, or every recognized archive below a directory, next to itself.
 archive::extract() { [[ "$#" -le 1 ]] || return 64; local path="${1:-.}" file; if [[ -f "$path" ]]; then archive::extract-file "$path"; else while IFS= read -r -d '' file; do archive::extract-file "$file" || return "$?"; done < <(archive::_find "$path"); fi; }
 
 ### Attach strace to the first process whose executable name is NAME.
@@ -2649,6 +2671,12 @@ plist::set() {
 
 ### Replace or append one top-level scalar field in a textproto file.
 ###
+### The file is read with its comments, quoted strings, and nested messages
+### taken into account, so only a FIELD at the top level is changed. An
+### existing field line is replaced; a missing field is appended. A field that
+### occurs more than once at the top level, a field that holds a message, and
+### unbalanced braces or strings in the result return 65 without a change.
+###
 ### Arguments
 ###
 ### * FILE - Existing textproto file.
@@ -2657,7 +2685,59 @@ plist::set() {
 textproto::set-scalar() {
   [[ "$#" -eq 3 && -f "$1" && ! -L "$1" && "$2" =~ ^[A-Za-z_][A-Za-z0-9_]*$ && -n "$3" ]] || return 64
   string::_require-one-line "$3" || return "$?"
-  file::replace-text-or-append "$1" "^$2[[:space:]]*:.*$" "$2: $3"
+  command::require perl || return "$?"
+  local content=''
+  content="$(perl -e '
+    my ($path, $field, $value) = @ARGV;
+    open(my $handle, "<", $path) or exit 66;
+    my @lines = <$handle>;
+    close($handle);
+    # Scan text, returning the depth after it, or undef for an unterminated string.
+    sub scan {
+      my ($text, $depth) = @_;
+      my $quote = "";
+      for (my $i = 0; $i < length($text); $i++) {
+        my $c = substr($text, $i, 1);
+        if ($quote ne "") {
+          if ($c eq "\\") { $i++; next; }
+          $quote = "" if $c eq $quote;
+          next;
+        }
+        last if $c eq "#";
+        if ($c eq "\"" || $c eq "\x27") { $quote = $c; next; }
+        $depth++ if $c eq "{" || $c eq "<";
+        $depth-- if $c eq "}" || $c eq ">";
+        return undef if $depth < 0;
+      }
+      return $quote eq "" ? $depth : undef;
+    }
+    my ($depth, @matches) = (0);
+    for my $index (0 .. $#lines) {
+      if ($depth == 0 && $lines[$index] =~ /^\s*\Q$field\E\s*(:|\{|<)/) {
+        exit 65 if $1 ne ":" || $lines[$index] =~ /^\s*\Q$field\E\s*:\s*[{<]/;
+        push @matches, $index;
+      }
+      $depth = scan($lines[$index], $depth);
+      exit 65 unless defined $depth;
+    }
+    exit 65 if $depth != 0 || @matches > 1;
+    if (@matches) {
+      $lines[$matches[0]] = "$field: $value\n";
+    } else {
+      $lines[-1] .= "\n" if @lines && $lines[-1] !~ /\n\z/;
+      push @lines, "$field: $value\n";
+    }
+    $depth = 0;
+    for my $line (@lines) {
+      $depth = scan($line, $depth);
+      exit 65 unless defined $depth;
+    }
+    exit 65 if $depth != 0;
+    print @lines;
+    print "x";
+  ' "$1" "$2" "$3")" || return "$?"
+  # The trailing x keeps the final newline through command substitution.
+  file::write-text "$1" "${content%x}"
 }
 
 ### Make Bash and Zsh completion ignore letter case.
@@ -2695,7 +2775,7 @@ shell::completion::enable-ignore-case() {
   done
 }
 
-### Execute the git::credentials::remove utility.
+### Remove $HOME/.git-credentials and the global credential.helper; both may be absent.
 git::credentials::remove() {
   [[ "$#" -eq 0 ]] || return 64
   if git config --global --get-all credential.helper >/dev/null 2>&1; then
@@ -2704,10 +2784,10 @@ git::credentials::remove() {
   rm -f -- "$HOME/.git-credentials"
 }
 
-### Execute the git::config::enable-origin-all-fetch utility.
+### Make origin fetch every branch in a repository.
 git::config::enable-origin-all-fetch() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'; }
 
-### Execute the git::config::enable-prune-fetch utility.
+### Enable pruning on fetch in the global Git configuration.
 git::config::enable-prune-fetch() { [[ "$#" -eq 0 ]] || return 64; git config --global fetch.prune true; }
 
 ### Set the default branch name of new repositories.
@@ -2722,7 +2802,7 @@ git::config::set-default-branch() {
   git config --global init.defaultBranch "${branch}"
 }
 
-### Execute the git::config::enable-rebase-on-pull utility.
+### Enable rebase on pull in the global Git configuration.
 git::config::enable-rebase-on-pull() { [[ "$#" -eq 0 ]] || return 64; git config --global pull.rebase true; }
 
 ### Set the global Git email address.
@@ -2790,7 +2870,7 @@ git::config::use-gpg-credential-store() {
   console::_write-error 'Git Credential Manager now stores credentials with pass; initialize it with pass::store::init FINGERPRINT.'
 }
 
-### Execute the git::config::use-credential-manager utility.
+### Use Git Credential Manager as the global credential helper.
 git::config::use-credential-manager() { [[ "$#" -eq 0 ]] || return 64; git config --global credential.helper manager; }
 
 ### Remove a pass store and everything in it.
@@ -2933,14 +3013,14 @@ ssh::key::generate-ed25519() {
   ssh::key::_generate ed25519 id_ed25519 "$@"
 }
 
-### Execute the ssh::kill-all utility.
+### End every SSH process of the current user.
 ssh::kill-all() {
   [[ "$#" -eq 0 ]] || return 64
   command -v pkill >/dev/null 2>&1 || return 69
   pkill -u "$(id -un)" ssh
 }
 
-### Execute the git::config::use-osx-keychain utility.
+### Use the macOS Keychain as the global Git credential helper.
 git::config::use-osx-keychain() { [[ "$#" -eq 0 ]] || return 64; [[ "$(system::operating-system)" == darwin ]] || return 69; git config --global credential.helper osxkeychain; }
 
 ### Write the installed Git Credential Manager version.
