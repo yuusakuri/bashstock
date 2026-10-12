@@ -70,6 +70,36 @@ jobs:
             -v "$PWD/scripts/test-claude-desktop-container:/opt/test-claude-desktop-container:ro" \
             "${{ matrix.image }}" bash /opt/test-claude-desktop-container
 
+  dns:
+    name: DNS switching on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-22.04
+          - ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
+        with:
+          submodules: recursive
+      - name: Build the standalone library
+        run: ./scripts/build
+      - name: Refuse to change DNS when the manager is unknown
+        run: |
+          docker run --rm -v "$PWD/dist/bashstock.sh:/opt/bashstock.sh:ro" ubuntu:24.04 bash -c '
+            set -u
+            source /opt/bashstock.sh
+            [[ "$(net::dns::manager)" == unknown ]]
+            status=0
+            net::dns::use-google || status="$?"
+            [[ "$status" -eq 69 ]]
+            [[ ! -e /etc/systemd/resolved.conf.d/90-bashstock-google.conf ]]'
+      - name: Switch between systemd-resolved and NetworkManager and use Google Public DNS
+        shell: bash
+        run: bash ./scripts/test-dns-host
+
   docker-service:
     name: Docker service on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
