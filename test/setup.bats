@@ -760,3 +760,22 @@ use_fake_sudoers() {
   [ "${status}" -eq 64 ]
   [ ! -s "${ROOT_LOG}" ]
 }
+
+@test "passwordless sudo can be revoked again, also when the rule is already gone" {
+  use_fake_sudoers
+  run sudo::passwordless::enable first.last
+  [ "${status}" -eq 0 ]
+  [ -e "${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-first_last" ]
+
+  run sudo::passwordless::disable first.last
+  [ "${status}" -eq 0 ]
+  [ ! -e "${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-first_last" ]
+
+  run sudo::passwordless::disable first.last
+  [ "${status}" -eq 0 ]
+
+  : >"${ROOT_LOG}"
+  run sudo::passwordless::disable 'a b'
+  [ "${status}" -eq 64 ]
+  [ ! -s "${ROOT_LOG}" ]
+}

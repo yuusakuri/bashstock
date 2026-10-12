@@ -1168,6 +1168,24 @@ jenkins::restart() { [[ "$#" -eq 0 ]] || return 64; util::_run-command systemctl
 ### Execute the sudo::start-keep-alive utility.
 sudo::start-keep-alive() { [[ "$#" -eq 0 ]] || return 64; util::_run-command sudo -v; }
 
+### Write the named user, or the user who invoked sudo, or the current user.
+sudo::passwordless::_user() {
+  [[ "$#" -le 1 ]] || return 64
+  local user="${1:-${SUDO_USER:-}}"
+  if [[ -z "${user}" ]]; then
+    user="$(user::name)" || return "$?"
+  fi
+  [[ "${user}" =~ ^[A-Za-z_][A-Za-z0-9._-]*$ ]] || return 64
+  printf '%s\n' "${user}"
+}
+
+### Write the drop-in file that holds the passwordless sudo rule of a user.
+sudo::passwordless::_file() {
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  # sudo skips drop-in files whose names contain a dot.
+  printf '/etc/sudoers.d/zz-bashstock-passwordless-%s\n' "${1//./_}"
+}
+
 ### Let a user run every command through sudo without entering a password.
 ###
 ### The rule `USER ALL=(ALL) NOPASSWD: ALL` is written to its own file in
@@ -1183,17 +1201,13 @@ sudo::start-keep-alive() { [[ "$#" -eq 0 ]] || return 64; util::_run-command sud
 ### * USER - Optional login name. The default is the user who invoked sudo, or the current user.
 sudo::passwordless::enable() {
   [[ "$#" -le 1 ]] || return 64
-  local user="${1:-${SUDO_USER:-}}" file='' directory='' status=0
-  if [[ -z "${user}" ]]; then
-    user="$(user::name)" || return "$?"
-  fi
-  [[ "${user}" =~ ^[A-Za-z_][A-Za-z0-9._-]*$ ]] || return 64
+  local user='' file='' directory='' status=0
+  user="$(sudo::passwordless::_user "$@")" || return "$?"
   if ! user::exists "${user}"; then
     console::_write-error "User does not exist: ${user}"
     return 64
   fi
-  # sudo skips drop-in files whose names contain a dot.
-  file="/etc/sudoers.d/zz-bashstock-passwordless-${user//./_}"
+  file="$(sudo::passwordless::_file "${user}")"
   directory="$(mktemp -d "${TMPDIR:-/tmp}/bashstock-sudoers.XXXXXX")" || return 74
   printf '%s ALL=(ALL) NOPASSWD: ALL\n' "${user}" >"${directory}/rule" || status=74
   if [[ "${status}" -eq 0 ]] && ! command::run-as-root visudo -c -q -f "${directory}/rule"; then
@@ -1215,6 +1229,24 @@ sudo::passwordless::enable() {
     console::_write-error "sudo does not apply ${file}; the file was removed."
     return 69
   fi
+}
+
+### Remove the passwordless sudo rule that sudo::passwordless::enable added.
+###
+### Only the BashStock drop-in file of the user is removed, so sudo asks for
+### the password again unless another sudoers rule also grants NOPASSWD. The
+### function succeeds when the file does not exist.
+###
+### Arguments
+###
+### * USER - Optional login name. The default is the user who invoked sudo, or the current user.
+sudo::passwordless::disable() {
+  [[ "$#" -le 1 ]] || return 64
+  local user='' file=''
+  user="$(sudo::passwordless::_user "$@")" || return "$?"
+  file="$(sudo::passwordless::_file "${user}")" || return "$?"
+  # /etc/sudoers.d is often unreadable to other users, so remove the file as root.
+  command::run-as-root rm -f -- "${file}" || return 74
 }
 
 ### Execute the storage::clear-trash utility.
