@@ -1,7 +1,6 @@
 #!/usr/bin/env bats
 
 load test_helper
-bats_require_minimum_version 1.5.0
 
 git_test::create-repository() {
   local directory="$1"
@@ -238,7 +237,7 @@ git_test::create-remote-and-clone() {
   run git::cherry-pick "${second}" origin "${clone}"
   [ "${status}" -eq 0 ]
   [ "$(<"${clone}/value")" = second ]
-  run --separate-stderr git::cherry-pick 0123456789abcdef0123456789abcdef01234567 origin "${clone}"
+  run git::cherry-pick 0123456789abcdef0123456789abcdef01234567 origin "${clone}"
   [ "${status}" -ne 0 ]
 }
 
