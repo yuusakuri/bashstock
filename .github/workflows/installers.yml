@@ -50,6 +50,34 @@ jobs:
             "${{ matrix.image }}" bash -c \
             'bash /opt/test-docker-package-container && bash /opt/test-node-container && bash /opt/test-jdk-go-container && bash /opt/test-rust-container && bash /opt/test-ruby-container && bash /opt/test-pipx-container && bash /opt/test-vscode-container && bash /opt/test-tools-container'
 
+  flutter:
+    name: Flutter on ${{ matrix.image }} (amd64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - ubuntu:18.04
+          - ubuntu:20.04
+          - ubuntu:22.04
+          - ubuntu:24.04
+          - ubuntu:26.04
+          - fedora:34
+          - fedora:44
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
+        with:
+          submodules: recursive
+      - name: Build the standalone library
+        run: ./scripts/build
+      - name: Install Flutter, switch versions, and build and start a Linux application
+        run: |
+          docker run --rm --platform linux/amd64 -e GITHUB_TOKEN \
+            -v "$PWD/dist/bashstock.sh:/opt/bashstock.sh:ro" \
+            -v "$PWD/scripts/test-flutter-container:/opt/test-flutter-container:ro" \
+            "${{ matrix.image }}" bash /opt/test-flutter-container
+
   claude-desktop:
     name: Claude Desktop on ${{ matrix.image }} (amd64)
     runs-on: ubuntu-24.04
