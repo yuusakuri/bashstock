@@ -1433,6 +1433,77 @@ vscode::install() {
   package::_install-version code "${version}"
 }
 
+### Register Brave's official repository for the current Linux platform.
+brave::_register-repository() {
+  [[ "$#" -eq 1 ]] || return 64
+  if [[ "$1" == 'ubuntu' ]]; then
+    local directory='' status=0
+    directory="$(package::_temporary-directory)" || return "$?"
+    package::_download \
+      https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg \
+      "${directory}/brave-browser-archive-keyring.gpg" || status="$?"
+    if [[ "${status}" -eq 0 ]]; then
+      command::run-as-root install -d -m 0755 /usr/share/keyrings || status=74
+    fi
+    if [[ "${status}" -eq 0 ]]; then
+      command::run-as-root install -m 0644 "${directory}/brave-browser-archive-keyring.gpg" \
+        /usr/share/keyrings/brave-browser-archive-keyring.gpg || status=74
+    fi
+    rm -rf -- "${directory}"
+    [[ "${status}" -eq 0 ]] || return "${status}"
+    file::write-text /etc/apt/sources.list.d/brave-browser-release.sources \
+      $'Types: deb\nURIs: https://brave-browser-apt-release.s3.brave.com\nSuites: stable\nComponents: main\nArchitectures: amd64 arm64\nSigned-By: /usr/share/keyrings/brave-browser-archive-keyring.gpg\n' || return "$?"
+    package::_refresh
+  else
+    package::_dnf-register-repository brave-browser \
+      $'[brave-browser]\nname=Brave Browser\nenabled=1\ngpgcheck=1\ngpgkey=https://brave-browser-rpm-release.s3.brave.com/brave-core.asc\nbaseurl=https://brave-browser-rpm-release.s3.brave.com/$basearch\n'
+  fi
+}
+
+### Write Brave versions available to the current platform.
+brave::versions() {
+  [[ "$#" -eq 0 ]] || return 64
+  local platform='' architecture=''
+  platform="$(package::_platform)" || return "$?"
+  case "${platform}" in
+    darwin)
+      package::_cask-versions brave-browser
+      ;;
+    ubuntu)
+      architecture="$(package::_deb-architecture)" || return "$?"
+      package::_deb-runnable-versions \
+        "https://brave-browser-apt-release.s3.brave.com/dists/stable/main/binary-${architecture}/Packages" \
+        brave-browser
+      ;;
+    fedora)
+      architecture="$(package::_rpm-architecture)" || return "$?"
+      package::_rpm-repository-versions \
+        "https://brave-browser-rpm-release.s3.brave.com/${architecture}" brave-browser
+      ;;
+  esac
+}
+
+### Install Brave from its official repository or Homebrew.
+###
+### On Ubuntu, a version is accepted only when the installed C library can run it,
+### and an omitted version selects the newest such build.
+brave::install() {
+  [[ "$#" -le 1 ]] || return 64
+  local platform=''
+  platform="$(package::_platform)" || return "$?"
+  if [[ "${platform}" == 'darwin' ]]; then
+    package::_install-cask brave-browser "${1:-}"
+    return
+  fi
+  local version="${1:-}" versions=''
+  if [[ "${platform}" == 'ubuntu' ]]; then
+    versions="$(brave::versions)" || return "$?"
+    version="$(package::_select-listed-version "${versions}" "${version}" 'Brave')" || return "$?"
+  fi
+  brave::_register-repository "${platform}" || return "$?"
+  package::_install-version brave-browser "${version}"
+}
+
 ### Register the Google Chrome repository for the current Linux platform.
 chrome::_register-repository() {
   [[ "$#" -eq 1 ]] || return 64
