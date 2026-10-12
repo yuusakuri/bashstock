@@ -1645,8 +1645,9 @@ gimp::gmic::_official-entries() {
     platform::_os-release-value VERSION_CODENAME)" || return 69
   architecture="$(package::_deb-architecture)" || return "$?"
   listing="$(package::_fetch https://gmic.eu/files/linux/)" || return "$?"
-  printf '%s\n' "${listing}" |
-    grep -oE "gmic_[0-9.]+_ubuntu${release//./-}_${codename}_${architecture}\.deb" |
+  # A release or CPU without a package leaves the list empty.
+  { printf '%s\n' "${listing}" |
+    grep -oE "gmic_[0-9.]+_ubuntu${release//./-}_${codename}_${architecture}\.deb" || true; } |
     sort -u |
     sed -E 's|^gmic_([0-9.]+)_.*$|\1\thttps://gmic.eu/files/linux/&|'
 }
@@ -1683,7 +1684,8 @@ gimp::gmic::versions() {
 ### Arguments
 ###
 ### * VERSION - Optional version from gimp::gmic::versions for the same SOURCE.
-### * SOURCE - os (default) or official. The official source supports Ubuntu.
+### * SOURCE - os (default) or official. The official source supports Ubuntu
+###   on amd64, the only CPU the G'MIC project builds packages for.
 gimp::gmic::install() {
   [[ "$#" -le 2 ]] || return 64
   local version="${1:-}" source="${2:-os}" package='' versions='' official_entries='' url=''
@@ -1699,6 +1701,10 @@ gimp::gmic::install() {
       ;;
     official)
       official_entries="$(gimp::gmic::_official-entries)" || return "$?"
+      if [[ -z "${official_entries}" ]]; then
+        console::_write-error "The G'MIC project publishes no package for this Ubuntu release and CPU."
+        return 69
+      fi
       versions="$(printf '%s\n' "${official_entries}" | cut -f 1)"
       version="$(package::_select-listed-version "${versions}" "${version}" "G'MIC")" || return "$?"
       url="$(printf '%s\n' "${official_entries}" | awk -F '\t' -v version="${version}" '$1 == version {print $2; exit}')"

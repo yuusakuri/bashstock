@@ -36,9 +36,17 @@ if [[ "$ID" == ubuntu && -z "$(gimp::gmic::versions)" ]]; then
   status=0
   gimp::install || status="$?"
   [[ "$status" -eq 69 ]]
-  gimp::install '' official
-  gimp --version
-  dpkg -L gmic | grep -E '/gimp/3\.0/plug-ins/gmic_gimp_qt/gmic_gimp_qt$'
+  if [[ "$(dpkg --print-architecture)" == amd64 ]]; then
+    gimp::install '' official
+    gimp --version
+    dpkg -L gmic | grep -E '/gimp/3\.0/plug-ins/gmic_gimp_qt/gmic_gimp_qt$'
+  else
+    # The G'MIC project builds its packages for amd64 only.
+    status=0
+    gimp::install '' official || status="$?"
+    [[ "$status" -eq 69 ]]
+    gimp --version
+  fi
 else
   gimp::install
   gimp --version

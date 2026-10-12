@@ -465,12 +465,16 @@ package::_deb-runnable-versions() {
 }
 
 ### Write versions of one package from an RPM repository without registering it.
+###
+### Only builds for the running CPU are listed, because a repository such as
+### VS Code's gives each architecture its own release number.
 package::_rpm-repository-versions() {
   [[ "$#" -eq 2 && "$1" == https://* && -n "$2" ]] || return 64
   command::require dnf || return "$?"
-  local versions=''
+  local architecture='' versions=''
+  architecture="$(package::_rpm-architecture)" || return "$?"
   versions="$(dnf repoquery --quiet --disablerepo='*' --repofrompath="bashstock-query,$1" \
-    --enablerepo=bashstock-query --queryformat $'%{evr}\n' "$2" 2>/dev/null)" || return 74
+    --enablerepo=bashstock-query --arch="${architecture},noarch" --queryformat $'%{evr}\n' "$2" 2>/dev/null)" || return 74
   printf '%s\n' "${versions}" | package::_sort-versions
 }
 

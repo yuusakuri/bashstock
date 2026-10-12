@@ -277,6 +277,18 @@ use_fake_curl() {
   grep -Eq '^install -m 0755 .*/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx$' "${ROOT_LOG}"
 }
 
+@test "VS Code versions on Fedora list only builds for the running CPU" {
+  use_platform fedora 44
+  uname() { [[ "$1" == '-m' ]] && printf 'aarch64\n'; }
+  dnf() {
+    [[ " $* " == *' --arch=aarch64,noarch '* ]] || return 1
+    printf '1.141.0-1791276900\n'
+  }
+  run vscode::versions
+  [ "${status}" -eq 0 ]
+  [ "${output}" = '1.141.0-1791276900' ]
+}
+
 @test "Docker versions order epoch releases after legacy releases" {
   use_platform ubuntu 18.04 bionic
   dpkg() { printf 'arm64\n'; }
@@ -989,6 +1001,22 @@ use_fake_sudoers() {
   run gimp::gmic::install '' official
   [ "${status}" -eq 0 ]
   grep -Eq '^env DEBIAN_FRONTEND=noninteractive apt-get install -y /.*/package\.deb$' "${ROOT_LOG}"
+}
+
+@test "G'MIC official source refuses a CPU without a published package" {
+  use_platform ubuntu 26.04 resolute
+  record_root_commands
+  dpkg() { [[ "$1" == '--print-architecture' ]] && printf 'arm64\n'; }
+  curl() { printf '<a href="gmic_4.0.5_ubuntu26-04_resolute_amd64.deb">'; }
+
+  run gimp::gmic::versions official
+  [ "${status}" -eq 0 ]
+  [ -z "${output}" ]
+
+  run --separate-stderr gimp::gmic::install '' official
+  [ "${status}" -eq 69 ]
+  [[ "${stderr}" == *'no package for this Ubuntu release and CPU'* ]]
+  [ ! -s "${ROOT_LOG}" ]
 }
 
 @test "GitHub API requests carry GITHUB_TOKEN on standard input, never in arguments" {
