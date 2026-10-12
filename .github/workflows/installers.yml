@@ -247,6 +247,52 @@ jobs:
           docker exec bashstock systemctl --failed --no-pager || true
           docker exec bashstock journalctl -u docker --no-pager -n 100 || true
 
+  ubuntu-setup:
+    name: Ubuntu user setup on ${{ matrix.image }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - amd64
+          - arm64
+        image:
+          - ubuntu:18.04
+          - ubuntu:20.04
+          - ubuntu:22.04
+          - ubuntu:24.04
+          - ubuntu:26.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
+        with:
+          submodules: recursive
+      - name: Build the standalone library
+        run: ./scripts/build
+      - name: Boot a privileged container whose PID 1 is systemd
+        run: |
+          docker run -d --name bashstock --privileged --cgroupns=host \
+            --platform linux/${{ matrix.arch }} \
+            --tmpfs /run --tmpfs /run/lock \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+            -v "$PWD/dist/bashstock.sh:/opt/bashstock.sh:ro" \
+            -v "$PWD/scripts/boot-systemd-container:/opt/boot-systemd-container:ro" \
+            -v "$PWD/scripts/test-ubuntu-setup-container:/opt/test-ubuntu-setup-container:ro" \
+            "${{ matrix.image }}" bash /opt/boot-systemd-container
+          for _ in $(seq 1 300); do
+            [[ "$(docker inspect -f '{{.State.Running}}' bashstock)" == true ]] || { docker logs bashstock; exit 1; }
+            state="$(docker exec bashstock systemctl is-system-running 2>/dev/null || true)"
+            case "$state" in
+              running | degraded) break ;;
+            esac
+            sleep 2
+          done
+          printf 'systemd state: %s\n' "$state"
+          [[ "$state" == running || "$state" == degraded ]]
+      - name: Apply ubuntu::setup twice and check a new login session
+        run: |
+          docker exec -u tester -w /home/tester bashstock bash /opt/test-ubuntu-setup-container
+
   android-macos:
     name: Android SDK and AVD on macOS
     runs-on: macos-latest
