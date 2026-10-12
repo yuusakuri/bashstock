@@ -1823,12 +1823,22 @@ net::dns::_backup-resolv-conf() {
   command::run-as-root cp -P -- /etc/resolv.conf "/etc/resolv.conf.bashstock-${stamp}" || return 74
 }
 
-### Write active NetworkManager connection UUIDs, excluding VPN connections.
+### Write UUIDs of active connections that NetworkManager itself manages, excluding VPNs.
+###
+### Connections on devices that another program configures, such as the docker0
+### bridge, are reported as "connected (externally)" and are left alone.
 net::dns::_active-network-manager-connections() {
   [[ "$#" -eq 0 ]] || return 64
   command::require nmcli || return "$?"
-  nmcli -t -f UUID,TYPE connection show --active 2>/dev/null |
-    awk -F: '$2 != "vpn" && $2 != "wireguard" && $2 != "loopback" && $1 != "" {print $1}'
+  local uuid='' type='' device='' state=''
+  while IFS=: read -r uuid type device; do
+    [[ -n "${uuid}" && "${type}" != vpn && "${type}" != wireguard && "${type}" != loopback ]] || continue
+    if [[ -n "${device}" ]]; then
+      state="$(nmcli -g GENERAL.STATE device show "${device}" 2>/dev/null)" || state=''
+      [[ "${state}" != *externally* ]] || continue
+    fi
+    printf '%s\n' "${uuid}"
+  done < <(nmcli -t -f UUID,TYPE,DEVICE connection show --active 2>/dev/null)
 }
 
 ### Restart systemd-resolved and confirm that it is active.
@@ -1929,9 +1939,14 @@ net::dns::use-google() {
       connections="$(net::dns::_active-network-manager-connections)" || return "$?"
       [[ -n "${connections}" ]] || return 69
       while IFS= read -r connection; do
-        command::run-as-root nmcli connection modify "${connection}" \
-          ipv4.dns '8.8.8.8 8.8.4.4' ipv4.ignore-auto-dns yes \
-          ipv6.dns '2001:4860:4860::8888 2001:4860:4860::8844' ipv6.ignore-auto-dns yes || return 74
+        local settings=(ipv4.dns '8.8.8.8 8.8.4.4' ipv4.ignore-auto-dns yes)
+        # NetworkManager rejects IPv6 DNS servers unless IPv6 is configured with addresses.
+        case "$(nmcli -g ipv6.method connection show "${connection}" 2>/dev/null)" in
+          auto | dhcp | manual)
+            settings+=(ipv6.dns '2001:4860:4860::8888 2001:4860:4860::8844' ipv6.ignore-auto-dns yes)
+            ;;
+        esac
+        command::run-as-root nmcli connection modify "${connection}" "${settings[@]}" || return 74
         command::run-as-root nmcli connection up "${connection}" >/dev/null || return 75
       done <<<"${connections}"
       ;;

@@ -43,7 +43,7 @@
 | C04 | Ubuntu 20.04 で導入する | 終了状態 69 を返し、リポジトリを登録せず、パッケージも導入しない | 同上 |
 | C05 | 公開指紋と異なる署名鍵を受け取る | 終了状態 65 を返し、リポジトリを登録せず、パッケージも導入しない | `test/setup.bats` |
 | N01 | systemd-resolved の実行環境で `net::dns::use-systemd-resolved` と `net::dns::use-google` をそれぞれ二度実行し、systemd-resolved を再起動する | `resolv.conf` が stub を指し、不要なバックアップを作らない。drop-in は 0644 で systemd-resolve 利用者が読め、再起動後も 8.8.8.8・8.8.4.4 が設定され、名前解決できる | `scripts/test-dns-host` |
-| N02 | NetworkManager を入れ、ダミー接続と WireGuard 接続がある状態で `net::dns::use-network-manager` と `net::dns::use-google` を実行し、NetworkManager を再起動する | `resolv.conf` が NetworkManager の実行時ファイルを指し、元のリンクがバックアップされる。ダミー接続だけに Google Public DNS と ignore-auto-dns が設定され、WireGuard 接続の DNS は変わらない。再起動後も設定が残る | 同上 |
+| N02 | NetworkManager を入れ、ダミー接続と WireGuard 接続がある状態で `net::dns::use-network-manager` と `net::dns::use-google` を実行し、NetworkManager を再起動する | `resolv.conf` が NetworkManager の実行時ファイルを指し、元のリンクがバックアップされる。ダミー接続だけに Google Public DNS と ignore-auto-dns が設定され、WireGuard 接続と、Docker が管理する docker0 の DNS は変わらない。再起動後も設定が残る | 同上 |
 | N03 | `net::dns::use-systemd-resolved` で戻す | systemd-resolved が管理し、Google Public DNS で名前解決できる | 同上 |
 | N04 | DNS 管理方式を判別できないコンテナで `net::dns::use-google` を実行する | 終了状態 69 を返し、設定ファイルを作らない | `Installer integration / dns` |
 | T01 | 各 OS で pass を二度導入し、使い捨ての鍵で項目を暗号化して取り出す | 両方の導入が成功し、取り出した値が保存した値と一致する | `scripts/test-tools-container` |

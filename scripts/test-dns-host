@@ -60,6 +60,10 @@ net::dns::use-google
 [[ "$(nmcli -g ipv4.dns connection show bashstock-dummy)" == '8.8.8.8,8.8.4.4' ]]
 [[ "$(nmcli -g ipv4.ignore-auto-dns connection show bashstock-dummy)" == yes ]]
 [[ "$(nmcli -g ipv4.dns connection show bashstock-vpn)" == 192.0.2.53 ]]
+# Docker configures docker0 itself; NetworkManager only observes it.
+if nmcli -t -f NAME connection show --active | grep -qx docker0; then
+  [[ -z "$(nmcli -g ipv4.dns connection show docker0)" ]]
+fi
 grep -F 'nameserver 8.8.8.8' /etc/resolv.conf
 sudo systemctl restart NetworkManager
 sleep 3
