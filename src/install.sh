@@ -1823,6 +1823,9 @@ qmk::toolbox::install() {
 
 ### Install the QMK CLI with the official installer and diagnose the environment.
 ###
+### The CLI offers `qmk doctor` only after `qmk setup` has prepared the
+### firmware tree, so a fresh installation confirms `qmk --version` instead.
+###
 ### Arguments
 ###
 ### * VERSION - QMK CLI version. Only the newest stable version from PyPI is accepted.
@@ -1843,8 +1846,15 @@ qmk::cli::install() {
   [[ "${status}" -ne 0 ]] || sh "${directory}/install.sh" || status="$?"
   rm -rf -- "${directory}"
   [[ "${status}" -eq 0 ]] || return "${status}"
+  # The installer puts qmk in $HOME/.local/bin and asks for a new shell otherwise.
+  env::add-path "${HOME}/.local/bin" || return "$?"
   command::require qmk || return "$?"
-  qmk doctor
+  # qmk doctor exists only once `qmk setup` has prepared the firmware tree.
+  if qmk doctor --help >/dev/null 2>&1; then
+    qmk doctor
+  else
+    qmk --version
+  fi
 }
 
 ### Write the newest QMK CLI version published on PyPI.
