@@ -821,6 +821,9 @@ use_fake_sudoers() {
   run vscode::install
   [ "${status}" -eq 0 ]
   [ "$(tail -n 1 "${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades code=1.85.2-1705561292' ]
+  # The 1.85 package skips its own repository definition only when vscode.list exists.
+  [ -e "${FAKE_ROOT}/etc/apt/sources.list.d/vscode.list" ]
+  ! grep -Eq '^[[:space:]]*deb[[:space:]]' "${FAKE_ROOT}/etc/apt/sources.list.d/vscode.list"
 
   : >"${ROOT_LOG}"
   run --separate-stderr vscode::install 1.86.0-1706698139

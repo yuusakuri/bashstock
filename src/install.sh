@@ -1315,9 +1315,14 @@ vscode::_register-repository() {
   if [[ "$1" == 'ubuntu' ]]; then
     local architecture=''
     architecture="$(package::_deb-architecture)" || return "$?"
-    # Older code packages add vscode.list next to this source unless debconf declines it.
+    # The code package adds its own definition of this repository. Current
+    # packages honor the debconf answer; older ones, such as the 1.85 series for
+    # Ubuntu 18.04, keep an existing vscode.list. That file therefore holds only
+    # comments, which also replaces an earlier entry that would duplicate ours.
     printf 'code code/add-microsoft-repo boolean false\n' |
       command::run-as-root debconf-set-selections || return 74
+    file::write-text /etc/apt/sources.list.d/vscode.list \
+      '# BashStock defines the VS Code repository in vscode.sources.'$'\n''# This file stops the code package from adding a second definition.'$'\n' || return "$?"
     package::_apt-register-repository vscode https://packages.microsoft.com/keys/microsoft.asc \
       https://packages.microsoft.com/repos/code stable main "${architecture}"
   else

@@ -23,7 +23,8 @@ fi
 [[ "$installed" == "$latest" ]]
 if [[ "$ID" == ubuntu ]]; then
   # The package must not add a second definition of the repository.
-  [[ ! -e /etc/apt/sources.list.d/vscode.list ]]
+  if grep -E '^[[:space:]]*deb[[:space:]]' /etc/apt/sources.list.d/vscode.list; then exit 1; fi
+  [[ ! -e /etc/apt/trusted.gpg.d/microsoft.gpg ]]
   apt-get update 2>&1 | tee /tmp/bashstock-vscode-apt-update.log
   if grep -E '^(E|W):' /tmp/bashstock-vscode-apt-update.log; then exit 1; fi
 fi
