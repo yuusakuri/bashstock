@@ -29,6 +29,7 @@
 | D07 | Docker デーモンで `hello-world` を動かす | イメージの取得とコンテナの実行が成功する | 同上 |
 | D08 | 一つ前の版を指定して導入し、最新版を再び指定する | 両方の導入が成功し、各段階で実際の版が指定値と一致する | `scripts/test-docker-package-container` |
 | J01 | 公式配布物から Node.js 16.20.2 を導入し、同じ版で再実行する | 両方成功し、Node.js、npm、Corepack、pnpm が起動する | `scripts/test-node-container` |
+| J04 | J01 の Node.js で OpenCode を二度導入する | 両方成功し、`$HOME/.local/bin/opencode --version` が版番号を表示する | 同上 |
 | J02 | OSのJDK最新版を導入・再実行し、小さなJavaプログラムをコンパイルして動かす | 版とJAVA_HOMEが一致し、実行結果が期待値になる | `scripts/test-jdk-go-container` |
 | J03 | OSのGoを導入・再実行し、小さなGoプログラムを動かす | 両方成功し、実行結果が期待値になる | 同上 |
 | R01 | 公式 Rust ツールチェーンを導入・再実行し、小さなプログラムをコンパイルして動かす | rustc と cargo が起動し、プログラムが期待値を返す。起動設定を読んだ新しい Bash でも cargo が使える | `scripts/test-rust-container` |

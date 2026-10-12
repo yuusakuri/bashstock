@@ -304,11 +304,12 @@ node::_install-official() {
   destination="${HOME}/.local/lib/node/${version}"
   if [[ ! -x "${destination}/bin/node" ]]; then
     temporary="$(package::_temporary-directory)" || return "$?"
+    # The gzip archive avoids requiring xz, which minimal systems do not install.
     package::_download \
-      "https://nodejs.org/dist/v${version}/node-v${version}-${artifact}.tar.xz" \
-      "${temporary}/node.tar.xz" || { rm -rf -- "${temporary}"; return 74; }
+      "https://nodejs.org/dist/v${version}/node-v${version}-${artifact}.tar.gz" \
+      "${temporary}/node.tar.gz" || { rm -rf -- "${temporary}"; return 74; }
     mkdir -p -- "${temporary}/unpacked" || { rm -rf -- "${temporary}"; return 74; }
-    tar -xJf "${temporary}/node.tar.xz" --strip-components=1 -C "${temporary}/unpacked" ||
+    tar -xzf "${temporary}/node.tar.gz" --strip-components=1 -C "${temporary}/unpacked" ||
       { rm -rf -- "${temporary}"; return 74; }
     [[ "$("${temporary}/unpacked/bin/node" --version)" == "v${version}" ]] ||
       { rm -rf -- "${temporary}"; return 69; }

@@ -259,7 +259,7 @@
 | `flutter-set-version` | `flutter::use-version [VERSION] [SDK_DIRECTORY]` | 任意 | Flutter SDKを指定tagまたはcommitへ切り替えます。 | SDK_DIRECTORYにある未保存変更は破棄します。 | VERSIONを省略した場合はstableの最新tagを使用し、SDK_DIRECTORYをcleanにしてから`git switch`します。 |
 | `jfrog-config-clear` | `jfrog::config::clear SERVER_ID`、`jfrog::config::clear-all`、`jfrog::config::list` | 任意 | JFrog CLI設定を個別または全件で削除し、一覧を表示します。 | — | SERVER_ID指定のclear、全件clear-all、読み取り専用のlistを分離します。 |
 | `jfrog-setup` | `jfrog::setup SERVER_ID URL USER TOKEN` | 任意 | JFrog CLIへ認証情報を登録し接続を確認します。 | TOKENはprocess引数に現れます。 | TOKENを引数で受け、`jfrog config add`へ渡してから接続を検証します。 |
-| `opencode-install` | `opencode::install [VERSION]` | 任意 | OpenCode CLIを導入します。 | CLIアプリのため認証や対話起動は含めません。 | VERSIONを省略した場合は選択したpackage managerの最新安定版を使用します。 |
+| `opencode-install` | `opencode::install [VERSION]` | 任意 | OpenCode CLIを導入します。 | CLIアプリのため認証や対話起動は含めません。 | VERSIONを省略した場合は選択したpackage managerの最新安定版を使用します。macOSはHomebrew tap、Linuxは公式npm packageの`opencode-ai`を`$HOME/.local`へ導入します。Linuxではnpmが必要で、Ubuntuの`nodejs` packageはnpmを含まないため、先に`node::install VERSION official`を実行します。glibc版のOpenCodeはUbuntu 18.04以降で動きます。 |
 | `docker-login-artifactory` | `docker::login-artifactory REGISTRY USER TOKEN` | 任意 | ArtifactoryのDocker registryへログインします。 | TOKENはprocess引数に現れます。 | TOKENを引数で受け、`docker login REGISTRY --username USER --password-stdin`の標準入力へ渡します。 |
 | `chrome-export-bookmarks` | `chrome::profile::export-bookmarks PROFILE_DIRECTORY [OUTPUT_FILE]` | 任意 | Chrome profileのBookmarksを複製します。 | — | OUTPUT_FILEの既定値は`./bookmarks.json`です。profile内の通常fileをそのまま複製します。 |
 | `chrome-export-preferences` | `chrome::profile::export-preferences PROFILE_DIRECTORY [OUTPUT_FILE]` | 任意 | Chrome profileのPreferencesを複製します。 | — | OUTPUT_FILEの既定値は`./preferences.json`です。profile内の通常fileをそのまま複製します。 |

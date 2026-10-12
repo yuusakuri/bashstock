@@ -1536,6 +1536,16 @@ jfrog::setup() {
 }
 
 ### Install the OpenCode command-line application.
+###
+### macOS uses the Homebrew tap. Linux installs the official opencode-ai npm
+### package into $HOME/.local; its installer picks the build for the CPU and C
+### library, and the glibc builds run on Ubuntu 18.04 and later. Linux needs
+### npm: the Ubuntu nodejs package does not provide it, so install Node.js with
+### `node::install VERSION official` first there.
+###
+### Arguments
+###
+### * VERSION - Optional major.minor.patch version of OpenCode.
 opencode::install() {
   [[ "$#" -le 1 ]] || return 64
   local version="${1:-}" platform='' available=''
