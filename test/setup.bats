@@ -990,3 +990,24 @@ use_fake_sudoers() {
   [ "${status}" -eq 0 ]
   grep -Eq '^env DEBIAN_FRONTEND=noninteractive apt-get install -y /.*/package\.deb$' "${ROOT_LOG}"
 }
+
+@test "GitHub API requests carry GITHUB_TOKEN on standard input, never in arguments" {
+  use_platform ubuntu 24.04 noble
+  CURL_LOG="${BATS_TEST_TMPDIR}/curl.log"
+  curl() {
+    printf 'args: %s\n' "$*" >>"${CURL_LOG}"
+    if [[ " $* " == *' --config - '* ]]; then printf 'stdin: %s\n' "$(cat)" >>"${CURL_LOG}"; fi
+    printf '%s' '[{"tag_name":"v1.2.3"}]'
+  }
+
+  GITHUB_TOKEN='secret-token' run supabase::versions
+  [ "${status}" -eq 0 ]
+  [ "${output}" = '1.2.3' ]
+  grep -Fqx 'stdin: header = "Authorization: Bearer secret-token"' "${CURL_LOG}"
+  ! grep '^args:' "${CURL_LOG}" | grep -q secret-token
+
+  : >"${CURL_LOG}"
+  GITHUB_TOKEN='' run supabase::versions
+  [ "${status}" -eq 0 ]
+  ! grep -q 'stdin:' "${CURL_LOG}"
+}

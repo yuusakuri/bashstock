@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+# Installers query the GitHub API; the workflow token avoids the limit for shared runner addresses.
+env:
+  GITHUB_TOKEN: ${{ github.token }}
+
 jobs:
   docker-packages:
     name: Docker, languages, VS Code, and tools on ${{ matrix.image }} (amd64)
@@ -33,7 +37,7 @@ jobs:
         run: ./scripts/build
       - name: Verify Docker, languages, VS Code, and tools installations
         run: |
-          docker run --rm --platform linux/amd64 \
+          docker run --rm --platform linux/amd64 -e GITHUB_TOKEN \
             -v "$PWD/dist/bashstock.sh:/opt/bashstock.sh:ro" \
             -v "$PWD/scripts/test-docker-package-container:/opt/test-docker-package-container:ro" \
             -v "$PWD/scripts/test-node-container:/opt/test-node-container:ro" \
@@ -66,7 +70,7 @@ jobs:
         run: ./scripts/build
       - name: Verify Claude Desktop installation from Anthropic's APT repository
         run: |
-          docker run --rm --platform linux/amd64 \
+          docker run --rm --platform linux/amd64 -e GITHUB_TOKEN \
             -v "$PWD/dist/bashstock.sh:/opt/bashstock.sh:ro" \
             -v "$PWD/scripts/test-claude-desktop-container:/opt/test-claude-desktop-container:ro" \
             "${{ matrix.image }}" bash /opt/test-claude-desktop-container
@@ -89,7 +93,7 @@ jobs:
         run: ./scripts/build
       - name: Refuse to change DNS when the manager is unknown
         run: |
-          docker run --rm -v "$PWD/dist/bashstock.sh:/opt/bashstock.sh:ro" ubuntu:24.04 bash -c '
+          docker run --rm -e GITHUB_TOKEN -v "$PWD/dist/bashstock.sh:/opt/bashstock.sh:ro" ubuntu:24.04 bash -c '
             set -u
             source /opt/bashstock.sh
             [[ "$(net::dns::manager)" == unknown ]]

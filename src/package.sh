@@ -116,9 +116,18 @@ package::_temporary-directory() {
 }
 
 ### Write the body of one HTTPS URL to standard output.
+###
+### Requests to api.github.com carry GITHUB_TOKEN when it is set, which raises
+### GitHub's rate limit for unauthenticated clients that share an address. The
+### token goes to curl on standard input, so it never appears in arguments.
 package::_fetch() {
   [[ "$#" -eq 1 && "$1" == https://* ]] || return 64
   command::require curl || return "$?"
+  if [[ "$1" == https://api.github.com/* && -n "${GITHUB_TOKEN:-}" ]]; then
+    printf 'header = "Authorization: Bearer %s"\n' "${GITHUB_TOKEN}" |
+      curl -fsSL --retry 3 --config - "$1" || return 74
+    return 0
+  fi
   curl -fsSL --retry 3 "$1" || return 74
 }
 
