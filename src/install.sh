@@ -1315,6 +1315,9 @@ vscode::_register-repository() {
   if [[ "$1" == 'ubuntu' ]]; then
     local architecture=''
     architecture="$(package::_deb-architecture)" || return "$?"
+    # Older code packages add vscode.list next to this source unless debconf declines it.
+    printf 'code code/add-microsoft-repo boolean false\n' |
+      command::run-as-root debconf-set-selections || return 74
     package::_apt-register-repository vscode https://packages.microsoft.com/keys/microsoft.asc \
       https://packages.microsoft.com/repos/code stable main "${architecture}"
   else

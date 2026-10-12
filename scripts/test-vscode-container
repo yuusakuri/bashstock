@@ -21,6 +21,12 @@ else
   installed="$(rpm -q --qf '%{EVR}' code)"
 fi
 [[ "$installed" == "$latest" ]]
+if [[ "$ID" == ubuntu ]]; then
+  # The package must not add a second definition of the repository.
+  [[ ! -e /etc/apt/sources.list.d/vscode.list ]]
+  apt-get update 2>&1 | tee /tmp/bashstock-vscode-apt-update.log
+  if grep -E '^(E|W):' /tmp/bashstock-vscode-apt-update.log; then exit 1; fi
+fi
 
 # VS Code refuses to start as root without its own sandbox and data directory.
 data_directory="$(mktemp -d)"
