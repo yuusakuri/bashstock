@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091,SC2016
+
+set -euo pipefail
+
+# Run as the sudo user tester inside an Ubuntu container whose PID 1 is
+# systemd, after scripts/test-ubuntu-setup-container. GNOME settings are
+# written through dconf on a D-Bus session bus, so a later session reads them
+# back from the user's dconf database.
+source /etc/os-release
+sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+  dbus-x11 dconf-cli dconf-gsettings-backend gsettings-desktop-schemas libglib2.0-bin \
+  ibus ibus-mozc keyboard-configuration vlc xdg-utils >/dev/null
+
+### Run a BashStock command in a new D-Bus session.
+in_session() {
+  dbus-run-session -- bash -c 'source /opt/bashstock.sh && "$@"' bashstock "$@"
+}
+
+# The installer of a Japanese desktop leaves the JP layout as the input source.
+in_session gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'jp')]"
+
+export GIT_EMAIL=tester@example.invalid GIT_USERNAME='Setup Tester'
+if [[ "$VERSION_ID" == 22.04 ]]; then
+  in_session ubuntu::setup-desktop-22
+else
+  status=0
+  in_session ubuntu::setup-desktop-22 2>/dev/null || status="$?"
+  [[ "$status" -eq 69 ]]
+  in_session ubuntu::setup-desktop
+fi
+
+printf '== GNOME settings in a new session\n'
+sources="$(in_session gsettings get org.gnome.desktop.input-sources sources)"
+printf '%s\n' "$sources"
+[[ "$sources" == "[('ibus', 'mozc-jp'), ('xkb', 'us')]" ]]
+if [[ "$VERSION_ID" == 22.04 ]]; then
+  [[ "$(in_session gsettings get org.gnome.desktop.wm.preferences button-layout)" == "'appmenu:minimize,maximize,close'" ]]
+fi
+
+printf '== keyboard\n'
+grep -x 'XKBLAYOUT="us"' /etc/default/keyboard
+query="$(systemd-hwdb query 'evdev:input:b0003v1234p5678e0111')"
+printf '%s\n' "$query"
+grep -Fx 'KEYBOARD_KEY_7008a=henkan' <<<"$query"
+grep -Fx 'KEYBOARD_KEY_7008b=muhenkan' <<<"$query"
+
+printf '== Mozc and VLC\n'
+grep -Fx 'active_on_launch: True' "$HOME/.config/mozc/ibus_config.textproto"
+[[ "$(xdg-mime query default video/mp4)" == vlc.desktop ]]

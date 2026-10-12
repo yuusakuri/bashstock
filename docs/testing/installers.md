@@ -34,6 +34,7 @@
 | D10 | 導入後に始めたログインセッションで、sudo を使わずに `hello-world` を動かす | 利用者が docker グループに入り、コンテナの実行が成功する | 同上 |
 | S01 | sudo を使う一般ユーザーが、日本語名の XDG ディレクトリがある状態で `ubuntu::setup` を二度実行する | 起動ファイルの各行が一つだけで、新しいログインセッションで `.env` の値、`EDITOR`、補完の大文字小文字無視が有効になる | `scripts/test-ubuntu-setup-container` |
 | S02 | S01 の後に利用者ディレクトリ、グループ、Git、SSH を確認する | 英語名のリンクが日本語名のディレクトリを指し、既存の内容が残る。新しいセッションで `dialout` に属し、Git の各設定と `.ssh` の 700 が設定される | 同上 |
+| S03 | GNOME の入力ソースが JP 配列だけの状態で、`ubuntu::setup-desktop`（22.04 では `ubuntu::setup-desktop-22`）を D-Bus セッション内で実行する | 新しいセッションで入力ソースが Mozc と US の順になり、`/etc/default/keyboard` が US 配列、hwdb で USB キーボードの変換・無変換キーが henkan・muhenkan になる。Mozc はひらがなで始まり、VLC が動画の既定アプリになる。22.04 ではボタン配置も変わり、ほかの版では `ubuntu::setup-desktop-22` が終了状態 69 を返す | `scripts/test-ubuntu-desktop-container` |
 | J01 | 公式配布物から Node.js 16.20.2 を導入し、同じ版で再実行する | 両方成功し、Node.js、npm、Corepack、pnpm が起動する | `scripts/test-node-container` |
 | J04 | J01 の Node.js で OpenCode を二度導入する | 両方成功し、`$HOME/.local/bin/opencode --version` が版番号を表示する | 同上 |
 | J02 | OSのJDK最新版を導入・再実行し、小さなJavaプログラムをコンパイルして動かす | 版とJAVA_HOMEが一致し、実行結果が期待値になる | `scripts/test-jdk-go-container` |
