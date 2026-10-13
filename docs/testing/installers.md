@@ -12,7 +12,7 @@
 | Fedora 34、43、44 の amd64・arm64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby、pipx、VS Code、Google Chrome、Microsoft Edge の導入・再実行・起動とDNFリポジトリ |
 | Ubuntu 18.04〜26.04、Fedora 34・43・44 の amd64・arm64 で systemd を PID 1 にした特権コンテナ | Docker サービスの有効化・起動と一般ユーザーのコンテナ実行。Ubuntu では `ubuntu::setup` と再ログイン後の設定 |
 | Ubuntu 22.04、24.04 の amd64・arm64 GitHub Actions 実行環境 | Docker サービス、デーモン、コンテナ実行。DNS 管理方式の切替と Google Public DNS の設定 |
-| macOS の GitHub Actions 実行環境（Apple silicon と Intel） | `mac::setup` の二度の実行、設定・既定アプリ・導入アプリの確認、Xcode Command Line Tools と Rosetta |
+| macOS の GitHub Actions 実行環境（Apple silicon） | `mac::setup` の二度の実行、設定・既定アプリ・導入アプリの確認、Xcode Command Line Tools と Rosetta |
 | macOS の GitHub Actions 実行環境（Apple silicon と Intel） | Android SDK 構成要素、AVD の作成・削除。Hypervisor.Frameworkが使える Apple silicon の実行環境では起動・停止も確認する |
 | Ubuntu 24.04 の GitHub Actions 実行環境 | Android SDK 構成要素、KVMを使うAVDの作成・起動・停止・削除 |
 | Ubuntu 18.04〜26.04、Fedora 34・43・44 の amd64 コンテナ（KVM を渡す） | 同上。Ubuntu 18.04 では Emulator 以外の構成要素の導入と、Emulator が glibc 不足で終了状態 69 を返すこと。Ubuntu 24.04 と Fedora 44 の arm64 コンテナでは Android CLI が非対応として終了状態 69 を返すこと |
@@ -37,7 +37,7 @@
 | S01 | sudo を使う一般ユーザーが、日本語名の XDG ディレクトリがある状態で `ubuntu::setup` を二度実行する | 起動ファイルの各行が一つだけで、新しいログインセッションで `.env` の値、`EDITOR`、補完の大文字小文字無視が有効になる | `scripts/test-ubuntu-setup-container` |
 | S02 | S01 の後に利用者ディレクトリ、グループ、Git、SSH を確認する | 英語名のリンクが日本語名のディレクトリを指し、既存の内容が残る。新しいセッションで `dialout` に属し、Git の各設定と `.ssh` の 700 が設定される | 同上 |
 | S03 | GNOME の入力ソースが JP 配列だけの状態で、`ubuntu::setup-desktop`（22.04 では `ubuntu::setup-desktop-22`）を D-Bus セッション内で実行する | 新しいセッションで入力ソースが Mozc と US の順になり、`/etc/default/keyboard` が US 配列、hwdb で USB キーボードの変換・無変換キーが henkan・muhenkan になる。Mozc はひらがなで始まり、VLC が動画の既定アプリになる。22.04 ではボタン配置も変わり、ほかの版では `ubuntu::setup-desktop-22` が終了状態 69 を返す | `scripts/test-ubuntu-desktop-container` |
-| M01 | 使い捨ての macOS 実行環境で `mac::setup` を二度実行する | 失敗する手順があっても残りを続け、最初に失敗した手順の終了状態を返す。Hypervisor.framework がない実行環境で失敗してよいのは Colima の起動と、起動中のエンジンを要求する `docker::install` だけ | `scripts/test-macos-setup` |
+| M01 | 使い捨ての Apple silicon の macOS 実行環境で `mac::setup` を二度実行する。Homebrew は 2026 年 9 月に Intel Mac 向けのビルド済みパッケージの提供を終えたため、Intel では LLVM などのソースビルドで 3 時間の制限を超え、CI で確認しない | 失敗する手順があっても残りを続け、最初に失敗した手順の終了状態を返す。Hypervisor.framework がない実行環境で失敗してよいのは Colima の起動と、起動中のエンジンを要求する `docker::install` だけ | `scripts/test-macos-setup` |
 | M02 | M01 の後に設定と起動ファイルを読む | キー・Dock・trackpad の defaults、`DefaultKeyBinding.dict` の Option+T、Git の設定が変わり、新しい Zsh と Bash のセッションで `.env` の値と `EDITOR` が有効になる。起動ファイルの各行は一つだけ | 同上 |
 | M03 | M01 の後に導入物と既定アプリを確認する | 各 formula と cask が導入済みで、標準アプリが削除され、アプリに quarantine 属性が残らない。テキストとソースは VS Code、動画は IINA で開く設定になり、QMK Toolbox と IINA が起動する | 同上 |
 | M04 | QMK Toolbox を現在の版・古い版で指定し、Command Line Tools を更新し、Rosetta を導入する | 現在の版は成功し、古い版は終了状態 69。clang で C プログラムをビルドして実行でき、Apple silicon では x86_64 のコマンドが動く | 同上 |

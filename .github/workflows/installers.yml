@@ -324,9 +324,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Homebrew stopped building bottles for Intel Macs in September 2026, so
+        # mac::setup compiles LLVM and Python there and exceeds the time limit.
         os:
           - macos-latest
-          - macos-15-intel
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
         with:
