@@ -381,9 +381,18 @@ use_fake_curl() {
   [ "${status}" -eq 0 ]
   [ ! -e "${COLIMA_LOG}" ]
   COLIMA_STATUS=1
+  sysctl() { printf '1\n'; }
   run colima::install
   [ "${status}" -eq 0 ]
   [ "$(<"${COLIMA_LOG}")" = 'start' ]
+
+  # Without Hypervisor.framework the VM cannot boot, so Colima is not started.
+  : >"${COLIMA_LOG}"
+  sysctl() { printf '0\n'; }
+  run --separate-stderr colima::install
+  [ "${status}" -eq 69 ]
+  [[ "${stderr}" == *'Hypervisor.framework'* ]]
+  [ ! -s "${COLIMA_LOG}" ]
 }
 
 @test "Homebrew casks accept only the current version and start Rancher Desktop" {

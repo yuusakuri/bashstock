@@ -510,7 +510,9 @@ colima::versions() {
 ### Install Colima with Homebrew on macOS and start it.
 ###
 ### Colima's Docker runtime needs the docker command before it starts, so the
-### Docker CLI formula is installed with it.
+### Docker CLI formula is installed with it. Without Hypervisor.framework, as in
+### a virtual machine without nested virtualization, the VM cannot boot, so the
+### function returns 69 instead of starting it.
 colima::install() {
   [[ "$#" -le 1 ]] || return 64
   package::_require-platform darwin || return "$?"
@@ -518,6 +520,10 @@ colima::install() {
   package::_install docker || return "$?"
   if colima status >/dev/null 2>&1; then
     return 0
+  fi
+  if [[ "$(sysctl -n kern.hv_support 2>/dev/null)" != 1 ]]; then
+    console::_write-error 'Colima needs Hypervisor.framework, which this Mac does not provide.'
+    return 69
   fi
   colima start
 }
