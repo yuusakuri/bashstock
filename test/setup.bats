@@ -413,7 +413,16 @@ use_fake_curl() {
   run rancher-desktop::install
   [ "${status}" -eq 0 ]
   [ "$(<"${BREW_LOG}")" = 'install --cask rancher' ]
+  # open runs in the background, so wait briefly for its record.
+  for _ in $(seq 50); do [ -s "${OPEN_LOG}" ] && break; sleep 0.1; done
   [ "$(<"${OPEN_LOG}")" = '-a Rancher Desktop' ]
+
+  # An open that waits for a first-launch confirmation does not block the install.
+  open() { sleep 30; }
+  SECONDS=0
+  run rancher-desktop::install
+  [ "${status}" -eq 0 ]
+  [ "${SECONDS}" -lt 10 ]
 }
 
 @test "Node.js on Ubuntu lists complete OS versions and rejects unavailable versions" {

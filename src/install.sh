@@ -1111,12 +1111,7 @@ rancher-desktop::install() {
   case "${platform}" in
     darwin)
       package::_install-cask rancher "${version}" || return "$?"
-      # The path works before LaunchServices has registered the new application.
-      if [[ -d '/Applications/Rancher Desktop.app' ]]; then
-        open '/Applications/Rancher Desktop.app'
-      else
-        open -a 'Rancher Desktop'
-      fi
+      rancher-desktop::_start-darwin
       ;;
     ubuntu | fedora)
       rancher-desktop::_install-linux "${platform}" "${version}" || return "$?"
@@ -1146,6 +1141,21 @@ gpgkey=https://download.opensuse.org/repositories/isv:/Rancher:/stable/rpm/repod
   if [[ ! -r /dev/kvm || ! -w /dev/kvm ]]; then
     package::_add-current-user-to-group kvm || return "$?"
     console::_write-error 'Log in again so that the kvm group membership takes effect.'
+  fi
+}
+
+### Start Rancher Desktop in the background on macOS.
+###
+### The path works before LaunchServices has registered the new application.
+### open waits while macOS shows a first-launch confirmation, so it runs in the
+### background and the setup continues, as on Linux.
+rancher-desktop::_start-darwin() {
+  [[ "$#" -eq 0 ]] || return 64
+  local application='/Applications/Rancher Desktop.app'
+  if [[ -d "${application}" ]]; then
+    (open "${application}" >/dev/null 2>&1 &)
+  else
+    (open -a 'Rancher Desktop' >/dev/null 2>&1 &)
   fi
 }
 
