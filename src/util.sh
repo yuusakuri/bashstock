@@ -2286,7 +2286,8 @@ ruby::version::list() {
   versions="$("${rbenv}" install --list-all 2>/dev/null)" || return 74
   while IFS= read -r version; do
     version="${version#"${version%%[![:space:]]*}"}"
-    [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && printf '%s\n' "${version}"
+    # if keeps a non-version last line from becoming the loop's status under pipefail.
+    if [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then printf '%s\n' "${version}"; fi
   done <<<"${versions}" | package::_sort-versions
 }
 
@@ -3340,10 +3341,16 @@ chrome::profile::find-by-email() {
   [[ -d "$root" ]] || return 66
   (
     shopt -s nullglob
+    found=1
     for path in "$root"/Default "$root"/Profile\ *; do
       [[ -d "$path" ]] || continue
-      [[ "$(chrome::profile::email "$path" 2>/dev/null)" == "$email" ]] && printf '%s\n' "$path"
+      if [[ "$(chrome::profile::email "$path" 2>/dev/null)" == "$email" ]]; then
+        printf '%s\n' "$path"
+        found=0
+      fi
     done
+    # Succeed when any profile matched, not only when the last one did.
+    exit "$found"
   )
 }
 

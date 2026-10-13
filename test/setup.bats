@@ -1282,6 +1282,31 @@ use_fake_sudoers() {
   [ "$(grep -c . "${CURL_LOG}")" -eq 3 ]
 }
 
+@test "Ruby versions survive pipefail when rbenv lists other implementations last" {
+  rbenv_stub="${BATS_TEST_TMPDIR}/bin/rbenv"
+  mkdir -p "${rbenv_stub%/*}"
+  printf '#!/bin/sh\nprintf "3.3.9\\n3.4.7\\ntruffleruby+graalvm-25.0.0\\n"\n' >"${rbenv_stub}"
+  chmod +x "${rbenv_stub}"
+  PATH="${rbenv_stub%/*}:${PATH}"
+  set -o pipefail
+  run ruby::version::latest
+  set +o pipefail
+  [ "${status}" -eq 0 ]
+  [ "${output}" = '3.4.7' ]
+}
+
+@test "Chrome profile search succeeds when a profile other than the last one matches" {
+  local root="${BATS_TEST_TMPDIR}/Chrome"
+  mkdir -p "${root}/Default" "${root}/Profile 1"
+  chrome::profile::email() { [[ "$1" == */Default ]] && printf 'user@example.invalid\n'; }
+  run chrome::profile::find-by-email user@example.invalid "${root}"
+  [ "${status}" -eq 0 ]
+  [ "${output}" = "${root}/Default" ]
+  run chrome::profile::find-by-email other@example.invalid "${root}"
+  [ "${status}" -eq 1 ]
+  [ -z "${output}" ]
+}
+
 @test "rbenv on macOS upgrades only formulae that Homebrew reports as outdated" {
   use_platform darwin
   BREW_LOG="${BATS_TEST_TMPDIR}/brew.log"
