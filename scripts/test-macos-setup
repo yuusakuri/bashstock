@@ -114,7 +114,9 @@ check output_is 1 grep -c '^set completion-ignore-case on$' "${HOME}/.inputrc"
 # A new login shell reads the startup files that mac::setup wrote.
 check output_is 'from dotenv|code --wait|--no-quarantine' \
   zsh -lic 'print -r -- "$BASHSTOCK_SETUP_VALUE|$EDITOR|$HOMEBREW_CASK_OPTS"'
-check output_is 'from dotenv|code --wait' bash -ic 'printf "%s|%s" "$BASHSTOCK_SETUP_VALUE" "$EDITOR"'
+# Without a terminal, bash -i reports on stderr that job control is off.
+check output_is 'from dotenv|code --wait' sh -c 'bash -ic "$1" 2>/dev/null' bash \
+  'printf "%s|%s" "$BASHSTOCK_SETUP_VALUE" "$EDITOR"'
 
 printf '== Git\n'
 check output_is tester@example.invalid git config --global user.email

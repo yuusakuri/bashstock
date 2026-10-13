@@ -114,8 +114,9 @@ check output_is 1 grep -c '^set completion-ignore-case on$' "${HOME}/.inputrc"
 # New shells read the startup files that the settings wrote.
 check output_is 'from dotenv|code --wait|--no-quarantine' \
   zsh -lic 'print -r -- "$BASHSTOCK_SETUP_VALUE|$EDITOR|$HOMEBREW_CASK_OPTS"'
-check output_is 'from dotenv|code --wait|--no-quarantine' \
-  bash -ic 'printf "%s|%s|%s" "$BASHSTOCK_SETUP_VALUE" "$EDITOR" "$HOMEBREW_CASK_OPTS"'
+# Without a terminal, bash -i reports on stderr that job control is off.
+check output_is 'from dotenv|code --wait|--no-quarantine' sh -c 'bash -ic "$1" 2>/dev/null' bash \
+  'printf "%s|%s|%s" "$BASHSTOCK_SETUP_VALUE" "$EDITOR" "$HOMEBREW_CASK_OPTS"'
 
 printf '== applications and Gatekeeper\n'
 for app in iMovie Pages GarageBand Keynote Numbers; do
