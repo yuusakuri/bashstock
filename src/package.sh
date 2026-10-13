@@ -118,8 +118,9 @@ package::_temporary-directory() {
 ### Run curl for one HTTPS request, retrying network failures up to three times.
 ###
 ### A transfer slower than 1 KiB/s for 60 seconds is aborted and retried, so a
-### stalled connection does not hang the caller. An HTTP error status (curl
-### exit 22) is final. Requests to api.github.com carry GITHUB_TOKEN when it is
+### stalled connection does not hang the caller. curl itself retries timeouts
+### and transient HTTP statuses such as 502 and 429; any other HTTP error status
+### (curl exit 22) is final, while dropped connections are attempted again. Requests to api.github.com carry GITHUB_TOKEN when it is
 ### set, which raises GitHub's rate limit for clients that share an address;
 ### the token goes to curl on standard input, never in its arguments.
 package::_curl() {
@@ -131,10 +132,10 @@ package::_curl() {
     # Each attempt is captured on its own, so a retry never repeats part of a body.
     if [[ "${url}" == https://api.github.com/* && -n "${GITHUB_TOKEN:-}" ]]; then
       body="$(printf 'header = "Authorization: Bearer %s"\n' "${GITHUB_TOKEN}" |
-        curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 --config - "$@")" ||
+        curl -fsSL --retry 3 --connect-timeout 30 --speed-limit 1024 --speed-time 60 --config - "$@")" ||
         status="$?"
     else
-      body="$(curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "$@")" ||
+      body="$(curl -fsSL --retry 3 --connect-timeout 30 --speed-limit 1024 --speed-time 60 "$@")" ||
         status="$?"
     fi
     if [[ "${status}" -eq 0 ]]; then

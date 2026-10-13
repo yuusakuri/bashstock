@@ -1170,7 +1170,7 @@ use_fake_sudoers() {
   [ "${status}" -eq 0 ]
   [ "${output}" = 'complete' ]
   [ "$(grep -c . "${CURL_LOG}")" -eq 3 ]
-  grep -q -- '--speed-limit 1024 --speed-time 60' "${CURL_LOG}"
+  grep -q -- '--retry 3 --connect-timeout 30 --speed-limit 1024 --speed-time 60' "${CURL_LOG}"
 
   : >"${CURL_LOG}"
   curl() { printf '%s\n' "$*" >>"${CURL_LOG}"; return 22; }
