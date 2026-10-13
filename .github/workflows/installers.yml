@@ -311,6 +311,26 @@ jobs:
         shell: bash
         run: bash ./scripts/test-android-macos
 
+  macos-setup:
+    name: macOS setup on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - macos-15-intel
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
+        with:
+          submodules: recursive
+      - name: Build the standalone library
+        run: ./scripts/build
+      - name: Run mac::setup twice and check the settings, applications, and tools
+        shell: bash
+        run: bash ./scripts/test-macos-setup
+
   android-linux:
     name: Android SDK and AVD on Ubuntu 24.04
     runs-on: ubuntu-24.04

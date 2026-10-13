@@ -443,7 +443,8 @@ mac::setup() {
   sudo::start-keep-alive || status="${status/#0/$?}"
   setup::_ensure-file "${HOME}/.env" || status="${status/#0/$?}"
   setup::_run-step env::dotenv::register "${HOME}/.env" || status="${status/#0/$?}"
-  setup::_run-step shell::editor::set-default 'code --wait' || status="${status/#0/$?}"
+  # Zsh is the default macOS shell, so the editor also goes into .zshrc.
+  setup::_run-step shell::editor::set-default 'code --wait' bash,zsh || status="${status/#0/$?}"
   setup::_ensure-file "${HOME}/.zshrc" || status="${status/#0/$?}"
   setup::_run-step file::replace-text-or-append "${HOME}/.zshrc" '^setopt interactivecomments.*$' \
     'setopt interactivecomments' || status="${status/#0/$?}"

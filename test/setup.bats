@@ -754,6 +754,33 @@ gsettings_value() {
   [ "${status}" -eq 69 ]
 }
 
+@test "macOS setup runs every step and returns the first failed status" {
+  use_platform darwin
+  record_root_commands
+  HOME="${BATS_TEST_TMPDIR}/home"
+  STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
+  mkdir -p "${HOME}"
+  sudo::start-keep-alive() { :; }
+  killall() { :; }
+  sleep() { :; }
+  open() { :; }
+  setup::_run-step() {
+    printf '%s\n' "$*" >>"${STEP_LOG}"
+    case "$1" in
+      colima::install) return 75 ;;
+      docker::install) return 69 ;;
+    esac
+  }
+  run --separate-stderr mac::setup
+  [ "${status}" -eq 75 ]
+  [ -f "${HOME}/.env" ] && [ -f "${HOME}/.zshrc" ] && [ -d "${HOME}/.local/bin" ]
+  grep -Fqx "shell::editor::set-default code --wait bash,zsh" "${STEP_LOG}"
+  grep -Fqx 'brew install --cask antigravity-ide' "${STEP_LOG}"
+  [ "$(tail -n 1 "${STEP_LOG}")" = 'iina::set-default-app' ]
+  grep -Fqx 'command::run-as-root spctl --master-disable' "${STEP_LOG}"
+  grep -Fqx 'xattr -r -d com.apple.quarantine /Applications' "${ROOT_LOG}"
+}
+
 @test "the default ADB device applies to later calls in the same shell" {
   run adb::device::set-default 'bad serial'
   [ "${status}" -eq 64 ]
