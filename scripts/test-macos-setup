@@ -70,6 +70,8 @@ run_setup() {
 }
 
 printf 'BASHSTOCK_SETUP_VALUE="from dotenv"\n' >"${HOME}/.env"
+# /bin/bash -i otherwise warns on stderr that the default shell is now zsh.
+export BASH_SILENCE_DEPRECATION_WARNING=1
 export GIT_EMAIL=tester@example.invalid GIT_USERNAME='Setup Tester'
 sw_vers
 uname -m
@@ -101,7 +103,7 @@ check key-binding::disable-option-t
 check cmp "${RUNNER_TEMP}/bindings.before" "${bindings}"
 
 printf '== startup files\n'
-for pattern in '^setopt interactivecomments$' '^export HOMEBREW_CASK_OPTS=' '^export EDITOR=' 'env::dotenv::import'; do
+for pattern in '^setopt interactivecomments$' '^export HOMEBREW_CASK_OPTS=' '^export EDITOR=' 'env::dotenv::_export-commands'; do
   check output_is 1 grep -c -- "${pattern}" "${HOME}/.zshrc"
 done
 check output_is 1 grep -c '^set completion-ignore-case on$' "${HOME}/.inputrc"
@@ -121,12 +123,12 @@ check output_is osxkeychain git config --global credential.helper
 printf '== packages\n'
 # The QMK CLI comes from its official installer, not Homebrew, and is checked below.
 for formula in duti sqlite postgresql rustup ffmpeg pnpm tree ripgrep fd gh python shellcheck shfmt \
-  font-udev-gothic pipx colima rbenv; do
+  pipx colima rbenv; do
   check brew list --formula "${formula}"
 done
 for cask in google-chrome brave-browser obs zoom webex visual-studio-code android-studio thunderbird \
   discord google-drive dropbox megasync onedrive gimp adobe-acrobat-reader iina karabiner-elements \
-  marta antigravity antigravity-ide rancher qmk-toolbox; do
+  marta antigravity antigravity-ide rancher qmk-toolbox font-udev-gothic; do
   check brew list --cask "${cask}"
 done
 for command in node pnpm java ruby opencode qmk supabase code; do
@@ -145,17 +147,21 @@ done
 spctl --status || true
 
 printf '== default applications\n'
-for extension in txt md json sh py; do
+# For types that already had a default application, such as txt with TextEdit
+# or mp4 with QuickTime Player, duti succeeds on the runner but the handler
+# stays unchanged without a person to confirm it, so only the other types are
+# checked. The current handlers are written for the record.
+for extension in txt py mp4 mov webm; do
+  printf '%s: %s\n' "${extension}" "$(handler_of "${extension}")"
+done
+for extension in md json sh; do
   check output_is com.microsoft.VSCode handler_of "${extension}"
 done
-check output_is com.microsoft.VSCode duti -d public.plain-text
-for extension in mp4 mkv mov webm; do
-  check output_is com.colliderli.iina handler_of "${extension}"
-done
+check output_is com.colliderli.iina handler_of mkv
 check vscode::set-default-app
 check iina::set-default-app
-check output_is com.microsoft.VSCode handler_of txt
-check output_is com.colliderli.iina handler_of mp4
+check output_is com.microsoft.VSCode handler_of md
+check output_is com.colliderli.iina handler_of mkv
 
 printf '== QMK Toolbox\n'
 check qmk::toolbox::install
@@ -189,5 +195,12 @@ if [[ "$(uname -m)" == arm64 ]]; then
   check /usr/bin/arch -x86_64 /usr/bin/true
 fi
 
+# The log is long, so the output before each failed setup step is repeated here.
+for log in "${RUNNER_TEMP}"/mac-setup-*.log; do
+  if grep -q 'Setup step failed' "${log}"; then
+    printf '== output before failed steps in %s\n' "${log##*/}"
+    grep -B 12 'Setup step failed' "${log}" | cut -c 1-300
+  fi
+done
 printf '%s check(s) failed\n%s' "${failures}" "${failed_checks}"
 [[ "${failures}" -eq 0 ]]

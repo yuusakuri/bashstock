@@ -762,12 +762,14 @@ gsettings_value() {
     printf '%s\n' "$3" >>"${DUTI_LOG}"
     case "$3" in
       .gitignore) printf 'failed to set %s as handler for dyn.ah62d4qmxhk2x45per7506 (error -50)\n' "$2" >&2; return 1 ;;
+      public.javascript) printf '%s does not conform to any UTI hierarchy\n' "$3" >&2; return 1 ;;
       "${DUTI_BROKEN:-}") printf 'failed to set %s as handler for public.json (error -54)\n' "$2" >&2; return 2 ;;
     esac
   }
   run --separate-stderr vscode::set-default-app
   [ "${status}" -eq 0 ]
   [[ "${stderr}" == *'Skipped .gitignore'* ]]
+  [[ "${stderr}" == *'Skipped public.javascript'* ]]
   [ "$(tail -n 1 "${DUTI_LOG}")" = 'public.source-code' ]
 
   DUTI_BROKEN=.json
@@ -801,8 +803,8 @@ gsettings_value() {
   grep -Fqx "shell::editor::set-default code --wait bash,zsh" "${STEP_LOG}"
   grep -Fqx 'brew install --cask antigravity-ide' "${STEP_LOG}"
   [ "$(tail -n 1 "${STEP_LOG}")" = 'iina::set-default-app' ]
-  grep -Fqx 'command::run-as-root spctl --master-disable' "${STEP_LOG}"
   grep -Fqx 'xattr -r -d com.apple.quarantine /Applications' "${ROOT_LOG}"
+  grep -Fqx 'spctl --master-disable' "${ROOT_LOG}"
 }
 
 @test "the default ADB device applies to later calls in the same shell" {

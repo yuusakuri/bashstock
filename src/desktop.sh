@@ -475,7 +475,9 @@ mac::setup() {
   setup::_run-step qmk::cli::install || status="${status/#0/$?}"
   setup::_run-step supabase::install || status="${status/#0/$?}"
   command::run-as-root xattr -r -d com.apple.quarantine /Applications 2>/dev/null
-  setup::_run-step command::run-as-root spctl --master-disable || status="${status/#0/$?}"
+  # Recent macOS releases accept this only after the user confirms it in System
+  # Settings, so its status is not counted; the next message asks for that step.
+  command::run-as-root spctl --master-disable || true
   printf '%s\n' \
     '1. Select "Allow applications from anywhere" in Privacy & Security.' \
     '2. Enable Full Disk Access for Visual Studio Code and Terminal in Privacy & Security.' >&2

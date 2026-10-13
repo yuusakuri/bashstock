@@ -848,16 +848,33 @@ pipx::install() {
   env::add-path "${HOME}/.local/bin"
 }
 
-### Set VS Code as the default application for text and source file types on macOS.
+### Set one handler with duti, skipping a type that macOS does not know.
 ###
 ### An extension that no installed application declares has only a dynamic
-### UTI, which LaunchServices refuses to assign. Such an extension is reported
-### and skipped; any other failure returns its status.
+### UTI, and a UTI that the running macOS does not define has no hierarchy;
+### LaunchServices refuses both, so they are reported and skipped.
+vscode::_set-handler() {
+  [[ "$#" -eq 2 ]] || return 64
+  local output='' status=0
+  output="$(duti -s "$1" "$2" all 2>&1)" || status="$?"
+  [[ "${status}" -ne 0 ]] || return 0
+  if [[ "${output}" == *' for dyn.'* || "${output}" == *'does not conform to any UTI hierarchy'* ]]; then
+    console::_write-error "Skipped $2, which this macOS does not declare as a file type."
+    return 0
+  fi
+  printf '%s\n' "${output}" >&2
+  return "${status}"
+}
+
+### Set VS Code as the default application for text and source file types on macOS.
+###
+### Extensions and UTIs that this macOS does not declare are reported and
+### skipped; any other failure returns its status.
 vscode::set-default-app() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform darwin || return "$?"
   command::require duti || return "$?"
-  local bundle='com.microsoft.VSCode' type='' output='' status=0
+  local bundle='com.microsoft.VSCode' type=''
   local extensions=(
     txt text md markdown mdown mkd json jsonc yaml yml toml ini conf config env log csv tsv
     xml html htm css scss sass js jsx ts tsx mjs cjs sh bash zsh fish py rb php java c h cpp
@@ -870,18 +887,10 @@ vscode::set-default-app() {
     public.tab-separated-values-text public.source-code
   )
   for type in "${extensions[@]}"; do
-    status=0
-    output="$(duti -s "${bundle}" ".${type}" all 2>&1)" || status="$?"
-    [[ "${status}" -eq 0 ]] && continue
-    if [[ "${output}" == *' for dyn.'* ]]; then
-      console::_write-error "Skipped .${type}, which has no declared file type."
-      continue
-    fi
-    printf '%s\n' "${output}" >&2
-    return "${status}"
+    vscode::_set-handler "${bundle}" ".${type}" || return "$?"
   done
   for type in "${types[@]}"; do
-    duti -s "${bundle}" "${type}" all || return "$?"
+    vscode::_set-handler "${bundle}" "${type}" || return "$?"
   done
   /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
     -kill -r -domain local -domain system -domain user >/dev/null 2>&1

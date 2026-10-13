@@ -39,7 +39,7 @@
 | S03 | GNOME の入力ソースが JP 配列だけの状態で、`ubuntu::setup-desktop`（22.04 では `ubuntu::setup-desktop-22`）を D-Bus セッション内で実行する | 新しいセッションで入力ソースが Mozc と US の順になり、`/etc/default/keyboard` が US 配列、hwdb で USB キーボードの変換・無変換キーが henkan・muhenkan になる。Mozc はひらがなで始まり、VLC が動画の既定アプリになる。22.04 ではボタン配置も変わり、ほかの版では `ubuntu::setup-desktop-22` が終了状態 69 を返す | `scripts/test-ubuntu-desktop-container` |
 | M01 | 使い捨ての Apple silicon の macOS 実行環境で `mac::setup` を二度実行する。Homebrew は 2026 年 9 月に Intel Mac 向けのビルド済みパッケージの提供を終えたため、Intel では LLVM などのソースビルドで 3 時間の制限を超え、CI で確認しない | 失敗する手順があっても残りを続け、最初に失敗した手順の終了状態を返す。Hypervisor.framework がない実行環境で失敗してよいのは Colima の起動と、起動中のエンジンを要求する `docker::install` だけ | `scripts/test-macos-setup` |
 | M02 | M01 の後に設定と起動ファイルを読む | キー・Dock・trackpad の defaults、`DefaultKeyBinding.dict` の Option+T、Git の設定が変わり、新しい Zsh と Bash のセッションで `.env` の値と `EDITOR` が有効になる。起動ファイルの各行は一つだけ | 同上 |
-| M03 | M01 の後に導入物と既定アプリを確認する | 各 formula と cask が導入済みで、標準アプリが削除され、アプリに quarantine 属性が残らない。テキストとソースは VS Code、動画は IINA で開く設定になり、QMK Toolbox と IINA が起動する | 同上 |
+| M03 | M01 の後に導入物と既定アプリを確認する | 各 formula と cask が導入済みで、標準アプリが削除され、アプリに quarantine 属性が残らない。既定アプリのなかった Markdown・JSON・シェルスクリプトは VS Code、MKV は IINA で開く設定になる（txt や mp4 のように既定アプリがある種類は、duti が成功しても確認する人がいない実行環境では変わらないため記録だけにする）。QMK Toolbox と IINA が起動する | 同上 |
 | M04 | QMK Toolbox を現在の版・古い版で指定し、Command Line Tools を更新し、Rosetta を導入する | 現在の版は成功し、古い版は終了状態 69。clang で C プログラムをビルドして実行でき、Apple silicon では x86_64 のコマンドが動く | 同上 |
 | J01 | 公式配布物から Node.js 16.20.2 を導入し、同じ版で再実行する | 両方成功し、Node.js、npm、Corepack、pnpm が起動する | `scripts/test-node-container` |
 | J04 | J01 の Node.js で OpenCode を二度導入する | 両方成功し、`$HOME/.local/bin/opencode --version` が版番号を表示する | 同上 |
