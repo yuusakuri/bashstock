@@ -849,11 +849,15 @@ pipx::install() {
 }
 
 ### Set VS Code as the default application for text and source file types on macOS.
+###
+### An extension that no installed application declares has only a dynamic
+### UTI, which LaunchServices refuses to assign. Such an extension is reported
+### and skipped; any other failure returns its status.
 vscode::set-default-app() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform darwin || return "$?"
   command::require duti || return "$?"
-  local bundle='com.microsoft.VSCode' type=''
+  local bundle='com.microsoft.VSCode' type='' output='' status=0
   local extensions=(
     txt text md markdown mdown mkd json jsonc yaml yml toml ini conf config env log csv tsv
     xml html htm css scss sass js jsx ts tsx mjs cjs sh bash zsh fish py rb php java c h cpp
@@ -866,7 +870,15 @@ vscode::set-default-app() {
     public.tab-separated-values-text public.source-code
   )
   for type in "${extensions[@]}"; do
-    duti -s "${bundle}" ".${type}" all || return "$?"
+    status=0
+    output="$(duti -s "${bundle}" ".${type}" all 2>&1)" || status="$?"
+    [[ "${status}" -eq 0 ]] && continue
+    if [[ "${output}" == *' for dyn.'* ]]; then
+      console::_write-error "Skipped .${type}, which has no declared file type."
+      continue
+    fi
+    printf '%s\n' "${output}" >&2
+    return "${status}"
   done
   for type in "${types[@]}"; do
     duti -s "${bundle}" "${type}" all || return "$?"

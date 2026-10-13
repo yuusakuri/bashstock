@@ -754,6 +754,30 @@ gsettings_value() {
   [ "${status}" -eq 69 ]
 }
 
+@test "VS Code default app skips only extensions without a declared file type" {
+  use_platform darwin
+  DUTI_LOG="${BATS_TEST_TMPDIR}/duti.log"
+  killall() { :; }
+  duti() {
+    printf '%s\n' "$3" >>"${DUTI_LOG}"
+    case "$3" in
+      .gitignore) printf 'failed to set %s as handler for dyn.ah62d4qmxhk2x45per7506 (error -50)\n' "$2" >&2; return 1 ;;
+      "${DUTI_BROKEN:-}") printf 'failed to set %s as handler for public.json (error -54)\n' "$2" >&2; return 2 ;;
+    esac
+  }
+  run --separate-stderr vscode::set-default-app
+  [ "${status}" -eq 0 ]
+  [[ "${stderr}" == *'Skipped .gitignore'* ]]
+  [ "$(tail -n 1 "${DUTI_LOG}")" = 'public.source-code' ]
+
+  DUTI_BROKEN=.json
+  : >"${DUTI_LOG}"
+  run --separate-stderr vscode::set-default-app
+  [ "${status}" -eq 2 ]
+  [[ "${stderr}" == *'public.json (error -54)'* ]]
+  [ "$(tail -n 1 "${DUTI_LOG}")" = '.json' ]
+}
+
 @test "macOS setup runs every step and returns the first failed status" {
   use_platform darwin
   record_root_commands

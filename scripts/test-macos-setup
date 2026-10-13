@@ -11,15 +11,26 @@ set -uo pipefail
 source ./dist/bashstock.sh
 
 failures=0
+failed_checks=''
 
 ### Run a check and record its result without stopping the remaining checks.
+###
+### A failure is also written as a GitHub annotation, so it stays visible when
+### the log is too long to read in full.
 check() {
-  if "$@"; then
+  if "$@" >/dev/null; then
     printf 'PASS: %s\n' "$*"
   else
     printf 'FAIL: %s\n' "$*" >&2
+    printf '::error::FAIL: %s\n' "$*"
     failures=$((failures + 1))
+    failed_checks+="  $*"$'\n'
   fi
+}
+
+### Write the bundle identifier that opens files with an extension.
+handler_of() {
+  duti -x "$1" | sed -n 3p
 }
 
 ### Compare a command's output with the expected text.
@@ -108,8 +119,9 @@ check output_is true git config --global fetch.prune
 check output_is osxkeychain git config --global credential.helper
 
 printf '== packages\n'
+# The QMK CLI comes from its official installer, not Homebrew, and is checked below.
 for formula in duti sqlite postgresql rustup ffmpeg pnpm tree ripgrep fd gh python shellcheck shfmt \
-  font-udev-gothic pipx colima rbenv qmk; do
+  font-udev-gothic pipx colima rbenv; do
   check brew list --formula "${formula}"
 done
 for cask in google-chrome brave-browser obs zoom webex visual-studio-code android-studio thunderbird \
@@ -128,25 +140,22 @@ for app in iMovie Pages GarageBand Keynote Numbers; do
 done
 for app in 'Visual Studio Code' IINA 'QMK Toolbox'; do
   check test -d "/Applications/${app}.app"
-  if xattr -p com.apple.quarantine "/Applications/${app}.app" >/dev/null 2>&1; then
-    printf 'FAIL: %s keeps the quarantine attribute\n' "${app}" >&2
-    failures=$((failures + 1))
-  fi
+  check sh -c '! xattr -p com.apple.quarantine "$1" 2>/dev/null' quarantine "/Applications/${app}.app"
 done
 spctl --status || true
 
 printf '== default applications\n'
 for extension in txt md json sh py; do
-  check output_is com.microsoft.VSCode duti -d "${extension}"
+  check output_is com.microsoft.VSCode handler_of "${extension}"
 done
 check output_is com.microsoft.VSCode duti -d public.plain-text
 for extension in mp4 mkv mov webm; do
-  check output_is com.colliderli.iina duti -d "${extension}"
+  check output_is com.colliderli.iina handler_of "${extension}"
 done
 check vscode::set-default-app
 check iina::set-default-app
-check output_is com.microsoft.VSCode duti -d txt
-check output_is com.colliderli.iina duti -d mp4
+check output_is com.microsoft.VSCode handler_of txt
+check output_is com.colliderli.iina handler_of mp4
 
 printf '== QMK Toolbox\n'
 check qmk::toolbox::install
@@ -180,5 +189,5 @@ if [[ "$(uname -m)" == arm64 ]]; then
   check /usr/bin/arch -x86_64 /usr/bin/true
 fi
 
-printf '%s check(s) failed\n' "${failures}"
+printf '%s check(s) failed\n%s' "${failures}" "${failed_checks}"
 [[ "${failures}" -eq 0 ]]
