@@ -298,9 +298,15 @@ jobs:
           docker exec -u tester -w /home/tester bashstock bash /opt/test-ubuntu-desktop-container
 
   android-macos:
-    name: Android SDK and AVD on macOS
-    runs-on: macos-latest
+    name: Android SDK and AVD on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - macos-15-intel
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
         with:
@@ -330,6 +336,47 @@ jobs:
       - name: Run mac::setup twice and check the settings, applications, and tools
         shell: bash
         run: bash ./scripts/test-macos-setup
+
+  android-container:
+    name: Android SDK and AVD on ${{ matrix.image }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - amd64
+        image:
+          - ubuntu:18.04
+          - ubuntu:20.04
+          - ubuntu:22.04
+          - ubuntu:24.04
+          - ubuntu:26.04
+          - fedora:34
+          - fedora:43
+          - fedora:44
+        include:
+          # Google does not publish the Android CLI for arm64 Linux.
+          - arch: arm64
+            image: ubuntu:24.04
+          - arch: arm64
+            image: fedora:44
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
+        with:
+          submodules: recursive
+      - name: Build the standalone library
+        run: ./scripts/build
+      - name: Allow the emulator to use KVM
+        if: matrix.arch == 'amd64'
+        run: sudo chmod a+rw /dev/kvm
+      - name: Install SDK components and start an AVD in the container
+        run: |
+          device=()
+          [[ ! -e /dev/kvm ]] || device=(--device /dev/kvm)
+          docker run --rm "${device[@]}" -e GITHUB_TOKEN -e GITHUB_RUN_ID -e RUNNER_TEMP=/tmp/runner \
+            -v "$PWD:/work:ro" -w /work "${{ matrix.image }}" \
+            bash -c 'mkdir -p "$RUNNER_TEMP" && bash ./scripts/test-android-container'
 
   android-linux:
     name: Android SDK and AVD on Ubuntu 24.04
