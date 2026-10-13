@@ -31,7 +31,17 @@ expect_window() {
   shift
   "$@" >"$work/$class.log" 2>&1 &
   local pid="$!"
-  if ! timeout 90 xdotool search --sync --onlyvisible --class "$class" >/dev/null; then
+  # A search fails with BadWindow when a short-lived window closes while it is
+  # read, so the search is repeated instead of waiting inside xdotool.
+  local found=1
+  for _ in $(seq 1 90); do
+    if xdotool search --onlyvisible --class "$class" 2>/dev/null | grep -q .; then
+      found=0
+      break
+    fi
+    sleep 1
+  done
+  if [[ "$found" -ne 0 ]]; then
     tail -n 40 "$work/$class.log"
     return 1
   fi
