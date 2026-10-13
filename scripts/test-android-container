@@ -11,13 +11,17 @@ case "${ID}" in
   ubuntu)
     export DEBIAN_FRONTEND=noninteractive
     apt-get update >/dev/null
-    apt-get install -y --no-install-recommends ca-certificates curl perl iproute2 procps >/dev/null
+    apt-get install -y --no-install-recommends ca-certificates curl diffutils perl iproute2 procps \
+      >/dev/null
     apt-get install -y --no-install-recommends openjdk-21-jdk-headless >/dev/null 2>&1 ||
       apt-get install -y --no-install-recommends openjdk-17-jdk-headless >/dev/null
     ;;
   fedora)
-    dnf install -y ca-certificates curl perl-JSON-PP perl-File-Temp iproute procps-ng which \
-      java-latest-openjdk-headless >/dev/null
+    dnf install -y ca-certificates curl diffutils perl-JSON-PP perl-File-Temp iproute procps-ng \
+      which >/dev/null
+    # java-latest-openjdk can be an early-access build, so a stable LTS JDK is used.
+    dnf install -y java-21-openjdk-headless >/dev/null 2>&1 ||
+      dnf install -y java-17-openjdk-headless >/dev/null
     ;;
 esac
 
