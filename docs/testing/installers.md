@@ -15,7 +15,7 @@
 | macOS の GitHub Actions 実行環境（Apple silicon と Intel） | `mac::setup` の二度の実行、設定・既定アプリ・導入アプリの確認、Xcode Command Line Tools と Rosetta |
 | macOS の GitHub Actions 実行環境（Apple silicon と Intel） | Android SDK 構成要素、AVD の作成・削除。Hypervisor.Frameworkが使える実行環境では起動・停止も確認する |
 | Ubuntu 24.04 の GitHub Actions 実行環境 | Android SDK 構成要素、KVMを使うAVDの作成・起動・停止・削除 |
-| Ubuntu 18.04〜26.04、Fedora 34・43・44 の amd64 コンテナ（KVM を渡す） | 同上。Ubuntu 24.04 と Fedora 44 の arm64 コンテナでは Android CLI が非対応として終了状態 69 を返すこと |
+| Ubuntu 18.04〜26.04、Fedora 34・43・44 の amd64 コンテナ（KVM を渡す） | 同上。Ubuntu 18.04 では Emulator 以外の構成要素の導入と、Emulator が glibc 不足で終了状態 69 を返すこと。Ubuntu 24.04 と Fedora 44 の arm64 コンテナでは Android CLI が非対応として終了状態 69 を返すこと |
 | macOS、Ubuntu、Fedora の Bats テスト | 引数境界、失敗時の状態、Git と Android の公開動作 |
 
 コンテナでは systemd が PID 1 ではないため、Docker サービスの操作だけを検査用コマンドに置き換えます。Docker パッケージ、実行ファイル、リポジトリの検査には実物を使います。サービスとデーモンは Ubuntu の実行環境で確認します。

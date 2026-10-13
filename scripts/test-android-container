@@ -4,26 +4,20 @@
 set -euo pipefail
 
 # Run as root from the checkout in a disposable Ubuntu or Fedora container started with
-# --device /dev/kvm. The prerequisites match what a desktop user installs
-# before Android Studio: a JDK for sdkmanager and avdmanager, and the
-# libraries that the emulator loads even without a window.
+# --device /dev/kvm. Only a JDK for sdkmanager and avdmanager is added, so
+# android::emulator::install has to provide the emulator's system libraries.
 source /etc/os-release
 case "${ID}" in
   ubuntu)
     export DEBIAN_FRONTEND=noninteractive
     apt-get update >/dev/null
-    apt-get install -y --no-install-recommends ca-certificates curl perl iproute2 procps \
-      libpulse0 libnss3 libxcomposite1 libxcursor1 libxdamage1 libxi6 libxtst6 libxkbfile1 \
-      libgl1 libdbus-1-3 >/dev/null
+    apt-get install -y --no-install-recommends ca-certificates curl perl iproute2 procps >/dev/null
     apt-get install -y --no-install-recommends openjdk-21-jdk-headless >/dev/null 2>&1 ||
       apt-get install -y --no-install-recommends openjdk-17-jdk-headless >/dev/null
-    apt-get install -y --no-install-recommends libasound2t64 >/dev/null 2>&1 ||
-      apt-get install -y --no-install-recommends libasound2 >/dev/null
     ;;
   fedora)
     dnf install -y ca-certificates curl perl-JSON-PP perl-File-Temp iproute procps-ng which \
-      pulseaudio-libs nss libXcomposite libXcursor libXdamage libXi libXtst libxkbfile \
-      mesa-libGL dbus-libs alsa-lib java-latest-openjdk-headless >/dev/null
+      java-latest-openjdk-headless >/dev/null
     ;;
 esac
 
@@ -40,6 +34,27 @@ if [[ "$(uname -m)" != x86_64 ]]; then
   [[ "${status}" -eq 69 ]]
   [[ ! -e "${HOME}/.local/bin/android" && ! -e "${HOME}/Android/Sdk" ]]
   printf 'Android CLI reports this CPU as unsupported with status 69.\n'
+  exit 0
+fi
+
+if [[ "$(printf '%s\n' 2.30 "$(getconf GNU_LIBC_VERSION | awk '{print $2}')" | sort -V | head -n 1)" != 2.30 ]]; then
+  # The current emulator needs glibc 2.30, so only the other components start here.
+  export HOME="${RUNNER_TEMP}/bashstock-android-home"
+  export ANDROID_HOME="${HOME}/Android/Sdk"
+  mkdir -p "${HOME}"
+  android::sdk::install
+  android::platform-tools::install
+  android::sdk-platform::install 35
+  android::build-tools::install 35.0.0
+  android::command-line-tools::install
+  "${ANDROID_HOME}/platform-tools/adb" version
+  "${ANDROID_HOME}/build-tools/35.0.0/aapt2" version
+  "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --version
+  test -s "${ANDROID_HOME}/platforms/android-35/android.jar"
+  status=0
+  android::emulator::install || status="$?"
+  [[ "${status}" -eq 69 ]]
+  printf 'The emulator is reported as unsupported with status 69.\n'
   exit 0
 fi
 

@@ -145,19 +145,32 @@ android::build-tools::install() {
 }
 
 ### Install the Android Emulator into the selected SDK.
+###
+### On Linux, the system libraries that the emulator and its bundled libraries
+### load are installed first, so the emulator also starts on a minimal system.
+### Current emulators need glibc 2.30 or later, so Ubuntu 18.04 returns 69.
 android::emulator::install() {
   [[ "$#" -le 1 ]] || return 64
   local platform='' directory=''
   android::_cli-artifact >/dev/null || return "$?"
   platform="$(package::_platform)" || return "$?"
   case "${platform}" in
-    ubuntu) package::_install libpulse0 || return "$?" ;;
-    fedora) package::_install pulseaudio-libs || return "$?" ;;
+    ubuntu)
+      package::_install libpulse0 libnss3 libpng16-16 libx11-6 libxext6 libxi6 libice6 libsm6 \
+        libxcb1 libxkbfile1 libbsd0 libdbus-1-3 libdrm2 libgbm1 libexpat1 libuuid1 zlib1g || return "$?"
+      ;;
+    fedora)
+      package::_install pulseaudio-libs nss nspr libpng libX11 libXext libXi libICE libSM \
+        libxcb libxkbfile libbsd dbus-libs libdrm mesa-libgbm expat libuuid zlib || return "$?"
+      ;;
   esac
   android::_sdk-install emulator "${1:-}" || return "$?"
   directory="$(android::sdk::directory)" || return "$?"
   [[ -x "${directory}/emulator/emulator" ]] || return 69
-  "${directory}/emulator/emulator" -version >/dev/null || return 69
+  if ! "${directory}/emulator/emulator" -version >/dev/null; then
+    console::_write-error 'The Android Emulator does not start on this system.'
+    return 69
+  fi
 }
 
 ### Install SDK Command-line Tools and verify sdkmanager and avdmanager.
