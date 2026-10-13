@@ -19,9 +19,12 @@ case "${ID}" in
   fedora)
     dnf install -y ca-certificates curl diffutils perl-JSON-PP perl-File-Temp iproute procps-ng \
       which >/dev/null
-    # java-latest-openjdk can be an early-access build, so a stable LTS JDK is used.
-    dnf install -y java-21-openjdk-headless >/dev/null 2>&1 ||
-      dnf install -y java-17-openjdk-headless >/dev/null
+    # java-latest-openjdk can be an early-access build, so the newest LTS JDK
+    # that the release provides is used.
+    for jdk in 25 21 17; do
+      dnf install -y "java-${jdk}-openjdk-headless" >/dev/null 2>&1 && break
+    done
+    command -v java >/dev/null
     ;;
 esac
 
