@@ -1147,6 +1147,35 @@ use_fake_sudoers() {
   ! grep -q 'stdin:' "${CURL_LOG}"
 }
 
+@test "downloads retry network failures but not HTTP errors, and abort stalled transfers" {
+  CURL_LOG="${BATS_TEST_TMPDIR}/curl.log"
+  : >"${CURL_LOG}"
+  sleep() { :; }
+  curl() {
+    printf '%s\n' "$*" >>"${CURL_LOG}"
+    # The first two attempts drop the connection after part of the body.
+    if [[ "$(grep -c . "${CURL_LOG}")" -le 2 ]]; then printf 'partial'; return 92; fi
+    printf 'complete'
+  }
+  run package::_fetch https://example.invalid/index.json
+  [ "${status}" -eq 0 ]
+  [ "${output}" = 'complete' ]
+  [ "$(grep -c . "${CURL_LOG}")" -eq 3 ]
+  grep -q -- '--speed-limit 1024 --speed-time 60' "${CURL_LOG}"
+
+  : >"${CURL_LOG}"
+  curl() { printf '%s\n' "$*" >>"${CURL_LOG}"; return 22; }
+  run package::_download https://example.invalid/missing "${BATS_TEST_TMPDIR}/missing"
+  [ "${status}" -eq 74 ]
+  [ "$(grep -c . "${CURL_LOG}")" -eq 1 ]
+
+  : >"${CURL_LOG}"
+  curl() { printf '%s\n' "$*" >>"${CURL_LOG}"; return 28; }
+  run package::_download https://example.invalid/stalled "${BATS_TEST_TMPDIR}/stalled"
+  [ "${status}" -eq 74 ]
+  [ "$(grep -c . "${CURL_LOG}")" -eq 3 ]
+}
+
 @test "rbenv startup lines stay valid when the shell is configured again" {
   HOME="${BATS_TEST_TMPDIR}/home"
   unset RBENV_ROOT

@@ -115,27 +115,50 @@ package::_temporary-directory() {
   mktemp -d "${TMPDIR:-/tmp}/bashstock.XXXXXX" 2>/dev/null || return 74
 }
 
-### Write the body of one HTTPS URL to standard output.
+### Run curl for one HTTPS request, retrying network failures up to three times.
 ###
-### Requests to api.github.com carry GITHUB_TOKEN when it is set, which raises
-### GitHub's rate limit for unauthenticated clients that share an address. The
-### token goes to curl on standard input, so it never appears in arguments.
+### A transfer slower than 1 KiB/s for 60 seconds is aborted and retried, so a
+### stalled connection does not hang the caller. An HTTP error status (curl
+### exit 22) is final. Requests to api.github.com carry GITHUB_TOKEN when it is
+### set, which raises GitHub's rate limit for clients that share an address;
+### the token goes to curl on standard input, never in its arguments.
+package::_curl() {
+  [[ "$#" -ge 1 ]] || return 64
+  local url="${!#}" attempt=1 status=0 body=''
+  [[ "${url}" == https://* ]] || return 64
+  while :; do
+    status=0
+    # Each attempt is captured on its own, so a retry never repeats part of a body.
+    if [[ "${url}" == https://api.github.com/* && -n "${GITHUB_TOKEN:-}" ]]; then
+      body="$(printf 'header = "Authorization: Bearer %s"\n' "${GITHUB_TOKEN}" |
+        curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 --config - "$@")" ||
+        status="$?"
+    else
+      body="$(curl -fsSL --connect-timeout 30 --speed-limit 1024 --speed-time 60 "$@")" ||
+        status="$?"
+    fi
+    if [[ "${status}" -eq 0 ]]; then
+      [[ -z "${body}" ]] || printf '%s\n' "${body}"
+      return 0
+    fi
+    [[ "${status}" -ne 22 && "${attempt}" -lt 3 ]] || return 74
+    sleep $((attempt * 5))
+    attempt=$((attempt + 1))
+  done
+}
+
+### Write the body of one HTTPS URL to standard output.
 package::_fetch() {
   [[ "$#" -eq 1 && "$1" == https://* ]] || return 64
   command::require curl || return "$?"
-  if [[ "$1" == https://api.github.com/* && -n "${GITHUB_TOKEN:-}" ]]; then
-    printf 'header = "Authorization: Bearer %s"\n' "${GITHUB_TOKEN}" |
-      curl -fsSL --retry 3 --config - "$1" || return 74
-    return 0
-  fi
-  curl -fsSL --retry 3 "$1" || return 74
+  package::_curl "$1" || return 74
 }
 
 ### Download one HTTPS URL to a nonempty file.
 package::_download() {
   [[ "$#" -eq 2 && "$1" == https://* && -n "$2" ]] || return 64
   command::require curl || return "$?"
-  curl -fsSL --retry 3 -o "$2" "$1" || return 74
+  package::_curl -o "$2" "$1" || return 74
   [[ -f "$2" && -s "$2" ]] || return 74
 }
 
