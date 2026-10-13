@@ -12,12 +12,14 @@ source ./dist/bashstock.sh
 
 failures=0
 failed_checks=''
+mismatch=''
 
 ### Run a check and record its result without stopping the remaining checks.
 ###
 ### A failure is also written as a GitHub annotation, so it stays visible when
 ### the log is too long to read in full.
 check() {
+  mismatch=''
   if "$@" >/dev/null; then
     printf 'PASS: %s\n' "$*"
   else
@@ -25,6 +27,7 @@ check() {
     printf '::error::FAIL: %s\n' "$*"
     failures=$((failures + 1))
     failed_checks+="  $*"$'\n'
+    [[ -z "${mismatch}" ]] || failed_checks+="${mismatch}"$'\n'
   fi
 }
 
@@ -39,7 +42,8 @@ output_is() {
   shift
   actual="$("$@" 2>&1)"
   [[ "${actual}" == "${expected}" ]] || {
-    printf '  expected %s, got %s\n' "${expected}" "${actual}" >&2
+    mismatch="$(printf '    expected %q, got %q' "${expected}" "${actual}")"
+    printf '%s\n' "${mismatch}" >&2
     return 1
   }
 }

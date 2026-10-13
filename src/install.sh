@@ -284,13 +284,19 @@ node::install() {
 }
 
 ### Enable Corepack, installing it through npm when the Node.js release omits it.
+###
+### On macOS, Homebrew's pnpm formula can already own the pnpm link in the
+### shared bin directory. Corepack replaces that link, as corepack enable does
+### for a bundled Corepack, so npm is allowed to overwrite it there.
 node::_enable-corepack() {
   [[ "$#" -eq 2 ]] || return 64
-  local runner=()
+  local runner=() options=()
   [[ "$1" == 'darwin' || "$2" == official ]] || runner=(command::run-as-root)
+  [[ "$1" != 'darwin' || "$2" == official ]] || options=(--force)
   if ! command -v corepack >/dev/null 2>&1; then
     command::require npm || return "$?"
-    ${runner[@]+"${runner[@]}"} npm install --global corepack@0.20.0 || return "$?"
+    ${runner[@]+"${runner[@]}"} npm install --global ${options[@]+"${options[@]}"} corepack@0.20.0 ||
+      return "$?"
   fi
   ${runner[@]+"${runner[@]}"} corepack enable || return "$?"
   COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack prepare pnpm@8.15.9 --activate
@@ -502,10 +508,14 @@ colima::versions() {
 }
 
 ### Install Colima with Homebrew on macOS and start it.
+###
+### Colima's Docker runtime needs the docker command before it starts, so the
+### Docker CLI formula is installed with it.
 colima::install() {
   [[ "$#" -le 1 ]] || return 64
   package::_require-platform darwin || return "$?"
   package::_install-version colima "${1:-}" || return "$?"
+  package::_install docker || return "$?"
   if colima status >/dev/null 2>&1; then
     return 0
   fi
@@ -524,8 +534,13 @@ ruby::_install-rbenv() {
   local platform='' root=''
   platform="$(package::_platform)" || return "$?"
   if [[ "${platform}" == 'darwin' ]]; then
+    local outdated='' formula=''
     package::_install rbenv ruby-build || return "$?"
-    brew upgrade rbenv ruby-build || return "$?"
+    # brew upgrade fails when a named formula is already current.
+    outdated="$(brew outdated --formula --quiet rbenv ruby-build)" || return 74
+    while IFS= read -r formula; do
+      [[ -z "${formula}" ]] || brew upgrade "${formula}" || return "$?"
+    done <<<"${outdated}"
     return 0
   fi
   command::require git || return "$?"
@@ -1090,7 +1105,12 @@ rancher-desktop::install() {
   case "${platform}" in
     darwin)
       package::_install-cask rancher "${version}" || return "$?"
-      open -a 'Rancher Desktop'
+      # The path works before LaunchServices has registered the new application.
+      if [[ -d '/Applications/Rancher Desktop.app' ]]; then
+        open '/Applications/Rancher Desktop.app'
+      else
+        open -a 'Rancher Desktop'
+      fi
       ;;
     ubuntu | fedora)
       rancher-desktop::_install-linux "${platform}" "${version}" || return "$?"

@@ -1176,6 +1176,44 @@ use_fake_sudoers() {
   [ "$(grep -c . "${CURL_LOG}")" -eq 3 ]
 }
 
+@test "rbenv on macOS upgrades only formulae that Homebrew reports as outdated" {
+  use_platform darwin
+  BREW_LOG="${BATS_TEST_TMPDIR}/brew.log"
+  brew() {
+    printf '%s\n' "$*" >>"${BREW_LOG}"
+    if [[ "$1" == outdated ]]; then printf '%s' "${BREW_OUTDATED}"; fi
+    # Homebrew fails when it is asked to upgrade a current formula.
+    if [[ "$1" == upgrade && " ${BREW_OUTDATED} " != *" $2 "* ]]; then return 1; fi
+  }
+  BREW_OUTDATED=''
+  run ruby::_install-rbenv
+  [ "${status}" -eq 0 ]
+  ! grep -q '^upgrade' "${BREW_LOG}"
+
+  : >"${BREW_LOG}"
+  BREW_OUTDATED='ruby-build'
+  run ruby::_install-rbenv
+  [ "${status}" -eq 0 ]
+  [ "$(grep '^upgrade' "${BREW_LOG}")" = 'upgrade ruby-build' ]
+}
+
+@test "Corepack from npm may replace Homebrew's pnpm link only on macOS" {
+  NPM_LOG="${BATS_TEST_TMPDIR}/npm.log"
+  PATH="${BATS_TEST_TMPDIR}/empty:/usr/bin:/bin"
+  npm() { printf '%s\n' "$*" >>"${NPM_LOG}"; }
+  corepack() { :; }
+  command() { if [[ "$1" == -v && "$2" == corepack ]]; then return 1; fi; builtin command "$@"; }
+  command::run-as-root() { "$@"; }
+  run node::_enable-corepack darwin os
+  [ "${status}" -eq 0 ]
+  [ "$(<"${NPM_LOG}")" = 'install --global --force corepack@0.20.0' ]
+
+  : >"${NPM_LOG}"
+  run node::_enable-corepack ubuntu os
+  [ "${status}" -eq 0 ]
+  [ "$(<"${NPM_LOG}")" = 'install --global corepack@0.20.0' ]
+}
+
 @test "rbenv startup lines stay valid when the shell is configured again" {
   HOME="${BATS_TEST_TMPDIR}/home"
   unset RBENV_ROOT
