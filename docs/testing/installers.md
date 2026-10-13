@@ -2,6 +2,13 @@
 
 導入関数は、公開関数の戻り値だけでなく、選んだ版の実体、再実行後の状態、生成した設定、起動結果を確認します。失敗する入力では、終了状態と既存のデータが保たれることを確認します。
 
+## 実行の契機
+
+| ワークフロー | 契機 | 内容 |
+| --- | --- | --- |
+| `CI` | 毎回のプッシュとプルリクエスト | Bats テスト、lint、macOS の設定関数の検査（`scripts/test-macos-preferences`）。外部からの取得を伴わず、数分で終わる |
+| `Installer integration` | 手動実行のみ（Actions タブまたは `gh workflow run installers.yml --ref BRANCH`） | 下表の導入・起動の検査。ベンダーの配布物やパッケージリポジトリに依存し、最長で 1 時間かかるため、導入処理を変えたときや定期的な確認のときに明示して実行する |
+
 ## 実行環境
 
 | 環境 | 対象 |
@@ -37,6 +44,8 @@
 | S01 | sudo を使う一般ユーザーが、日本語名の XDG ディレクトリがある状態で `ubuntu::setup` を二度実行する | 起動ファイルの各行が一つだけで、新しいログインセッションで `.env` の値、`EDITOR`、補完の大文字小文字無視が有効になる | `scripts/test-ubuntu-setup-container` |
 | S02 | S01 の後に利用者ディレクトリ、グループ、Git、SSH を確認する | 英語名のリンクが日本語名のディレクトリを指し、既存の内容が残る。新しいセッションで `dialout` に属し、Git の各設定と `.ssh` の 700 が設定される | 同上 |
 | S03 | GNOME の入力ソースが JP 配列だけの状態で、`ubuntu::setup-desktop`（22.04 では `ubuntu::setup-desktop-22`）を D-Bus セッション内で実行する | 新しいセッションで入力ソースが Mozc と US の順になり、`/etc/default/keyboard` が US 配列、hwdb で USB キーボードの変換・無変換キーが henkan・muhenkan になる。Mozc はひらがなで始まり、VLC が動画の既定アプリになる。22.04 ではボタン配置も変わり、ほかの版では `ubuntu::setup-desktop-22` が終了状態 69 を返す | `scripts/test-ubuntu-desktop-container` |
+| P01 | macOS 実行環境で、`mac::setup` が呼び出す設定関数（sudo の password 不要化、環境変数、起動ファイル、キー・Dock・trackpad、標準アプリの削除、quarantine、Gatekeeper、Git）を二度実行する | すべて成功し、二度目も設定が重複しない。sudo は password なしで通る | `CI` の `scripts/test-macos-preferences` |
+| P02 | P01 の後に defaults、`DefaultKeyBinding.dict`、起動ファイル、Git 設定を読む | 各値が設定どおりで、新しい Zsh と Bash のセッションで `.env` の値、`EDITOR`、`HOMEBREW_CASK_OPTS` が有効になる | 同上 |
 | M01 | 使い捨ての Apple silicon の macOS 実行環境で `mac::setup` を二度実行する。Homebrew は 2026 年 9 月に Intel Mac 向けのビルド済みパッケージの提供を終えたため、Intel では LLVM などのソースビルドで 3 時間の制限を超え、CI で確認しない | 失敗する手順があっても残りを続け、最初に失敗した手順の終了状態を返す。Hypervisor.framework がない実行環境で失敗してよいのは Colima の起動と、起動中のエンジンを要求する `docker::install` だけ | `scripts/test-macos-setup` |
 | M02 | M01 の後に設定と起動ファイルを読む | キー・Dock・trackpad の defaults、`DefaultKeyBinding.dict` の Option+T、Git の設定が変わり、新しい Zsh と Bash のセッションで `.env` の値と `EDITOR` が有効になる。起動ファイルの各行は一つだけ | 同上 |
 | M03 | M01 の後に導入物と既定アプリを確認する | 各 formula と cask が導入済みで、標準アプリが削除され、アプリに quarantine 属性が残らない。既定アプリのなかった Markdown・JSON・シェルスクリプトは VS Code、MKV は IINA で開く設定になる（txt や mp4 のように既定アプリがある種類は、duti が成功しても確認する人がいない実行環境では変わらないため記録だけにする）。QMK Toolbox と IINA が起動する | 同上 |

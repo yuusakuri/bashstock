@@ -791,14 +791,9 @@ gsettings_value() {
 
 @test "macOS setup runs every step and returns the first failed status" {
   use_platform darwin
-  record_root_commands
   HOME="${BATS_TEST_TMPDIR}/home"
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
   mkdir -p "${HOME}"
-  sudo::start-keep-alive() { :; }
-  killall() { :; }
-  sleep() { :; }
-  open() { :; }
   setup::_run-step() {
     printf '%s\n' "$*" >>"${STEP_LOG}"
     case "$1" in
@@ -808,12 +803,105 @@ gsettings_value() {
   }
   run --separate-stderr mac::setup
   [ "${status}" -eq 75 ]
-  [ -f "${HOME}/.env" ] && [ -f "${HOME}/.zshrc" ] && [ -d "${HOME}/.local/bin" ]
+  [ -f "${HOME}/.env" ] && [ -d "${HOME}/.local/bin" ]
+  # sudo becomes passwordless before any step that needs it.
+  [ "$(head -n 1 "${STEP_LOG}")" = 'sudo::passwordless::enable' ]
   grep -Fqx "shell::editor::set-default code --wait bash,zsh" "${STEP_LOG}"
+  grep -Fqx 'mac::dock::set-position' "${STEP_LOG}"
   grep -Fqx 'brew install --cask antigravity-ide' "${STEP_LOG}"
+  grep -Fqx 'mac::gatekeeper::disable' "${STEP_LOG}"
   [ "$(tail -n 1 "${STEP_LOG}")" = 'iina::set-default-app' ]
+}
+
+@test "macOS preference functions write the expected defaults and restart the Dock" {
+  use_platform darwin
+  record_root_commands
+  DEFAULTS_LOG="${BATS_TEST_TMPDIR}/defaults.log"
+  KILLALL_LOG="${BATS_TEST_TMPDIR}/killall.log"
+  defaults() { printf '%s\n' "$*" >>"${DEFAULTS_LOG}"; }
+  killall() { printf '%s\n' "$*" >>"${KILLALL_LOG}"; }
+
+  run mac::keyboard::use-function-keys
+  [ "${status}" -eq 0 ]
+  run mac::keyboard::set-repeat
+  [ "${status}" -eq 0 ]
+  run mac::keyboard::set-repeat 15 2
+  [ "${status}" -eq 0 ]
+  run mac::keyboard::set-repeat fast
+  [ "${status}" -eq 64 ]
+  run mac::trackpad::disable-smart-zoom
+  [ "${status}" -eq 0 ]
+  run mac::dock::set-autohide-instant
+  [ "${status}" -eq 0 ]
+  run mac::dock::hide-recent-applications
+  [ "${status}" -eq 0 ]
+  run mac::dock::set-minimize-effect
+  [ "${status}" -eq 0 ]
+  run mac::dock::set-minimize-effect fade
+  [ "${status}" -eq 64 ]
+  run mac::dock::set-position bottom
+  [ "${status}" -eq 0 ]
+  run mac::dock::set-position top
+  [ "${status}" -eq 64 ]
+  run mac::wake-on-lan::enable
+  [ "${status}" -eq 0 ]
+
+  [ "$(<"${DEFAULTS_LOG}")" = "write NSGlobalDomain com.apple.keyboard.fnState -bool true
+write NSGlobalDomain InitialKeyRepeat -int 30
+write NSGlobalDomain KeyRepeat -int 1
+write NSGlobalDomain InitialKeyRepeat -int 15
+write NSGlobalDomain KeyRepeat -int 2
+write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadTwoFingerDoubleTapGesture -int 0
+write com.apple.AppleMultitouchTrackpad TrackpadTwoFingerDoubleTapGesture -int 0
+write NSGlobalDomain com.apple.trackpad.twoFingerDoubleTapGesture -int 0
+write com.apple.dock autohide-time-modifier -float 0
+write com.apple.dock autohide-delay -float 0
+write com.apple.dock show-recents -bool false
+write com.apple.dock mineffect -string scale
+write com.apple.dock orientation -string bottom" ]
+  [ "$(grep -c '^Dock$' "${KILLALL_LOG}")" -eq 4 ]
+  [ "$(<"${ROOT_LOG}")" = 'pmset -a womp 1' ]
+
+  use_platform ubuntu 24.04 noble
+  run mac::dock::set-position
+  [ "${status}" -eq 69 ]
+}
+
+@test "macOS cleanup functions remove bundled applications and ask before disabling Gatekeeper" {
+  use_platform darwin
+  record_root_commands
+  OPEN_LOG="${BATS_TEST_TMPDIR}/open.log"
+  killall() { :; }
+  sleep() { :; }
+  open() { printf '%s\n' "$*" >>"${OPEN_LOG}"; }
+
+  run mac::applications::remove-bundled
+  [ "${status}" -eq 0 ]
+  grep -Fq '/Applications/GarageBand.app' "${ROOT_LOG}"
+  run mac::quarantine::remove-applications
+  [ "${status}" -eq 0 ]
   grep -Fqx 'xattr -r -d com.apple.quarantine /Applications' "${ROOT_LOG}"
+
+  # spctl refuses until the user confirms in System Settings, which is then opened.
+  command::run-as-root() { printf '%s\n' "$*" >>"${ROOT_LOG}"; [[ "$1" != spctl ]]; }
+  run --separate-stderr mac::gatekeeper::disable
+  [ "${status}" -eq 0 ]
   grep -Fqx 'spctl --master-disable' "${ROOT_LOG}"
+  [[ "${stderr}" == *'Allow applications from anywhere'* ]]
+  [ "$(<"${OPEN_LOG}")" = 'x-apple.systempreferences:com.apple.settings.PrivacySecurity' ]
+}
+
+@test "shell startup helpers for Zsh and Homebrew casks write one line each" {
+  HOME="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "${HOME}"
+  shell::zsh::enable-interactive-comments
+  shell::zsh::enable-interactive-comments
+  homebrew::cask::disable-quarantine
+  homebrew::cask::disable-quarantine
+  [ "$(grep -c '^setopt interactivecomments$' "${HOME}/.zshrc")" -eq 1 ]
+  [ "$(grep -c '^export HOMEBREW_CASK_OPTS=--no-quarantine$' "${HOME}/.zshrc")" -eq 1 ]
+  [ "$(grep -c '^export HOMEBREW_CASK_OPTS=--no-quarantine$' "${HOME}/.bashrc")" -eq 1 ]
+  [ "${HOMEBREW_CASK_OPTS}" = '--no-quarantine' ]
 }
 
 @test "the default ADB device applies to later calls in the same shell" {

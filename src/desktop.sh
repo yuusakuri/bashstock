@@ -368,8 +368,12 @@ ubuntu::setup-desktop-22() {
 }
 
 ### Install Homebrew with the official installer when it is missing.
-mac::_install-homebrew() {
+###
+### The new Zsh sessions read brew shellenv from .zshrc, and the current
+### process finds brew on PATH afterwards.
+homebrew::install() {
   [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
   command -v brew >/dev/null 2>&1 && return 0
   local directory='' status=0
   directory="$(package::_temporary-directory)" || return "$?"
@@ -385,30 +389,115 @@ mac::_install-homebrew() {
   export PATH
 }
 
-### Apply macOS preferences that the reference setup writes with defaults and pmset.
-mac::_apply-preferences() {
+### Install Homebrew casks without the quarantine attribute from now on.
+homebrew::cask::disable-quarantine() {
   [[ "$#" -eq 0 ]] || return 64
-  local status=0
-  command::run-as-root pmset -a womp 1 || status="$?"
-  defaults write NSGlobalDomain com.apple.keyboard.fnState -bool true || status="$?"
-  key-binding::disable-option-t || status="$?"
-  defaults write NSGlobalDomain InitialKeyRepeat -int 30 || status="$?"
-  defaults write NSGlobalDomain KeyRepeat -int 1 || status="$?"
-  defaults write com.apple.dock autohide-time-modifier -float 0 || status="$?"
-  defaults write com.apple.dock autohide-delay -float 0 || status="$?"
-  defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadTwoFingerDoubleTapGesture -int 0 || status="$?"
-  defaults write com.apple.AppleMultitouchTrackpad TrackpadTwoFingerDoubleTapGesture -int 0 || status="$?"
-  defaults write NSGlobalDomain com.apple.trackpad.twoFingerDoubleTapGesture -int 0 || status="$?"
-  defaults write com.apple.dock show-recents -bool false || status="$?"
-  defaults write com.apple.dock mineffect -string scale || status="$?"
-  defaults write com.apple.dock orientation -string left || status="$?"
+  env::set-variable HOMEBREW_CASK_OPTS --no-quarantine
+}
+
+### Allow comments that start with # in interactive Zsh sessions.
+shell::zsh::enable-interactive-comments() {
+  [[ "$#" -eq 0 ]] || return 64
+  setup::_ensure-file "${HOME}/.zshrc" || return "$?"
+  file::replace-text-or-append "${HOME}/.zshrc" '^setopt interactivecomments.*$' 'setopt interactivecomments'
+}
+
+### Let the Mac wake from sleep through the network (Wake on LAN).
+mac::wake-on-lan::enable() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  command::run-as-root pmset -a womp 1
+}
+
+### Make F1 to F12 act as function keys without the fn key.
+mac::keyboard::use-function-keys() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  defaults write NSGlobalDomain com.apple.keyboard.fnState -bool true
+}
+
+### Set the delay before key repeat starts and the repeat interval.
+###
+### Arguments
+###
+### * INITIAL - Delay before repeating, in units of 15 ms. Defaults to 30.
+### * REPEAT - Interval between repeats, in units of 15 ms. Defaults to 1.
+mac::keyboard::set-repeat() {
+  [[ "$#" -le 2 ]] || return 64
+  local initial="${1:-30}" repeat="${2:-1}"
+  [[ "${initial}" =~ ^[0-9]+$ && "${repeat}" =~ ^[0-9]+$ ]] || return 64
+  package::_require-platform darwin || return "$?"
+  defaults write NSGlobalDomain InitialKeyRepeat -int "${initial}" || return "$?"
+  defaults write NSGlobalDomain KeyRepeat -int "${repeat}"
+}
+
+### Turn off smart zoom, the two-finger double tap, on built-in and external trackpads.
+mac::trackpad::disable-smart-zoom() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadTwoFingerDoubleTapGesture -int 0 ||
+    return "$?"
+  defaults write com.apple.AppleMultitouchTrackpad TrackpadTwoFingerDoubleTapGesture -int 0 || return "$?"
+  defaults write NSGlobalDomain com.apple.trackpad.twoFingerDoubleTapGesture -int 0
+}
+
+### Restart the Dock so that it reads changed preferences.
+mac::dock::_restart() {
+  [[ "$#" -eq 0 ]] || return 64
   killall Dock >/dev/null 2>&1 || true
-  return "${status}"
+}
+
+### Show and hide the Dock immediately, without a delay or an animation.
+mac::dock::set-autohide-instant() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  defaults write com.apple.dock autohide-time-modifier -float 0 || return "$?"
+  defaults write com.apple.dock autohide-delay -float 0 || return "$?"
+  mac::dock::_restart
+}
+
+### Hide recently used applications in the Dock.
+mac::dock::hide-recent-applications() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  defaults write com.apple.dock show-recents -bool false || return "$?"
+  mac::dock::_restart
+}
+
+### Set the effect used when a window is minimized into the Dock.
+###
+### Arguments
+###
+### * EFFECT - genie, scale, or suck. Defaults to scale.
+mac::dock::set-minimize-effect() {
+  [[ "$#" -le 1 ]] || return 64
+  local effect="${1:-scale}"
+  [[ "${effect}" == genie || "${effect}" == scale || "${effect}" == suck ]] || return 64
+  package::_require-platform darwin || return "$?"
+  defaults write com.apple.dock mineffect -string "${effect}" || return "$?"
+  mac::dock::_restart
+}
+
+### Place the Dock on one edge of the screen.
+###
+### Arguments
+###
+### * POSITION - left, bottom, or right. Defaults to left.
+mac::dock::set-position() {
+  [[ "$#" -le 1 ]] || return 64
+  local position="${1:-left}"
+  [[ "${position}" == left || "${position}" == bottom || "${position}" == right ]] || return 64
+  package::_require-platform darwin || return "$?"
+  defaults write com.apple.dock orientation -string "${position}" || return "$?"
+  mac::dock::_restart
 }
 
 ### Remove the bundled iMovie, Pages, GarageBand, Keynote, and Numbers applications.
-mac::_remove-bundled-applications() {
+###
+### GarageBand's sound library is removed with it. Missing applications are skipped.
+mac::applications::remove-bundled() {
   [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
   command::run-as-root rm -rf -- \
     /Applications/iMovie.app \
     /Applications/Pages.app \
@@ -421,11 +510,35 @@ mac::_remove-bundled-applications() {
     /Applications/Numbers.app
 }
 
+### Remove the quarantine attribute from everything below /Applications.
+mac::quarantine::remove-applications() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  # Files without the attribute make xattr report errors, which are not failures here.
+  command::run-as-root xattr -r -d com.apple.quarantine /Applications 2>/dev/null || true
+}
+
+### Ask macOS to allow applications from anywhere and open Privacy & Security.
+###
+### Recent macOS releases apply spctl --master-disable only after the user
+### selects "Allow applications from anywhere" in System Settings, so a refusal
+### from spctl is not a failure; the function opens the settings for that step.
+mac::gatekeeper::disable() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  command::run-as-root spctl --master-disable 2>/dev/null || true
+  console::_write-error 'Select "Allow applications from anywhere" in Privacy & Security.'
+  killall 'System Settings' >/dev/null 2>&1 || true
+  sleep 1
+  open 'x-apple.systempreferences:com.apple.settings.PrivacySecurity'
+}
+
 ### Apply the complete macOS setup, continuing after failed steps.
 ###
-### The setup disables Gatekeeper, removes quarantine attributes below
-### /Applications, and removes bundled applications. It returns the status of
-### the first failed step after every step has run.
+### sudo is first made passwordless for the current user and stays so after
+### the setup. The setup removes bundled applications, removes quarantine
+### attributes below /Applications, and disables Gatekeeper. It returns the
+### status of the first failed step after every step has run.
 mac::setup() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform darwin || return "$?"
@@ -440,21 +553,27 @@ mac::setup() {
     antigravity antigravity-ide
   )
 
-  sudo::start-keep-alive || status="${status/#0/$?}"
+  setup::_run-step sudo::passwordless::enable || status="${status/#0/$?}"
   setup::_ensure-file "${HOME}/.env" || status="${status/#0/$?}"
   setup::_run-step env::dotenv::register "${HOME}/.env" || status="${status/#0/$?}"
   # Zsh is the default macOS shell, so the editor also goes into .zshrc.
   setup::_run-step shell::editor::set-default 'code --wait' bash,zsh || status="${status/#0/$?}"
-  setup::_ensure-file "${HOME}/.zshrc" || status="${status/#0/$?}"
-  setup::_run-step file::replace-text-or-append "${HOME}/.zshrc" '^setopt interactivecomments.*$' \
-    'setopt interactivecomments' || status="${status/#0/$?}"
-  setup::_run-step env::set-variable HOMEBREW_CASK_OPTS --no-quarantine || status="${status/#0/$?}"
+  setup::_run-step shell::zsh::enable-interactive-comments || status="${status/#0/$?}"
+  setup::_run-step homebrew::cask::disable-quarantine || status="${status/#0/$?}"
   mkdir -p -- "${HOME}/.local/bin" || status="${status/#0/$?}"
   setup::_run-step env::add-path "${HOME}/.local/bin" || status="${status/#0/$?}"
   setup::_run-step shell::completion::enable-ignore-case || status="${status/#0/$?}"
-  setup::_run-step mac::_apply-preferences || status="${status/#0/$?}"
-  setup::_run-step mac::_remove-bundled-applications || status="${status/#0/$?}"
-  setup::_run-step mac::_install-homebrew || status="${status/#0/$?}"
+  setup::_run-step mac::wake-on-lan::enable || status="${status/#0/$?}"
+  setup::_run-step mac::keyboard::use-function-keys || status="${status/#0/$?}"
+  setup::_run-step key-binding::disable-option-t || status="${status/#0/$?}"
+  setup::_run-step mac::keyboard::set-repeat || status="${status/#0/$?}"
+  setup::_run-step mac::dock::set-autohide-instant || status="${status/#0/$?}"
+  setup::_run-step mac::trackpad::disable-smart-zoom || status="${status/#0/$?}"
+  setup::_run-step mac::dock::hide-recent-applications || status="${status/#0/$?}"
+  setup::_run-step mac::dock::set-minimize-effect || status="${status/#0/$?}"
+  setup::_run-step mac::dock::set-position || status="${status/#0/$?}"
+  setup::_run-step mac::applications::remove-bundled || status="${status/#0/$?}"
+  setup::_run-step homebrew::install || status="${status/#0/$?}"
   setup::_run-step brew update || status="${status/#0/$?}"
   setup::_run-step brew upgrade || status="${status/#0/$?}"
   for formula in "${formulae[@]}"; do
@@ -474,16 +593,9 @@ mac::setup() {
   setup::_run-step qmk::toolbox::install || status="${status/#0/$?}"
   setup::_run-step qmk::cli::install || status="${status/#0/$?}"
   setup::_run-step supabase::install || status="${status/#0/$?}"
-  command::run-as-root xattr -r -d com.apple.quarantine /Applications 2>/dev/null
-  # Recent macOS releases accept this only after the user confirms it in System
-  # Settings, so its status is not counted; the next message asks for that step.
-  command::run-as-root spctl --master-disable || true
-  printf '%s\n' \
-    '1. Select "Allow applications from anywhere" in Privacy & Security.' \
-    '2. Enable Full Disk Access for Visual Studio Code and Terminal in Privacy & Security.' >&2
-  killall 'System Settings' >/dev/null 2>&1 || true
-  sleep 1
-  open 'x-apple.systempreferences:com.apple.settings.PrivacySecurity' || status="${status/#0/$?}"
+  setup::_run-step mac::quarantine::remove-applications || status="${status/#0/$?}"
+  console::_write-error 'Enable Full Disk Access for Visual Studio Code and Terminal in Privacy & Security.'
+  setup::_run-step mac::gatekeeper::disable || status="${status/#0/$?}"
   setup::_run-step git::config::setup || status="${status/#0/$?}"
   setup::_run-step git::config::use-osx-keychain || status="${status/#0/$?}"
   setup::_run-step code --command workbench.view.extensions || status="${status/#0/$?}"

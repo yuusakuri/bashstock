@@ -71,6 +71,23 @@ jobs:
           path: dist/bashstock.sh
           if-no-files-found: error
 
+  macos-preferences:
+    name: macOS settings on macos-latest
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
+        with:
+          submodules: recursive
+
+      - name: Build the standalone library
+        run: ./scripts/build
+
+      - name: Apply the mac::setup settings twice and read them back
+        shell: bash
+        run: bash ./scripts/test-macos-preferences
+
   check-fedora:
     name: Check on Fedora 44
     runs-on: ubuntu-latest

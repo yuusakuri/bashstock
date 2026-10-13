@@ -1,18 +1,17 @@
 name: Installer integration
 
+# These jobs download vendor packages and take up to an hour, so they run only
+# when started by hand from the Actions tab or with the GitHub CLI.
 on:
-  pull_request:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
 
-# A new push to a pull request supersedes the checks of its earlier commits.
+# Starting the workflow again for the same branch replaces the earlier run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 # Installers query the GitHub API; the workflow token avoids the limit for shared runner addresses.
 env:
