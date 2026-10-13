@@ -13,7 +13,7 @@
 | Ubuntu 18.04〜26.04、Fedora 34・43・44 の amd64・arm64 で systemd を PID 1 にした特権コンテナ | Docker サービスの有効化・起動と一般ユーザーのコンテナ実行。Ubuntu では `ubuntu::setup` と再ログイン後の設定 |
 | Ubuntu 22.04、24.04 の amd64・arm64 GitHub Actions 実行環境 | Docker サービス、デーモン、コンテナ実行。DNS 管理方式の切替と Google Public DNS の設定 |
 | macOS の GitHub Actions 実行環境（Apple silicon と Intel） | `mac::setup` の二度の実行、設定・既定アプリ・導入アプリの確認、Xcode Command Line Tools と Rosetta |
-| macOS の GitHub Actions 実行環境（Apple silicon と Intel） | Android SDK 構成要素、AVD の作成・削除。Hypervisor.Frameworkが使える実行環境では起動・停止も確認する |
+| macOS の GitHub Actions 実行環境（Apple silicon と Intel） | Android SDK 構成要素、AVD の作成・削除。Hypervisor.Frameworkが使える Apple silicon の実行環境では起動・停止も確認する |
 | Ubuntu 24.04 の GitHub Actions 実行環境 | Android SDK 構成要素、KVMを使うAVDの作成・起動・停止・削除 |
 | Ubuntu 18.04〜26.04、Fedora 34・43・44 の amd64 コンテナ（KVM を渡す） | 同上。Ubuntu 18.04 では Emulator 以外の構成要素の導入と、Emulator が glibc 不足で終了状態 69 を返すこと。Ubuntu 24.04 と Fedora 44 の arm64 コンテナでは Android CLI が非対応として終了状態 69 を返すこと |
 | macOS、Ubuntu、Fedora の Bats テスト | 引数境界、失敗時の状態、Git と Android の公開動作 |
@@ -77,7 +77,7 @@
 | A01 | 専用のホームと SDK に Android CLI、Platform Tools、SDK Platform、Build Tools、Command-line Tools、Emulator を導入する | 各実行ファイルが起動し、`android.jar` が存在する | `scripts/test-android-macos`、`scripts/test-android-linux`、`scripts/test-android-container` |
 | A02 | Platform Tools と Build Tools の導入を繰り返す | 二度目も成功し、実行ファイルが使える | 同上 |
 | A03 | API 35 の AVD を作り、同名でもう一度作る | 初回は成功し、二度目は既存の AVD を保持して失敗する | 同上 |
-| A04 | AVD を起動し、停止して削除する | Android の起動完了を確認でき、削除後に一覧から消える | `scripts/test-android-linux`、`scripts/test-android-container`、仮想化が使えるmacOS上の`scripts/test-android-macos` |
+| A04 | AVD を起動し、停止して削除する | Android の起動完了を確認でき、削除後に一覧から消える | `scripts/test-android-linux`、`scripts/test-android-container`、Apple silicon の macOS 上の`scripts/test-android-macos`。Intel の実行環境ではゲストに 1 CPU しか割り当てられず、API 35 が 15 分以内に起動しないため、作成と削除までを確認する |
 | A05 | 起動したAVDへ空白を含む名前のファイルを送受信し、画面を保存して再起動する | 内容が一致し、画像が保存され、再起動後に端末が再接続する | `scripts/test-android-linux` |
 | A06 | arm64 の Linux で `android::sdk::install` を呼ぶ | 終了状態 69 を返し、Android CLI と SDK ディレクトリを作らない | `scripts/test-android-container` |
 | N01 | 不正な引数、未対応 CPU、異なる SDK パスを渡す | 対応するエラーを返し、既存の導入先を変更しない | `test/android-install.bats` など |
