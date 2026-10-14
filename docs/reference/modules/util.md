@@ -1106,7 +1106,7 @@ Compressed data is tested in full, and tar archives are read to the end of
 their entries; the bytes of the files inside a tar archive are covered only
 by the compression checksum. An archive that cannot be verified, because
 its tool is missing, it is encrypted, or it cannot be read, is reported on
-standard error but not counted as broken.
+standard error but not counted as broken, and does not change the status.
 
 #### Example
 
@@ -1123,7 +1123,6 @@ archive::verify "${HOME}/Downloads"
 * **0**: Every archive is valid.
 * **1**: At least one archive is broken.
 * **64**: More than one argument was given.
-* **69**: No archive is broken, but at least one could not be verified.
 
 #### Output on stderr
 
@@ -1134,7 +1133,7 @@ archive::verify "${HOME}/Downloads"
 Remove archives that fail verification.
 
 Only archives that archive::verify reports as broken are removed. An
-archive that cannot be verified is kept.
+archive that cannot be verified is kept and does not change the status.
 
 #### Example
 
@@ -1151,7 +1150,6 @@ archive::remove-broken "${HOME}/Downloads"
 * **0**: No archive was broken.
 * **1**: At least one broken archive was removed.
 * **64**: More than one argument was given.
-* **69**: No archive was broken, but at least one could not be verified.
 * **74**: A broken archive could not be removed.
 
 #### Output on stderr

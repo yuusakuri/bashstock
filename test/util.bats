@@ -479,7 +479,7 @@ TABLE
   ln -s "$(command -v gzip)" "$limited/gzip"
   status=0
   (PATH="$limited" && archive::remove-broken "$work") 2>"$work.err" || status="$?"
-  [ "$status" -eq 69 ]
+  [ "$status" -eq 0 ]
   [ -f "$work/data.zst" ] && [ -f "$work/data.7z" ] && [ -f "$work/good.tar.gz" ]
   [[ "$(<"$work.err")" == *zstd* && "$(<"$work.err")" == *7-Zip* ]]
   rm -f "$work/data.zst" "$work/data.7z"
@@ -487,7 +487,7 @@ TABLE
   if command -v zip >/dev/null 2>&1 && command -v unzip >/dev/null 2>&1; then
     (cd "$work/content" && zip -q -P secret "$work/encrypted.zip" file)
     run --separate-stderr archive::remove-broken "$work"
-    [ "$status" -eq 69 ]
+    [ "$status" -eq 0 ]
     [ -f "$work/encrypted.zip" ]
     [[ "$stderr" == *'encrypted.zip is encrypted'* ]]
   fi

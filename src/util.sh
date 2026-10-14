@@ -814,18 +814,18 @@ archive::_compressor() {
   esac
 }
 
-# @description Write the 7-Zip command: 7zz, 7z, or 7za.
+# @description Write the 7-Zip command: 7zz or 7z.
 # @internal
 archive::_7zip() {
   [[ "$#" -eq 0 ]] || return 64
   local name=''
-  for name in 7zz 7z 7za; do
+  for name in 7zz 7z; do
     if command -v "${name}" >/dev/null 2>&1; then
       printf '%s\n' "${name}"
       return 0
     fi
   done
-  console::_write-error '7-Zip is required: install 7zz, 7z, or 7za.'
+  console::_write-error '7-Zip is required: install 7zz or 7z.'
   return 69
 }
 
@@ -941,64 +941,53 @@ archive::_verify-file() {
 # their entries; the bytes of the files inside a tar archive are covered only
 # by the compression checksum. An archive that cannot be verified, because
 # its tool is missing, it is encrypted, or it cannot be read, is reported on
-# standard error but not counted as broken.
+# standard error but not counted as broken, and does not change the status.
 #
 # @arg $1 string Optional archive file or directory to search. Defaults to the current directory.
 # @stderr The path of each broken archive, and a message for each archive that cannot be verified.
 # @exitcode 0 Every archive is valid.
 # @exitcode 1 At least one archive is broken.
 # @exitcode 64 More than one argument was given.
-# @exitcode 69 No archive is broken, but at least one could not be verified.
 # @example
 #   archive::verify "${HOME}/Downloads"
 archive::verify() {
   [[ "$#" -le 1 ]] || return 64
-  local file='' result=0 broken=0 unverified=0
+  local file='' result=0 broken=0
   while IFS= read -r -d '' file; do
     result=0
     archive::_verify-file "${file}" || result="$?"
-    case "${result}" in
-      0) ;;
-      1) printf '%s\n' "${file}" >&2; broken=1 ;;
-      *) unverified=1 ;;
-    esac
+    # Other statuses mean the archive could not be verified; the reason is already reported.
+    [[ "${result}" -ne 1 ]] || { printf '%s\n' "${file}" >&2; broken=1; }
   done < <(archive::_find "${1:-.}")
   [[ "${broken}" -eq 0 ]] || return 1
-  [[ "${unverified}" -eq 0 ]] || return 69
 }
 
 # @description Remove archives that fail verification.
 #
 # Only archives that archive::verify reports as broken are removed. An
-# archive that cannot be verified is kept.
+# archive that cannot be verified is kept and does not change the status.
 #
 # @arg $1 string Optional archive file or directory to search. Defaults to the current directory.
 # @stderr The path of each removed archive, and a message for each archive that cannot be verified.
 # @exitcode 0 No archive was broken.
 # @exitcode 1 At least one broken archive was removed.
 # @exitcode 64 More than one argument was given.
-# @exitcode 69 No archive was broken, but at least one could not be verified.
 # @exitcode 74 A broken archive could not be removed.
 # @example
 #   archive::remove-broken "${HOME}/Downloads"
 archive::remove-broken() {
   [[ "$#" -le 1 ]] || return 64
-  local file='' result=0 removed=0 unverified=0
+  local file='' result=0 removed=0
   while IFS= read -r -d '' file; do
     result=0
     archive::_verify-file "${file}" || result="$?"
-    case "${result}" in
-      0) ;;
-      1)
-        rm -f -- "${file}" || return 74
-        printf '%s\n' "${file}" >&2
-        removed=1
-        ;;
-      *) unverified=1 ;;
-    esac
+    # Other statuses mean the archive could not be verified; it is kept.
+    [[ "${result}" -eq 1 ]] || continue
+    rm -f -- "${file}" || return 74
+    printf '%s\n' "${file}" >&2
+    removed=1
   done < <(archive::_find "${1:-.}")
   [[ "${removed}" -eq 0 ]] || return 1
-  [[ "${unverified}" -eq 0 ]] || return 69
 }
 
 # @description List recognized archive files below a directory as NUL-separated paths.
