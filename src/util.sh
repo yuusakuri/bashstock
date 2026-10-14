@@ -1126,6 +1126,12 @@ archive::extract-file() {
 #   archive::compress-tar-gzip --output backup.tar.gz Documents Pictures
 archive::compress-tar-gzip() { [[ "$#" -ge 1 ]] || return 64; local output='' paths=() path=''; while [[ "$#" -gt 0 ]]; do if [[ "$1" == '--output' ]]; then [[ "$#" -ge 2 ]] || return 64; output="$2"; shift 2; else paths+=("$1"); shift; fi; done; [[ "${#paths[@]}" -gt 0 ]] || return 64; [[ -n "$output" ]] || output="${paths[0]}.tar.gz"; command -v tar >/dev/null 2>&1 || return 69; tar -czf "$output" "${paths[@]}"; }
 
+# @description List the named arguments of archive::compress-tar-gzip.
+# @internal
+archive::_compress-tar-gzip-args() {
+  if [[ -z "${1-}" ]]; then printf '%s\n' --output; fi
+}
+
 # @description Run diff for two directories.
 #
 # @arg $1 string Original directory.
@@ -1155,6 +1161,12 @@ git::_run-in-directory() { [[ "$#" -ge 2 && -d "$1" ]] || return 64; local direc
 # @example
 #   git::clone-shallow https://github.com/reconquest/shdoc.git --branch v1.4 vendor/shdoc
 git::clone-shallow() { [[ "$#" -ge 1 && "$#" -le 4 ]] || return 64; local url="$1" dir='' branch='' args=(); shift; while [[ "$#" -gt 0 ]]; do case "$1" in --branch) [[ "$#" -ge 2 ]] || return 64; branch="$2"; shift 2 ;; *) [[ -z "$dir" ]] || return 64; dir="$1"; shift ;; esac; done; args=(clone --depth 1); [[ -n "$branch" ]] && args+=(--branch "$branch"); args+=("$url"); [[ -n "$dir" ]] && args+=("$dir"); command git "${args[@]}"; }
+
+# @description List the named arguments of git::clone-shallow.
+# @internal
+git::_clone-shallow-args() {
+  if [[ -z "${1-}" ]]; then printf '%s\n' --branch; fi
+}
 
 # @description Abort an in-progress rebase.
 #
@@ -2799,6 +2811,112 @@ adb::_run() {
   done
   [[ "$seen_serial" -eq 0 ]] || args=(-s "$serial" "${args[@]}")
   util::_run-command adb "${args[@]}"
+}
+
+# @description List --serial and, after it, the serials of the connected devices for Tab completion.
+# @internal
+adb::_complete-serial() {
+  case "${1-}" in
+    --serial) adb::device::list 2>/dev/null || true ;;
+    '') printf '%s\n' --serial ;;
+  esac
+}
+
+# @description List the named arguments and value candidates of adb::device::wait.
+# @internal
+adb::device::_wait-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::device::pull.
+# @internal
+adb::device::_pull-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::device::push.
+# @internal
+adb::device::_push-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::logcat::clear.
+# @internal
+adb::logcat::_clear-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::logcat::once.
+# @internal
+adb::logcat::_once-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::logcat::continuous.
+# @internal
+adb::logcat::_continuous-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::device::reboot.
+# @internal
+adb::device::_reboot-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::device::wait-for-path.
+# @internal
+adb::device::_wait-for-path-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::device::screen::capture-once.
+# @internal
+adb::device::screen::_capture-once-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::device::bootloader::enter.
+# @internal
+adb::device::bootloader::_enter-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::device::bootloader::unlock.
+# @internal
+adb::device::bootloader::_unlock-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::device::verity::disable.
+# @internal
+adb::device::verity::_disable-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::device::partition::remount.
+# @internal
+adb::device::partition::_remount-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::device::build::fingerprint.
+# @internal
+adb::device::build::_fingerprint-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::device::build::date.
+# @internal
+adb::device::build::_date-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::device::slot::suffix.
+# @internal
+adb::device::slot::_suffix-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::device::build::kernel-version.
+# @internal
+adb::device::build::_kernel-version-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::device::screen::capture-continuous.
+# @internal
+adb::device::screen::_capture-continuous-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::device::partition::sha256.
+# @internal
+adb::device::partition::_sha256-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::wake::lock.
+# @internal
+adb::wake::_lock-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::wake::unlock.
+# @internal
+adb::wake::_unlock-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::wake::list.
+# @internal
+adb::wake::_list-args() { adb::_complete-serial "$@"; }
+
+# @description List the named arguments and value candidates of adb::device::select-and-pull.
+# @internal
+adb::device::_select-and-pull-args() {
+  case "${1-}" in
+    --serial) adb::device::list 2>/dev/null || true ;;
+    '') printf '%s\n' --output-directory --serial ;;
+  esac
 }
 
 # @description Wait for an ADB device to connect, optionally selected with --serial.
@@ -5029,6 +5147,12 @@ ssh::key::generate-rsa4096() {
   ssh::key::_generate rsa id_rsa "$@"
 }
 
+# @description List the named arguments of ssh::key::generate-rsa4096.
+# @internal
+ssh::key::_generate-rsa4096-args() {
+  if [[ -z "${1-}" ]]; then printf '%s\n' --comment --output --passphrase-fd; fi
+}
+
 # @description Generate an SSH key and write its public key.
 # @internal
 ssh::key::_generate() {
@@ -5097,6 +5221,12 @@ ssh::key::_generate() {
 #   ssh::key::generate-ed25519 --comment "$(id -un)@$(hostname)" --passphrase-fd 3 3<passphrase.txt
 ssh::key::generate-ed25519() {
   ssh::key::_generate ed25519 id_ed25519 "$@"
+}
+
+# @description List the named arguments of ssh::key::generate-ed25519.
+# @internal
+ssh::key::_generate-ed25519-args() {
+  if [[ -z "${1-}" ]]; then printf '%s\n' --comment --output --passphrase-fd; fi
 }
 
 # @description End every SSH process of the current user.

@@ -171,3 +171,42 @@ demo::_create-args() {
   [ "${status}" -eq 0 ]
   [[ "${output}" == *'arg::completion::dispatch'* ]]
 }
+
+@test "every library completion helper completes an existing public function and accepts its arguments" {
+  local helper='' target='' option='' missing=()
+  while IFS= read -r helper; do
+    target="$(arg::completion::_target-name "${helper}")" || continue
+    declare -F "${target}" >/dev/null || missing+=("${helper} has no ${target}")
+    while IFS= read -r option; do
+      # help::show completes function names; every other helper lists named arguments.
+      [[ "${option}" == --* ]] || continue
+      # Each listed argument must appear in the function or in the parser it delegates to.
+      [[ "$(declare -f "${target}" ssh::key::_generate adb::_run)" == *"${option}"* ]] || missing+=("${target} ${option}")
+    done < <("${helper}")
+  done < <(declare -F | awk '{ print $3 }' | grep -E '::_[a-z0-9-]+-args$' | grep -v '^demo::')
+  [ "${#missing[@]}" -eq 0 ] || { printf '%s\n' "${missing[@]}" >&2; false; }
+}
+
+@test "ADB functions complete --serial with the connected devices" {
+  mkdir -p "${BATS_TEST_TMPDIR}/bin"
+  printf '#!/bin/sh\nprintf "List of devices attached\\nemulator-5554\\tdevice\\nR58M\\tunauthorized\\n"\n' >"${BATS_TEST_TMPDIR}/bin/adb"
+  chmod +x "${BATS_TEST_TMPDIR}/bin/adb"
+  PATH="${BATS_TEST_TMPDIR}/bin:${PATH}"
+  COMP_WORDS=(adb::device::reboot --serial '')
+  COMP_CWORD=2
+  arg::completion::dispatch
+  [ "${#COMPREPLY[@]}" -eq 1 ]
+  [ "${COMPREPLY[0]}" = emulator-5554 ]
+
+  COMP_WORDS=(adb::device::select-and-pull --)
+  COMP_CWORD=1
+  arg::completion::dispatch
+  [ "${COMPREPLY[*]}" = '--output-directory --serial' ]
+
+  # Without adb there is no candidate; compgen then reports status 1, which Bash ignores.
+  rm "${BATS_TEST_TMPDIR}/bin/adb"
+  COMP_WORDS=(adb::wake::lock --serial '')
+  COMP_CWORD=2
+  arg::completion::dispatch || true
+  [ "${#COMPREPLY[@]}" -eq 0 ]
+}
