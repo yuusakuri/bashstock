@@ -579,8 +579,14 @@ BashStockが公開する関数をモジュールごとに示します。
 | [`brave::install`](modules/install.md#braveinstall) | Install Brave from its official repository or Homebrew. |
 | [`chrome::versions`](modules/install.md#chromeversions) | Write Google Chrome versions available to the current platform. |
 | [`chrome::install`](modules/install.md#chromeinstall) | Install Google Chrome from the Google repository or Homebrew. |
-| [`claude-desktop::versions`](modules/install.md#claude-desktopversions) | Write Claude Desktop versions available for the current CPU. |
-| [`claude-desktop::install`](modules/install.md#claude-desktopinstall) | Install Claude Desktop on Ubuntu 22.04 or later from Anthropic's APT repository. |
+| [`claude-desktop::versions`](modules/install.md#claude-desktopversions) | Write the Claude Desktop versions available on this system. |
+| [`claude-desktop::install`](modules/install.md#claude-desktopinstall) | Install Claude Desktop, the app that also runs Claude Code sessions. |
+| [`claude-code::versions`](modules/install.md#claude-codeversions) | Write the Claude Code CLI versions available on this system. |
+| [`claude-code::install`](modules/install.md#claude-codeinstall) | Install the Claude Code CLI. |
+| [`codex::versions`](modules/install.md#codexversions) | Write the Codex CLI versions available on this system. |
+| [`codex::install`](modules/install.md#codexinstall) | Install the OpenAI Codex CLI. |
+| [`chatgpt::versions`](modules/install.md#chatgptversions) | Write the ChatGPT desktop app versions available on this system. |
+| [`chatgpt::install`](modules/install.md#chatgptinstall) | Install the ChatGPT desktop app, which also runs Codex. |
 | [`gimp::versions`](modules/install.md#gimpversions) | Write GIMP versions available to the current platform. |
 | [`gimp::install`](modules/install.md#gimpinstall) | Install GIMP, and on Linux the G'MIC plugin from the selected source. |
 | [`gimp::gmic::versions`](modules/install.md#gimpgmicversions) | Write G'MIC GIMP plugin versions available from the selected source. |

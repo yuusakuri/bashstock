@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091,SC2317
+
+set -euo pipefail
+
+# Run on a disposable GitHub Actions macOS runner.
+[[ "$(uname -s)" == Darwin ]] || exit 69
+[[ -n "${GITHUB_ACTIONS:-}" ]] || exit 64
+source ./dist/bashstock.sh
+
+claude-desktop::install
+claude-code::install
+codex::install
+chatgpt::install
+
+[[ -d /Applications/Claude.app ]]
+[[ -d /Applications/ChatGPT.app ]]
+[[ "$(claude --version)" == "$(claude-code::versions)"* ]]
+[[ "$(codex --version)" == *" $(codex::versions)" ]]

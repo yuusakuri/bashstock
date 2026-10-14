@@ -35,6 +35,22 @@ package::_require-platform() {
   return 69
 }
 
+# @description Require an Ubuntu or Fedora release of at least a major version, naming the product in the message.
+# @internal
+package::_require-release() {
+  [[ "$#" -eq 3 && "$1" =~ ^(ubuntu|fedora)$ && "$2" =~ ^[0-9]+$ && -n "$3" ]] || return 64
+  local version='' major=''
+  version="$(platform::_os-release-value VERSION_ID)" || return 69
+  major="${version%%.*}"
+  if [[ ! "${major}" =~ ^[0-9]+$ ]] || ((10#${major} < $2)); then
+    case "$1" in
+      ubuntu) console::_write-error "$3 requires Ubuntu $2.04 or later." ;;
+      fedora) console::_write-error "$3 requires Fedora $2 or later." ;;
+    esac
+    return 69
+  fi
+}
+
 # @description Test whether a version is a stable release rather than a preview.
 # @internal
 package::_is-stable-version() {
@@ -383,23 +399,31 @@ package::_cask-versions() {
 }
 
 # @description Write stable release versions of a GitHub repository without a leading v.
+#
+# An optional tag prefix, such as rust-v for openai/codex, selects the tags
+# that start with it and is removed from the versions.
 # @internal
 package::_github-release-versions() {
-  [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || return 64
+  [[ "$#" -ge 1 && "$#" -le 2 && "$1" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || return 64
   command::require perl || return "$?"
   local json='' versions=''
   json="$(package::_fetch "https://api.github.com/repos/$1/releases?per_page=100")" || return "$?"
   versions="$(printf '%s' "${json}" | perl -MJSON::PP -e '
+    my $prefix = shift;
     local $/;
     my $data = eval { decode_json(<STDIN>) } or exit 74;
     for my $release (@$data) {
       next if $release->{draft} || $release->{prerelease};
       my $tag = $release->{tag_name};
+      if ($prefix ne "") {
+        next unless substr($tag, 0, length $prefix) eq $prefix;
+        $tag = substr($tag, length $prefix);
+      }
       $tag =~ s/^v(?=[0-9])//;
       # Repositories also tag other components, such as config-v0.10.0 in supabase/cli.
       print "$tag\n" if $tag =~ /^[0-9]+(?:\.[0-9]+)*$/;
     }
-  ')" || return "$?"
+  ' "${2:-}")" || return "$?"
   printf '%s\n' "${versions}" | package::_sort-stable-versions
 }
 
@@ -530,6 +554,29 @@ package::_rpm-repository-versions() {
   versions="$(dnf repoquery --quiet --disablerepo='*' --repofrompath="bashstock-query,$1" \
     --enablerepo=bashstock-query --arch="${architecture},noarch" --queryformat $'%{evr}\n' "$2" 2>/dev/null)" || return 74
   printf '%s\n' "${versions}" | package::_sort-versions
+}
+
+# @description Download an armored signing key and require its primary key to have the published fingerprint.
+#
+# The key is inspected in a separate GPG home, so the user's keyring does not change.
+# @internal
+package::_download-signing-key() {
+  [[ "$#" -eq 3 && "$1" == https://* && "$2" =~ ^[0-9A-F]{40}$ && -n "$3" ]] || return 64
+  local url="$1" fingerprint="$2" output="$3" directory='' fingerprints='' status=0
+  command::require gpg || return "$?"
+  package::_download "${url}" "${output}" || return "$?"
+  directory="$(package::_temporary-directory)" || return "$?"
+  mkdir -m 0700 -- "${directory}/gnupg" || status=74
+  if [[ "${status}" -eq 0 ]]; then
+    fingerprints="$(GNUPGHOME="${directory}/gnupg" gpg --batch --with-colons --show-keys "${output}" 2>/dev/null |
+      awk -F: '$1 == "pub" { primary = 1; next } primary && $1 == "fpr" { print $10; primary = 0 }')" || status=74
+  fi
+  rm -rf -- "${directory}"
+  [[ "${status}" -eq 0 ]] || return "${status}"
+  if [[ "${fingerprints}" != "${fingerprint}" ]]; then
+    console::_write-error "The signing key from ${url} is not the published key ${fingerprint}."
+    return 65
+  fi
 }
 
 # @description Register an APT repository with a dedicated key and a deb822 source file.

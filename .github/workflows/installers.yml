@@ -119,6 +119,51 @@ jobs:
             -v "$PWD/scripts/test-claude-desktop-container:/opt/test-claude-desktop-container:ro" \
             "${{ matrix.image }}" bash /opt/test-claude-desktop-container
 
+  ai-apps-linux:
+    name: Claude Code, Codex, and ChatGPT on ${{ matrix.image }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - amd64
+          - arm64
+        image:
+          - ubuntu:18.04
+          - ubuntu:20.04
+          - ubuntu:22.04
+          - ubuntu:24.04
+          - ubuntu:26.04
+          - fedora:43
+          - fedora:44
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
+        with:
+          submodules: recursive
+      - name: Build the standalone library
+        run: ./scripts/build
+      - name: Install Claude Code, Codex, and ChatGPT from their vendors
+        run: |
+          docker run --rm --platform linux/${{ matrix.arch }} -e GITHUB_TOKEN \
+            -v "$PWD/dist/bashstock.sh:/opt/bashstock.sh:ro" \
+            -v "$PWD/scripts/test-ai-apps-container:/opt/test-ai-apps-container:ro" \
+            "${{ matrix.image }}" bash /opt/test-ai-apps-container
+
+  ai-apps-macos:
+    name: Claude, Claude Code, Codex, and ChatGPT on macos-latest
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
+        with:
+          submodules: recursive
+      - name: Build the standalone library
+        run: ./scripts/build
+      - name: Install the apps from Homebrew casks
+        shell: bash
+        run: bash ./scripts/test-ai-apps-macos
+
   dns:
     name: DNS switching on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
