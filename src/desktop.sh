@@ -189,7 +189,7 @@ gnome::keyboard-layout::set-jp() {
 gnome::input-source::_set-shortcuts-args() {
   case "${1-}" in
     '')
-      printf '%s\n' -Next -Previous -Us -Mozc
+      printf '%s\n' --next --previous --us --mozc
       ;;
   esac
 }
@@ -198,10 +198,10 @@ gnome::input-source::_set-shortcuts-args() {
 ###
 ### Options
 ###
-### * -Next BINDING - Next input source. Defaults to <Alt>grave.
-### * -Previous BINDING - Previous input source. Defaults to <Shift><Alt>grave.
-### * -Us BINDING - Switch to the US layout. Defaults to <Alt>semicolon.
-### * -Mozc BINDING - Switch to Mozc. Defaults to <Alt>a.
+### * --next BINDING - Next input source. Defaults to <Alt>grave.
+### * --previous BINDING - Previous input source. Defaults to <Shift><Alt>grave.
+### * --us BINDING - Switch to the US layout. Defaults to <Alt>semicolon.
+### * --mozc BINDING - Switch to Mozc. Defaults to <Alt>a.
 gnome::input-source::set-shortcuts() {
   local next='<Alt>grave'
   local previous='<Shift><Alt>grave'
@@ -210,13 +210,13 @@ gnome::input-source::set-shortcuts() {
   local quoted=''
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
-      -Next | -Previous | -Us | -Mozc)
+      --next | --previous | --us | --mozc)
         arg::require-next "$#" "$1" || return "$?"
         case "$1" in
-          -Next) next="$2" ;;
-          -Previous) previous="$2" ;;
-          -Us) us="$2" ;;
-          -Mozc) mozc="$2" ;;
+          --next) next="$2" ;;
+          --previous) previous="$2" ;;
+          --us) us="$2" ;;
+          --mozc) mozc="$2" ;;
         esac
         shift 2
         ;;
@@ -225,10 +225,10 @@ gnome::input-source::set-shortcuts() {
         ;;
     esac
   done
-  arg::require -Next "${next}" || return "$?"
-  arg::require -Previous "${previous}" || return "$?"
-  arg::require -Us "${us}" || return "$?"
-  arg::require -Mozc "${mozc}" || return "$?"
+  arg::require --next "${next}" || return "$?"
+  arg::require --previous "${previous}" || return "$?"
+  arg::require --us "${us}" || return "$?"
+  arg::require --mozc "${mozc}" || return "$?"
   command::require gsettings || return "$?"
   quoted="$(gsettings::_quote "${next}")" || return "$?"
   gsettings set org.gnome.desktop.wm.keybindings switch-input-source "[${quoted}]" || return 74

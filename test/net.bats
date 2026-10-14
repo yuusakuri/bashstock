@@ -70,14 +70,14 @@ EOF
   }
 
   run net::ip::set-static \
-    -Interface enp0s3 \
-    -Address 10.0.0.20 \
-    -PrefixLength 24 \
-    -Gateway 10.0.0.1 \
-    -Dns 9.9.9.9,149.112.112.112 \
-    -HostName server-1 \
-    -File /etc/netplan/50-cloud-init.yaml \
-    -Renderer NetworkManager
+    --interface enp0s3 \
+    --address 10.0.0.20 \
+    --prefix-length 24 \
+    --gateway 10.0.0.1 \
+    --dns 9.9.9.9,149.112.112.112 \
+    --host-name server-1 \
+    --file /etc/netplan/50-cloud-init.yaml \
+    --renderer NetworkManager
 
   [ "${status}" -eq 0 ]
   [[ "${output}" == /etc/netplan/50-cloud-init.yaml$'\n'server-1$'\n'* ]]
@@ -109,6 +109,6 @@ EOF
 
   run net::ip::set-static -Unknown value
   [ "${status}" -eq 64 ]
-  run net::ip::set-static -Address
+  run net::ip::set-static --address
   [ "${status}" -eq 64 ]
 }

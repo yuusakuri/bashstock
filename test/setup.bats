@@ -664,7 +664,7 @@ gsettings_value() {
     cp -- "${last}" "${PARAMETERS}"
     printf '%s\n' "$*" >"${PARAMETERS}.args"
   }
-  run gpg::key::generate -UserId 'Test User <test@example.invalid>' -Expires 1y
+  run gpg::key::generate --user-id 'Test User <test@example.invalid>' --expires 1y
   [ "${status}" -eq 0 ]
   grep -Fqx 'Key-Type: eddsa' "${PARAMETERS}"
   grep -Fqx 'Subkey-Curve: cv25519' "${PARAMETERS}"
@@ -673,16 +673,16 @@ gsettings_value() {
   grep -Fqx 'Expire-Date: 1y' "${PARAMETERS}"
   grep -Fqx '%no-protection' "${PARAMETERS}"
 
-  run gpg::key::generate -UserId 'Test User <test@example.invalid>' -PassphraseFd 3
+  run gpg::key::generate --user-id 'Test User <test@example.invalid>' --passphrase-fd 3
   [ "${status}" -eq 0 ]
   ! grep -Fq '%no-protection' "${PARAMETERS}"
   [[ "$(<"${PARAMETERS}.args")" == '--batch --pinentry-mode loopback --passphrase-fd 3 --generate-key '* ]]
 
-  run gpg::key::generate -Algorithm dsa -UserId 'Test <test@example.invalid>'
+  run gpg::key::generate --algorithm dsa --user-id 'Test <test@example.invalid>'
   [ "${status}" -eq 64 ]
-  run gpg::key::generate -Pinentry -PassphraseFd 3 -UserId 'Test <test@example.invalid>'
+  run gpg::key::generate --pinentry --passphrase-fd 3 --user-id 'Test <test@example.invalid>'
   [ "${status}" -eq 64 ]
-  run gpg::key::generate -UserId 'no email'
+  run gpg::key::generate --user-id 'no email'
   [ "${status}" -eq 64 ]
 }
 

@@ -156,13 +156,13 @@ net::_install-static-ipv4() {
 ### List the named arguments and value candidates for net::ip::set-static.
 net::ip::_set-static-args() {
   case "${1-}" in
-    -Renderer)
+    --renderer)
       printf '%s\n' networkd NetworkManager
       ;;
     '')
       printf '%s\n' \
-        -Interface -Address -PrefixLength -Gateway \
-        -Dns -HostName -File -Renderer
+        --interface --address --prefix-length --gateway \
+        --dns --host-name --file --renderer
       ;;
   esac
 }
@@ -171,14 +171,14 @@ net::ip::_set-static-args() {
 ###
 ### Options
 ###
-### * -Interface INTERFACE - Network interface. Defaults to the first default route.
-### * -Address ADDRESS - IPv4 address. Defaults to the interface's primary address.
-### * -PrefixLength PREFIX_LENGTH - IPv4 prefix length. Defaults to the current value.
-### * -Gateway GATEWAY - IPv4 gateway. Defaults to the first default route.
-### * -Dns DNS_SERVERS - Comma-separated IPv4 DNS servers. Defaults to 1.1.1.1,8.8.8.8.
-### * -HostName HOST_NAME - Host name. Defaults to the current host name.
-### * -File FILE - Netplan file. Defaults to the only /etc/netplan YAML file.
-### * -Renderer RENDERER - networkd or NetworkManager. Defaults to Netplan's selection.
+### * --interface INTERFACE - Network interface. Defaults to the first default route.
+### * --address ADDRESS - IPv4 address. Defaults to the interface's primary address.
+### * --prefix-length PREFIX_LENGTH - IPv4 prefix length. Defaults to the current value.
+### * --gateway GATEWAY - IPv4 gateway. Defaults to the first default route.
+### * --dns DNS_SERVERS - Comma-separated IPv4 DNS servers. Defaults to 1.1.1.1,8.8.8.8.
+### * --host-name HOST_NAME - Host name. Defaults to the current host name.
+### * --file FILE - Netplan file. Defaults to the only /etc/netplan YAML file.
+### * --renderer RENDERER - networkd or NetworkManager. Defaults to Netplan's selection.
 net::ip::set-static() {
   local interface=''
   local address=''
@@ -195,17 +195,17 @@ net::ip::set-static() {
 
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
-      -Interface|-Address|-PrefixLength|-Gateway|-Dns|-HostName|-File|-Renderer)
+      --interface|--address|--prefix-length|--gateway|--dns|--host-name|--file|--renderer)
         arg::require-next "$#" "$1" || return "$?"
         case "$1" in
-          -Interface) interface="$2" ;;
-          -Address) address="$2" ;;
-          -PrefixLength) prefix_length="$2" ;;
-          -Gateway) gateway="$2" ;;
-          -Dns) dns_servers="$2" ;;
-          -HostName) host_name="$2" ;;
-          -File) file="$2" ;;
-          -Renderer) renderer="$2" ;;
+          --interface) interface="$2" ;;
+          --address) address="$2" ;;
+          --prefix-length) prefix_length="$2" ;;
+          --gateway) gateway="$2" ;;
+          --dns) dns_servers="$2" ;;
+          --host-name) host_name="$2" ;;
+          --file) file="$2" ;;
+          --renderer) renderer="$2" ;;
         esac
         shift 2
         ;;

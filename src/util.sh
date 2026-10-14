@@ -606,7 +606,7 @@ archive::extract-file() {
 }
 
 ### Compress paths into a gzip-compressed tar archive.
-archive::compress-tar-gzip() { [[ "$#" -ge 1 ]] || return 64; local output='' paths=() path=''; while [[ "$#" -gt 0 ]]; do if [[ "$1" == '-Output' ]]; then [[ "$#" -ge 2 ]] || return 64; output="$2"; shift 2; else paths+=("$1"); shift; fi; done; [[ "${#paths[@]}" -gt 0 ]] || return 64; [[ -n "$output" ]] || output="${paths[0]}.tar.gz"; command -v tar >/dev/null 2>&1 || return 69; tar -czf "$output" "${paths[@]}"; }
+archive::compress-tar-gzip() { [[ "$#" -ge 1 ]] || return 64; local output='' paths=() path=''; while [[ "$#" -gt 0 ]]; do if [[ "$1" == '--output' ]]; then [[ "$#" -ge 2 ]] || return 64; output="$2"; shift 2; else paths+=("$1"); shift; fi; done; [[ "${#paths[@]}" -gt 0 ]] || return 64; [[ -n "$output" ]] || output="${paths[0]}.tar.gz"; command -v tar >/dev/null 2>&1 || return 69; tar -czf "$output" "${paths[@]}"; }
 
 ### Run diff for two directories.
 diff::directories() { [[ "$#" -eq 2 && -d "$1" && -d "$2" ]] || return 64; command -v diff >/dev/null 2>&1 || return 69; diff -uprN -- "$1" "$2"; }
@@ -1614,7 +1614,7 @@ adb::_run() {
   local serial='' seen_serial=0
   local args=()
   while [[ "$#" -gt 0 ]]; do
-    if [[ "$1" == '-Serial' ]]; then
+    if [[ "$1" == '--serial' ]]; then
       [[ "$#" -ge 2 && -n "$2" && "$seen_serial" -eq 0 ]] || return 64
       serial="$2"
       seen_serial=1
@@ -1627,7 +1627,7 @@ adb::_run() {
   [[ "$seen_serial" -eq 0 ]] || args=(-s "$serial" "${args[@]}")
   util::_run-command adb "${args[@]}"
 }
-### Wait for an ADB device to connect, optionally selected with -Serial.
+### Wait for an ADB device to connect, optionally selected with --serial.
 adb::device::wait() { adb::_run wait-for-device "$@"; }
 ### Copy files from an ADB device to the host.
 adb::device::pull() { [[ "$#" -ge 1 ]] || return 64; adb::_run pull "$@"; }
@@ -1644,12 +1644,12 @@ adb::device::reboot() {
   [[ "$#" -le 3 ]] || return 64
   local timeout=60 serial='' start='' state='' disconnected=0
   local serial_args=()
-  if [[ "$#" -ge 1 && "$1" != '-Serial' ]]; then timeout="$1"; shift; fi
+  if [[ "$#" -ge 1 && "$1" != '--serial' ]]; then timeout="$1"; shift; fi
   [[ "$timeout" =~ ^[1-9][0-9]*$ ]] || return 64
   if [[ "$#" -gt 0 ]]; then
-    [[ "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ]] || return 64
+    [[ "$#" -eq 2 && "$1" == '--serial' && -n "$2" ]] || return 64
     serial="$2"
-    serial_args=(-Serial "$serial")
+    serial_args=(--serial "$serial")
   fi
   adb::_run reboot "${serial_args[@]}" || return "$?"
   start="$(date +%s)" || return 74
@@ -1685,11 +1685,11 @@ adb::device::wait-for-path() {
   local path="$1" timeout=30 start='' quoted=''
   local serial_args=()
   shift
-  if [[ "$#" -gt 0 && "$1" != '-Serial' ]]; then timeout="$1"; shift; fi
+  if [[ "$#" -gt 0 && "$1" != '--serial' ]]; then timeout="$1"; shift; fi
   [[ "$timeout" =~ ^[1-9][0-9]*$ ]] || return 64
   if [[ "$#" -gt 0 ]]; then
-    [[ "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ]] || return 64
-    serial_args=(-Serial "$2")
+    [[ "$#" -eq 2 && "$1" == '--serial' && -n "$2" ]] || return 64
+    serial_args=(--serial "$2")
   fi
   [[ "$path" != *$'\n'* && "$path" != *$'\r'* ]] || return 64
   printf -v quoted '%q' "$path"
@@ -1705,10 +1705,10 @@ adb::device::screen::capture-once() {
   [[ "$#" -le 3 ]] || return 64
   local output='' stamp='' directory='' temporary=''
   local serial_args=()
-  if [[ "$#" -gt 0 && "$1" != '-Serial' ]]; then output="$1"; shift; fi
+  if [[ "$#" -gt 0 && "$1" != '--serial' ]]; then output="$1"; shift; fi
   if [[ "$#" -gt 0 ]]; then
-    [[ "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ]] || return 64
-    serial_args=(-Serial "$2")
+    [[ "$#" -eq 2 && "$1" == '--serial' && -n "$2" ]] || return 64
+    serial_args=(--serial "$2")
   fi
   if [[ -z "$output" ]]; then
     stamp="$(date +%Y%m%dT%H%M%S)" || return 74
@@ -1731,14 +1731,14 @@ adb::device::select-and-pull() {
   local paths=() serial_args=()
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
-      -OutputDirectory) [[ "$#" -ge 2 && -n "$2" ]] || return 64; output="$2"; shift 2 ;;
-      -Serial) [[ "$#" -ge 2 && -n "$2" && -z "$serial" ]] || return 64; serial="$2"; shift 2 ;;
+      --output-directory) [[ "$#" -ge 2 && -n "$2" ]] || return 64; output="$2"; shift 2 ;;
+      --serial) [[ "$#" -ge 2 && -n "$2" && -z "$serial" ]] || return 64; serial="$2"; shift 2 ;;
       --) shift; paths+=("$@"); break ;;
       *) paths+=("$1"); shift ;;
     esac
   done
   [[ "${#paths[@]}" -gt 0 ]] || return 64
-  [[ -z "$serial" ]] || serial_args=(-Serial "$serial")
+  [[ -z "$serial" ]] || serial_args=(--serial "$serial")
   selected="$(prompt::select-one 'Select a device path' "${paths[@]}")" || return "$?"
   mkdir -p -- "$output" || return 74
   adb::_run pull "$selected" "$output" "${serial_args[@]}"
@@ -1746,12 +1746,12 @@ adb::device::select-and-pull() {
 # shellcheck disable=SC2329
 ### Reboot the selected device into its bootloader.
 adb::device::bootloader::enter() {
-  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ) ]] || return 64
+  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
   adb::_run reboot bootloader "$@"
 }
 ### Request bootloader unlocking and wait for the device to reconnect.
 adb::device::bootloader::unlock() {
-  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ) ]] || return 64
+  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
   command -v fastboot >/dev/null 2>&1 || return 69
   local start='' ready=0
   local fastboot_args=()
@@ -1771,7 +1771,7 @@ adb::device::bootloader::unlock() {
 }
 ### Wait for the selected device to return to the connected state.
 adb::_wait-device() {
-  [[ "$#" -eq 1 || ( "$#" -eq 3 && "$2" == '-Serial' && -n "$3" ) ]] || return 64
+  [[ "$#" -eq 1 || ( "$#" -eq 3 && "$2" == '--serial' && -n "$3" ) ]] || return 64
   local timeout="$1" start='' state=''
   [[ "$timeout" =~ ^[1-9][0-9]*$ ]] || return 64
   shift
@@ -1787,9 +1787,9 @@ adb::_wait-device() {
 ###
 ### Arguments
 ###
-### * -Serial SERIAL - Device serial. ADB chooses the device when omitted.
+### * --serial SERIAL - Device serial. ADB chooses the device when omitted.
 adb::device::verity::disable() {
-  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ) ]] || return 64
+  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
   adb::_run root "$@" || return "$?"
   adb::_wait-device 60 "$@" || return "$?"
   adb::_run disable-verity "$@" || return "$?"
@@ -1804,9 +1804,9 @@ adb::device::verity::disable() {
 ###
 ### Arguments
 ###
-### * -Serial SERIAL - Device serial. ADB chooses the device when omitted.
+### * --serial SERIAL - Device serial. ADB chooses the device when omitted.
 adb::device::partition::remount() {
-  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ) ]] || return 64
+  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
   adb::_run root "$@" || return "$?"
   adb::_wait-device 60 "$@" || return "$?"
   adb::_run remount "$@" || return "$?"
@@ -1825,14 +1825,14 @@ adb::device::screen::capture-continuous() {
   [[ "$#" -le 5 ]] || return 64
   local directory='./screencap-loop' interval=1 max=0 index=0
   local serial_args=()
-  if [[ "$#" -gt 0 && "$1" != '-Serial' ]]; then directory="$1"; shift; fi
-  if [[ "$#" -gt 0 && "$1" != '-Serial' ]]; then interval="$1"; shift; fi
-  if [[ "$#" -gt 0 && "$1" != '-Serial' ]]; then max="$1"; shift; fi
+  if [[ "$#" -gt 0 && "$1" != '--serial' ]]; then directory="$1"; shift; fi
+  if [[ "$#" -gt 0 && "$1" != '--serial' ]]; then interval="$1"; shift; fi
+  if [[ "$#" -gt 0 && "$1" != '--serial' ]]; then max="$1"; shift; fi
   [[ "$interval" =~ ^[0-9]+([.][0-9]+)?$ && "$interval" =~ [1-9] ]] || return 64
   [[ "$max" =~ ^[0-9]+$ ]] || return 64
   if [[ "$#" -gt 0 ]]; then
-    [[ "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ]] || return 64
-    serial_args=(-Serial "$2")
+    [[ "$#" -eq 2 && "$1" == '--serial' && -n "$2" ]] || return 64
+    serial_args=(--serial "$2")
   fi
   mkdir -p -- "$directory" || return 74
   while [[ "$max" -eq 0 || "$index" -lt "$max" ]]; do
@@ -1849,7 +1849,7 @@ adb::device::partition::sha256() {
   [[ "$path" =~ ^/dev/block/[A-Za-z0-9._/-]+$ && "$path" != *'..'* ]] || return 64
   shift
   if [[ "$#" -gt 0 ]]; then
-    [[ "$1" == '-Serial' && -n "$2" ]] || return 64
+    [[ "$1" == '--serial' && -n "$2" ]] || return 64
   fi
   adb::_run shell sha256sum "$path" "$@"
 }
@@ -1865,9 +1865,9 @@ adb::wake::_require-root() {
 adb::wake::lock() {
   [[ "$#" -le 3 ]] || return 64
   local tag=debug
-  if [[ "$#" -gt 0 && "$1" != '-Serial' ]]; then tag="$1"; shift; fi
+  if [[ "$#" -gt 0 && "$1" != '--serial' ]]; then tag="$1"; shift; fi
   [[ "$tag" =~ ^[A-Za-z0-9_.-]+$ ]] || return 64
-  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ) ]] || return 64
+  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
   adb::wake::_require-root "$@" || return "$?"
   adb::_run shell "test -w /sys/power/wake_lock" "$@" || return 69
   adb::_run shell "printf '%s' '$tag' > /sys/power/wake_lock" "$@"
@@ -1876,16 +1876,16 @@ adb::wake::lock() {
 adb::wake::unlock() {
   [[ "$#" -le 3 ]] || return 64
   local tag=debug
-  if [[ "$#" -gt 0 && "$1" != '-Serial' ]]; then tag="$1"; shift; fi
+  if [[ "$#" -gt 0 && "$1" != '--serial' ]]; then tag="$1"; shift; fi
   [[ "$tag" =~ ^[A-Za-z0-9_.-]+$ ]] || return 64
-  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ) ]] || return 64
+  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
   adb::wake::_require-root "$@" || return "$?"
   adb::_run shell "test -w /sys/power/wake_unlock" "$@" || return 69
   adb::_run shell "printf '%s' '$tag' > /sys/power/wake_unlock" "$@"
 }
 ### Print active kernel wake locks.
 adb::wake::list() {
-  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '-Serial' && -n "$2" ) ]] || return 64
+  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
   adb::wake::_require-root "$@" || return "$?"
   adb::_run shell "test -r /sys/power/wake_lock" "$@" || return 69
   adb::_run shell "cat /sys/power/wake_lock" "$@"
@@ -2946,9 +2946,9 @@ gpg::setup() {
 ###
 ### Arguments
 ###
-### * -Comment COMMENT - Key comment. Defaults to an empty comment.
-### * -Output FILE - Private key path. Defaults to $HOME/.ssh/id_rsa.
-### * -PassphraseFd FD - File descriptor to read the passphrase from. Defaults to no passphrase.
+### * --comment COMMENT - Key comment. Defaults to an empty comment.
+### * --output FILE - Private key path. Defaults to $HOME/.ssh/id_rsa.
+### * --passphrase-fd FD - File descriptor to read the passphrase from. Defaults to no passphrase.
 ssh::key::generate-rsa4096() {
   ssh::key::_generate rsa id_rsa "$@"
 }
@@ -2960,12 +2960,12 @@ ssh::key::_generate() {
   shift 2
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
-      -Comment | -Output | -PassphraseFd)
+      --comment | --output | --passphrase-fd)
         arg::require-next "$#" "$1" || return "$?"
         case "$1" in
-          -Comment) comment="$2" ;;
-          -Output) output="$2" ;;
-          -PassphraseFd) passphrase_fd="$2" ;;
+          --comment) comment="$2" ;;
+          --output) output="$2" ;;
+          --passphrase-fd) passphrase_fd="$2" ;;
         esac
         shift 2
         ;;
@@ -3007,9 +3007,9 @@ ssh::key::_generate() {
 ###
 ### Arguments
 ###
-### * -Comment COMMENT - Key comment. Defaults to an empty comment.
-### * -Output FILE - Private key path. Defaults to $HOME/.ssh/id_ed25519.
-### * -PassphraseFd FD - File descriptor to read the passphrase from. Defaults to no passphrase.
+### * --comment COMMENT - Key comment. Defaults to an empty comment.
+### * --output FILE - Private key path. Defaults to $HOME/.ssh/id_ed25519.
+### * --passphrase-fd FD - File descriptor to read the passphrase from. Defaults to no passphrase.
 ssh::key::generate-ed25519() {
   ssh::key::_generate ed25519 id_ed25519 "$@"
 }
@@ -3422,14 +3422,14 @@ file::modified-time-unix-seconds() {
 ### List the named arguments and value candidates for gpg::key::generate.
 gpg::key::_generate-args() {
   case "${1-}" in
-    -Usage)
+    --usage)
       printf '%s\n' sign cert auth sign,auth
       ;;
-    -Algorithm)
+    --algorithm)
       printf '%s\n' ed25519 rsa3072 rsa4096
       ;;
     '')
-      printf '%s\n' -Usage -Algorithm -Expires -UserId -Pinentry -PassphraseFd
+      printf '%s\n' --usage --algorithm --expires --user-id --pinentry --passphrase-fd
       ;;
   esac
 }
@@ -3438,32 +3438,32 @@ gpg::key::_generate-args() {
 ###
 ### Options
 ###
-### * -Usage USAGE - Primary key usage: sign, cert, auth, or a comma-separated
+### * --usage USAGE - Primary key usage: sign, cert, auth, or a comma-separated
 ###   combination. Defaults to sign.
-### * -Algorithm ALGORITHM - ed25519, rsa3072, or rsa4096. Defaults to ed25519,
+### * --algorithm ALGORITHM - ed25519, rsa3072, or rsa4096. Defaults to ed25519,
 ###   which pairs an Ed25519 primary key with a Curve25519 encryption subkey.
-### * -Expires EXPIRES - GnuPG expiration such as 5y, 12m, or 0. Defaults to 5y.
-### * -UserId USER_ID - "Name <email>". Defaults to the Git user name and email.
-### * -Pinentry - Ask for the passphrase through pinentry.
-### * -PassphraseFd FD - Read the passphrase from a file descriptor.
+### * --expires EXPIRES - GnuPG expiration such as 5y, 12m, or 0. Defaults to 5y.
+### * --user-id USER_ID - "Name <email>". Defaults to the Git user name and email.
+### * --pinentry - Ask for the passphrase through pinentry.
+### * --passphrase-fd FD - Read the passphrase from a file descriptor.
 ###
-### Without -Pinentry or -PassphraseFd, the key has no passphrase.
+### Without --pinentry or --passphrase-fd, the key has no passphrase.
 gpg::key::generate() {
   local usage='sign' algorithm='ed25519' expires='5y' user_id='' pinentry='false' passphrase_fd=''
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
-      -Usage | -Algorithm | -Expires | -UserId | -PassphraseFd)
+      --usage | --algorithm | --expires | --user-id | --passphrase-fd)
         arg::require-next "$#" "$1" || return "$?"
         case "$1" in
-          -Usage) usage="$2" ;;
-          -Algorithm) algorithm="$2" ;;
-          -Expires) expires="$2" ;;
-          -UserId) user_id="$2" ;;
-          -PassphraseFd) passphrase_fd="$2" ;;
+          --usage) usage="$2" ;;
+          --algorithm) algorithm="$2" ;;
+          --expires) expires="$2" ;;
+          --user-id) user_id="$2" ;;
+          --passphrase-fd) passphrase_fd="$2" ;;
         esac
         shift 2
         ;;
-      -Pinentry)
+      --pinentry)
         pinentry='true'
         shift
         ;;
@@ -3473,7 +3473,7 @@ gpg::key::generate() {
     esac
   done
   [[ "${usage}" =~ ^(sign|cert|auth)(,(sign|cert|auth))*$ ]] || return 64
-  arg::one-of -Algorithm "${algorithm}" ed25519 rsa3072 rsa4096 || return "$?"
+  arg::one-of --algorithm "${algorithm}" ed25519 rsa3072 rsa4096 || return "$?"
   [[ "${expires}" =~ ^(0|[1-9][0-9]*[dwmy]?)$ ]] || return 64
   [[ -z "${passphrase_fd}" || "${passphrase_fd}" =~ ^[0-9]+$ ]] || return 64
   [[ "${pinentry}" == 'false' || -z "${passphrase_fd}" ]] || return 64

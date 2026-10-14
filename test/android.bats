@@ -138,10 +138,10 @@ SCRIPT
   printf 'original image' >"$image"
   write_adb_stub
   export ADB_TEST_MODE=fail
-  run adb::device::screen::capture-once "$image" -Serial target-1
+  run adb::device::screen::capture-once "$image" --serial target-1
   [ "$status" -ne 0 ]
   [ "$(cat "$image")" = 'original image' ]
-  run adb::device::screen::capture-once "$image" -Serial ''
+  run adb::device::screen::capture-once "$image" --serial ''
   [ "$status" -eq 64 ]
 }
 
@@ -150,7 +150,7 @@ SCRIPT
   export ADB_TEST_COUNT="$BATS_TEST_TMPDIR/count"
   write_adb_stub
   export ADB_TEST_MODE=reboot
-  run adb::device::reboot 5 -Serial target-1
+  run adb::device::reboot 5 --serial target-1
   [ "$status" -eq 0 ]
   grep -Fqx -- '-s target-1 reboot' "$ADB_TEST_LOG"
   grep -Fqx -- '-s target-1 get-state' "$ADB_TEST_LOG"
@@ -166,7 +166,7 @@ printf '%s\n' "$*" >>"$FASTBOOT_TEST_LOG"
 SCRIPT
   chmod +x "$BATS_TEST_TMPDIR/bin/fastboot"
   export ADB_TEST_MODE=control
-  run adb::device::bootloader::unlock -Serial target-1
+  run adb::device::bootloader::unlock --serial target-1
   [ "$status" -eq 0 ]
   grep -Fqx -- '-s target-1 reboot bootloader' "$ADB_TEST_LOG"
   grep -Fqx -- '-s target-1 getvar version' "$FASTBOOT_TEST_LOG"
@@ -177,10 +177,10 @@ SCRIPT
   export ADB_TEST_LOG="$BATS_TEST_TMPDIR/adb.log"
   write_adb_stub
   export ADB_TEST_MODE=control
-  run adb::device::partition::sha256 '/dev/block/../bad' -Serial target-1
+  run adb::device::partition::sha256 '/dev/block/../bad' --serial target-1
   [ "$status" -eq 64 ]
   [ ! -e "$ADB_TEST_LOG" ]
-  run adb::device::partition::sha256 '/dev/block/by-name/system' -Serial target-1
+  run adb::device::partition::sha256 '/dev/block/by-name/system' --serial target-1
   [ "$status" -eq 0 ]
   grep -Fqx -- '-s target-1 shell sha256sum /dev/block/by-name/system' "$ADB_TEST_LOG"
 }
@@ -189,7 +189,7 @@ SCRIPT
   export ADB_TEST_LOG="$BATS_TEST_TMPDIR/adb.log"
   write_adb_stub
   export ADB_TEST_MODE=control
-  run adb::wake::lock verify -Serial target-1
+  run adb::wake::lock verify --serial target-1
   [ "$status" -eq 0 ]
   grep -Fqx -- '-s target-1 root' "$ADB_TEST_LOG"
   grep -Fqx -- '-s target-1 shell test -w /sys/power/wake_lock' "$ADB_TEST_LOG"

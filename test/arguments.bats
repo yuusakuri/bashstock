@@ -10,17 +10,17 @@ demo::create() {
 
   while [ "$#" -gt 0 ]; do
     case "$1" in
-      -Name)
+      --name)
         arg::require-next "$#" "$1" || return 1
         name=$2
         shift 2
         ;;
-      -Shell)
+      --shell)
         arg::require-next "$#" "$1" || return 1
         shell=$2
         shift 2
         ;;
-      -Force)
+      --force)
         force='true'
         shift
         ;;
@@ -30,46 +30,46 @@ demo::create() {
     esac
   done
 
-  arg::require -Name "${name}" || return "$?"
+  arg::require --name "${name}" || return "$?"
   printf 'name=%s shell=%s force=%s\n' "${name}" "${shell}" "${force}"
 }
 
 demo::_create-args() {
   case "${1-}" in
-    -Shell)
+    --shell)
       printf '%s\n' /bin/bash /bin/zsh
       ;;
     '')
-      printf '%s\n' -Name -Shell -Force
+      printf '%s\n' --name --shell --force
       ;;
   esac
 }
 
 @test "arg::require-next accepts a value and rejects a trailing flag" {
-  run arg::require-next 2 -Name
+  run arg::require-next 2 --name
   [ "${status}" -eq 0 ]
 
-  run --separate-stderr arg::require-next 1 -Name
+  run --separate-stderr arg::require-next 1 --name
   [ "${status}" -eq 64 ]
-  [ "${stderr}" = 'bashstock: Option -Name requires a value.' ]
+  [ "${stderr}" = 'bashstock: Option --name requires a value.' ]
 }
 
 @test "arg::require rejects an empty value" {
-  run arg::require -Name ''
+  run arg::require --name ''
   [ "${status}" -eq 64 ]
 
-  run arg::require -Name alice
+  run arg::require --name alice
   [ "${status}" -eq 0 ]
 }
 
 @test "arg::integer accepts integers and rejects other values" {
-  run arg::integer -Count '3'
+  run arg::integer --count '3'
   [ "${status}" -eq 0 ]
 
-  run arg::integer -Count '-3'
+  run arg::integer --count '-3'
   [ "${status}" -eq 0 ]
 
-  run arg::integer -Count '3.5'
+  run arg::integer --count '3.5'
   [ "${status}" -eq 64 ]
 }
 
@@ -88,11 +88,11 @@ demo::_create-args() {
 }
 
 @test "a while/case function built on arg:: accepts named arguments" {
-  run demo::create -Name alice -Shell /bin/zsh -Force
+  run demo::create --name alice --shell /bin/zsh --force
   [ "${status}" -eq 0 ]
   [ "${output}" = 'name=alice shell=/bin/zsh force=true' ]
 
-  run demo::create -Shell /bin/zsh
+  run demo::create --shell /bin/zsh
   [ "${status}" -ne 0 ]
 
   run demo::create -Unsupported value
@@ -128,13 +128,13 @@ demo::_create-args() {
   arg::completion::dispatch
 
   [ "${#COMPREPLY[@]}" -eq 3 ]
-  [ "${COMPREPLY[0]}" = '-Name' ]
-  [ "${COMPREPLY[1]}" = '-Shell' ]
-  [ "${COMPREPLY[2]}" = '-Force' ]
+  [ "${COMPREPLY[0]}" = '--name' ]
+  [ "${COMPREPLY[1]}" = '--shell' ]
+  [ "${COMPREPLY[2]}" = '--force' ]
 }
 
 @test "dispatch writes value candidates only right after their flag" {
-  COMP_WORDS=(demo::create -Shell '')
+  COMP_WORDS=(demo::create --shell '')
   COMP_CWORD=2
 
   arg::completion::dispatch
@@ -145,13 +145,13 @@ demo::_create-args() {
 }
 
 @test "dispatch filters candidates by the current partial word" {
-  COMP_WORDS=(demo::create -S)
+  COMP_WORDS=(demo::create --s)
   COMP_CWORD=1
 
   arg::completion::dispatch
 
   [ "${#COMPREPLY[@]}" -eq 1 ]
-  [ "${COMPREPLY[0]}" = '-Shell' ]
+  [ "${COMPREPLY[0]}" = '--shell' ]
 }
 
 @test "dispatch does nothing for functions without a completion helper" {

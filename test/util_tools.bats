@@ -105,14 +105,14 @@ record_root_commands() {
 @test "SSH key generation keeps an existing key without a terminal and reads the passphrase from a descriptor" {
   command -v ssh-keygen >/dev/null 2>&1 || skip 'ssh-keygen is not installed'
   local key="${BATS_TEST_TMPDIR}/keys/id_test"
-  run ssh::key::generate-ed25519 -Output "$key" -Comment 'test key'
+  run ssh::key::generate-ed25519 --output "$key" --comment 'test key'
   [ "$status" -eq 0 ]
   [[ "$output" == ssh-ed25519\ *' test key' ]]
   terminal::is-available() { return 1; }
-  run --separate-stderr ssh::key::generate-ed25519 -Output "$key"
+  run --separate-stderr ssh::key::generate-ed25519 --output "$key"
   [ "$status" -eq 73 ]
   local protected="${BATS_TEST_TMPDIR}/keys/id_protected"
-  run ssh::key::generate-ed25519 -Output "$protected" -PassphraseFd 3 3<<<'secret phrase'
+  run ssh::key::generate-ed25519 --output "$protected" --passphrase-fd 3 3<<<'secret phrase'
   [ "$status" -eq 0 ]
   ssh-keygen -y -P 'secret phrase' -f "$protected" >/dev/null
   ! ssh-keygen -y -P '' -f "$protected" >/dev/null 2>&1
