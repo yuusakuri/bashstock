@@ -14,7 +14,8 @@ examples_with_output() {
   awk '
     function flush() {
       if (in_example && expected != "") {
-        records[++count] = code SUBSEP expected
+        codes[++count] = code
+        outputs[count] = expected
       }
       in_example = 0
       code = ""
@@ -39,8 +40,7 @@ examples_with_output() {
       sub(/^[[:space:]]*/, "", name)
       sub(/\(\).*$/, "", name)
       for (index_ = 1; index_ <= count; index_++) {
-        split(records[index_], parts, SUBSEP)
-        printf "%s\037%s\037%s\036", name, parts[1], parts[2]
+        printf "%s\037%s\037%s\036", name, codes[index_], outputs[index_]
       }
       count = 0
       next
