@@ -12,7 +12,9 @@ BashStockは、Bashスクリプトと対話型Bashから読み込んで使う関
 | `src/runtime/header.sh` | 多重読み込みを確認し、配布ファイル自身の絶対パスを記録します。 |
 | `src/runtime/operations.sh` | 管理者権限のプロセス起動、操作名の対応付け、権限の確認を担当します。 |
 | `src/runtime/footer.sh` | 対話型Bashの補完登録と読み込み完了の記録、または内部コマンドの実行を行います。 |
+| `src/help.sh` | 読み込んだ関数のshdocコメントを`help::show`で端末に表示します。 |
 | `scripts/build` | ソースとライセンス文を結合し、`dist/bashstock.sh`を生成します。 |
+| `scripts/docs` | `vendor/shdoc`で`src/`のshdocコメントから`docs/reference/`を生成します。 |
 | `test/` | 生成した配布ファイルの公開APIと実行時の振る舞いを検証します。 |
 
 ```mermaid
@@ -38,6 +40,7 @@ flowchart LR
 生成に失敗した場合は、既存の配布ファイルを保持します。
 
 配布ファイルにはMIT Licenseの全文をコメントとして含めます。
+関数のshdocコメントも削除せずに含めるため、`help::show`は配布ファイルだけで関数の説明を表示できます。
 利用者はこの一つのファイルを任意の場所へ配置でき、実行権限や付随するディレクトリを必要としません。
 `dist/`は生成物として扱い、Gitの追跡対象には含めません。
 

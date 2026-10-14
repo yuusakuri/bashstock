@@ -14,10 +14,10 @@ failures=0
 failed_checks=''
 mismatch=''
 
-### Run a check and record its result without stopping the remaining checks.
-###
-### A failure is also written as a GitHub annotation, so it stays visible when
-### the log is too long to read in full.
+# @description Run a check and record its result without stopping the remaining checks.
+#
+# A failure is also written as a GitHub annotation, so it stays visible when
+# the log is too long to read in full.
 check() {
   mismatch=''
   if "$@" >/dev/null; then
@@ -31,12 +31,12 @@ check() {
   fi
 }
 
-### Write the bundle identifier that opens files with an extension.
+# @description Write the bundle identifier that opens files with an extension.
 handler_of() {
   duti -x "$1" | sed -n 3p
 }
 
-### Compare a command's output with the expected text.
+# @description Compare a command's output with the expected text.
 output_is() {
   local expected="$1" actual=''
   shift
@@ -48,16 +48,16 @@ output_is() {
   }
 }
 
-### Write the steps that failed in one mac::setup log, one per line.
+# @description Write the steps that failed in one mac::setup log, one per line.
 failed_steps() {
   sed -n 's/^.*Setup step failed with status [0-9]*: \(.*\)$/\1/p' "$1"
 }
 
-### Run mac::setup, keep its error output, and check its failed steps.
-###
-### Runners without Hypervisor.framework cannot start the Colima VM, so Colima
-### and the Docker CLI that waits for a running engine are the only steps that
-### may fail there. The returned status must be the first failed step's status.
+# @description Run mac::setup, keep its error output, and check its failed steps.
+#
+# Runners without Hypervisor.framework cannot start the Colima VM, so Colima
+# and the Docker CLI that waits for a running engine are the only steps that
+# may fail there. The returned status must be the first failed step's status.
 run_setup() {
   local log="$1" status=0 first='' unexpected=''
   mac::setup 2> >(tee "${log}" >&2) || status="$?"

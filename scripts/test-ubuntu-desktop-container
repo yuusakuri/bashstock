@@ -12,7 +12,7 @@ sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommen
   dbus-x11 dconf-cli dconf-gsettings-backend gsettings-desktop-schemas libglib2.0-bin \
   ibus ibus-mozc keyboard-configuration udev vlc xdg-utils >/dev/null
 
-### Run a BashStock command in a new D-Bus session.
+# @description Run a BashStock command in a new D-Bus session.
 in_session() {
   dbus-run-session -- bash -c 'source /opt/bashstock.sh && "$@"' bashstock "$@"
 }

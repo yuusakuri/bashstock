@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
+# @file os-darwin
+# @brief macOS implementations of the platform operations.
+# @description The module defines only internal functions called by the os module.
+
 # shellcheck disable=SC2234
 
-### Create a non-login macOS role account.
+# @description Create a non-login macOS role account.
+# @internal
 platform::_create-system-user() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -22,7 +27,8 @@ platform::_create-system-user() {
   return 73
 }
 
-### Create a macOS login account and roll it back after password failure.
+# @description Create a macOS login account and roll it back after password failure.
+# @internal
 platform::_create-login-user() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -44,7 +50,8 @@ platform::_create-login-user() {
   return 73
 }
 
-### Change ownership recursively without crossing macOS mount points.
+# @description Change ownership recursively without crossing macOS mount points.
+# @internal
 platform::_change-owner-recursively() {
   if [[ "$#" -lt 2 || "$#" -gt 3 ]]; then
     return 64
@@ -59,7 +66,8 @@ platform::_change-owner-recursively() {
   find -x "$1" -exec chown -h "${2}:${group}" {} + || return 74
 }
 
-### Write a path's permission mode with BSD stat.
+# @description Write a path's permission mode with BSD stat.
+# @internal
 platform::_path-mode() {
   if [[ "$#" -ne 1 || -z "$1" ]]; then
     return 64

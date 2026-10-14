@@ -1,13 +1,22 @@
 #!/usr/bin/env bash
+# @file install
+# @brief Installers for development tools and desktop applications.
+# @description Most installers accept an optional version; each function documents its default.
+
 # shellcheck disable=SC2119,SC2120
 
-### Download a Debian package and install it with its dependencies through APT.
-###
-### Arguments
-###
-### * URL - HTTPS URL of the Debian package.
-### * EXPECTED_ARCHITECTURE - Accepted package architecture. Defaults to the
-###   system architecture; packages for all architectures are also accepted.
+# @description Download a Debian package and install it with its dependencies through APT.
+#
+# @arg $1 string HTTPS URL of the Debian package.
+# @arg $2 string Optional accepted architecture. Defaults to the system architecture; packages for all architectures are also accepted.
+# @exitcode 0 The package and its dependencies are installed.
+# @exitcode 64 The URL is not HTTPS, or the argument count is wrong.
+# @exitcode 65 The package is for another architecture or is not a valid Debian package.
+# @exitcode 69 The system is not Ubuntu, or curl, dpkg, or apt-get is missing.
+# @exitcode 74 The download failed.
+# @exitcode other The status of apt-get.
+# @example
+#   deb::install-from-url https://example.com/tool_1.2.3_amd64.deb
 deb::install-from-url() {
   [[ "$#" -ge 1 && "$#" -le 2 && "$1" == https://* ]] || return 64
   package::_require-platform ubuntu || return "$?"
@@ -42,9 +51,19 @@ deb::install-from-url() {
   return "${status}"
 }
 
-### Write APT packages whose names start with PREFIX followed by a digit, with candidate versions.
-###
-### Each line contains a package name and its candidate version separated by a tab.
+# @description Write APT packages whose names start with PREFIX followed by a digit, with candidate versions.
+#
+# Each line contains a package name and its candidate version separated by a tab.
+#
+# @arg $1 string Package name prefix, such as openjdk- or libstdc++-.
+# @stdout Lines of package name and candidate version separated by a tab, ordered by version.
+# @exitcode 0 The candidates were written; none is not an error.
+# @exitcode 64 The prefix is not a valid package name start.
+# @exitcode 69 The system is not Ubuntu, or apt-cache or Perl is missing.
+# @exitcode 74 apt-cache policy failed.
+# @example
+#   apt::package::candidates gcc-
+#   # gcc-12	12.3.0-1ubuntu1~22.04
 apt::package::candidates() {
   [[ "$#" -eq 1 && "$1" =~ ^[a-z0-9][a-z0-9.+-]*$ ]] || return 64
   package::_require-platform ubuntu || return "$?"
@@ -70,7 +89,8 @@ apt::package::candidates() {
   ' "${prefix}" | package::_sort-by-first-field
 }
 
-### Sort tab-separated lines by the version in their first field and drop that field.
+# @description Sort tab-separated lines by the version in their first field and drop that field.
+# @internal
 package::_sort-by-first-field() {
   [[ "$#" -eq 0 ]] || return 64
   command::require perl || return "$?"
@@ -93,7 +113,17 @@ package::_sort-by-first-field() {
   '
 }
 
-### Write the APT package name with the newest version suffix after PREFIX.
+# @description Write the APT package name with the newest version suffix after PREFIX.
+#
+# @arg $1 string Package name prefix followed by a version number in the package names.
+# @stdout The package name with the newest version, such as gcc-14.
+# @exitcode 0 The name was written.
+# @exitcode 1 No package name starts with the prefix and a digit.
+# @exitcode 64 The prefix is invalid.
+# @exitcode 69 The system is not Ubuntu, or apt-cache or Perl is missing.
+# @exitcode 74 apt-cache policy failed.
+# @example
+#   package::_install "$(apt::package::latest gcc-)"
 apt::package::latest() {
   [[ "$#" -eq 1 ]] || return 64
   local candidates='' line=''
@@ -103,12 +133,17 @@ apt::package::latest() {
   printf '%s\n' "${line%%$'\t'*}"
 }
 
-### Export Chrome Preferences and Bookmarks for profiles whose email matches literally.
-###
-### Arguments
-###
-### * EMAIL - Email address to compare literally.
-### * OUTPUT_DIRECTORY - Destination directory. Defaults to the current directory.
+# @description Export Chrome Preferences and Bookmarks for profiles whose email matches literally.
+#
+# @arg $1 string Email address of the Chrome profile, compared literally.
+# @arg $2 string Optional destination directory. Defaults to the current directory.
+# @exitcode 0 Preferences and Bookmarks of every matching profile were copied as PROFILE_preferences.json and PROFILE_bookmarks.json.
+# @exitcode 1 No profile has that email address.
+# @exitcode 64 The email address is empty, or the argument count is wrong.
+# @exitcode 66 Chrome's user data directory does not exist.
+# @exitcode 74 The destination could not be created or a file could not be copied.
+# @example
+#   chrome::profile::export-user-data-by-email alice@example.com "${HOME}/chrome-backup"
 chrome::profile::export-user-data-by-email() {
   [[ "$#" -ge 1 && "$#" -le 2 && -n "$1" ]] || return 64
   local output="${2:-.}" profiles='' profile='' name='' status=0
@@ -123,16 +158,26 @@ chrome::profile::export-user-data-by-email() {
   return "${status}"
 }
 
-### Write the default AWS VPN Client log directory.
+# @description Write the default AWS VPN Client log directory.
+# @internal
 aws-vpn-client::log::_default-directory() {
   [[ "$#" -eq 0 ]] || return 64
   printf '%s\n' "${HOME}/.config/AWSVPNClient/logs"
 }
 
-### Write AWS VPN Client log files as NUL-separated paths.
-###
-### Files whose names contain aws_vpn_client_ and do not contain
-### ovpn_aws_vpn_client are selected, as in the reference script.
+# @description Write AWS VPN Client log files as NUL-separated paths.
+#
+# Files whose names contain aws_vpn_client_ and do not contain
+# ovpn_aws_vpn_client are selected, as in the reference script.
+#
+# @arg $1 string Optional log directory. Defaults to the AWS VPN Client log directory of this OS.
+# @stdout NUL-separated paths of the log files.
+# @exitcode 0 The paths were written.
+# @exitcode 64 More than one argument was given.
+# @exitcode 66 The directory does not exist or is a symbolic link.
+# @exitcode 69 find is unavailable.
+# @example
+#   aws-vpn-client::log::files | xargs -0 tail -n 50
 aws-vpn-client::log::files() {
   [[ "$#" -le 1 ]] || return 64
   local directory="${1:-}"
@@ -142,7 +187,16 @@ aws-vpn-client::log::files() {
   find "${directory}" -type f -name '*aws_vpn_client_*' ! -name '*ovpn_aws_vpn_client*' -print0
 }
 
-### Remove regular log files below the AWS VPN Client log directory.
+# @description Remove regular log files below the AWS VPN Client log directory.
+#
+# @arg $1 string Optional log directory. Defaults to the AWS VPN Client log directory of this OS.
+# @exitcode 0 Every regular file below the directory was removed.
+# @exitcode 64 More than one argument was given.
+# @exitcode 66 The directory does not exist or is a symbolic link.
+# @exitcode 69 find is unavailable.
+# @exitcode 74 A file could not be removed.
+# @example
+#   aws-vpn-client::log::clear
 aws-vpn-client::log::clear() {
   [[ "$#" -le 1 ]] || return 64
   local directory="${1:-}"
@@ -152,7 +206,19 @@ aws-vpn-client::log::clear() {
   find "${directory}" -type f -exec rm -f -- {} + || return 74
 }
 
-### Open log files with an editor command, passing each path as one argument.
+# @description Open log files with an editor command, passing each path as one argument.
+#
+# @arg $1 string Editor command, such as code.
+# @arg $@ string Log files; at least one.
+# @exitcode 0 The editor was started.
+# @exitcode 64 The editor is empty, or no file was given.
+# @exitcode 66 A path is not a regular file.
+# @exitcode 69 The editor command is unavailable.
+# @exitcode other The status of the editor.
+# @example
+#   files=()
+#   while IFS= read -r -d '' file; do files+=("${file}"); done < <(aws-vpn-client::log::files)
+#   aws-vpn-client::log::open code "${files[@]}"
 aws-vpn-client::log::open() {
   [[ "$#" -ge 2 && -n "$1" ]] || return 64
   local editor="$1" path=''
@@ -164,7 +230,8 @@ aws-vpn-client::log::open() {
   "${editor}" "$@"
 }
 
-### Write the artifact suffix used by official Node.js downloads.
+# @description Write the artifact suffix used by official Node.js downloads.
+# @internal
 node::_official-platform() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' architecture=''
@@ -182,7 +249,16 @@ node::_official-platform() {
   printf '%s-%s\n' "${platform}" "${architecture}"
 }
 
-### Write complete stable Node.js versions from the selected source.
+# @description Write complete stable Node.js versions from the selected source.
+#
+# @arg $1 string Optional source: os for the system package manager (default) or official for nodejs.org.
+# @stdout Complete versions such as 22.11.0, one per line, oldest first.
+# @exitcode 0 The versions were written.
+# @exitcode 64 The source is not os or official.
+# @exitcode 69 The platform is unsupported, or Perl is missing for the official source.
+# @exitcode 74 The release index could not be downloaded or read.
+# @example
+#   node::versions official | tail -n 3
 node::versions() {
   [[ "$#" -le 1 ]] || return 64
   local source="${1:-os}" platform='' versions='' raw='' artifact='' json=''
@@ -224,12 +300,21 @@ node::versions() {
   printf '%s\n' "${versions}" | package::_sort-versions
 }
 
-### Install Node.js, enable Corepack, and set the pnpm store directory.
-###
-### Arguments
-###
-### * VERSION - Complete major.minor.patch version from node::versions.
-### * SOURCE - os (default) or official.
+# @description Install Node.js, enable Corepack, and set the pnpm store directory.
+#
+# Corepack is enabled with pnpm 8.15.9, installing Corepack through npm when the Node.js release no longer bundles it.
+#
+# @arg $1 string Optional complete version from node::versions. Defaults to the newest stable version of the source.
+# @arg $2 string Optional source: os (default) or official.
+# @stderr A message when the version is unavailable or too old for Corepack.
+# @exitcode 0 Node.js, Corepack, and pnpm are ready.
+# @exitcode 64 The version or source is malformed.
+# @exitcode 69 The version is unavailable from the source, or older than 16.14.
+# @exitcode 74 The official archive could not be downloaded or unpacked.
+# @exitcode other The status of the package manager, npm, or Corepack.
+# @example
+#   node::install 22.11.0 official
+#   pnpm --version
 node::install() {
   [[ "$#" -le 2 ]] || return 64
   local version="${1:-}" source="${2:-os}" platform='' available='' raw='' selected=''
@@ -283,11 +368,12 @@ node::install() {
   COREPACK_ENABLE_DOWNLOAD_PROMPT=0 pnpm config set store-dir "${HOME}/.pnpm-store"
 }
 
-### Enable Corepack, installing it through npm when the Node.js release omits it.
-###
-### On macOS, Homebrew's pnpm formula can already own the pnpm link in the
-### shared bin directory. Corepack replaces that link, as corepack enable does
-### for a bundled Corepack, so npm is allowed to overwrite it there.
+# @description Enable Corepack, installing it through npm when the Node.js release omits it.
+#
+# On macOS, Homebrew's pnpm formula can already own the pnpm link in the
+# shared bin directory. Corepack replaces that link, as corepack enable does
+# for a bundled Corepack, so npm is allowed to overwrite it there.
+# @internal
 node::_enable-corepack() {
   [[ "$#" -eq 2 ]] || return 64
   local runner=() options=()
@@ -302,7 +388,8 @@ node::_enable-corepack() {
   COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack prepare pnpm@8.15.9 --activate
 }
 
-### Install an official Node.js archive after confirming that its executables start.
+# @description Install an official Node.js archive after confirming that its executables start.
+# @internal
 node::_install-official() {
   [[ "$#" -eq 1 && "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
   local version="$1" artifact='' temporary='' destination=''
@@ -343,7 +430,16 @@ node::_install-official() {
   fi
 }
 
-### Write Docker Engine or Docker CLI versions available to the current platform.
+# @description Write Docker Engine or Docker CLI versions available to the current platform.
+#
+# @noargs
+# @stdout Docker Engine versions on Linux, or Docker CLI versions from Homebrew on macOS, one per line.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported, or Docker publishes nothing for this release.
+# @exitcode 74 The repository index could not be downloaded.
+# @example
+#   docker::versions | tail -n 1
 docker::versions() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' architecture='' codename='' index_entries=''
@@ -370,22 +466,30 @@ docker::versions() {
   esac
 }
 
-### Write the Ubuntu codename used by the Docker repository.
+# @description Write the Ubuntu codename used by the Docker repository.
+# @internal
 docker::_ubuntu-codename() {
   [[ "$#" -eq 0 ]] || return 64
   platform::_os-release-value UBUNTU_CODENAME 2>/dev/null ||
     platform::_os-release-value VERSION_CODENAME
 }
 
-### Install the Docker CLI, and Docker Engine on Linux.
-###
-### On macOS, Colima or Rancher Desktop must already be installed and running.
-### On Ubuntu and Fedora, the official Docker repository is registered and the
-### docker service is enabled and started.
-###
-### Arguments
-###
-### * VERSION - Docker version from docker::versions. Defaults to the newest stable version.
+# @description Install the Docker CLI, and Docker Engine on Linux.
+#
+# On macOS, Colima or Rancher Desktop must already be installed and running.
+# On Ubuntu and Fedora, the official Docker repository is registered and the
+# docker service is enabled and started.
+#
+# @arg $1 string Optional version from docker::versions. Defaults to the newest stable version.
+# @stderr A message on macOS when no container runtime is running.
+# @exitcode 0 Docker is installed, and on Linux the service is enabled and running.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The platform or version is unsupported, or on macOS neither Colima nor Rancher Desktop is running.
+# @exitcode 74 The repository or its key could not be downloaded.
+# @exitcode other The status of the package manager or systemctl.
+# @example
+#   docker::install
+#   docker run --rm hello-world
 docker::install() {
   [[ "$#" -le 1 ]] || return 64
   local version="${1:-}" platform=''
@@ -397,7 +501,8 @@ docker::install() {
   esac
 }
 
-### Test whether Colima or Rancher Desktop is running on macOS.
+# @description Test whether Colima or Rancher Desktop is running on macOS.
+# @internal
 docker::_container-runtime-is-running() {
   [[ "$#" -eq 0 ]] || return 64
   if command -v colima >/dev/null 2>&1 && colima status >/dev/null 2>&1; then
@@ -406,7 +511,8 @@ docker::_container-runtime-is-running() {
   command -v pgrep >/dev/null 2>&1 && pgrep -f 'Rancher Desktop' >/dev/null 2>&1
 }
 
-### Install the Docker CLI plugins with Homebrew on macOS.
+# @description Install the Docker CLI plugins with Homebrew on macOS.
+# @internal
 docker::_install-darwin() {
   [[ "$#" -eq 1 ]] || return 64
   if ! docker::_container-runtime-is-running; then
@@ -422,7 +528,8 @@ docker::_install-darwin() {
   done
 }
 
-### Install Docker Engine from the official repository on Ubuntu.
+# @description Install Docker Engine from the official repository on Ubuntu.
+# @internal
 docker::_install-ubuntu() {
   [[ "$#" -eq 1 ]] || return 64
   local version="$1" codename='' architecture='' package=''
@@ -446,7 +553,8 @@ docker::_install-ubuntu() {
   package::_add-current-user-to-group docker
 }
 
-### Install Docker Engine from the official repository on Fedora.
+# @description Install Docker Engine from the official repository on Fedora.
+# @internal
 docker::_install-fedora() {
   [[ "$#" -eq 1 ]] || return 64
   local version="$1" cli_version="${1#*:}" repository='' buildx_package='docker-buildx-plugin' package=''
@@ -475,7 +583,8 @@ docker::_install-fedora() {
   package::_add-current-user-to-group docker
 }
 
-### Install the official Buildx CLI plugin when the Docker RPM repository does not package it.
+# @description Install the official Buildx CLI plugin when the Docker RPM repository does not package it.
+# @internal
 docker::_install-buildx-plugin() {
   [[ "$#" -eq 0 ]] || return 64
   local architecture='' directory='' status=0
@@ -500,19 +609,38 @@ docker::_install-buildx-plugin() {
   return "${status}"
 }
 
-### Write Colima versions available from Homebrew.
+# @description Write Colima versions available from Homebrew.
+#
+# @noargs
+# @stdout Colima versions from Homebrew, one per line.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS.
+# @exitcode other The status of brew.
+# @example
+#   colima::versions
 colima::versions() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform darwin || return "$?"
   package::_versions colima
 }
 
-### Install Colima with Homebrew on macOS and start it.
-###
-### Colima's Docker runtime needs the docker command before it starts, so the
-### Docker CLI formula is installed with it. Without Hypervisor.framework, as in
-### a virtual machine without nested virtualization, the VM cannot boot, so the
-### function returns 69 instead of starting it.
+# @description Install Colima with Homebrew on macOS and start it.
+#
+# Colima's Docker runtime needs the docker command before it starts, so the
+# Docker CLI formula is installed with it. Without Hypervisor.framework, as in
+# a virtual machine without nested virtualization, the VM cannot boot, so the
+# function returns 69 instead of starting it.
+#
+# @arg $1 string Optional Colima version; only the current Homebrew version is accepted.
+# @stderr A message when Hypervisor.framework is unavailable.
+# @exitcode 0 Colima is installed and running.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The system is not macOS, the version is not the current one, or Hypervisor.framework is unavailable.
+# @exitcode other The status of brew or colima start.
+# @example
+#   colima::install
+#   docker::install
 colima::install() {
   [[ "$#" -le 1 ]] || return 64
   package::_require-platform darwin || return "$?"
@@ -528,13 +656,15 @@ colima::install() {
   colima start
 }
 
-### Write the rbenv root directory.
+# @description Write the rbenv root directory.
+# @internal
 ruby::_rbenv-root() {
   [[ "$#" -eq 0 ]] || return 64
   printf '%s\n' "${RBENV_ROOT:-${HOME}/.rbenv}"
 }
 
-### Install rbenv and ruby-build.
+# @description Install rbenv and ruby-build.
+# @internal
 ruby::_install-rbenv() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' root=''
@@ -563,7 +693,8 @@ ruby::_install-rbenv() {
   fi
 }
 
-### Write the rbenv command path.
+# @description Write the rbenv command path.
+# @internal
 ruby::_rbenv-command() {
   [[ "$#" -eq 0 ]] || return 64
   if command -v rbenv >/dev/null 2>&1; then
@@ -576,7 +707,8 @@ ruby::_rbenv-command() {
   printf '%s\n' "${candidate}"
 }
 
-### Configure Bash and Zsh startup files to initialize rbenv and apply it to this shell.
+# @description Configure Bash and Zsh startup files to initialize rbenv and apply it to this shell.
+# @internal
 ruby::_configure-shell() {
   [[ "$#" -eq 0 ]] || return 64
   local shell='' startup='' root=''
@@ -595,11 +727,16 @@ ruby::_configure-shell() {
   export PATH
 }
 
-### Install rbenv, configure the shell, and install a Ruby version globally.
-###
-### Arguments
-###
-### * VERSION - Ruby version. Defaults to ruby::version::latest.
+# @description Install rbenv, configure the shell, and install a Ruby version globally.
+#
+# @arg $1 string Optional Ruby version such as 3.4.7. Defaults to ruby::version::latest.
+# @exitcode 0 Ruby is installed and selected with rbenv global.
+# @exitcode 64 The version is not major.minor.patch.
+# @exitcode 69 rbenv is unavailable after installation.
+# @exitcode other The status of the package manager, git, or rbenv install.
+# @example
+#   ruby::install 3.4.7
+#   ruby --version
 ruby::install() {
   [[ "$#" -le 1 ]] || return 64
   local version="${1:-}" rbenv='' platform=''
@@ -626,7 +763,16 @@ ruby::install() {
   "${rbenv}" rehash
 }
 
-### Write JDK feature release numbers available to the current platform.
+# @description Write JDK feature release numbers available to the current platform.
+#
+# @noargs
+# @stdout JDK feature release numbers such as 17 and 21, one per line, oldest first.
+# @exitcode 0 The numbers were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported, or the package tool is missing.
+# @exitcode 74 The package list could not be read.
+# @example
+#   jdk::version::list
 jdk::version::list() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' versions='' name=''
@@ -660,17 +806,32 @@ jdk::version::list() {
   esac
 }
 
-### Write the newest JDK feature release number available to the current platform.
+# @description Write the newest JDK feature release number available to the current platform.
+#
+# @noargs
+# @stdout The newest JDK feature release number.
+# @exitcode 0 The number was written.
+# @exitcode 1 No JDK is available.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported, or the package tool is missing.
+# @example
+#   jdk::install "$(jdk::version::latest)"
 jdk::version::latest() {
   [[ "$#" -eq 0 ]] || return 64
   jdk::version::list | package::_latest-stable-version
 }
 
-### Install a JDK, select it as the default Java, and persist JAVA_HOME and PATH.
-###
-### Arguments
-###
-### * VERSION - JDK feature release number. Defaults to jdk::version::latest.
+# @description Install a JDK, select it as the default Java, and persist JAVA_HOME and PATH.
+#
+# @arg $1 string Optional feature release number such as 21. Defaults to jdk::version::latest.
+# @exitcode 0 The JDK is installed and JAVA_HOME and PATH point to it.
+# @exitcode 64 The version is not a number.
+# @exitcode 69 The platform is unsupported, or the version is unavailable.
+# @exitcode 74 java is missing from the selected JDK.
+# @exitcode other The status of the package manager or the alternatives tool.
+# @example
+#   jdk::install 21
+#   java -version
 jdk::install() {
   [[ "$#" -le 1 ]] || return 64
   local version="${1:-}" platform='' home=''
@@ -689,7 +850,8 @@ jdk::install() {
   env::add-path "${home}/bin"
 }
 
-### Install an OpenJDK formula on macOS and write its Java home.
+# @description Install an OpenJDK formula on macOS and write its Java home.
+# @internal
 jdk::_install-darwin() {
   [[ "$#" -eq 1 ]] || return 64
   local version="$1" stable='' formula='openjdk' prefix=''
@@ -703,7 +865,8 @@ jdk::_install-darwin() {
   /usr/libexec/java_home -v "${version}"
 }
 
-### Select the Java and Java compiler alternatives below a Java home.
+# @description Select the Java and Java compiler alternatives below a Java home.
+# @internal
 jdk::_select-alternatives() {
   [[ "$#" -eq 2 && -d "$2" ]] || return 64
   local tool=''
@@ -714,7 +877,8 @@ jdk::_select-alternatives() {
   done
 }
 
-### Install an OpenJDK package on Ubuntu and write its Java home.
+# @description Install an OpenJDK package on Ubuntu and write its Java home.
+# @internal
 jdk::_install-ubuntu() {
   [[ "$#" -eq 1 ]] || return 64
   local version="$1" architecture='' home=''
@@ -725,7 +889,8 @@ jdk::_install-ubuntu() {
   printf '%s\n' "${home}"
 }
 
-### Install an OpenJDK package on Fedora and write its Java home.
+# @description Install an OpenJDK package on Fedora and write its Java home.
+# @internal
 jdk::_install-fedora() {
   [[ "$#" -eq 1 ]] || return 64
   local version="$1" home=''
@@ -736,14 +901,16 @@ jdk::_install-fedora() {
   printf '%s\n' "${home}"
 }
 
-### Write the major.minor.patch version of the Python 3 interpreter.
+# @description Write the major.minor.patch version of the Python 3 interpreter.
+# @internal
 pipx::_python-version() {
   [[ "$#" -eq 0 ]] || return 64
   command::require python3 || return "$?"
   python3 -c 'import sys; print("%d.%d.%d" % sys.version_info[:3])' || return 74
 }
 
-### Write pipx releases on PyPI whose Requires-Python accepts PYTHON_VERSION.
+# @description Write pipx releases on PyPI whose Requires-Python accepts PYTHON_VERSION.
+# @internal
 pipx::_official-versions() {
   [[ "$#" -eq 1 && "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
   command::require perl || return "$?"
@@ -798,14 +965,19 @@ pipx::_official-versions() {
   printf '%s\n' "${versions}" | package::_sort-stable-versions
 }
 
-### Write pipx versions available from the selected source.
-###
-### The official source lists the PyPI releases that the installed Python 3
-### can run.
-###
-### Arguments
-###
-### * SOURCE - os (default) or official.
+# @description Write pipx versions available from the selected source.
+#
+# The official source lists the PyPI releases that the installed Python 3
+# can run.
+#
+# @arg $1 string Optional source: os (default) or official.
+# @stdout pipx versions, one per line, oldest first.
+# @exitcode 0 The versions were written.
+# @exitcode 64 The source is not os or official.
+# @exitcode 69 Python 3 is missing for the official source.
+# @exitcode 74 The PyPI index could not be downloaded or read.
+# @example
+#   pipx::versions official | tail -n 1
 pipx::versions() {
   [[ "$#" -le 1 ]] || return 64
   local source="${1:-os}" python_version=''
@@ -818,19 +990,26 @@ pipx::versions() {
   pipx::_official-versions "${python_version}"
 }
 
-### Install pipx and add the pipx application directory to PATH.
-###
-### The os source installs the package of the system package manager. The
-### official source installs the release from PyPI for the current user with
-### pip, as the pipx documentation describes for systems without a package.
-### A source that cannot provide pipx returns an error instead of switching to
-### the other source. On Ubuntu, python3-venv is installed with either source,
-### because pipx creates a virtual environment for every application.
-###
-### Arguments
-###
-### * VERSION - Optional version from pipx::versions for the same SOURCE.
-### * SOURCE - os (default) or official.
+# @description Install pipx and add the pipx application directory to PATH.
+#
+# The os source installs the package of the system package manager. The
+# official source installs the release from PyPI for the current user with
+# pip, as the pipx documentation describes for systems without a package.
+# A source that cannot provide pipx returns an error instead of switching to
+# the other source. On Ubuntu, python3-venv is installed with either source,
+# because pipx creates a virtual environment for every application.
+#
+# @arg $1 string Optional version from pipx::versions for the same source.
+# @arg $2 string Optional source: os (default) or official.
+# @stderr A message when the source cannot provide pipx.
+# @exitcode 0 pipx is installed and ~/.local/bin is on PATH.
+# @exitcode 64 The source is not os or official.
+# @exitcode 69 The source cannot provide pipx, or the installed version differs.
+# @exitcode 74 The application directory could not be created.
+# @exitcode other The status of the package manager or pip.
+# @example
+#   pipx::install
+#   pipx install pycowsay
 pipx::install() {
   [[ "$#" -le 2 ]] || return 64
   local version="${1:-}" source="${2:-os}" platform='' versions='' installed=''
@@ -869,11 +1048,12 @@ pipx::install() {
   env::add-path "${HOME}/.local/bin"
 }
 
-### Set one handler with duti, skipping a type that macOS does not know.
-###
-### An extension that no installed application declares has only a dynamic
-### UTI, and a UTI that the running macOS does not define has no hierarchy;
-### LaunchServices refuses both, so they are reported and skipped.
+# @description Set one handler with duti, skipping a type that macOS does not know.
+#
+# An extension that no installed application declares has only a dynamic
+# UTI, and a UTI that the running macOS does not define has no hierarchy;
+# LaunchServices refuses both, so they are reported and skipped.
+# @internal
 vscode::_set-handler() {
   [[ "$#" -eq 2 ]] || return 64
   local output='' status=0
@@ -887,10 +1067,19 @@ vscode::_set-handler() {
   return "${status}"
 }
 
-### Set VS Code as the default application for text and source file types on macOS.
-###
-### Extensions and UTIs that this macOS does not declare are reported and
-### skipped; any other failure returns its status.
+# @description Set VS Code as the default application for text and source file types on macOS.
+#
+# Extensions and UTIs that this macOS does not declare are reported and
+# skipped; any other failure returns its status.
+#
+# @noargs
+# @stderr Each skipped extension or UTI.
+# @exitcode 0 VS Code opens the listed types.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS, or duti is unavailable.
+# @exitcode other The status of duti.
+# @example
+#   vscode::set-default-app
 vscode::set-default-app() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform darwin || return "$?"
@@ -918,7 +1107,17 @@ vscode::set-default-app() {
   killall Finder >/dev/null 2>&1 || true
 }
 
-### Set IINA as the default application for video file extensions on macOS.
+# @description Set IINA as the default application for video file extensions on macOS.
+#
+# duti is installed with Homebrew when it is missing.
+#
+# @noargs
+# @exitcode 0 IINA opens the listed video types.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS.
+# @exitcode other The status of brew or duti.
+# @example
+#   iina::set-default-app
 iina::set-default-app() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform darwin || return "$?"
@@ -934,18 +1133,32 @@ iina::set-default-app() {
   done
 }
 
-### Write UTM release versions.
+# @description Write UTM release versions.
+#
+# @noargs
+# @stdout Stable UTM release versions, one per line, oldest first.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 Perl is unavailable.
+# @exitcode 74 The GitHub release list could not be downloaded or read.
+# @example
+#   utm::versions | tail -n 1
 utm::versions() {
   [[ "$#" -eq 0 ]] || return 64
   package::_github-release-versions utmapp/UTM
 }
 
-### Install UTM from its release disk image on macOS.
-###
-### Arguments
-###
-### * VERSION - UTM release version. Defaults to the newest stable release.
-### * APPLICATION_DIRECTORY - Destination directory. Defaults to /Applications.
+# @description Install UTM from its release disk image on macOS.
+#
+# @arg $1 string Optional UTM release version. Defaults to the newest stable release.
+# @arg $2 string Optional destination directory. Defaults to /Applications.
+# @exitcode 0 UTM.app was copied to the destination.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 66 The destination directory does not exist.
+# @exitcode 69 The system is not macOS, or hdiutil is unavailable.
+# @exitcode 74 The disk image could not be downloaded, mounted, or copied.
+# @example
+#   utm::install 4.6.4
 utm::install() {
   [[ "$#" -le 2 ]] || return 64
   package::_require-platform darwin || return "$?"
@@ -971,7 +1184,8 @@ utm::install() {
   return "${status}"
 }
 
-### Replace an application bundle in a destination directory.
+# @description Replace an application bundle in a destination directory.
+# @internal
 utm::_copy-application() {
   [[ "$#" -eq 2 && -d "$1" && -d "$2" ]] || return 64
   local runner=()
@@ -980,10 +1194,11 @@ utm::_copy-application() {
   ${runner[@]+"${runner[@]}"} cp -R -- "$1" "$2/" || return 74
 }
 
-### Write supported Ubuntu LTS versions from the Ubuntu release metadata.
-###
-### Releases newer than the last upgrade-supported release are included because
-### Write the Ubuntu Server ISO architecture for the current machine, or validate one.
+# @description Write supported Ubuntu LTS versions from the Ubuntu release metadata.
+#
+# Releases newer than the last upgrade-supported release are included because
+# Write the Ubuntu Server ISO architecture for the current machine, or validate one.
+# @internal
 ubuntu::_server-iso-architecture() {
   [[ "$#" -le 1 ]] || return 64
   local architecture="${1:-}"
@@ -998,7 +1213,8 @@ ubuntu::_server-iso-architecture() {
   printf '%s\n' "${architecture}"
 }
 
-### Write the directory URL that publishes Ubuntu Server ISOs of one LTS series.
+# @description Write the directory URL that publishes Ubuntu Server ISOs of one LTS series.
+# @internal
 ubuntu::_server-iso-directory() {
   [[ "$#" -eq 2 && "$1" =~ ^[0-9]+\.[0-9]+$ ]] || return 64
   case "$2" in
@@ -1008,7 +1224,8 @@ ubuntu::_server-iso-directory() {
   esac
 }
 
-### Write SHA-256 and file name pairs of the live server ISOs that one LTS series publishes.
+# @description Write SHA-256 and file name pairs of the live server ISOs that one LTS series publishes.
+# @internal
 ubuntu::_server-iso-checksums() {
   [[ "$#" -eq 2 ]] || return 64
   local directory='' sums=''
@@ -1018,15 +1235,20 @@ ubuntu::_server-iso-checksums() {
     awk -v arch="$2" '$2 ~ ("^\\*?ubuntu-[0-9.]+-live-server-" arch "\\.iso$") { sub(/^\*/, "", $2); print $1 "\t" $2 }'
 }
 
-### Write the Ubuntu Server LTS versions whose live server ISO is published for an architecture.
-###
-### The LTS series come from the Ubuntu release metadata, and each version is
-### taken from the official SHA256SUMS of its series, so every listed version
-### can be downloaded.
-###
-### Arguments
-###
-### * ARCHITECTURE - amd64 or arm64. Defaults to the current machine.
+# @description Write the Ubuntu Server LTS versions whose live server ISO is published for an architecture.
+#
+# The LTS series come from the Ubuntu release metadata, and each version is
+# taken from the official SHA256SUMS of its series, so every listed version
+# can be downloaded.
+#
+# @arg $1 string Optional architecture: amd64 or arm64. Defaults to the current machine.
+# @stdout Ubuntu Server versions such as 24.04.3, one per line, oldest first.
+# @exitcode 0 The versions were written.
+# @exitcode 64 The architecture is not amd64 or arm64.
+# @exitcode 69 No image is published for the architecture.
+# @exitcode 74 The release metadata could not be downloaded.
+# @example
+#   ubuntu::server-iso-versions arm64
 ubuntu::server-iso-versions() {
   [[ "$#" -le 1 ]] || return 64
   local architecture='' metadata='' series='' versions=''
@@ -1042,17 +1264,21 @@ ubuntu::server-iso-versions() {
   printf '%s\n' "${versions}"
 }
 
-### Download an Ubuntu Server live ISO and check it against the official SHA256SUMS.
-###
-### The image is written to a temporary file next to OUTPUT_PATH and moved into
-### place only after its checksum matches, so a failed download or a corrupted
-### image leaves an existing file unchanged.
-###
-### Arguments
-###
-### * VERSION - Version from ubuntu::server-iso-versions. Defaults to the newest one.
-### * ARCHITECTURE - amd64 or arm64. Defaults to the current machine.
-### * OUTPUT_PATH - Destination file. Defaults to the official file name in the current directory.
+# @description Download an Ubuntu Server live ISO and check it against the official SHA256SUMS.
+#
+# The image is written to a temporary file next to OUTPUT_PATH and moved into
+# place only after its checksum matches, so a failed download or a corrupted
+# image leaves an existing file unchanged.
+#
+# @arg $1 string Optional version from ubuntu::server-iso-versions. Defaults to the newest one.
+# @arg $2 string Optional architecture: amd64 or arm64. Defaults to the current machine.
+# @arg $3 string Optional destination file. Defaults to the official file name in the current directory.
+# @exitcode 0 The verified image is at the destination.
+# @exitcode 64 The architecture is invalid, or the argument count is wrong.
+# @exitcode 69 The version is not published for the architecture.
+# @exitcode 74 The download failed, the checksum does not match, or the file could not be moved.
+# @example
+#   ubuntu::download-server-iso 24.04.3 amd64 "${HOME}/iso/ubuntu.iso"
 ubuntu::download-server-iso() {
   [[ "$#" -le 3 ]] || return 64
   local version="${1:-}" architecture='' output="${3:-}" versions='' series='' name='' directory=''
@@ -1080,7 +1306,16 @@ ubuntu::download-server-iso() {
   printf '%s\n' "${output}"
 }
 
-### Write Rancher Desktop versions available to the current platform.
+# @description Write Rancher Desktop versions available to the current platform.
+#
+# @noargs
+# @stdout Rancher Desktop versions, one per line.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported.
+# @exitcode 74 The repository index could not be downloaded.
+# @example
+#   rancher-desktop::versions
 rancher-desktop::versions() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' index_entries=''
@@ -1101,9 +1336,19 @@ rancher-desktop::versions() {
   esac
 }
 
-### Install Rancher Desktop and start it.
-###
-### Rosetta and Colima are installed separately with rosetta::install and colima::install.
+# @description Install Rancher Desktop and start it.
+#
+# Rosetta and Colima are installed separately with rosetta::install and colima::install.
+#
+# @arg $1 string Optional version from rancher-desktop::versions; on macOS only the current version.
+# @stderr On Linux, a reminder to log in again when the user was added to the kvm group.
+# @exitcode 0 Rancher Desktop is installed and was started.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The platform is unsupported, or the version is unavailable.
+# @exitcode 74 The repository or its key could not be downloaded.
+# @exitcode other The status of the package manager.
+# @example
+#   rancher-desktop::install
 rancher-desktop::install() {
   [[ "$#" -le 1 ]] || return 64
   local version="${1:-}" platform=''
@@ -1120,7 +1365,8 @@ rancher-desktop::install() {
   esac
 }
 
-### Register the Rancher Desktop repository and install the package on Linux.
+# @description Register the Rancher Desktop repository and install the package on Linux.
+# @internal
 rancher-desktop::_install-linux() {
   [[ "$#" -eq 2 ]] || return 64
   if [[ "$1" == 'ubuntu' ]]; then
@@ -1144,11 +1390,12 @@ gpgkey=https://download.opensuse.org/repositories/isv:/Rancher:/stable/rpm/repod
   fi
 }
 
-### Start Rancher Desktop in the background on macOS.
-###
-### The path works before LaunchServices has registered the new application.
-### open waits while macOS shows a first-launch confirmation, so it runs in the
-### background and the setup continues, as on Linux.
+# @description Start Rancher Desktop in the background on macOS.
+#
+# The path works before LaunchServices has registered the new application.
+# open waits while macOS shows a first-launch confirmation, so it runs in the
+# background and the setup continues, as on Linux.
+# @internal
 rancher-desktop::_start-darwin() {
   [[ "$#" -eq 0 ]] || return 64
   local application='/Applications/Rancher Desktop.app'
@@ -1159,57 +1406,127 @@ rancher-desktop::_start-darwin() {
   fi
 }
 
-### Start Rancher Desktop in the background on Linux.
+# @description Start Rancher Desktop in the background on Linux.
+# @internal
 rancher-desktop::_start-linux() {
   [[ "$#" -eq 0 ]] || return 64
   command::require rancher-desktop || return "$?"
   (rancher-desktop >/dev/null 2>&1 &)
 }
 
-### Disable the Option+T key binding on macOS.
+# @description Disable the Option+T key binding on macOS.
+#
+# @noargs
+# @exitcode 0 Option+T no longer types a character.
+# @exitcode 64 An argument was given.
+# @exitcode 65 The existing DefaultKeyBinding.dict is not a valid property list.
+# @exitcode 69 The system is not macOS, or plutil is unavailable.
+# @exitcode 74 The property list could not be written.
+# @example
+#   key-binding::disable-option-t
 key-binding::disable-option-t() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform darwin || return "$?"
   plist::set "${HOME}/Library/KeyBindings/DefaultKeyBinding.dict" '~t' 'noop:'
 }
 
-### Write pass versions available to the current platform.
+# @description Write pass versions available to the current platform.
+#
+# @noargs
+# @stdout pass versions from the platform package manager, one per line.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported.
+# @example
+#   pass::versions
 pass::versions() {
   [[ "$#" -eq 0 ]] || return 64
   package::_versions pass
 }
 
-### Install pass from the platform package manager.
+# @description Install pass from the platform package manager.
+#
+# @arg $1 string Optional version from pass::versions. Defaults to the newest one.
+# @exitcode 0 pass is installed.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The platform is unsupported, or the version is unavailable.
+# @exitcode other The status of the package manager.
+# @example
+#   pass::install
+#   pass init "$(gpg::secret-key::fingerprints | head -n 1)"
 pass::install() {
   [[ "$#" -le 1 ]] || return 64
   package::_install-version pass "${1:-}"
 }
 
-### Write PlantUML versions available to the current platform.
+# @description Write PlantUML versions available to the current platform.
+#
+# @noargs
+# @stdout PlantUML versions from the platform package manager, one per line.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported.
+# @example
+#   plantuml::versions
 plantuml::versions() {
   [[ "$#" -eq 0 ]] || return 64
   package::_versions plantuml
 }
 
-### Install PlantUML from the platform package manager.
+# @description Install PlantUML from the platform package manager.
+#
+# @arg $1 string Optional version from plantuml::versions. Defaults to the newest one.
+# @exitcode 0 PlantUML is installed.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The platform is unsupported, or the version is unavailable.
+# @exitcode other The status of the package manager.
+# @example
+#   plantuml::install
+#   plantuml -tsvg diagram.puml
 plantuml::install() {
   [[ "$#" -le 1 ]] || return 64
   package::_install-version plantuml "${1:-}"
 }
 
-### Write Graphviz versions available to the current platform.
+# @description Write Graphviz versions available to the current platform.
+#
+# @noargs
+# @stdout Graphviz versions from the platform package manager, one per line.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported.
+# @example
+#   graphviz::versions
 graphviz::versions() {
   [[ "$#" -eq 0 ]] || return 64
   package::_versions graphviz
 }
 
-### Install Graphviz from the platform package manager.
+# @description Install Graphviz from the platform package manager.
+#
+# @arg $1 string Optional version from graphviz::versions. Defaults to the newest one.
+# @exitcode 0 Graphviz is installed.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The platform is unsupported, or the version is unavailable.
+# @exitcode other The status of the package manager.
+# @example
+#   graphviz::install
+#   dot -Tpng graph.dot -o graph.png
 graphviz::install() {
   [[ "$#" -le 1 ]] || return 64
   package::_install-version graphviz "${1:-}"
 }
 
-### Write stable Flutter SDK versions for the current platform.
+# @description Write stable Flutter SDK versions for the current platform.
+#
+# @noargs
+# @stdout Stable Flutter versions such as 3.35.7, one per line, oldest first.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 Perl is unavailable, or the platform is unsupported.
+# @exitcode 74 The release index could not be downloaded or read.
+# @example
+#   flutter::versions | tail -n 1
 flutter::versions() {
   [[ "$#" -eq 0 ]] || return 64
   command::require perl || return "$?"
@@ -1228,7 +1545,16 @@ flutter::versions() {
   printf '%s\n' "${versions}" | package::_sort-stable-versions
 }
 
-### Install packages required to build Flutter applications.
+# @description Install packages required to build Flutter applications.
+#
+# @noargs
+# @exitcode 0 The build dependencies are installed.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported, or git or curl is missing on macOS.
+# @exitcode 74 The C++ development package could not be determined.
+# @exitcode other The status of the package manager.
+# @example
+#   flutter::dependencies::install
 flutter::dependencies::install() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' library=''
@@ -1255,19 +1581,26 @@ flutter::dependencies::install() {
   esac
 }
 
-### Install dependencies and select a stable Flutter SDK version.
-###
-### An existing Flutter repository retains its stash and ignored files.
-###
-### Limitation: Flutter builds Linux desktop applications on Ubuntu 20.04 and
-### later only. Ubuntu 18.04 installs the SDK and runs Dart code and tests,
-### but `flutter build linux` stops there because it needs CMake 3.13 and the
-### release provides 3.10.
-###
-### Arguments
-###
-### * VERSION - Flutter release tag. Defaults to the newest stable release.
-### * INSTALL_DIRECTORY - SDK directory. Defaults to $HOME/.local/flutter.
+# @description Install dependencies and select a stable Flutter SDK version.
+#
+# An existing Flutter repository retains its stash and ignored files.
+#
+# Limitation: Flutter builds Linux desktop applications on Ubuntu 20.04 and
+# later only. Ubuntu 18.04 installs the SDK and runs Dart code and tests,
+# but `flutter build linux` stops there because it needs CMake 3.13 and the
+# release provides 3.10.
+#
+# @arg $1 string Optional stable Flutter version. Defaults to the newest stable release.
+# @arg $2 string Optional SDK directory. Defaults to $HOME/.local/flutter.
+# @stderr A message when the directory holds something other than a Flutter SDK.
+# @exitcode 0 The SDK is at the version and its bin directory is on PATH.
+# @exitcode 64 The version is not major.minor.patch.
+# @exitcode 69 The platform is unsupported.
+# @exitcode 73 The directory is neither empty nor a Flutter SDK.
+# @exitcode other The status of the dependency installation, git, or flutter.
+# @example
+#   flutter::install 3.35.7
+#   flutter doctor
 flutter::install() {
   [[ "$#" -le 2 ]] || return 64
   local version="${1:-}" directory="${2:-${HOME}/.local/flutter}"
@@ -1294,7 +1627,17 @@ flutter::install() {
   "${directory}/bin/flutter" --version
 }
 
-### Set VLC as the default application for every MIME type it declares.
+# @description Set VLC as the default application for every MIME type it declares.
+#
+# @noargs
+# @exitcode 0 VLC opens every MIME type it declares.
+# @exitcode 64 An argument was given.
+# @exitcode 66 VLC's desktop file was not found or declares no MIME type.
+# @exitcode 69 xdg-mime is unavailable.
+# @exitcode other The status of xdg-mime.
+# @example
+#   vlc::set-default-app
+#   xdg-mime query default video/mp4
 vlc::set-default-app() {
   [[ "$#" -eq 0 ]] || return 64
   command::require xdg-mime || return "$?"
@@ -1313,7 +1656,8 @@ vlc::set-default-app() {
   done
 }
 
-### Write the platform package name for a Mozc component.
+# @description Write the platform package name for a Mozc component.
+# @internal
 mozc::_package-name() {
   [[ "$#" -eq 1 ]] || return 64
   local platform=''
@@ -1332,7 +1676,15 @@ mozc::_package-name() {
   esac
 }
 
-### Write Mozc server versions provided for the running operating-system release.
+# @description Write Mozc server versions provided for the running operating-system release.
+#
+# @noargs
+# @stdout Mozc server package versions, one per line.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported.
+# @example
+#   mozc::server::versions
 mozc::server::versions() {
   [[ "$#" -eq 0 ]] || return 64
   local package=''
@@ -1340,7 +1692,15 @@ mozc::server::versions() {
   package::_versions "${package}"
 }
 
-### Install the Mozc server, defaulting to the newest version for the running release.
+# @description Install the Mozc server, defaulting to the newest version for the running release.
+#
+# @arg $1 string Optional version from mozc::server::versions. Defaults to the newest one.
+# @exitcode 0 The Mozc server is installed.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The platform is unsupported, or the version is unavailable.
+# @exitcode other The status of the package manager.
+# @example
+#   mozc::server::install
 mozc::server::install() {
   [[ "$#" -le 1 ]] || return 64
   local package='' version="${1:-}"
@@ -1351,7 +1711,15 @@ mozc::server::install() {
   package::_install "${package}=${version}"
 }
 
-### Write IBus Mozc versions provided for the running operating-system release.
+# @description Write IBus Mozc versions provided for the running operating-system release.
+#
+# @noargs
+# @stdout IBus Mozc package versions, one per line.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported.
+# @example
+#   mozc::ibus::versions
 mozc::ibus::versions() {
   [[ "$#" -eq 0 ]] || return 64
   local package=''
@@ -1359,7 +1727,15 @@ mozc::ibus::versions() {
   package::_versions "${package}"
 }
 
-### Install IBus Mozc and the Mozc server of the same version.
+# @description Install IBus Mozc and the Mozc server of the same version.
+#
+# @arg $1 string Optional version from mozc::ibus::versions. Defaults to the newest one.
+# @exitcode 0 IBus Mozc, and the server of the same version when provided, are installed.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The platform is unsupported, or the version is unavailable.
+# @exitcode other The status of the package manager.
+# @example
+#   mozc::ibus::install
 mozc::ibus::install() {
   [[ "$#" -le 1 ]] || return 64
   local package='' server='' version="${1:-}"
@@ -1375,7 +1751,15 @@ mozc::ibus::install() {
   fi
 }
 
-### Write Mozc GUI tool versions provided for the running operating-system release.
+# @description Write Mozc GUI tool versions provided for the running operating-system release.
+#
+# @noargs
+# @stdout Mozc GUI tool package versions, one per line.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported.
+# @example
+#   mozc::tool::versions
 mozc::tool::versions() {
   [[ "$#" -eq 0 ]] || return 64
   local package=''
@@ -1383,7 +1767,16 @@ mozc::tool::versions() {
   package::_versions "${package}"
 }
 
-### Install the Mozc GUI tools.
+# @description Install the Mozc GUI tools.
+#
+# @arg $1 string Optional version from mozc::tool::versions. Defaults to the newest one.
+# @exitcode 0 The Mozc GUI tools are installed.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The platform is unsupported, or the version is unavailable.
+# @exitcode other The status of the package manager.
+# @example
+#   mozc::tool::install
+#   mozc::config::open
 mozc::tool::install() {
   [[ "$#" -le 1 ]] || return 64
   local package=''
@@ -1391,7 +1784,8 @@ mozc::tool::install() {
   package::_install-version "${package}" "${1:-}"
 }
 
-### Write the OpenSSH server package and service names for the current platform.
+# @description Write the OpenSSH server package and service names for the current platform.
+# @internal
 ssh-server::_names() {
   [[ "$#" -eq 0 ]] || return 64
   local platform=''
@@ -1406,7 +1800,15 @@ ssh-server::_names() {
   esac
 }
 
-### Write OpenSSH server versions available to the current platform.
+# @description Write OpenSSH server versions available to the current platform.
+#
+# @noargs
+# @stdout OpenSSH server package versions, one per line.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported.
+# @example
+#   ssh-server::versions
 ssh-server::versions() {
   [[ "$#" -eq 0 ]] || return 64
   local server_names=''
@@ -1414,7 +1816,15 @@ ssh-server::versions() {
   package::_versions "${server_names%% *}"
 }
 
-### Install the OpenSSH server, enable it at boot, and start it.
+# @description Install the OpenSSH server, enable it at boot, and start it.
+#
+# @arg $1 string Optional version from ssh-server::versions. Defaults to the newest one.
+# @exitcode 0 The server is installed, enabled at boot, and running.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The platform is unsupported, or the version is unavailable.
+# @exitcode other The status of the package manager or systemctl.
+# @example
+#   ssh-server::install
 ssh-server::install() {
   [[ "$#" -le 1 ]] || return 64
   local server_names=''
@@ -1423,7 +1833,8 @@ ssh-server::install() {
   package::_enable-service "${server_names#* }"
 }
 
-### Register the Microsoft VS Code repository for the current Linux platform.
+# @description Register the Microsoft VS Code repository for the current Linux platform.
+# @internal
 vscode::_register-repository() {
   [[ "$#" -eq 1 ]] || return 64
   if [[ "$1" == 'ubuntu' ]]; then
@@ -1452,7 +1863,16 @@ gpgkey=https://packages.microsoft.com/keys/microsoft.asc
   fi
 }
 
-### Write VS Code versions available to the current platform.
+# @description Write VS Code versions available to the current platform.
+#
+# @noargs
+# @stdout VS Code versions, one per line; on Ubuntu only builds that the installed C library can run.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported.
+# @exitcode 74 The repository index could not be downloaded.
+# @example
+#   vscode::versions | tail -n 1
 vscode::versions() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' architecture=''
@@ -1473,10 +1893,20 @@ vscode::versions() {
   esac
 }
 
-### Install VS Code from the Microsoft repository or Homebrew.
-###
-### On Ubuntu, a version is accepted only when the installed C library can run it,
-### and an omitted version selects the newest such build.
+# @description Install VS Code from the Microsoft repository or Homebrew.
+#
+# On Ubuntu, a version is accepted only when the installed C library can run it,
+# and an omitted version selects the newest such build.
+#
+# @arg $1 string Optional version from vscode::versions; on macOS only the current version. Defaults to the newest runnable one.
+# @exitcode 0 VS Code is installed.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The platform is unsupported, or the version is unavailable or cannot run here.
+# @exitcode 74 The repository or its key could not be downloaded.
+# @exitcode other The status of the package manager.
+# @example
+#   vscode::install
+#   code --version
 vscode::install() {
   [[ "$#" -le 1 ]] || return 64
   local platform=''
@@ -1495,7 +1925,8 @@ vscode::install() {
   package::_install-version code "${version}"
 }
 
-### Register Brave's official repository for the current Linux platform.
+# @description Register Brave's official repository for the current Linux platform.
+# @internal
 brave::_register-repository() {
   [[ "$#" -eq 1 ]] || return 64
   if [[ "$1" == 'ubuntu' ]]; then
@@ -1522,7 +1953,16 @@ brave::_register-repository() {
   fi
 }
 
-### Write Brave versions available to the current platform.
+# @description Write Brave versions available to the current platform.
+#
+# @noargs
+# @stdout Brave versions, one per line; on Ubuntu only builds that the installed C library can run.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported.
+# @exitcode 74 The repository index could not be downloaded.
+# @example
+#   brave::versions | tail -n 1
 brave::versions() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' architecture=''
@@ -1545,10 +1985,19 @@ brave::versions() {
   esac
 }
 
-### Install Brave from its official repository or Homebrew.
-###
-### On Ubuntu, a version is accepted only when the installed C library can run it,
-### and an omitted version selects the newest such build.
+# @description Install Brave from its official repository or Homebrew.
+#
+# On Ubuntu, a version is accepted only when the installed C library can run it,
+# and an omitted version selects the newest such build.
+#
+# @arg $1 string Optional version from brave::versions; on macOS only the current version. Defaults to the newest runnable one.
+# @exitcode 0 Brave is installed.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The platform is unsupported, or the version is unavailable or cannot run here.
+# @exitcode 74 The repository or its key could not be downloaded.
+# @exitcode other The status of the package manager.
+# @example
+#   brave::install
 brave::install() {
   [[ "$#" -le 1 ]] || return 64
   local platform=''
@@ -1566,7 +2015,8 @@ brave::install() {
   package::_install-version brave-browser "${version}"
 }
 
-### Register the Google Chrome repository for the current Linux platform.
+# @description Register the Google Chrome repository for the current Linux platform.
+# @internal
 chrome::_register-repository() {
   [[ "$#" -eq 1 ]] || return 64
   if [[ "$1" == 'ubuntu' ]]; then
@@ -1587,7 +2037,16 @@ gpgkey=https://dl.google.com/linux/linux_signing_key.pub
   fi
 }
 
-### Write Google Chrome versions available to the current platform.
+# @description Write Google Chrome versions available to the current platform.
+#
+# @noargs
+# @stdout Google Chrome versions, one per line; on Ubuntu only builds that the installed C library can run.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported.
+# @exitcode 74 The repository index could not be downloaded.
+# @example
+#   chrome::versions | tail -n 1
 chrome::versions() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' architecture=''
@@ -1610,10 +2069,19 @@ chrome::versions() {
   esac
 }
 
-### Install Google Chrome from the Google repository or Homebrew.
-###
-### On Ubuntu, a version is accepted only when the installed C library can run it,
-### and an omitted version selects the newest such build.
+# @description Install Google Chrome from the Google repository or Homebrew.
+#
+# On Ubuntu, a version is accepted only when the installed C library can run it,
+# and an omitted version selects the newest such build.
+#
+# @arg $1 string Optional version from chrome::versions; on macOS only the current version. Defaults to the newest runnable one.
+# @exitcode 0 Google Chrome is installed.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The platform is unsupported, or the version is unavailable or cannot run here.
+# @exitcode 74 The repository or its key could not be downloaded.
+# @exitcode other The status of the package manager.
+# @example
+#   chrome::install
 chrome::install() {
   [[ "$#" -le 1 ]] || return 64
   local platform=''
@@ -1632,7 +2100,8 @@ chrome::install() {
   package::_install-version google-chrome-stable "${version}"
 }
 
-### Require an Ubuntu release that Claude Desktop supports.
+# @description Require an Ubuntu release that Claude Desktop supports.
+# @internal
 claude-desktop::_require-release() {
   [[ "$#" -eq 0 ]] || return 64
   local version=''
@@ -1644,7 +2113,8 @@ claude-desktop::_require-release() {
   fi
 }
 
-### Write the Debian architecture when Claude Desktop publishes packages for it.
+# @description Write the Debian architecture when Claude Desktop publishes packages for it.
+# @internal
 claude-desktop::_architecture() {
   [[ "$#" -eq 0 ]] || return 64
   local architecture=''
@@ -1660,11 +2130,12 @@ claude-desktop::_architecture() {
   esac
 }
 
-### Register Anthropic's APT repository as the Claude Desktop documentation describes.
-###
-### The signing key must have the published fingerprint. The key and source
-### paths match the ones the claude-desktop package uses, so the package keeps
-### this source file instead of adding a second entry with another key path.
+# @description Register Anthropic's APT repository as the Claude Desktop documentation describes.
+#
+# The signing key must have the published fingerprint. The key and source
+# paths match the ones the claude-desktop package uses, so the package keeps
+# this source file instead of adding a second entry with another key path.
+# @internal
 claude-desktop::_register-repository() {
   [[ "$#" -eq 0 ]] || return 64
   local keyring='/usr/share/keyrings/claude-desktop-archive-keyring.asc'
@@ -1699,7 +2170,16 @@ claude-desktop::_register-repository() {
   package::_refresh
 }
 
-### Write Claude Desktop versions available for the current CPU.
+# @description Write Claude Desktop versions available for the current CPU.
+#
+# @noargs
+# @stdout Claude Desktop package versions for the current CPU, one per line.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not Ubuntu 22.04 or later, or the CPU is not amd64 or arm64.
+# @exitcode 74 The repository index could not be downloaded.
+# @example
+#   claude-desktop::versions
 claude-desktop::versions() {
   [[ "$#" -eq 0 ]] || return 64
   local architecture='' index_entries=''
@@ -1711,13 +2191,18 @@ claude-desktop::versions() {
   printf '%s\n' "${index_entries}" | cut -f 1 | package::_sort-versions
 }
 
-### Install Claude Desktop on Ubuntu 22.04 or later from Anthropic's APT repository.
-###
-### Later releases arrive through the system's regular APT upgrades.
-###
-### Arguments
-###
-### * VERSION - Optional package version from claude-desktop::versions.
+# @description Install Claude Desktop on Ubuntu 22.04 or later from Anthropic's APT repository.
+#
+# Later releases arrive through the system's regular APT upgrades.
+#
+# @arg $1 string Optional package version from claude-desktop::versions. Defaults to the newest one.
+# @exitcode 0 Claude Desktop is installed and its repository is registered for upgrades.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The system is not Ubuntu 22.04 or later, the CPU is unsupported, or the version is unavailable.
+# @exitcode 74 The repository key could not be downloaded.
+# @exitcode other The status of apt-get.
+# @example
+#   claude-desktop::install
 claude-desktop::install() {
   [[ "$#" -le 1 ]] || return 64
   claude-desktop::_require-release || return "$?"
@@ -1728,7 +2213,15 @@ claude-desktop::install() {
   package::_install-version claude-desktop "${1:-}"
 }
 
-### Write GIMP versions available to the current platform.
+# @description Write GIMP versions available to the current platform.
+#
+# @noargs
+# @stdout GIMP versions, one per line.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported.
+# @example
+#   gimp::versions
 gimp::versions() {
   [[ "$#" -eq 0 ]] || return 64
   local platform=''
@@ -1740,12 +2233,16 @@ gimp::versions() {
   fi
 }
 
-### Install GIMP, and on Linux the G'MIC plugin from the selected source.
-###
-### Arguments
-###
-### * VERSION - Optional GIMP version from gimp::versions.
-### * GMIC_SOURCE - os (default) or official; see gimp::gmic::install.
+# @description Install GIMP, and on Linux the G'MIC plugin from the selected source.
+#
+# @arg $1 string Optional GIMP version from gimp::versions; on macOS only the current version.
+# @arg $2 string Optional G'MIC source on Linux: os (default) or official; see gimp::gmic::install.
+# @exitcode 0 GIMP, and on Linux the G'MIC plugin, are installed.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The platform is unsupported, the version is unavailable, or the G'MIC source cannot provide the plugin.
+# @exitcode other The status of the package manager.
+# @example
+#   gimp::install '' official
 gimp::install() {
   [[ "$#" -le 2 ]] || return 64
   local platform=''
@@ -1758,7 +2255,8 @@ gimp::install() {
   gimp::gmic::install '' "${2:-os}"
 }
 
-### Write the G'MIC GIMP plugin package name for the current platform.
+# @description Write the G'MIC GIMP plugin package name for the current platform.
+# @internal
 gimp::gmic::_package-name() {
   [[ "$#" -eq 0 ]] || return 64
   local platform=''
@@ -1773,7 +2271,8 @@ gimp::gmic::_package-name() {
   esac
 }
 
-### Write version and URL pairs of the official G'MIC packages for this Ubuntu release and CPU.
+# @description Write version and URL pairs of the official G'MIC packages for this Ubuntu release and CPU.
+# @internal
 gimp::gmic::_official-entries() {
   [[ "$#" -eq 0 ]] || return 64
   local release='' codename='' architecture='' listing=''
@@ -1790,11 +2289,16 @@ gimp::gmic::_official-entries() {
     sed -E 's|^gmic_([0-9.]+)_.*$|\1\thttps://gmic.eu/files/linux/&|'
 }
 
-### Write G'MIC GIMP plugin versions available from the selected source.
-###
-### Arguments
-###
-### * SOURCE - os (default) or official.
+# @description Write G'MIC GIMP plugin versions available from the selected source.
+#
+# @arg $1 string Optional source: os (default) or official.
+# @stdout G'MIC plugin versions, one per line.
+# @exitcode 0 The versions were written.
+# @exitcode 64 The source is not os or official.
+# @exitcode 69 The platform or CPU is unsupported by the source.
+# @exitcode 74 The official package list could not be downloaded.
+# @example
+#   gimp::gmic::versions official
 gimp::gmic::versions() {
   [[ "$#" -le 1 ]] || return 64
   local source="${1:-os}" package='' official_entries=''
@@ -1811,19 +2315,24 @@ gimp::gmic::versions() {
   esac
 }
 
-### Install the G'MIC GIMP plugin.
-###
-### The os source installs the plugin package of the system package manager.
-### Ubuntu 26.04 ships GIMP 3 without one, so the official source installs the
-### G'MIC project's package for the running Ubuntu release, which contains the
-### GIMP 3 plugin. A source that cannot provide the plugin returns 69 instead
-### of switching to the other source.
-###
-### Arguments
-###
-### * VERSION - Optional version from gimp::gmic::versions for the same SOURCE.
-### * SOURCE - os (default) or official. The official source supports Ubuntu
-###   on amd64, the only CPU the G'MIC project builds packages for.
+# @description Install the G'MIC GIMP plugin.
+#
+# The os source installs the plugin package of the system package manager.
+# Ubuntu 26.04 ships GIMP 3 without one, so the official source installs the
+# G'MIC project's package for the running Ubuntu release, which contains the
+# GIMP 3 plugin. A source that cannot provide the plugin returns 69 instead
+# of switching to the other source.
+#
+# @arg $1 string Optional version from gimp::gmic::versions for the same source.
+# @arg $2 string Optional source: os (default) or official. The official source supports Ubuntu on amd64, the only CPU the G'MIC project builds packages for.
+# @stderr A message when the source cannot provide the plugin.
+# @exitcode 0 The G'MIC plugin is installed.
+# @exitcode 64 The source is not os or official.
+# @exitcode 69 The source cannot provide the plugin for this system, or the version is unavailable.
+# @exitcode 74 The official package could not be downloaded.
+# @exitcode other The status of the package manager.
+# @example
+#   gimp::gmic::install '' official
 gimp::gmic::install() {
   [[ "$#" -le 2 ]] || return 64
   local version="${1:-}" source="${2:-os}" package='' versions='' official_entries='' url=''
@@ -1852,7 +2361,8 @@ gimp::gmic::install() {
   esac
 }
 
-### Write the Microsoft Edge Debian package index URL for the current architecture.
+# @description Write the Microsoft Edge Debian package index URL for the current architecture.
+# @internal
 microsoft-edge::_index-url() {
   [[ "$#" -eq 0 ]] || return 64
   local architecture=''
@@ -1860,11 +2370,9 @@ microsoft-edge::_index-url() {
   printf 'https://packages.microsoft.com/repos/edge/dists/stable/main/binary-%s/Packages.gz\n' "${architecture}"
 }
 
-### Write the Microsoft Edge package URL for a version from the vendor package metadata.
-###
-### Arguments
-###
-### * VERSION - Package version. Defaults to the newest stable version.
+# @description Write the Microsoft Edge package URL for a version from the vendor package metadata.
+# @internal
+# @arg $1 string VERSION Package version. Defaults to the newest stable version.
 microsoft-edge::_artifact-url() {
   [[ "$#" -le 1 ]] || return 64
   package::_require-platform ubuntu || return "$?"
@@ -1883,7 +2391,16 @@ microsoft-edge::_artifact-url() {
   return 1
 }
 
-### Write Microsoft Edge versions available to the current platform.
+# @description Write Microsoft Edge versions available to the current platform.
+#
+# @noargs
+# @stdout Microsoft Edge versions, one per line; on Linux only builds for this CPU, and on Ubuntu only builds the C library can run.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform or CPU is unsupported.
+# @exitcode 74 The vendor metadata could not be downloaded.
+# @example
+#   microsoft-edge::versions | tail -n 1
 microsoft-edge::versions() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' index=''
@@ -1902,11 +2419,20 @@ microsoft-edge::versions() {
   esac
 }
 
-### Install Microsoft Edge from vendor metadata, the vendor repository, or Homebrew.
-###
-### On Linux, a version is accepted only when Microsoft publishes it for the
-### running CPU, and on Ubuntu only when the installed C library can run it.
-### Microsoft builds Edge for Linux on amd64 only, so arm64 returns 69.
+# @description Install Microsoft Edge from vendor metadata, the vendor repository, or Homebrew.
+#
+# On Linux, a version is accepted only when Microsoft publishes it for the
+# running CPU, and on Ubuntu only when the installed C library can run it.
+# Microsoft builds Edge for Linux on amd64 only, so arm64 returns 69.
+#
+# @arg $1 string Optional version from microsoft-edge::versions; on macOS only the current version. Defaults to the newest runnable one.
+# @exitcode 0 Microsoft Edge is installed.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The platform or CPU is unsupported, or the version is unavailable.
+# @exitcode 74 The package or repository could not be downloaded.
+# @exitcode other The status of the package manager.
+# @example
+#   microsoft-edge::install
 microsoft-edge::install() {
   [[ "$#" -le 1 ]] || return 64
   local platform='' url='' versions='' version="${1:-}"
@@ -1935,7 +2461,8 @@ gpgkey=https://packages.microsoft.com/keys/microsoft.asc
   esac
 }
 
-### Write the newest Command Line Tools label offered by softwareupdate.
+# @description Write the newest Command Line Tools label offered by softwareupdate.
+# @internal
 xcode::command-line-tools::_latest-label() {
   [[ "$#" -eq 0 ]] || return 64
   command::require softwareupdate || return "$?"
@@ -1946,9 +2473,21 @@ xcode::command-line-tools::_latest-label() {
   printf '%s\n' "${labels}" | awk '{print $NF "\t" $0}' | package::_sort-by-first-field | tail -n 1
 }
 
-### Update Xcode Command Line Tools without removing the installed tools.
-###
-### When softwareupdate offers no Command Line Tools update, nothing changes.
+# @description Update Xcode Command Line Tools without removing the installed tools.
+#
+# When softwareupdate offers no Command Line Tools update, nothing changes.
+#
+# @noargs
+# @stdout The package information of the updated tools.
+# @stderr A message when no update is available.
+# @exitcode 0 The tools were updated, or no update is available.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS, or softwareupdate or xcode-select is unavailable.
+# @exitcode 74 softwareupdate could not list updates, or xcode-select finds no tools after the update.
+# @exitcode other The status of softwareupdate or pkgutil.
+# @example
+#   xcode::command-line-tools::upgrade
+#   clang --version
 xcode::command-line-tools::upgrade() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform darwin || return "$?"
@@ -1965,22 +2504,37 @@ xcode::command-line-tools::upgrade() {
   pkgutil --pkg-info=com.apple.pkg.CLTools_Executables
 }
 
-### Install QMK Toolbox with Homebrew on macOS.
+# @description Install QMK Toolbox with Homebrew on macOS.
+#
+# @arg $1 string Optional QMK Toolbox version; only the current Homebrew version is accepted.
+# @exitcode 0 QMK Toolbox is installed.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The system is not macOS, or the version is not the current one.
+# @exitcode other The status of brew.
+# @example
+#   qmk::toolbox::install
 qmk::toolbox::install() {
   [[ "$#" -le 1 ]] || return 64
   package::_install-cask qmk-toolbox "${1:-}"
 }
 
-### Install the QMK CLI with the official installer and diagnose the environment.
-###
-### `qmk --version` always confirms the installation. The CLI offers
-### `qmk doctor` only after `qmk setup` has prepared the firmware tree, so the
-### diagnosis also runs when that tree exists. Warnings from the diagnosis are
-### reported without failing; errors return its status.
-###
-### Arguments
-###
-### * VERSION - QMK CLI version. Only the newest stable version from PyPI is accepted.
+# @description Install the QMK CLI with the official installer and diagnose the environment.
+#
+# `qmk --version` always confirms the installation. The CLI offers
+# `qmk doctor` only after `qmk setup` has prepared the firmware tree, so the
+# diagnosis also runs when that tree exists. Warnings from the diagnosis are
+# reported without failing; errors return its status.
+#
+# @arg $1 string Optional QMK CLI version; only the newest stable version from PyPI is accepted.
+# @stdout The output of qmk --version, and of qmk doctor when the firmware tree exists.
+# @exitcode 0 The QMK CLI is installed and starts; doctor found at most warnings.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The version is not the newest one, or sh is unavailable.
+# @exitcode 74 The installer could not be downloaded.
+# @exitcode other The status of the installer, qmk --version, or qmk doctor.
+# @example
+#   qmk::cli::install
+#   qmk setup -y
 qmk::cli::install() {
   [[ "$#" -le 1 ]] || return 64
   local directory='' status=0
@@ -2009,7 +2563,8 @@ qmk::cli::install() {
   fi
 }
 
-### Write the newest QMK CLI version published on PyPI.
+# @description Write the newest QMK CLI version published on PyPI.
+# @internal
 qmk::cli::_latest-version() {
   [[ "$#" -eq 0 ]] || return 64
   command::require perl || return "$?"
@@ -2022,7 +2577,16 @@ qmk::cli::_latest-version() {
   '
 }
 
-### Write Supabase CLI versions available to the current platform.
+# @description Write Supabase CLI versions available to the current platform.
+#
+# @noargs
+# @stdout Supabase CLI versions, one per line.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported, or Perl is missing.
+# @exitcode 74 The release list could not be downloaded.
+# @example
+#   supabase::versions | tail -n 1
 supabase::versions() {
   [[ "$#" -eq 0 ]] || return 64
   local platform=''
@@ -2034,7 +2598,17 @@ supabase::versions() {
   fi
 }
 
-### Install the Supabase CLI from its Homebrew tap or release packages.
+# @description Install the Supabase CLI from its Homebrew tap or release packages.
+#
+# @arg $1 string Optional version from supabase::versions; on macOS only the current tap version. Defaults to the newest one.
+# @exitcode 0 The Supabase CLI is installed.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 69 The platform or CPU is unsupported, or the version is unavailable.
+# @exitcode 74 The release package could not be downloaded.
+# @exitcode other The status of brew or the package manager.
+# @example
+#   supabase::install
+#   supabase --version
 supabase::install() {
   [[ "$#" -le 1 ]] || return 64
   local version="${1:-}" platform='' architecture='' url=''

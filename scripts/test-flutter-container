@@ -42,10 +42,10 @@ flutter::install
 # A new shell finds the SDK through the startup file the installer wrote.
 sdk="$(bash -c 'source "$HOME/.bashrc"; command -v flutter')"
 [[ "$sdk" == "$HOME/.local/flutter/bin/flutter" ]]
-### Write the framework version that the installed Flutter SDK reports.
-###
-### The first run after a switch downloads the matching Dart SDK and prints
-### its progress to standard output, so only the version field is read.
+# @description Write the framework version that the installed Flutter SDK reports.
+#
+# The first run after a switch downloads the matching Dart SDK and prints
+# its progress to standard output, so only the version field is read.
 flutter_version() {
   "$sdk" --version --machine 2>/dev/null | sed -n 's/.*"frameworkVersion": *"\([^"]*\)".*/\1/p'
 }

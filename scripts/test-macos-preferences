@@ -15,7 +15,7 @@ failures=0
 failed_checks=''
 mismatch=''
 
-### Run a check and record its result without stopping the remaining checks.
+# @description Run a check and record its result without stopping the remaining checks.
 check() {
   mismatch=''
   if "$@" >/dev/null; then
@@ -29,7 +29,7 @@ check() {
   fi
 }
 
-### Compare a command's output with the expected text.
+# @description Compare a command's output with the expected text.
 output_is() {
   local expected="$1" actual=''
   shift
@@ -41,7 +41,7 @@ output_is() {
   }
 }
 
-### Apply the settings that mac::setup applies before it installs anything.
+# @description Apply the settings that mac::setup applies before it installs anything.
 apply_settings() {
   check sudo::passwordless::enable
   check env::dotenv::register "${HOME}/.env"

@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
+# @file git
+# @brief Git history editing.
+# @description git::commit::edit-via-rebase starts an interactive rebase that stops at one commit, without opening an editor for the todo list.
+
 # shellcheck disable=SC2234
 
 
-### Mark exactly one requested commit for editing in a Git rebase todo file.
+# @description Mark exactly one requested commit for editing in a Git rebase todo file.
+# @internal
 git::_sequence-editor() {
   if [[ "$#" -ne 1 || -z "${BASHSTOCK_GIT_EDIT_COMMIT:-}" ]] ||
     ! [[ "${BASHSTOCK_GIT_EDIT_COMMIT}" =~ ^[0-9a-f]{40}([0-9a-f]{24})?$ ]]; then
@@ -23,12 +28,24 @@ git::_sequence-editor() {
   file::replace-text "${file}" "^(pick|p)[[:space:]]+${selected}" "edit ${selected}"
 }
 
-### Start an interactive rebase that stops at one non-merge commit for editing.
-###
-### Arguments
-###
-### * REVISION - Root or single-parent commit that is an ancestor of HEAD.
-### * DIRECTORY - Git working tree. Defaults to the current directory.
+# @description Start an interactive rebase that stops at one non-merge commit for editing.
+#
+# The todo list is prepared automatically, so Git stops at the commit without
+# opening an editor. Amend it and run git rebase --continue afterwards.
+#
+# @arg $1 string Root or single-parent commit that is an ancestor of HEAD.
+# @arg $2 string Optional Git working tree. Defaults to the current directory.
+# @exitcode 0 The rebase stopped at the commit.
+# @exitcode 64 The revision is empty, starts with a dash, or the argument count is wrong.
+# @exitcode 65 The revision is not a commit, not an ancestor of HEAD, or a merge commit.
+# @exitcode 66 The directory is not a Git working tree.
+# @exitcode 69 Git is unavailable.
+# @exitcode 75 Git could not read the commit's parents.
+# @exitcode other The status of git rebase.
+# @example
+#   git::commit::edit-via-rebase HEAD~3
+#   git commit --amend --no-edit --author 'Alice <alice@example.com>'
+#   git rebase --continue
 git::commit::edit-via-rebase() {
   if [[ "$#" -lt 1 || "$#" -gt 2 ]] ||
     ! string::_require-non-empty-line "$1" ||

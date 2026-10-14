@@ -1,7 +1,22 @@
 #!/usr/bin/env bash
+# @file android
+# @brief Android SDK and command-line tool installation.
+# @description The SDK directory is ANDROID_HOME, then ANDROID_SDK_ROOT, then the Android Studio default.
+
 # shellcheck disable=SC2119,SC2120
 
-### Write the SDK directory selected by Android Studio or the caller.
+# @description Write the SDK directory selected by Android Studio or the caller.
+#
+# ANDROID_HOME wins, then ANDROID_SDK_ROOT, then Android Studio's default:
+# ~/Library/Android/sdk on macOS and ~/Android/Sdk on Linux.
+#
+# @noargs
+# @stdout The SDK directory, which may not exist yet.
+# @stderr A message when ANDROID_HOME and ANDROID_SDK_ROOT differ.
+# @exitcode 0 The directory was written.
+# @exitcode 64 An argument was given, or ANDROID_HOME and ANDROID_SDK_ROOT name different SDKs.
+# @example
+#   ls "$(android::sdk::directory)/platforms"
 android::sdk::directory() {
   [[ "$#" -eq 0 ]] || return 64
   if [[ -n "${ANDROID_HOME:-}" && -n "${ANDROID_SDK_ROOT:-}" &&
@@ -20,7 +35,8 @@ android::sdk::directory() {
   fi
 }
 
-### Write the official Android CLI artifact path for this OS and CPU.
+# @description Write the official Android CLI artifact path for this OS and CPU.
+# @internal
 android::_cli-artifact() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' architecture=''
@@ -34,7 +50,8 @@ android::_cli-artifact() {
   esac
 }
 
-### Write the usable Android CLI command, preferring this user's local installation.
+# @description Write the usable Android CLI command, preferring this user's local installation.
+# @internal
 android::_cli-command() {
   [[ "$#" -eq 0 ]] || return 64
   if [[ -x "${HOME}/.local/bin/android" ]]; then
@@ -44,11 +61,19 @@ android::_cli-command() {
   fi
 }
 
-### Install the official Android CLI without replacing a working copy on failure.
-###
-### Arguments
-###
-### * VERSION - Optional complete Android CLI version.
+# @description Install the official Android CLI without replacing a working copy on failure.
+#
+# The CLI is downloaded to a temporary directory, started once to check its
+# version, and only then moved to ~/.local/bin/android.
+#
+# @arg $1 string Optional complete Android CLI version, such as 1.0.16500706. Defaults to the latest.
+# @exitcode 0 The CLI was installed and ~/.local/bin is on PATH.
+# @exitcode 64 The version is not three dot-separated numbers.
+# @exitcode 69 Google publishes no CLI for this OS and CPU, or the downloaded CLI does not start or has another version.
+# @exitcode 74 The download or installation failed.
+# @example
+#   android::cli::install
+#   android --version
 android::cli::install() {
   [[ "$#" -le 1 ]] || return 64
   local version="${1:-}" artifact='' temporary='' actual='' path=''
@@ -71,12 +96,18 @@ android::cli::install() {
   env::add-path "${HOME}/.local/bin"
 }
 
-### Create and configure the selected SDK directory and Android CLI.
-###
-### Arguments
-###
-### * DIRECTORY - Optional SDK directory.
-### * CLI_VERSION - Optional complete Android CLI version.
+# @description Create and configure the selected SDK directory and Android CLI.
+#
+# ANDROID_HOME is written to the Bash and Zsh startup files and the current process.
+#
+# @arg $1 string Optional absolute SDK directory. Defaults to android::sdk::directory.
+# @arg $2 string Optional complete Android CLI version. Defaults to the latest.
+# @exitcode 0 The SDK directory and CLI are ready.
+# @exitcode 64 The directory is not absolute or differs from ANDROID_HOME or ANDROID_SDK_ROOT.
+# @exitcode 69 The Android CLI is unavailable for this OS and CPU.
+# @exitcode 74 The directory could not be created or the CLI could not be installed.
+# @example
+#   android::sdk::install "${HOME}/Android/Sdk"
 android::sdk::install() {
   [[ "$#" -le 2 ]] || return 64
   local directory='' selected=''
@@ -90,7 +121,8 @@ android::sdk::install() {
   env::set-variable ANDROID_HOME "${directory}"
 }
 
-### Install one stable SDK package, accepting its license from standard input.
+# @description Install one stable SDK package, accepting its license from standard input.
+# @internal
 android::_sdk-install() {
   [[ "$#" -eq 2 && -n "$1" ]] || return 64
   local package="$1" revision="$2" command='' directory='' specification=''
@@ -112,7 +144,18 @@ android::_sdk-install() {
   env::set-variable ANDROID_HOME "${directory}"
 }
 
-### Install Android Platform Tools and add adb and fastboot to PATH.
+# @description Install Android Platform Tools and add adb and fastboot to PATH.
+#
+# The SDK license is accepted automatically.
+#
+# @arg $1 string Optional package revision, such as 36.0.0. Defaults to the latest stable one.
+# @exitcode 0 adb and fastboot are installed and on PATH.
+# @exitcode 64 The revision is malformed.
+# @exitcode 69 The Android CLI is unavailable, or adb or fastboot is missing after installation.
+# @exitcode other The status of the Android CLI.
+# @example
+#   android::platform-tools::install
+#   adb devices
 android::platform-tools::install() {
   [[ "$#" -le 1 ]] || return 64
   android::_sdk-install platform-tools "${1:-}" || return "$?"
@@ -123,7 +166,16 @@ android::platform-tools::install() {
   env::add-path "${directory}/platform-tools"
 }
 
-### Install an Android SDK Platform and verify its android.jar file.
+# @description Install an Android SDK Platform and verify its android.jar file.
+#
+# @arg $1 integer Android API level, such as 35.
+# @arg $2 string Optional package revision. Defaults to the latest stable one.
+# @exitcode 0 The platform is installed.
+# @exitcode 64 The API level or revision is malformed.
+# @exitcode 69 The Android CLI is unavailable, or android.jar is missing after installation.
+# @exitcode other The status of the Android CLI.
+# @example
+#   android::sdk-platform::install 35
 android::sdk-platform::install() {
   [[ "$#" -ge 1 && "$#" -le 2 && "$1" =~ ^[0-9]+$ ]] || return 64
   android::_sdk-install "platforms/android-$1" "${2:-}" || return "$?"
@@ -132,7 +184,17 @@ android::sdk-platform::install() {
   [[ -s "${directory}/platforms/android-$1/android.jar" ]] || return 69
 }
 
-### Install one stable Build Tools version and add its executables to PATH.
+# @description Install one stable Build Tools version and add its executables to PATH.
+#
+# @arg $1 string Optional Build Tools version, such as 35.0.0. Defaults to the latest stable one.
+# @arg $2 string Optional package revision. Defaults to the version's latest revision.
+# @exitcode 0 Build Tools are installed and on PATH.
+# @exitcode 64 The version or revision is malformed.
+# @exitcode 69 The Android CLI is unavailable, or aapt2 is missing after installation.
+# @exitcode other The status of the Android CLI.
+# @example
+#   android::build-tools::install 35.0.0
+#   aapt2 version
 android::build-tools::install() {
   [[ "$#" -le 2 ]] || return 64
   local version="${1:-}" directory=''
@@ -144,11 +206,20 @@ android::build-tools::install() {
   env::add-path "${directory}/build-tools/${version}"
 }
 
-### Install the Android Emulator into the selected SDK.
-###
-### On Linux, the system libraries that the emulator and its bundled libraries
-### load, including libX11-xcb that it opens at run time, are installed first.
-### Current emulators need glibc 2.30 or later, so Ubuntu 18.04 returns 69.
+# @description Install the Android Emulator into the selected SDK.
+#
+# On Linux, the system libraries that the emulator and its bundled libraries
+# load, including libX11-xcb that it opens at run time, are installed first.
+# Current emulators need glibc 2.30 or later, so Ubuntu 18.04 returns 69.
+#
+# @arg $1 string Optional package revision. Defaults to the latest stable one.
+# @stderr A message when the installed emulator does not start.
+# @exitcode 0 The emulator is installed and starts.
+# @exitcode 64 The revision is malformed.
+# @exitcode 69 The Android CLI is unavailable for this OS and CPU, or the emulator does not start.
+# @exitcode other The status of the package manager or the Android CLI.
+# @example
+#   android::emulator::install
 android::emulator::install() {
   [[ "$#" -le 1 ]] || return 64
   local platform='' directory=''
@@ -173,7 +244,16 @@ android::emulator::install() {
   fi
 }
 
-### Install SDK Command-line Tools and verify sdkmanager and avdmanager.
+# @description Install SDK Command-line Tools and verify sdkmanager and avdmanager.
+#
+# @arg $1 string Optional package revision. Defaults to the latest stable one.
+# @exitcode 0 sdkmanager and avdmanager are installed and on PATH.
+# @exitcode 64 The revision is malformed.
+# @exitcode 69 The Android CLI is unavailable, or a tool is missing after installation.
+# @exitcode other The status of the Android CLI.
+# @example
+#   android::command-line-tools::install
+#   avdmanager list device -c
 android::command-line-tools::install() {
   [[ "$#" -le 1 ]] || return 64
   android::_sdk-install cmdline-tools/latest "${1:-}" || return "$?"

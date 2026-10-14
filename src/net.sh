@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
+# @file net
+# @brief IP address checks and network interface configuration.
+# @description Static addresses are written to the Netplan configuration of Ubuntu.
 
-### Return success when a value is an IPv4 address.
+# @description Return success when a value is an IPv4 address.
+# @internal
 net::_is-ipv4() {
   if [[ "$#" -ne 1 || ! "$1" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
     return 1
@@ -16,7 +20,8 @@ net::_is-ipv4() {
   done
 }
 
-### Return success when a comma-separated value contains IPv4 addresses.
+# @description Return success when a comma-separated value contains IPv4 addresses.
+# @internal
 net::_is-ipv4-list() {
   if [[ "$#" -ne 1 || -z "$1" ]]; then
     return 1
@@ -31,7 +36,8 @@ net::_is-ipv4-list() {
   done
 }
 
-### Write a Netplan document for one static IPv4 interface.
+# @description Write a Netplan document for one static IPv4 interface.
+# @internal
 net::_render-static-ipv4() {
   if [[ "$#" -ne 6 ]]; then
     return 64
@@ -74,19 +80,22 @@ net::_render-static-ipv4() {
   printf '        addresses: [%s]\n' "${dns_yaml}"
 }
 
-### Write the first default-route interface.
+# @description Write the first default-route interface.
+# @internal
 net::_default-interface() {
   ip -o route show to default 2>/dev/null |
     awk 'NR == 1 { for (i = 1; i <= NF; i++) if ($i == "dev") { print $(i + 1); exit } }'
 }
 
-### Write the first default-route gateway.
+# @description Write the first default-route gateway.
+# @internal
 net::_default-gateway() {
   ip -o route show to default 2>/dev/null |
     awk 'NR == 1 { for (i = 1; i <= NF; i++) if ($i == "via") { print $(i + 1); exit } }'
 }
 
-### Write the primary global IPv4 address and prefix length for an interface.
+# @description Write the primary global IPv4 address and prefix length for an interface.
+# @internal
 net::_interface-ipv4-cidr() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -95,7 +104,8 @@ net::_interface-ipv4-cidr() {
     awk 'NR == 1 { print $4; exit }'
 }
 
-### Write the only Netplan file under /etc/netplan.
+# @description Write the only Netplan file under /etc/netplan.
+# @internal
 net::_only-netplan-file() {
   local path=''
   local paths=()
@@ -107,7 +117,8 @@ net::_only-netplan-file() {
   printf '%s\n' "${paths[0]}"
 }
 
-### Require an existing regular Netplan file directly under /etc/netplan.
+# @description Require an existing regular Netplan file directly under /etc/netplan.
+# @internal
 net::_require-netplan-file() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -126,7 +137,8 @@ net::_require-netplan-file() {
   esac
 }
 
-### Install one validated Netplan file, apply it, and set the host name.
+# @description Install one validated Netplan file, apply it, and set the host name.
+# @internal
 net::_install-static-ipv4() {
   if [[ "$#" -ne 3 ]]; then
     return 64
@@ -153,7 +165,8 @@ net::_install-static-ipv4() {
   fi
 }
 
-### List the named arguments and value candidates for net::ip::set-static.
+# @description List the named arguments and value candidates for net::ip::set-static.
+# @internal
 net::ip::_set-static-args() {
   case "${1-}" in
     --renderer)
@@ -167,18 +180,29 @@ net::ip::_set-static-args() {
   esac
 }
 
-### Replace one Ubuntu Netplan file with a static IPv4 configuration.
-###
-### Options
-###
-### * --interface INTERFACE - Network interface. Defaults to the first default route.
-### * --address ADDRESS - IPv4 address. Defaults to the interface's primary address.
-### * --prefix-length PREFIX_LENGTH - IPv4 prefix length. Defaults to the current value.
-### * --gateway GATEWAY - IPv4 gateway. Defaults to the first default route.
-### * --dns DNS_SERVERS - Comma-separated IPv4 DNS servers. Defaults to 1.1.1.1,8.8.8.8.
-### * --host-name HOST_NAME - Host name. Defaults to the current host name.
-### * --file FILE - Netplan file. Defaults to the only /etc/netplan YAML file.
-### * --renderer RENDERER - networkd or NetworkManager. Defaults to Netplan's selection.
+# @description Replace one Ubuntu Netplan file with a static IPv4 configuration.
+#
+# Values that are not given come from the current configuration. The new file
+# is generated and checked in a temporary root before it replaces the old one,
+# and the host name is set as well.
+#
+# @option --interface <INTERFACE> Network interface. Defaults to the first default route.
+# @option --address <ADDRESS> IPv4 address. Defaults to the interface's primary address.
+# @option --prefix-length <PREFIX_LENGTH> IPv4 prefix length. Defaults to the current value.
+# @option --gateway <GATEWAY> IPv4 gateway. Defaults to the first default route.
+# @option --dns <DNS_SERVERS> Comma-separated IPv4 DNS servers. Defaults to 1.1.1.1,8.8.8.8.
+# @option --host-name <HOST_NAME> Host name. Defaults to the current host name.
+# @option --file <FILE> Netplan file. Defaults to the only /etc/netplan YAML file.
+# @option --renderer <RENDERER> networkd or NetworkManager. Defaults to Netplan's selection.
+# @exitcode 0 The configuration was applied.
+# @exitcode 64 An option or value is invalid.
+# @exitcode 65 Netplan rejected the generated configuration.
+# @exitcode 69 The system is not Ubuntu, a required command is missing, or a default cannot be found.
+# @exitcode 74 A temporary file could not be written.
+# @exitcode other The status of netplan or hostnamectl.
+# @example
+#   net::ip::set-static --interface eth0 --address 192.168.1.20 --prefix-length 24 \
+#     --gateway 192.168.1.1 --dns 192.168.1.1,1.1.1.1
 net::ip::set-static() {
   local interface=''
   local address=''

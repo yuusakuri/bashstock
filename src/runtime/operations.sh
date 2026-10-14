@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-### Execute this library in a separate Bash process with root privileges.
-### Arguments are an operation name followed by its literal argument values.
+# @description Execute this library in a separate Bash process with root privileges.
+#
+# Arguments are an operation name followed by its literal argument values.
+# @internal
 bashstock::_run-as-root() {
   if [[ "$#" -lt 1 ]]; then
     return 64
@@ -12,7 +14,8 @@ bashstock::_run-as-root() {
   command::run-as-root "${BASH}" -- "${_BASHSTOCK_FILE}" --internal-root "$@"
 }
 
-### Dispatch a fixed operation name and validate inputs in the executing process.
+# @description Dispatch a fixed operation name and validate inputs in the executing process.
+# @internal
 bashstock::_dispatch-root() {
   if [[ "$#" -lt 1 ]]; then
     return 64
@@ -61,7 +64,8 @@ bashstock::_dispatch-root() {
   esac
 }
 
-### Accept only the internal execution mode and require root privileges.
+# @description Accept only the internal execution mode and require root privileges.
+# @internal
 bashstock::_main() {
   if [[ "$#" -ge 1 && "$1" == '--internal-git-sequence-editor' ]]; then
     shift

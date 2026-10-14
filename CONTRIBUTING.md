@@ -10,14 +10,15 @@
 | ツール | 用途 |
 | --- | --- |
 | Bash 3.2以上 | ビルドスクリプト、検査スクリプト、テスト、配布物を実行します。 |
-| Git | ソース、履歴、Bats-coreサブモジュールを取得します。 |
+| Git | ソース、履歴、Bats-coreとshdocのサブモジュールを取得します。 |
 | just 1.58.0 | 開発コマンドを実行します。 |
 | ShellCheck | Bashソースを静的解析します。 |
+| GNU Awk（`gawk`） | shdocで関数リファレンスを生成します。 |
 | Perl、`Time::HiRes`、`POSIX`、`JSON::PP` | 時刻処理とJSON処理を含むテストを実行します。 |
 
 ## セットアップ
 
-リポジトリを取得し、Bats-coreサブモジュールを初期化します。
+リポジトリを取得し、Bats-coreとshdocのサブモジュールを初期化します。
 
 ```bash
 git clone https://github.com/yuusakuri/bashstock.git
@@ -32,7 +33,8 @@ git submodule update --init --recursive
 | コマンド | 実行内容 |
 | --- | --- |
 | `just build` | `src/`の実装と`LICENSE`から単一の配布ファイル`dist/bashstock.sh`を生成し、構文を検査します。 |
-| `just lint` | ソースと配布ファイルのBash構文、ShellCheck、Docコメント、差分の空白エラーを検査します。 |
+| `just docs` | `src/`のDocコメントから`docs/reference/functions.md`と`docs/reference/modules/`を生成します。 |
+| `just lint` | ソースと配布ファイルのBash構文、ShellCheck、Docコメント、生成済みリファレンスとの差分、差分の空白エラーを検査します。 |
 | `just test` | 配布物を生成してからBatsテストを実行します。 |
 | `just verify` | 静的検査、配布物の生成、全テストを順に実行します。 |
 

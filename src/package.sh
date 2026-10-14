@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
+# @file package
+# @brief Package manager access shared by the installers.
+# @description The module defines internal functions for apt, dnf, and Homebrew that the installers share.
+
 # shellcheck disable=SC2119,SC2120
 
-### Write the platform that package operations support: darwin, ubuntu, or fedora.
+# @description Write the platform that package operations support: darwin, ubuntu, or fedora.
+# @internal
 package::_platform() {
   [[ "$#" -eq 0 ]] || return 64
   local platform=''
@@ -17,7 +22,8 @@ package::_platform() {
   esac
 }
 
-### Require the current platform to be one of the given identifiers.
+# @description Require the current platform to be one of the given identifiers.
+# @internal
 package::_require-platform() {
   [[ "$#" -ge 1 ]] || return 64
   local platform='' candidate=''
@@ -29,7 +35,8 @@ package::_require-platform() {
   return 69
 }
 
-### Test whether a version is a stable release rather than a preview.
+# @description Test whether a version is a stable release rather than a preview.
+# @internal
 package::_is-stable-version() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local lower=''
@@ -37,7 +44,8 @@ package::_is-stable-version() {
   [[ ! "${lower}" =~ (alpha|beta|preview|nightly|canary|snapshot|dev|[0-9.]rc|-rc|~rc) ]]
 }
 
-### Read versions from standard input and write unique values in ascending version order.
+# @description Read versions from standard input and write unique values in ascending version order.
+# @internal
 package::_sort-versions() {
   [[ "$#" -eq 0 ]] || return 64
   command::require perl || return "$?"
@@ -65,7 +73,8 @@ package::_sort-versions() {
   '
 }
 
-### Read versions from standard input and write stable values in ascending version order.
+# @description Read versions from standard input and write stable values in ascending version order.
+# @internal
 package::_sort-stable-versions() {
   [[ "$#" -eq 0 ]] || return 64
   local version=''
@@ -77,7 +86,8 @@ package::_sort-stable-versions() {
   done | package::_sort-versions
 }
 
-### Read versions from standard input and write the newest stable value.
+# @description Read versions from standard input and write the newest stable value.
+# @internal
 package::_latest-stable-version() {
   [[ "$#" -eq 0 ]] || return 64
   local versions=''
@@ -86,13 +96,11 @@ package::_latest-stable-version() {
   printf '%s\n' "${versions##*$'\n'}"
 }
 
-### Write the requested version when the list offers it, or the newest stable listed version.
-###
-### Arguments
-###
-### * VERSIONS - Newline-separated versions that can be installed on this system.
-### * VERSION - Requested version, or an empty value for the newest stable version.
-### * NAME - Product name used in diagnostics.
+# @description Write the requested version when the list offers it, or the newest stable listed version.
+# @internal
+# @arg $1 string VERSIONS Newline-separated versions that can be installed on this system.
+# @arg $2 string VERSION Requested version, or an empty value for the newest stable version.
+# @arg $3 string NAME Product name used in diagnostics.
 package::_select-listed-version() {
   [[ "$#" -eq 3 && -n "$3" ]] || return 64
   if [[ -z "$2" ]]; then
@@ -108,21 +116,23 @@ package::_select-listed-version() {
   fi
 }
 
-### Create a private temporary directory and write its path.
+# @description Create a private temporary directory and write its path.
+# @internal
 package::_temporary-directory() {
   [[ "$#" -eq 0 ]] || return 64
   command::require mktemp || return "$?"
   mktemp -d "${TMPDIR:-/tmp}/bashstock.XXXXXX" 2>/dev/null || return 74
 }
 
-### Run curl for one HTTPS request, retrying network failures up to three times.
-###
-### A transfer slower than 1 KiB/s for 60 seconds is aborted and retried, so a
-### stalled connection does not hang the caller. curl itself retries timeouts
-### and transient HTTP statuses such as 502 and 429; any other HTTP error status
-### (curl exit 22) is final, while dropped connections are attempted again. Requests to api.github.com carry GITHUB_TOKEN when it is
-### set, which raises GitHub's rate limit for clients that share an address;
-### the token goes to curl on standard input, never in its arguments.
+# @description Run curl for one HTTPS request, retrying network failures up to three times.
+#
+# A transfer slower than 1 KiB/s for 60 seconds is aborted and retried, so a
+# stalled connection does not hang the caller. curl itself retries timeouts
+# and transient HTTP statuses such as 502 and 429; any other HTTP error status
+# (curl exit 22) is final, while dropped connections are attempted again. Requests to api.github.com carry GITHUB_TOKEN when it is
+# set, which raises GitHub's rate limit for clients that share an address;
+# the token goes to curl on standard input, never in its arguments.
+# @internal
 package::_curl() {
   [[ "$#" -ge 1 ]] || return 64
   local url="${!#}" attempt=1 status=0 body=''
@@ -148,14 +158,16 @@ package::_curl() {
   done
 }
 
-### Write the body of one HTTPS URL to standard output.
+# @description Write the body of one HTTPS URL to standard output.
+# @internal
 package::_fetch() {
   [[ "$#" -eq 1 && "$1" == https://* ]] || return 64
   command::require curl || return "$?"
   package::_curl "$1" || return 74
 }
 
-### Download one HTTPS URL to a nonempty file.
+# @description Download one HTTPS URL to a nonempty file.
+# @internal
 package::_download() {
   [[ "$#" -eq 2 && "$1" == https://* && -n "$2" ]] || return 64
   command::require curl || return "$?"
@@ -163,21 +175,24 @@ package::_download() {
   [[ -f "$2" && -s "$2" ]] || return 74
 }
 
-### Write the Debian architecture name of the current system.
+# @description Write the Debian architecture name of the current system.
+# @internal
 package::_deb-architecture() {
   [[ "$#" -eq 0 ]] || return 64
   command::require dpkg || return "$?"
   dpkg --print-architecture || return 74
 }
 
-### Write the RPM base architecture of the current system.
+# @description Write the RPM base architecture of the current system.
+# @internal
 package::_rpm-architecture() {
   [[ "$#" -eq 0 ]] || return 64
   command::require uname || return "$?"
   uname -m || return 74
 }
 
-### Write available versions of a Homebrew formula and its versioned formulae.
+# @description Write available versions of a Homebrew formula and its versioned formulae.
+# @internal
 package::_brew-formula-versions() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   command::require brew || return "$?"
@@ -196,7 +211,8 @@ package::_brew-formula-versions() {
   '
 }
 
-### Write the stable version of a Homebrew formula.
+# @description Write the stable version of a Homebrew formula.
+# @internal
 package::_brew-formula-stable-version() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   command::require brew || return "$?"
@@ -211,7 +227,8 @@ package::_brew-formula-stable-version() {
   '
 }
 
-### Write the version of a Homebrew cask.
+# @description Write the version of a Homebrew cask.
+# @internal
 package::_brew-cask-version() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   command::require brew || return "$?"
@@ -228,9 +245,10 @@ package::_brew-cask-version() {
   '
 }
 
-### Write available versions of one system package in ascending version order.
-###
-### macOS uses a Homebrew formula, Ubuntu uses APT, and Fedora uses DNF.
+# @description Write available versions of one system package in ascending version order.
+#
+# macOS uses a Homebrew formula, Ubuntu uses APT, and Fedora uses DNF.
+# @internal
 package::_versions() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local platform=''
@@ -257,7 +275,8 @@ package::_versions() {
   esac
 }
 
-### Write the newest stable version of one system package.
+# @description Write the newest stable version of one system package.
+# @internal
 package::_latest-version() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local versions=''
@@ -265,7 +284,8 @@ package::_latest-version() {
   printf '%s\n' "${versions}" | package::_latest-stable-version
 }
 
-### Refresh package indexes after changing package sources.
+# @description Refresh package indexes after changing package sources.
+# @internal
 package::_refresh() {
   [[ "$#" -eq 0 ]] || return 64
   local platform=''
@@ -277,11 +297,12 @@ package::_refresh() {
   esac
 }
 
-### Install system packages, each written as NAME or NAME=VERSION.
-###
-### A Homebrew version that differs from the stable formula version selects
-### the versioned formula NAME@VERSION.
-### APT permits downgrades only when a version is explicitly requested.
+# @description Install system packages, each written as NAME or NAME=VERSION.
+#
+# A Homebrew version that differs from the stable formula version selects
+# the versioned formula NAME@VERSION.
+# APT permits downgrades only when a version is explicitly requested.
+# @internal
 package::_install() {
   [[ "$#" -ge 1 ]] || return 64
   local platform='' specification='' name='' version='' stable=''
@@ -325,7 +346,8 @@ package::_install() {
   esac
 }
 
-### Install one system package whose optional version is selected by the caller.
+# @description Install one system package whose optional version is selected by the caller.
+# @internal
 package::_install-version() {
   [[ "$#" -ge 1 && "$#" -le 2 && -n "$1" ]] || return 64
   if [[ -n "${2:-}" ]]; then
@@ -335,7 +357,8 @@ package::_install-version() {
   fi
 }
 
-### Install a Homebrew cask, accepting only its current version when one is given.
+# @description Install a Homebrew cask, accepting only its current version when one is given.
+# @internal
 package::_install-cask() {
   [[ "$#" -ge 1 && "$#" -le 2 && "$1" =~ ^[A-Za-z0-9][A-Za-z0-9._/@-]*$ ]] || return 64
   package::_require-platform darwin || return "$?"
@@ -351,14 +374,16 @@ package::_install-cask() {
   brew install --cask "$1"
 }
 
-### Write versions of a Homebrew cask.
+# @description Write versions of a Homebrew cask.
+# @internal
 package::_cask-versions() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   package::_require-platform darwin || return "$?"
   package::_brew-cask-version "$1"
 }
 
-### Write stable release versions of a GitHub repository without a leading v.
+# @description Write stable release versions of a GitHub repository without a leading v.
+# @internal
 package::_github-release-versions() {
   [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || return 64
   command::require perl || return "$?"
@@ -378,7 +403,8 @@ package::_github-release-versions() {
   printf '%s\n' "${versions}" | package::_sort-stable-versions
 }
 
-### Write the download URL of a GitHub release asset whose name matches a Perl expression.
+# @description Write the download URL of a GitHub release asset whose name matches a Perl expression.
+# @internal
 package::_github-release-asset-url() {
   [[ "$#" -eq 3 && "$1" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ && -n "$2" && -n "$3" ]] || return 64
   command::require perl || return "$?"
@@ -402,7 +428,8 @@ package::_github-release-asset-url() {
   ' "$2" "$3"
 }
 
-### Download an APT Packages index to a file, decompressing a .gz index.
+# @description Download an APT Packages index to a file, decompressing a .gz index.
+# @internal
 package::_deb-index-download() {
   [[ "$#" -eq 2 && "$1" == https://* && -n "$2" ]] || return 64
   if [[ "$1" != *.gz ]]; then
@@ -414,7 +441,8 @@ package::_deb-index-download() {
   gzip -dc -- "$2.gz" >"$2" || return 74
 }
 
-### Write VERSION and FILENAME pairs of one package from an APT Packages index URL.
+# @description Write VERSION and FILENAME pairs of one package from an APT Packages index URL.
+# @internal
 package::_deb-index-entries() {
   [[ "$#" -eq 2 && "$1" == https://* && -n "$2" ]] || return 64
   command::require perl || return "$?"
@@ -437,11 +465,12 @@ package::_deb-index-entries() {
   return "${status}"
 }
 
-### Write versions of one package from an APT Packages index that the installed C library can run.
-###
-### A version is kept when every libc6 version its Depends and Pre-Depends
-### require is satisfied by the installed libc6, so an old release is offered
-### the newest build it can start instead of one that fails to install.
+# @description Write versions of one package from an APT Packages index that the installed C library can run.
+#
+# A version is kept when every libc6 version its Depends and Pre-Depends
+# require is satisfied by the installed libc6, so an old release is offered
+# the newest build it can start instead of one that fails to install.
+# @internal
 package::_deb-runnable-versions() {
   [[ "$#" -eq 2 && "$1" == https://* && -n "$2" ]] || return 64
   command::require perl || return "$?"
@@ -488,10 +517,11 @@ package::_deb-runnable-versions() {
   done <<<"${requirement_lines}" | package::_sort-versions
 }
 
-### Write versions of one package from an RPM repository without registering it.
-###
-### Only builds for the running CPU are listed, because a repository such as
-### VS Code's gives each architecture its own release number.
+# @description Write versions of one package from an RPM repository without registering it.
+#
+# Only builds for the running CPU are listed, because a repository such as
+# VS Code's gives each architecture its own release number.
+# @internal
 package::_rpm-repository-versions() {
   [[ "$#" -eq 2 && "$1" == https://* && -n "$2" ]] || return 64
   command::require dnf || return "$?"
@@ -502,16 +532,14 @@ package::_rpm-repository-versions() {
   printf '%s\n' "${versions}" | package::_sort-versions
 }
 
-### Register an APT repository with a dedicated key and a deb822 source file.
-###
-### Arguments
-###
-### * NAME - File name stem for the key and source files.
-### * KEY_URL - HTTPS URL of the armored signing key.
-### * URI - Repository URI.
-### * SUITE - Suite name, or ./ for a flat repository.
-### * COMPONENTS - Space-separated components, or an empty value for a flat repository.
-### * ARCHITECTURE - Optional architecture restriction.
+# @description Register an APT repository with a dedicated key and a deb822 source file.
+# @internal
+# @arg $1 string NAME File name stem for the key and source files.
+# @arg $2 string KEY_URL HTTPS URL of the armored signing key.
+# @arg $3 string URI Repository URI.
+# @arg $4 string SUITE Suite name, or ./ for a flat repository.
+# @arg $5 string COMPONENTS Space-separated components, or an empty value for a flat repository.
+# @arg $6 string ARCHITECTURE Optional architecture restriction.
 package::_apt-register-repository() {
   [[ "$#" -ge 5 && "$#" -le 6 && "$1" =~ ^[a-z0-9][a-z0-9.-]*$ && "$2" == https://* && "$3" == https://* && -n "$4" ]] || return 64
   package::_require-platform ubuntu || return "$?"
@@ -536,7 +564,8 @@ package::_apt-register-repository() {
   package::_refresh
 }
 
-### Register a DNF repository by writing one repository file.
+# @description Register a DNF repository by writing one repository file.
+# @internal
 package::_dnf-register-repository() {
   [[ "$#" -eq 2 && "$1" =~ ^[a-z0-9][a-z0-9.-]*$ && -n "$2" ]] || return 64
   package::_require-platform fedora || return "$?"
@@ -544,14 +573,16 @@ package::_dnf-register-repository() {
   package::_refresh
 }
 
-### Enable and start one systemd service.
+# @description Enable and start one systemd service.
+# @internal
 package::_enable-service() {
   [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9@._-]+$ ]] || return 64
   command::require systemctl || return "$?"
   command::run-as-root systemctl enable --now "$1"
 }
 
-### Add the current user to a group through administrator execution.
+# @description Add the current user to a group through administrator execution.
+# @internal
 package::_add-current-user-to-group() {
   [[ "$#" -eq 1 && "$1" =~ ^[a-z_][a-z0-9_-]*$ ]] || return 64
   local user=''

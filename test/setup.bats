@@ -6,7 +6,7 @@ bats_require_minimum_version 1.5.0
 # These tests replace only external boundaries: external commands, the
 # platform provider, administrator execution, and system file writes.
 
-### Select the operating-system provider and release seen by the library.
+# @description Select the operating-system provider and release seen by the library.
 use_platform() {
   PLATFORM="$1"
   OS_VERSION="${2:-}"
@@ -27,7 +27,7 @@ use_platform() {
   }
 }
 
-### Record administrator commands instead of running them.
+# @description Record administrator commands instead of running them.
 record_root_commands() {
   ROOT_LOG="${BATS_TEST_TMPDIR}/root.log"
   : >"${ROOT_LOG}"
@@ -35,7 +35,7 @@ record_root_commands() {
   command::run-as-root() { printf '%s\n' "$*" >>"${ROOT_LOG}"; }
 }
 
-### Redirect system file writes below a temporary root directory.
+# @description Redirect system file writes below a temporary root directory.
 use_fake_root() {
   FAKE_ROOT="${BATS_TEST_TMPDIR}/root"
   mkdir -p "${FAKE_ROOT}"
@@ -46,7 +46,7 @@ use_fake_root() {
   }
 }
 
-### Serve downloads with curl: -o writes CURL_BODY, and -I succeeds unless the URL contains CURL_MISSING.
+# @description Serve downloads with curl: -o writes CURL_BODY, and -I succeeds unless the URL contains CURL_MISSING.
 use_fake_curl() {
   CURL_BODY="${CURL_BODY:-body}"
   CURL_MISSING="${CURL_MISSING:-}"
@@ -543,7 +543,7 @@ use_fake_curl() {
   [ "${status}" -eq 64 ]
 }
 
-### Keep GSettings values in files below GSETTINGS_STORE.
+# @description Keep GSettings values in files below GSETTINGS_STORE.
 use_fake_gsettings() {
   GSETTINGS_STORE="${BATS_TEST_TMPDIR}/gsettings"
   mkdir -p "${GSETTINGS_STORE}"
@@ -558,7 +558,7 @@ use_fake_gsettings() {
   }
 }
 
-### Write one stored GSettings value.
+# @description Write one stored GSettings value.
 gsettings_value() {
   gsettings get "$1" "$2"
 }
@@ -921,7 +921,7 @@ write com.apple.dock orientation -string bottom" ]
   unset ANDROID_SERIAL
 }
 
-### Run administrator commands below FAKE_ROOT and record them; sudo reports SUDO_RESULT.
+# @description Run administrator commands below FAKE_ROOT and record them; sudo reports SUDO_RESULT.
 use_fake_sudoers() {
   FAKE_ROOT="${BATS_TEST_TMPDIR}/root"
   ROOT_LOG="${BATS_TEST_TMPDIR}/root.log"

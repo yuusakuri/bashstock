@@ -42,10 +42,10 @@ string::upper 'hello'
 path::normalize './foo/../bar'
 ```
 
-名前付き引数を持つ関数は、`-Name VALUE`形式の引数とTab補完を提供します。
+名前付き引数を持つ関数は、`--name VALUE`形式の引数とTab補完を提供します。
 
 ```bash
-example::run -Name sample -Count 3 -Force
+example::run --name sample --count 3 --force
 ```
 
 ## 対応環境
@@ -63,6 +63,7 @@ example::run -Name sample -Count 3 -Force
 [ライブラリ仕様](docs/specifications/library.md)では、読み込み、名前空間、入出力、終了状態、シェル状態の契約を定義します。
 [名前付き引数とTab補完の仕様](docs/specifications/named-arguments.md)では、引数の表記と補完関数の契約を定義します。
 [関数リファレンス](docs/reference/functions.md)では、公開関数を名前空間ごとに確認できます。
+読み込んだ関数の説明、引数、終了状態、例は、`help::show string::trim`のように端末でも表示できます。
 [アーキテクチャ](docs/explanation/architecture.md)では、ソース、配布物、モジュール、OS別実装の関係を説明します。
 
 関数の選定根拠は、[bash-commons](docs/explanation/function-selection/bash-commons.md)、[Lobash](docs/explanation/function-selection/lobash.md)、[Pure Bash Bible](docs/explanation/function-selection/pure-bash-bible.md)ごとに整理しています。

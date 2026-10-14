@@ -1,7 +1,20 @@
 #!/usr/bin/env bash
+# @file android-avd
+# @brief Android Virtual Device creation and emulator control.
+# @description Virtual devices are created with avdmanager and started with the emulator of the SDK.
+
 # shellcheck disable=SC2119,SC2120
 
-### List AVD names in the selected Android SDK environment.
+# @description List AVD names in the selected Android SDK environment.
+#
+# @noargs
+# @stdout One AVD name per line.
+# @exitcode 0 The names were written.
+# @exitcode 64 An argument was given, or the SDK settings conflict.
+# @exitcode 69 The emulator is not installed.
+# @exitcode other The status of emulator -list-avds.
+# @example
+#   android::avd::list | grep -Fqx pixel_api35 || android::avd::create pixel_api35 35
 android::avd::list() {
   [[ "$#" -eq 0 ]] || return 64
   local directory=''
@@ -10,7 +23,16 @@ android::avd::list() {
   "${directory}/emulator/emulator" -list-avds
 }
 
-### List hardware profiles available to avdmanager.
+# @description List hardware profiles available to avdmanager.
+#
+# @noargs
+# @stdout One profile ID per line, such as medium_phone or pixel_8.
+# @exitcode 0 The profiles were written.
+# @exitcode 64 An argument was given, or the SDK settings conflict.
+# @exitcode 69 Command-line Tools are not installed.
+# @exitcode other The status of avdmanager.
+# @example
+#   android::avd::profiles | grep pixel
 android::avd::profiles() {
   [[ "$#" -eq 0 ]] || return 64
   local directory=''
@@ -19,7 +41,19 @@ android::avd::profiles() {
   "${directory}/cmdline-tools/latest/bin/avdmanager" list device -c
 }
 
-### List stable system images as API, tag, ABI, and revision values.
+# @description List stable system images as API, tag, ABI, and revision values.
+#
+# @arg $1 string Optional API level to keep, such as 35.
+# @arg $2 string Optional tag to keep, such as google_apis.
+# @arg $3 string Optional ABI to keep, such as arm64-v8a.
+# @stdout Lines of API, tag, ABI, and revision separated by spaces.
+# @exitcode 0 The images were written.
+# @exitcode 64 A filter is malformed, or the SDK settings conflict.
+# @exitcode 69 The Android CLI is unavailable.
+# @exitcode other The status of the Android CLI.
+# @example
+#   android::system-images::versions 35 google_apis x86_64
+#   # 35 google_apis x86_64 9
 android::system-images::versions() {
   [[ "$#" -le 3 ]] || return 64
   local api="${1:-}" tag="${2:-}" abi="${3:-}" directory='' command='' listing=''
@@ -43,7 +77,8 @@ android::system-images::versions() {
     }' | sort -u
 }
 
-### Write the ABI matching the host CPU.
+# @description Write the ABI matching the host CPU.
+# @internal
 android::avd::_abi() {
   [[ "$#" -eq 0 ]] || return 64
   case "$(uname -m)" in
@@ -53,7 +88,8 @@ android::avd::_abi() {
   esac
 }
 
-### Write the directory containing Android Virtual Device definitions.
+# @description Write the directory containing Android Virtual Device definitions.
+# @internal
 android::avd::_directory() {
   [[ "$#" -eq 0 ]] || return 64
   if [[ -n "${ANDROID_AVD_HOME:-}" ]]; then
@@ -63,7 +99,8 @@ android::avd::_directory() {
   fi
 }
 
-### Compare SDK revision values while ignoring zero-only trailing components.
+# @description Compare SDK revision values while ignoring zero-only trailing components.
+# @internal
 android::avd::_same-revision() {
   [[ "$#" -eq 2 ]] || return 64
   local first="$1" second="$2"
@@ -74,17 +111,27 @@ android::avd::_same-revision() {
   [[ "${first}" == "${second}" ]]
 }
 
-### Create one AVD from a stable Google APIs image without starting it.
-###
-### Arguments
-###
-### * NAME - New AVD name.
-### * API - Optional Android API number; defaults to the newest available one.
-### * PROFILE - Optional avdmanager profile; defaults to medium_phone.
-### * TAG - Optional image tag; defaults to google_apis.
-### * ABI - Optional image ABI; defaults to the host CPU's ABI.
-### * REVISION - Optional image revision. An installed image is never downgraded.
-### * --replace - Replace an existing AVD after keeping a recoverable backup.
+# @description Create one AVD from a stable Google APIs image without starting it.
+#
+# The system image is installed first. An existing AVD with the same name is
+# kept unless --replace is given, and then it is backed up until the new one exists.
+#
+# @arg $1 string New AVD name: letters, digits, ., _, and -.
+# @arg $2 integer Optional Android API level. Defaults to the newest available one.
+# @arg $3 string Optional avdmanager profile. Defaults to medium_phone.
+# @arg $4 string Optional image tag. Defaults to google_apis.
+# @arg $5 string Optional image ABI. Defaults to the host CPU's ABI.
+# @arg $6 string Optional image revision. An installed image is never downgraded.
+# @option --replace Replace an existing AVD after keeping a recoverable backup; give it last.
+# @exitcode 0 The AVD was created.
+# @exitcode 64 An argument is malformed.
+# @exitcode 69 Command-line Tools or the emulator is missing, or no image matches.
+# @exitcode 73 The AVD exists and --replace was not given, or avdmanager could not create it.
+# @exitcode 74 The existing AVD could not be backed up or restored.
+# @exitcode other The status of the Android CLI or avdmanager.
+# @example
+#   android::avd::create pixel_api35 35 pixel_8
+#   android::avd::create pixel_api35 35 pixel_8 google_apis arm64-v8a '' --replace
 android::avd::create() {
   [[ "$#" -ge 1 && "$#" -le 7 ]] || return 64
   local replace='' count=0
@@ -161,7 +208,16 @@ android::avd::create() {
   android::avd::list | grep -Fqx -- "${name}"
 }
 
-### Report whether an even emulator console port and its ADB port are both free.
+# @description Report whether an even emulator console port and its ADB port are both free.
+#
+# @arg $1 integer Even console port from 5554 to 5682; the ADB port is the next number.
+# @exitcode 0 Both ports are free.
+# @exitcode 1 One of the ports is in use.
+# @exitcode 64 The port is odd or out of range.
+# @exitcode 69 Neither lsof nor ss is available.
+# @exitcode 74 ss failed.
+# @example
+#   android::avd::port::available 5556 && android::avd::start pixel_api35 5556
 android::avd::port::available() {
   [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64
   local port="$1" occupied=''
@@ -178,7 +234,16 @@ android::avd::port::available() {
   return 0
 }
 
-### Write the first free emulator console port.
+# @description Write the first free emulator console port.
+#
+# @noargs
+# @stdout An even port from 5554 to 5682.
+# @exitcode 0 A free port was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 Neither lsof nor ss is available.
+# @exitcode 75 Every emulator port is in use.
+# @example
+#   port="$(android::avd::port::first)"
 android::avd::port::first() {
   [[ "$#" -eq 0 ]] || return 64
   local port=0 status=0
@@ -190,7 +255,27 @@ android::avd::port::first() {
   return 75
 }
 
-### Start one AVD and wait for Android to finish booting.
+# @description Start one AVD and wait for Android to finish booting.
+#
+# The function returns when sys.boot_completed is 1. The emulator keeps
+# running in the background after the function returns.
+#
+# @arg $1 string Optional AVD name. Defaults to the only AVD.
+# @arg $2 integer Optional console port. Defaults to the first free one.
+# @arg $3 integer Optional boot timeout in seconds. Defaults to 180.
+# @arg $4 string Optional --headless to run without a window and audio.
+# @stdout The ADB serial, such as emulator-5554.
+# @stderr The emulator log when it exits or the boot times out.
+# @exitcode 0 Android finished booting.
+# @exitcode 1 The port is in use.
+# @exitcode 64 An argument is invalid, or no name was given and there is not exactly one AVD.
+# @exitcode 66 No AVD has that name.
+# @exitcode 69 The emulator or Platform Tools are not installed.
+# @exitcode 74 A temporary log could not be created.
+# @exitcode 75 The emulator exited or Android did not boot before the timeout.
+# @example
+#   serial="$(android::avd::start pixel_api35 '' 300 --headless)"
+#   adb -s "${serial}" install app.apk
 android::avd::start() {
   [[ "$#" -le 4 ]] || return 64
   local name="${1:-}" port="${2:-}" timeout="${3:-180}" headless="${4:-}"
@@ -240,7 +325,20 @@ android::avd::start() {
   return 75
 }
 
-### Stop the named AVD, or the only running AVD when no name is given.
+# @description Stop the named AVD, or the only running AVD when no name is given.
+#
+# Only the emulator that reports the AVD name is stopped; the ADB server and
+# other emulators keep running.
+#
+# @arg $1 string Optional AVD name. Defaults to the only running AVD.
+# @exitcode 0 The emulator stopped.
+# @exitcode 64 The name is malformed, or several AVDs match.
+# @exitcode 66 No running emulator matches.
+# @exitcode 69 Platform Tools are not installed.
+# @exitcode 74 The clock could not be read.
+# @exitcode 75 The emulator refused to stop or did not stop within 60 seconds.
+# @example
+#   android::avd::stop pixel_api35
 android::avd::stop() {
   [[ "$#" -le 1 && ( "$#" -eq 0 || "$1" =~ ^[A-Za-z0-9._-]+$ ) ]] || return 64
   local directory='' name="${1:-}" serial='' state='' identity='' listing='' selected=''
@@ -269,7 +367,16 @@ android::avd::stop() {
   return 75
 }
 
-### Delete one named AVD without changing other AVDs.
+# @description Delete one named AVD without changing other AVDs.
+#
+# @arg $1 string AVD name.
+# @exitcode 0 The AVD was deleted.
+# @exitcode 64 The name is malformed, or the argument count is not one.
+# @exitcode 66 No AVD has that name.
+# @exitcode 69 Command-line Tools are not installed.
+# @exitcode other The status of avdmanager.
+# @example
+#   android::avd::delete pixel_api35
 android::avd::delete() {
   [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9._-]+$ ]] || return 64
   local directory='' avds=''

@@ -185,7 +185,7 @@ git_test::edit-via-rebase-in-directory() {
   [ ! -d "${repository}/.git/rebase-merge" ]
 }
 
-### Create a bare remote with one commit on main and a clone that tracks it.
+# @description Create a bare remote with one commit on main and a clone that tracks it.
 git_test::create-remote-and-clone() {
   local remote="$1" clone="$2" seed="${BATS_TEST_TMPDIR}/seed"
   # Settings of the machine, such as commit signing, must not change the results.

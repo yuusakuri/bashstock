@@ -6,7 +6,7 @@ bats_require_minimum_version 1.5.0
 # These tests replace only external boundaries: network commands, the
 # operating-system name, and administrator execution.
 
-### Record administrator commands instead of running them.
+# @description Record administrator commands instead of running them.
 record_root_commands() {
   ROOT_LOG="${BATS_TEST_TMPDIR}/root.log"
   : >"${ROOT_LOG}"

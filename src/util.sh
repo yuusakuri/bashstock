@@ -1,7 +1,19 @@
 #!/usr/bin/env bash
+# @file util
+# @brief Everyday commands for storage, Git, SSH, Docker, Android devices, debugging, and system settings.
+# @description Most functions wrap one external command with argument checks and documented exit codes.
+
 # shellcheck disable=SC2034,SC2046,SC2119,SC2120,SC2317,SC2319,SC2015,SC2155,SC2163,SC2329
 
-### Wait for one line from the controlling terminal.
+# @description Wait for one line from the controlling terminal.
+#
+# @arg $1 string Optional message. Defaults to "Press Enter to continue.".
+# @exitcode 0 A line was read.
+# @exitcode 64 More than one argument was given.
+# @exitcode 69 No controlling terminal is available.
+# @exitcode 74 The terminal could not be read.
+# @example
+#   prompt::pause 'Connect the device, then press Enter.'
 prompt::pause() {
   if [[ "$#" -gt 1 ]]; then return 64; fi
   local message="${1:-Press Enter to continue.}"
@@ -10,14 +22,30 @@ prompt::pause() {
   IFS= read -r -p "${message}" line </dev/tty || return 74
 }
 
-### Sleep for a non-negative integer number of hours.
+# @description Sleep for a non-negative integer number of hours.
+#
+# @arg $1 integer Number of hours, 0 or more.
+# @exitcode 0 The time passed.
+# @exitcode 64 The value is not a non-negative integer.
+# @exitcode 69 sleep is unavailable.
+# @example
+#   time::sleep-hours 2 && make release
 time::sleep-hours() {
   if [[ "$#" -ne 1 || ! "$1" =~ ^(0|[1-9][0-9]*)$ ]]; then return 64; fi
   command -v sleep >/dev/null 2>&1 || return 69
   sleep "$((10#$1 * 3600))"
 }
 
-### Show human-readable filesystem usage for a path.
+# @description Show human-readable filesystem usage for a path.
+#
+# @arg $1 string Optional path. Defaults to the current directory.
+# @stdout The df -h report for the file system that holds the path.
+# @exitcode 0 The report was written.
+# @exitcode 64 More than one argument was given.
+# @exitcode 66 The path does not exist.
+# @exitcode 69 df is unavailable.
+# @example
+#   storage::usage "${HOME}"
 storage::usage() {
   if [[ "$#" -gt 1 ]]; then return 64; fi
   local path="${1:-.}"
@@ -26,14 +54,18 @@ storage::usage() {
   df -h "$path"
 }
 
-### Write the largest entries of a directory, including the directory itself, in human-readable sizes.
-###
-### Directory sizes include everything below them.
-###
-### Arguments
-###
-### * DIRECTORY - Directory to inspect. Defaults to the current directory.
-### * MAX_ENTRIES - Number of entries to write. Defaults to 10.
+# @description Write the largest entries of a directory, including the directory itself, in human-readable sizes.
+#
+# Directory sizes include everything below them.
+#
+# @arg $1 string Optional directory to inspect. Defaults to the current directory.
+# @arg $2 integer Optional number of entries to write. Defaults to 10.
+# @stdout Lines of size and path, largest first.
+# @exitcode 0 The entries were written.
+# @exitcode 64 The directory does not exist or the count is not a positive integer.
+# @exitcode 69 du or sort is unavailable.
+# @example
+#   storage::largest-entries "${HOME}/Library/Caches" 5
 storage::largest-entries() {
   [[ "$#" -le 2 ]] || return 64
   local directory="${1:-.}" max="${2:-10}"
@@ -43,7 +75,16 @@ storage::largest-entries() {
   du -h -a -d 1 -- "${directory}" 2>/dev/null | sort -hr | head -n "${max}"
 }
 
-### Write the total physical memory in bytes.
+# @description Write the total physical memory in bytes.
+#
+# @noargs
+# @stdout The total physical memory in bytes.
+# @exitcode 0 The size was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The operating system is unsupported, or sysctl is missing on macOS.
+# @exitcode 74 The memory size could not be read.
+# @example
+#   mem::physical-total-bytes
 mem::physical-total-bytes() {
   [[ "$#" -eq 0 ]] || return 64
   case "$(system::operating-system)" in
@@ -53,14 +94,32 @@ mem::physical-total-bytes() {
   esac
 }
 
-### Write the total physical memory in gibibytes.
+# @description Write the total physical memory in gibibytes.
+#
+# @noargs
+# @stdout The total physical memory in GiB with two decimals, such as 15.53.
+# @exitcode 0 The size was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The operating system is unsupported.
+# @exitcode 74 The memory size could not be read.
+# @example
+#   mem::physical-total-gibibytes
 mem::physical-total-gibibytes() {
   [[ "$#" -eq 0 ]] || return 64
   local bytes=''; bytes="$(mem::physical-total-bytes)" || return "$?"
   awk -v b="$bytes" 'BEGIN {printf "%.2f\n", b / 1073741824}'
 }
 
-### Write the total swap capacity in bytes.
+# @description Write the total swap capacity in bytes.
+#
+# @noargs
+# @stdout The total swap capacity in bytes; 0 without swap.
+# @exitcode 0 The size was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The operating system is unsupported, or sysctl is missing on macOS.
+# @exitcode 74 The swap size could not be read.
+# @example
+#   [[ "$(mem::swap-total-bytes)" -gt 0 ]] || swap::create 4
 mem::swap-total-bytes() {
   [[ "$#" -eq 0 ]] || return 64
   case "$(system::operating-system)" in
@@ -70,27 +129,65 @@ mem::swap-total-bytes() {
   esac
 }
 
-### Write the total swap capacity in gibibytes.
+# @description Write the total swap capacity in gibibytes.
+#
+# @noargs
+# @stdout The total swap capacity in GiB with two decimals.
+# @exitcode 0 The size was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The operating system is unsupported.
+# @exitcode 74 The swap size could not be read.
+# @example
+#   mem::swap-total-gibibytes
 mem::swap-total-gibibytes() {
   [[ "$#" -eq 0 ]] || return 64
   local bytes=''; bytes="$(mem::swap-total-bytes)" || return "$?"
   awk -v b="$bytes" 'BEGIN {printf "%.2f\n", b / 1073741824}'
 }
 
-### Write the total memory and swap capacity in bytes.
+# @description Write the total memory and swap capacity in bytes.
+#
+# @noargs
+# @stdout The sum of physical memory and swap in bytes.
+# @exitcode 0 The size was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The operating system is unsupported.
+# @exitcode 74 A size could not be read.
+# @example
+#   mem::total-bytes
 mem::total-bytes() {
   [[ "$#" -eq 0 ]] || return 64
   local a='' b=''; a="$(mem::physical-total-bytes)" || return "$?"; b="$(mem::swap-total-bytes)" || return "$?"; printf '%s\n' "$((a+b))"
 }
 
-### Write the total memory and swap capacity in gibibytes.
+# @description Write the total memory and swap capacity in gibibytes.
+#
+# @noargs
+# @stdout The sum of physical memory and swap in GiB with two decimals.
+# @exitcode 0 The size was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The operating system is unsupported.
+# @exitcode 74 A size could not be read.
+# @example
+#   printf 'Memory and swap: %s GiB\n' "$(mem::total-gibibytes)"
 mem::total-gibibytes() {
   [[ "$#" -eq 0 ]] || return 64
   local bytes=''; bytes="$(mem::total-bytes)" || return "$?"; awk -v b="$bytes" 'BEGIN {printf "%.2f\n", b / 1073741824}'
 }
 
-### Write text to a regular file using an atomic replacement.
-### New files use 0666 filtered by the caller's umask; existing metadata is preserved.
+# @description Write text to a regular file using an atomic replacement.
+#
+# New files use 0666 filtered by the caller's umask; existing metadata is preserved.
+#
+# @arg $1 string File path; a symbolic link is refused.
+# @arg $2 string Text to write exactly; include a trailing newline when one is needed.
+# @exitcode 0 The file holds the text.
+# @exitcode 64 The path is empty or a symbolic link, or the argument count is not two.
+# @exitcode 66 The path exists but is not a regular file.
+# @exitcode 74 The temporary file could not be written or moved into place.
+# @exitcode other The status of the root helper when elevation was needed.
+# @example
+#   file::write-text /etc/udev/rules.d/90-device.rules $'SUBSYSTEM=="usb", MODE="0666"\n'
 file::write-text() {
   if [[ "$#" -ne 2 || -z "$1" || -L "$1" ]]; then return 64; fi
   local file="$1" text="$2" temporary='' mode='' mask=''
@@ -114,20 +211,23 @@ file::write-text() {
   if ! mv -f -- "$temporary" "$file"; then rm -f -- "$temporary"; return 74; fi
 }
 
-### Write the regular files below a directory whose content matches an ERE, separated by NUL.
-###
-### The files are searched in parallel by grep -E.
-###
-### Arguments
-###
-### * EXPRESSION - Extended regular expression evaluated by grep -E.
-### * DIRECTORY - Directory to search. Defaults to the current directory.
-### * MAX_PROCESSES - Parallel grep processes. Defaults to the number of online CPUs.
-### * BINARY_MODE - skip (default) ignores binary files; include searches them as text.
-###
-### Exit status
-###
-### 1 when no file matches; 64 when EXPRESSION is not a valid expression.
+# @description Write the regular files below a directory whose content matches an ERE, separated by NUL.
+#
+# The files are searched in parallel by grep -E.
+#
+# @arg $1 string Extended regular expression evaluated by grep -E.
+# @arg $2 string Optional directory to search. Defaults to the current directory.
+# @arg $3 integer Optional number of parallel grep processes. Defaults to the number of online CPUs.
+# @arg $4 string Optional binary mode: skip (default) ignores binary files; include searches them as text.
+# @stdout NUL-separated paths of the matching files.
+# @exitcode 0 At least one file matches.
+# @exitcode 1 No file matches.
+# @exitcode 64 The expression is invalid, or a mode or count is malformed.
+# @exitcode 66 The directory does not exist.
+# @exitcode 69 find, xargs, or grep is unavailable.
+# @exitcode 74 A file could not be searched.
+# @example
+#   file::find-by-content 'FIXME|XXX' src | xargs -0 grep -nE 'FIXME|XXX'
 file::find-by-content() {
   [[ "$#" -ge 1 && "$#" -le 4 && -n "$1" ]] || return 64
   local expression="$1" directory="${2:-.}" processes="${3:-}" binary="${4:-skip}" output='' status=0
@@ -166,15 +266,20 @@ file::find-by-content() {
   rm -f -- "${output}"
 }
 
-### Write the most recently modified regular file whose base name matches a Bash ERE.
-###
-### Files modified at the same second are ordered by their path bytes, and the
-### first one is written.
-###
-### Arguments
-###
-### * EXPRESSION - Extended regular expression matched against base names.
-### * DIRECTORY - Directory to search recursively. Defaults to the current directory.
+# @description Write the most recently modified regular file whose base name matches a Bash ERE.
+#
+# Files modified at the same second are ordered by their path bytes, and the
+# first one is written.
+#
+# @arg $1 string Extended regular expression matched against base names.
+# @arg $2 string Optional directory to search recursively. Defaults to the current directory.
+# @stdout The path of the newest matching file.
+# @exitcode 0 A file was written.
+# @exitcode 1 No file matches.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 66 The directory does not exist.
+# @example
+#   file::latest-by-name '^backup-.*\.tar\.gz$' /var/backups
 file::latest-by-name() {
   [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64
   local expression="$1" directory="${2:-.}" path='' newest='' newest_time=0 current_time='' LC_ALL=C
@@ -192,16 +297,21 @@ file::latest-by-name() {
   printf '%s\n' "${newest}"
 }
 
-### Create or replace a symbolic link that points to the absolute path of an existing SOURCE.
-###
-### An existing symbolic link at LINK is replaced; a file or directory there is
-### kept and returns 73. Administrator execution is used only when the parent
-### directory of LINK is not writable.
-###
-### Arguments
-###
-### * SOURCE - Existing path the link points to.
-### * LINK - Path of the link.
+# @description Create or replace a symbolic link that points to the absolute path of an existing SOURCE.
+#
+# An existing symbolic link at LINK is replaced; a file or directory there is
+# kept and returns 73. Administrator execution is used only when the parent
+# directory of LINK is not writable.
+#
+# @arg $1 string SOURCE Existing path the link points to.
+# @arg $2 string LINK Path of the link.
+# @exitcode 0 LINK points to the absolute path of SOURCE.
+# @exitcode 64 An argument is empty, or the argument count is not two.
+# @exitcode 66 SOURCE does not exist.
+# @exitcode 73 LINK exists and is not a symbolic link.
+# @exitcode 74 The link could not be created.
+# @example
+#   symlink::create ./dotfiles/.vimrc "${HOME}/.vimrc"
 symlink::create() {
   [[ "$#" -eq 2 && -n "$1" && -n "$2" ]] || return 64
   local source="$1" link="${2%/}" parent=''
@@ -221,7 +331,14 @@ symlink::create() {
   fi
 }
 
-### Remove a symbolic link, using administrator execution only when its directory is not writable.
+# @description Remove a symbolic link, using administrator execution only when its directory is not writable.
+#
+# @arg $1 string Path of an existing symbolic link; its target is not touched.
+# @exitcode 0 The link was removed.
+# @exitcode 64 The path is not a symbolic link, or the argument count is not one.
+# @exitcode 74 The link could not be removed.
+# @example
+#   symlink::remove "${HOME}/.vimrc"
 symlink::remove() {
   [[ "$#" -eq 1 && -L "${1%/}" ]] || return 64
   local link="${1%/}" parent=''
@@ -233,21 +350,38 @@ symlink::remove() {
   fi
 }
 
-### Write the first default-route interface.
+# @description Write the first default-route interface.
+#
+# @noargs
+# @stdout The interface name, such as eth0 or en0.
+# @exitcode 0 The name was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 No default route exists, or the routing tool is unavailable.
+# @example
+#   net::ip::private-v4 "$(net::interface::default)"
 net::interface::default() { [[ "$#" -eq 0 ]] || return 64; net::_default-interface; }
 
-### Write the first default-route gateway.
+# @description Write the first default-route gateway.
+#
+# @noargs
+# @stdout The gateway address.
+# @exitcode 0 The address was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 No default route exists, or the routing tool is unavailable.
+# @example
+#   net::ping "$(net::gateway::default)"
 net::gateway::default() { [[ "$#" -eq 0 ]] || return 64; net::_default-gateway; }
 
-### Write the primary RFC 1918 IPv4 address of an interface.
-###
-### Arguments
-###
-### * INTERFACE - Interface name. Defaults to the interface of the default route.
-###
-### Exit status
-###
-### 1 when the interface has no private IPv4 address.
+# @description Write the primary RFC 1918 IPv4 address of an interface.
+#
+# @arg $1 string INTERFACE Interface name. Defaults to the interface of the default route.
+# @stdout The address without a prefix length, such as 192.168.1.20.
+# @exitcode 0 The address was written.
+# @exitcode 1 The interface has no private IPv4 address.
+# @exitcode 64 More than one argument was given.
+# @exitcode 69 No interface was given and there is no default route, or the address tool is unavailable.
+# @example
+#   net::ip::private-v4 eth0
 net::ip::private-v4() {
   [[ "$#" -le 1 ]] || return 64
   local interface="${1:-}" address='' candidate='' cidr=''
@@ -278,20 +412,20 @@ net::ip::private-v4() {
   printf '%s\n' "${address}"
 }
 
-### Write the primary unique local IPv6 address of an interface.
-###
-### Only addresses in fc00::/7 are considered, in the order the operating
-### system lists them, after removing the excluded prefixes.
-###
-### Arguments
-###
-### * INTERFACE - Interface name. Defaults to the interface of the default route.
-### * EXCLUDED_PREFIXES - Comma-separated address prefixes to skip. Defaults to
-###   fe80,fda6: link-local addresses and the auxiliary ULA of the reference network.
-###
-### Exit status
-###
-### 1 when no address remains.
+# @description Write the primary unique local IPv6 address of an interface.
+#
+# Only addresses in fc00::/7 are considered, in the order the operating
+# system lists them, after removing the excluded prefixes.
+#
+# @arg $1 string INTERFACE Interface name. Defaults to the interface of the default route.
+# @arg $2 string EXCLUDED_PREFIXES Comma-separated address prefixes to skip. Defaults to fe80,fda6: link-local addresses and the auxiliary ULA of the reference network.
+# @stdout The address without a prefix length.
+# @exitcode 0 The address was written.
+# @exitcode 1 No address remains after the exclusions.
+# @exitcode 64 More than two arguments were given.
+# @exitcode 69 No interface was given and there is no default route, or the address tool is unavailable.
+# @example
+#   net::ip::private-v6 en0 fe80
 net::ip::private-v6() {
   [[ "$#" -le 2 ]] || return 64
   local interface="${1:-}" excluded="${2-fe80,fda6}" candidate='' prefix='' skip='' lower=''
@@ -320,10 +454,20 @@ net::ip::private-v6() {
   return 1
 }
 
-### Write the public IP address reported by ifconfig.me.
-###
-### curl is preferred and wget is used when curl is missing. The response
-### must be one IPv4 or IPv6 address; anything else returns 74.
+# @description Write the public IP address reported by ifconfig.me.
+#
+# curl is preferred and wget is used when curl is missing. The response
+# must be one IPv4 or IPv6 address; anything else returns 74.
+#
+# @noargs
+# @stdout One IPv4 or IPv6 address.
+# @stderr A message when neither curl nor wget is available.
+# @exitcode 0 The address was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 Neither curl nor wget is available.
+# @exitcode 74 The request failed or the response is not an address.
+# @example
+#   net::ip::public
 net::ip::public() {
   [[ "$#" -eq 0 ]] || return 64
   local address=''
@@ -342,7 +486,15 @@ net::ip::public() {
   printf '%s\n' "${address}"
 }
 
-### Test whether a DNS name resolves.
+# @description Test whether a DNS name resolves.
+#
+# @arg $1 string Host name to resolve.
+# @exitcode 0 The name resolves.
+# @exitcode 1 The name does not resolve.
+# @exitcode 64 The name is empty, or the argument count is not one.
+# @exitcode 69 Neither getent nor dscacheutil is available.
+# @example
+#   net::dns::test github.com || net::dns::use-google
 net::dns::test() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   if command -v getent >/dev/null 2>&1; then
@@ -353,7 +505,17 @@ net::dns::test() {
   dscacheutil -q host -a name "$1" >/dev/null 2>&1
 }
 
-### Add a user to a supplementary group through administrator execution.
+# @description Add a user to a supplementary group through administrator execution.
+#
+# @arg $1 string Group name.
+# @arg $2 string Optional user name. Defaults to the current user.
+# @exitcode 0 The user is in the group; it applies to new login sessions.
+# @exitcode 64 The group name is invalid, or the argument count is wrong.
+# @exitcode 69 The operating system is unsupported, or usermod or dseditgroup is unavailable.
+# @exitcode 77 sudo refused the credentials.
+# @exitcode other The status of usermod or dseditgroup.
+# @example
+#   user::add-to-group dialout
 user::add-to-group() {
   if [[ "$#" -lt 1 || "$#" -gt 2 || ! "$1" =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]]; then return 64; fi
   local user="${2:-}"
@@ -365,27 +527,64 @@ user::add-to-group() {
   esac
 }
 
-### Write the kernel name.
+# @description Write the kernel name.
+#
+# @noargs
+# @stdout The output of uname -s, such as Linux or Darwin.
+# @exitcode 0 The name was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 uname is unavailable.
+# @example
+#   system::kernel-name
 system::kernel-name() { [[ "$#" -eq 0 ]] || return 64; command -v uname >/dev/null 2>&1 || return 69; uname -s; }
 
-### Write the distribution name.
+# @description Write the distribution name.
+#
+# @noargs
+# @stdout darwin, ubuntu, fedora, or the ID from /etc/os-release.
+# @exitcode 0 The name was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The distribution cannot be identified.
+# @example
+#   [[ "$(system::distribution-name)" == ubuntu ]] && sudo apt-get update
 system::distribution-name() { [[ "$#" -eq 0 ]] || return 64; platform::_identifier; }
 
-### Enable system sleep.
+# @description Enable system sleep.
+#
+# @noargs
+# @exitcode 0 Sleep is enabled again.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The operating system is unsupported, or systemctl is missing on Linux.
+# @exitcode other The status of pmset or systemctl.
+# @example
+#   system::enable-sleep
 system::enable-sleep() { [[ "$#" -eq 0 ]] || return 64; case "$(system::operating-system)" in darwin) sudo pmset -a sleep 1 ;; linux) command -v systemctl >/dev/null 2>&1 || return 69; sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target ;; *) return 69 ;; esac; }
 
-### Disable system sleep.
+# @description Disable system sleep.
+#
+# On Linux the sleep, suspend, hibernate, and hybrid-sleep targets are masked; on macOS pmset sets sleep to 0.
+#
+# @noargs
+# @exitcode 0 Sleep is disabled until system::enable-sleep.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The operating system is unsupported, or systemctl is missing on Linux.
+# @exitcode other The status of pmset or systemctl.
+# @example
+#   system::disable-sleep
 system::disable-sleep() { [[ "$#" -eq 0 ]] || return 64; case "$(system::operating-system)" in darwin) sudo pmset -a sleep 0 ;; linux) command -v systemctl >/dev/null 2>&1 || return 69; sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target ;; *) return 69 ;; esac; }
 
-### Write the POSIX TZ string for a UTC offset.
-###
-### POSIX TZ offsets have the opposite sign of ISO 8601 offsets, so +09:30
-### becomes UTC-9:30 and -05:00 becomes UTC+5.
-###
-### Arguments
-###
-### * OFFSET - Z or an offset in the form +HH:MM or -HH:MM, with HH up to 23
-###   and MM up to 59.
+# @description Write the POSIX TZ string for a UTC offset.
+#
+# POSIX TZ offsets have the opposite sign of ISO 8601 offsets, so +09:30
+# becomes UTC-9:30 and -05:00 becomes UTC+5.
+#
+# @arg $1 string OFFSET Z or an offset in the form +HH:MM or -HH:MM, with HH up to 23 and MM up to 59.
+# @stdout The TZ value, such as UTC-9 or UTC+5:30.
+# @exitcode 0 The value was written.
+# @exitcode 64 The offset is malformed or out of range.
+# @example
+#   time::posix-timezone +09:00
+#   # UTC-9
 time::posix-timezone() {
   [[ "$#" -eq 1 ]] || return 64
   local sign='' hours=0 minutes=0 text=''
@@ -408,16 +607,19 @@ time::posix-timezone() {
   printf '%s\n' "${text}"
 }
 
-### Merge every entry of SOURCE into DESTINATION by moving it, then remove SOURCE.
-###
-### Directories are merged recursively. A file or symbolic link in SOURCE
-### replaces the entry with the same name in DESTINATION. Symbolic links are
-### never followed. The first failure stops the merge.
-###
-### Arguments
-###
-### * SOURCE - Directory to empty and remove.
-### * DESTINATION - Directory to receive the entries; created when missing.
+# @description Merge every entry of SOURCE into DESTINATION by moving it, then remove SOURCE.
+#
+# Directories are merged recursively. A file or symbolic link in SOURCE
+# replaces the entry with the same name in DESTINATION. Symbolic links are
+# never followed. The first failure stops the merge.
+#
+# @arg $1 string SOURCE Directory to empty and remove.
+# @arg $2 string DESTINATION Directory to receive the entries; created when missing.
+# @exitcode 0 SOURCE was merged into DESTINATION and removed.
+# @exitcode 64 SOURCE is not a directory, or DESTINATION is a symbolic link or a file.
+# @exitcode 74 An entry could not be moved, or SOURCE could not be removed.
+# @example
+#   directory::merge "${HOME}/デスクトップ" "${HOME}/Desktop"
 directory::merge() {
   [[ "$#" -eq 2 && -d "$1" && ! -L "$1" && -n "$2" ]] || return 64
   local source="$1" destination="$2" entry='' name='' target=''
@@ -438,14 +640,20 @@ directory::merge() {
   rmdir -- "${source}" || return 74
 }
 
-### Create a directory named with the local date and time and write its path.
-###
-### The name has the form YYYYMMDDTHHMMSS. When that name exists, a suffix
-### counting from -2 is added.
-###
-### Arguments
-###
-### * DIRECTORY - Parent directory. Defaults to the current directory.
+# @description Create a directory named with the local date and time and write its path.
+#
+# The name has the form YYYYMMDDTHHMMSS. When that name exists, a suffix
+# counting from -2 is added.
+#
+# @arg $1 string DIRECTORY Parent directory. Defaults to the current directory.
+# @stdout The path of the new directory, such as ./20261014T120405.
+# @exitcode 0 The directory was created.
+# @exitcode 64 More than one argument was given.
+# @exitcode 66 The parent directory does not exist.
+# @exitcode 69 The clock provider is unavailable.
+# @exitcode 74 The directory could not be created.
+# @example
+#   backup="$(directory::create-with-date-time /var/backups)"
 directory::create-with-date-time() {
   [[ "$#" -le 1 ]] || return 64
   local directory="${1:-.}" name='' path='' index=2
@@ -460,14 +668,19 @@ directory::create-with-date-time() {
   printf '%s\n' "${path}"
 }
 
-### Remove every entry of a directory, including hidden ones, and keep the directory.
-###
-### An empty name, the file system root, the home directory, and a symbolic
-### link are refused, because a link would empty the directory it points to.
-###
-### Arguments
-###
-### * DIRECTORY - Directory to empty. Defaults to the current directory.
+# @description Remove every entry of a directory, including hidden ones, and keep the directory.
+#
+# An empty name, the file system root, the home directory, and a symbolic
+# link are refused, because a link would empty the directory it points to.
+#
+# @arg $1 string DIRECTORY Directory to empty. Defaults to the current directory.
+# @stderr A message when the directory is refused.
+# @exitcode 0 The directory is empty.
+# @exitcode 64 The directory is missing, a symbolic link, the root, or the home directory.
+# @exitcode 66 The directory cannot be entered.
+# @exitcode 74 An entry could not be removed.
+# @example
+#   directory::clear ./build
 directory::clear() {
   [[ "$#" -le 1 ]] || return 64
   local directory="${1-.}" physical='' home=''
@@ -481,7 +694,15 @@ directory::clear() {
   find "${physical}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + || return 74
 }
 
-### Write the elapsed time since boot and the local time every three seconds until stopped.
+# @description Write the elapsed time since boot and the local time every three seconds until stopped.
+#
+# @noargs
+# @stdout Two lines every three seconds: the seconds since boot and the local date and time.
+# @exitcode 64 An argument was given.
+# @exitcode 74 sleep failed.
+# @exitcode other The status of the clock function that failed.
+# @example
+#   time::status-continuous   # Stop with Ctrl-C.
 time::status-continuous() {
   [[ "$#" -eq 0 ]] || return 64
   local milliseconds='' now=''
@@ -494,23 +715,33 @@ time::status-continuous() {
   done
 }
 
-### Open an editor for a file, using sudoedit only when required.
+# @description Open an editor for a file, using sudoedit only when required.
+#
+# @arg $1 string File to edit. A missing file is created by the editor.
+# @exitcode 0 The editor exited successfully.
+# @exitcode 64 The argument count is not one or the path is empty.
+# @exitcode 66 The path exists but is not a regular file.
+# @exitcode 69 The file is not writable and sudoedit is unavailable.
+# @exitcode other The status of the editor.
+# @example
+#   EDITOR=nano file::edit /etc/hosts
 file::edit() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; if [[ -e "$1" && ! -f "$1" ]]; then return 66; fi; if [[ -w "$1" || (! -e "$1" && -w "$(path::directory-name "$1")") ]]; then "${EDITOR:-vi}" "$1"; else command -v sudoedit >/dev/null 2>&1 || return 69; sudoedit "$1"; fi; }
 
-### Release a file held by other processes.
-###
-### Each holder receives SIGTERM, and holders left after the timeout receive
-### SIGKILL. A signal the current user may not send is sent through
-### administrator execution.
-###
-### Arguments
-###
-### * FILE - File to release.
-### * TIMEOUT_SECONDS - Time to wait after SIGTERM. Defaults to 2.
-###
-### Exit status
-###
-### 75 when the file is still open after SIGKILL.
+# @description Release a file held by other processes.
+#
+# Each holder receives SIGTERM, and holders left after the timeout receive
+# SIGKILL. A signal the current user may not send is sent through
+# administrator execution.
+#
+# @arg $1 string File to release.
+# @arg $2 integer Optional seconds to wait after SIGTERM. Defaults to 2.
+# @exitcode 0 No process holds the file.
+# @exitcode 64 The arguments are invalid or the file does not exist.
+# @exitcode 69 lsof is unavailable.
+# @exitcode 74 The clock could not be read.
+# @exitcode 75 The file is still open after SIGKILL.
+# @example
+#   file::release "${HOME}/.local/share/app/database.lock" 5
 file::release() {
   [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64
   command -v lsof >/dev/null 2>&1 || return 69
@@ -530,32 +761,65 @@ file::release() {
   lsof -t -- "$1" >/dev/null 2>&1 && return 75
 }
 
-### Open a GNU Screen session.
+# @description Open a GNU Screen session.
+#
+# @arg $1 string Optional session name. Defaults to default.
+# @exitcode 0 The session ended successfully.
+# @exitcode 64 More than one argument was given.
+# @exitcode 69 screen is unavailable.
+# @exitcode other The status of screen.
+# @example
+#   screen::open build
 screen::open() { if [[ "$#" -gt 1 ]]; then return 64; fi; command -v screen >/dev/null 2>&1 || return 69; screen "${1:-default}"; }
 
-### Verify all recognized archives below a path.
+# @description Verify all recognized archives below a path.
+#
+# @arg $1 string Optional directory to search. Defaults to the current directory.
+# @stderr The path of each archive that fails verification.
+# @exitcode 0 Every archive is valid.
+# @exitcode 1 At least one archive is broken.
+# @exitcode 64 More than one argument was given.
+# @exitcode 69 unzip is unavailable and a zip archive was found.
+# @example
+#   archive::verify "${HOME}/Downloads"
 archive::verify() { if [[ "$#" -gt 1 ]]; then return 64; fi; local path="${1:-.}" file=''; local status=0; while IFS= read -r -d '' file; do case "$file" in *.tar.gz|*.tgz) tar -tzf "$file" >/dev/null 2>&1 || { printf '%s\n' "$file" >&2; status=1; } ;; *.zip) command -v unzip >/dev/null 2>&1 || return 69; unzip -tqq "$file" >/dev/null 2>&1 || { printf '%s\n' "$file" >&2; status=1; } ;; esac; done < <(find "$path" -type f \( -name '*.tar.gz' -o -name '*.tgz' -o -name '*.zip' \) -print0); return "$status"; }
 
-### Remove archives that fail verification.
+# @description Remove archives that fail verification.
+#
+# @arg $1 string Optional directory to search. Defaults to the current directory.
+# @exitcode 0 No archive was broken.
+# @exitcode 1 At least one broken archive was removed.
+# @exitcode 64 More than one argument was given.
+# @exitcode 74 A broken archive could not be removed.
+# @example
+#   archive::remove-broken "${HOME}/Downloads"
 archive::remove-broken() { [[ "$#" -le 1 ]] || return 64; local path="${1:-.}" file='' status=0; while IFS= read -r -d '' file; do if ! archive::_remove-broken-file "$file"; then rm -f -- "$file" || return 74; status=1; fi; done < <(archive::_find "$path"); return "$status"; }
 
-### List recognized archive files below a directory as NUL-separated paths.
+# @description List recognized archive files below a directory as NUL-separated paths.
+# @internal
 archive::_find() { [[ "$#" -le 1 ]] || return 64; find "${1:-.}" -type f \( -name '*.tar.gz' -o -name '*.tgz' -o -name '*.zip' \) -print0; }
 
-### Verify and remove one archive file when it is invalid.
+# @description Verify and remove one archive file when it is invalid.
+# @internal
 archive::_remove-broken-file() { [[ "$#" -eq 1 && -f "$1" ]] || return 64; archive::verify "$1" >/dev/null 2>&1 || { rm -f -- "$1"; return 1; }; }
 
-### Extract one tar.gz, tgz, or zip archive.
-###
-### Entry names that are absolute or climb with .. are refused before
-### extraction. The archive is extracted into a staging directory inside the
-### destination, and a symbolic link that points outside the destination
-### discards the extraction with 65. Existing files are overwritten.
-###
-### Arguments
-###
-### * PATH - Archive file.
-### * DESTINATION - Output directory. Defaults to PATH without its archive extension.
+# @description Extract one tar.gz, tgz, or zip archive.
+#
+# Entry names that are absolute or climb with .. are refused before
+# extraction. The archive is extracted into a staging directory inside the
+# destination, and a symbolic link that points outside the destination
+# discards the extraction with 65. Existing files are overwritten.
+#
+# @arg $1 string Archive file ending in .tar.gz, .tgz, or .zip.
+# @arg $2 string Optional output directory. Defaults to the archive path without its extension.
+# @stderr The rejected entry or symbolic link when the archive is refused.
+# @exitcode 0 The archive was extracted.
+# @exitcode 64 The arguments are invalid or the extension is not recognized.
+# @exitcode 65 The archive is corrupt or contains an entry outside the destination.
+# @exitcode 69 tar or unzip is unavailable.
+# @exitcode 74 The destination could not be written.
+# @example
+#   archive::extract-file release.tar.gz /opt/release
 archive::extract-file() {
   [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64
   local file="$1" destination="${2:-}" listing='' entry='' staging='' link='' target='' resolved='' status=0
@@ -605,70 +869,218 @@ archive::extract-file() {
   directory::merge "${staging}" "${destination}"
 }
 
-### Compress paths into a gzip-compressed tar archive.
+# @description Compress paths into a gzip-compressed tar archive.
+#
+# @arg $@ string Paths to add to the archive.
+# @option --output <FILE> Archive to write. Defaults to the first path with .tar.gz appended.
+# @exitcode 0 The archive was written.
+# @exitcode 64 No path was given or --output has no value.
+# @exitcode 69 tar is unavailable.
+# @exitcode other The status of tar.
+# @example
+#   archive::compress-tar-gzip --output backup.tar.gz Documents Pictures
 archive::compress-tar-gzip() { [[ "$#" -ge 1 ]] || return 64; local output='' paths=() path=''; while [[ "$#" -gt 0 ]]; do if [[ "$1" == '--output' ]]; then [[ "$#" -ge 2 ]] || return 64; output="$2"; shift 2; else paths+=("$1"); shift; fi; done; [[ "${#paths[@]}" -gt 0 ]] || return 64; [[ -n "$output" ]] || output="${paths[0]}.tar.gz"; command -v tar >/dev/null 2>&1 || return 69; tar -czf "$output" "${paths[@]}"; }
 
-### Run diff for two directories.
+# @description Run diff for two directories.
+#
+# @arg $1 string Original directory.
+# @arg $2 string Changed directory.
+# @stdout A unified diff that includes new files.
+# @exitcode 0 The directories are identical.
+# @exitcode 1 The directories differ.
+# @exitcode 64 The argument count is not two or a directory does not exist.
+# @exitcode 69 diff is unavailable.
+# @exitcode 2 diff failed.
+# @example
+#   diff::directories config.orig config > config.patch
 diff::directories() { [[ "$#" -eq 2 && -d "$1" && -d "$2" ]] || return 64; command -v diff >/dev/null 2>&1 || return 69; diff -uprN -- "$1" "$2"; }
 
-### Run a Git command in a working directory.
+# @description Run a Git command in a working directory.
+# @internal
 git::_run-in-directory() { [[ "$#" -ge 2 && -d "$1" ]] || return 64; local directory="$1"; shift; command git -C "$directory" "$@"; }
 
-### Clone a repository with depth one.
-git::clone-shallow() { [[ "$#" -ge 1 && "$#" -le 4 ]] || return 64; local url="$1" dir='' branch='' args=(); shift; while [[ "$#" -gt 0 ]]; do case "$1" in -Branch) [[ "$#" -ge 2 ]] || return 64; branch="$2"; shift 2 ;; *) [[ -z "$dir" ]] || return 64; dir="$1"; shift ;; esac; done; args=(clone --depth 1); [[ -n "$branch" ]] && args+=(--branch "$branch"); args+=("$url"); [[ -n "$dir" ]] && args+=("$dir"); command git "${args[@]}"; }
+# @description Clone a repository with depth one.
+#
+# @arg $1 string Repository URL.
+# @arg $2 string Optional output directory. Defaults to the name Git derives from the URL.
+# @option --branch <BRANCH> Branch or tag to check out.
+# @exitcode 0 The repository was cloned.
+# @exitcode 64 The arguments are invalid.
+# @exitcode other The status of git clone.
+# @example
+#   git::clone-shallow https://github.com/reconquest/shdoc.git --branch v1.4 vendor/shdoc
+git::clone-shallow() { [[ "$#" -ge 1 && "$#" -le 4 ]] || return 64; local url="$1" dir='' branch='' args=(); shift; while [[ "$#" -gt 0 ]]; do case "$1" in --branch) [[ "$#" -ge 2 ]] || return 64; branch="$2"; shift 2 ;; *) [[ -z "$dir" ]] || return 64; dir="$1"; shift ;; esac; done; args=(clone --depth 1); [[ -n "$branch" ]] && args+=(--branch "$branch"); args+=("$url"); [[ -n "$dir" ]] && args+=("$dir"); command git "${args[@]}"; }
 
-### Abort an in-progress rebase.
+# @description Abort an in-progress rebase.
+#
+# @arg $1 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The rebase was aborted.
+# @exitcode 64 More than one argument was given.
+# @exitcode other The status of git rebase.
+# @example
+#   git::rebase-abort "${HOME}/src/project"
 git::rebase-abort() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" rebase --abort; }
 
-### Continue an in-progress rebase.
+# @description Continue an in-progress rebase.
+#
+# @arg $1 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The rebase continued.
+# @exitcode 64 More than one argument was given.
+# @exitcode other The status of git rebase.
+# @example
+#   git add README.md && git::rebase-continue
 git::rebase-continue() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" rebase --continue; }
 
-### Amend the last commit without changing its message.
+# @description Amend the last commit without changing its message.
+#
+# @arg $1 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The commit was amended.
+# @exitcode 64 More than one argument was given.
+# @exitcode other The status of git commit.
+# @example
+#   git add README.md && git::commit::amend
 git::commit::amend() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" commit --amend --no-edit; }
 
-### Create a commit with a message.
+# @description Create a commit with a message.
+#
+# @arg $1 string Commit message.
+# @arg $2 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The commit was created.
+# @exitcode 64 The argument count is not one or two.
+# @exitcode other The status of git commit.
+# @example
+#   git add README.md && git::commit::create 'docs: describe the installer'
 git::commit::create() { [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:-.}" commit -m "$1"; }
 
-### Remove the last commit while keeping its changes staged.
+# @description Remove the last commit while keeping its changes staged.
+#
+# @arg $1 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The commit was removed.
+# @exitcode 64 More than one argument was given.
+# @exitcode other The status of git reset.
+# @example
+#   git::commit::uncommit
 git::commit::uncommit() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" reset --soft HEAD^; }
 
-### Write the current branch name.
+# @description Write the current branch name.
+#
+# @arg $1 string Optional repository directory. Defaults to the current directory.
+# @stdout The short name of the checked-out branch.
+# @exitcode 0 The branch name was written.
+# @exitcode 1 HEAD is detached or the directory is not a repository.
+# @exitcode 64 More than one argument was given.
+# @example
+#   branch="$(git::branch::current)"
 git::branch::current() { [[ "$#" -le 1 ]] || return 64; local branch=''; branch="$(git::_run-in-directory "${1:-.}" symbolic-ref --quiet --short HEAD 2>/dev/null)" || return 1; [[ -n "$branch" ]] && printf '%s\n' "$branch"; }
 
-### Create a branch at a starting revision.
+# @description Create a branch at a starting revision.
+#
+# @arg $1 string New branch name.
+# @arg $2 string Optional starting revision. Defaults to HEAD.
+# @arg $3 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The branch was created.
+# @exitcode 64 The argument count is not one to three.
+# @exitcode other The status of git branch.
+# @example
+#   git::branch::create release/1.2 v1.2.0
 git::branch::create() { [[ "$#" -ge 1 && "$#" -le 3 ]] || return 64; git::_run-in-directory "${3:-.}" branch "$1" "${2:-HEAD}"; }
 
-### List local and remote-tracking branches.
+# @description List local and remote-tracking branches.
+#
+# @arg $1 string Optional repository directory. Defaults to the current directory.
+# @stdout The output of git branch -a.
+# @exitcode 0 The branches were written.
+# @exitcode 64 More than one argument was given.
+# @exitcode other The status of git branch.
+# @example
+#   git::branch::list
 git::branch::list() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" branch -a; }
 
-### Show file names changed between two revisions.
+# @description Show file names changed between two revisions.
+#
+# @arg $1 string Base revision.
+# @arg $2 string Optional target revision. Defaults to HEAD.
+# @arg $3 string Optional repository directory. Defaults to the current directory.
+# @stdout One changed path per line.
+# @exitcode 0 The paths were written.
+# @exitcode 64 The argument count is not one to three.
+# @exitcode other The status of git diff.
+# @example
+#   git::diff::files origin/main
 git::diff::files() { [[ "$#" -ge 1 && "$#" -le 3 ]] || return 64; git::_run-in-directory "${3:-.}" diff --name-only "$1" "${2:-HEAD}"; }
 
-### Show a patch between two revisions.
+# @description Show a patch between two revisions.
+#
+# @arg $1 string Base revision.
+# @arg $2 string Optional target revision. Defaults to HEAD.
+# @arg $3 string Optional repository directory. Defaults to the current directory.
+# @stdout The unified diff.
+# @exitcode 0 The patch was written.
+# @exitcode 64 The argument count is not one to three.
+# @exitcode other The status of git diff.
+# @example
+#   git::diff::patch v1.0.0 v1.1.0 > changes.patch
 git::diff::patch() { [[ "$#" -ge 1 && "$#" -le 3 ]] || return 64; git::_run-in-directory "${3:-.}" diff "$1" "${2:-HEAD}"; }
 
-### Show the patch for uncommitted tracked changes.
+# @description Show the patch for uncommitted tracked changes.
+#
+# @arg $1 string Optional repository directory. Defaults to the current directory.
+# @stdout The unified diff of staged and unstaged tracked changes.
+# @exitcode 0 The patch was written.
+# @exitcode 64 More than one argument was given.
+# @exitcode other The status of git diff.
+# @example
+#   git::diff::uncommitted-patch > work.patch
 git::diff::uncommitted-patch() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" diff HEAD; }
 
-### Show file names changed by uncommitted tracked changes.
+# @description Show file names changed by uncommitted tracked changes.
+#
+# @arg $1 string Optional repository directory. Defaults to the current directory.
+# @stdout One changed path per line.
+# @exitcode 0 The paths were written.
+# @exitcode 64 More than one argument was given.
+# @exitcode other The status of git diff.
+# @example
+#   git::diff::uncommitted-files
 git::diff::uncommitted-files() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" diff --name-only HEAD; }
 
-### Show the patch introduced by the latest commit.
+# @description Show the patch introduced by the latest commit.
+#
+# @arg $1 string Optional repository directory. Defaults to the current directory.
+# @stdout The unified diff of HEAD.
+# @exitcode 0 The patch was written.
+# @exitcode 64 More than one argument was given.
+# @exitcode other The status of git show.
+# @example
+#   git::diff::latest-patch > latest.patch
 git::diff::latest-patch() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" show --format= --patch HEAD; }
 
-### Show file names changed by the latest commit.
+# @description Show file names changed by the latest commit.
+#
+# @arg $1 string Optional repository directory. Defaults to the current directory.
+# @stdout One changed path per line.
+# @exitcode 0 The paths were written.
+# @exitcode 64 More than one argument was given.
+# @exitcode other The status of git show.
+# @example
+#   git::diff::latest-files
 git::diff::latest-files() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" show --format= --name-only HEAD; }
 
-### Write the unified diff that one commit introduced.
-###
-### The commit is fetched from REMOTE only when the repository lacks it, and it
-### is compared with its first parent, or with the empty tree for a root commit.
-###
-### Arguments
-###
-### * REVISION - Commit to show.
-### * REMOTE - Remote to fetch a missing commit from. Defaults to origin.
-### * DIRECTORY - Repository directory. Defaults to the current directory.
+# @description Write the unified diff that one commit introduced.
+#
+# The commit is fetched from REMOTE only when the repository lacks it, and it
+# is compared with its first parent, or with the empty tree for a root commit.
+#
+# @arg $1 string Commit to show.
+# @arg $2 string Optional remote to fetch a missing commit from. Defaults to origin.
+# @arg $3 string Optional repository directory. Defaults to the current directory.
+# @stdout The unified diff of the commit.
+# @exitcode 0 The patch was written.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 74 The empty tree could not be computed.
+# @exitcode other The status of the git command that failed.
+# @example
+#   git::commit::patch 3ce3b61 > fix.patch
 git::commit::patch() {
   [[ "$#" -ge 1 && "$#" -le 3 && -n "$1" ]] || return 64
   local revision="$1" remote="${2:-origin}" directory="${3:-.}" parent='' empty_tree=''
@@ -681,11 +1093,10 @@ git::commit::patch() {
   git::_run-in-directory "${directory}" diff "${parent}" "${revision}"
 }
 
-### Make a commit available locally, fetching it from a remote only when it is missing.
-###
-### Exit status
-###
-### 1 when the remote does not provide the commit either.
+# @description Make a commit available locally, fetching it from a remote only when it is missing.
+# @internal
+# @exitcode 1 The remote does not provide the commit either.
+# @exitcode 69 The fetch from the remote failed.
 git::_require-commit() {
   [[ "$#" -eq 3 ]] || return 64
   local revision="$1" remote="$2" directory="$3"
@@ -697,21 +1108,49 @@ git::_require-commit() {
   fi
 }
 
-### Revert a commit without creating a commit.
+# @description Revert a commit without creating a commit.
+#
+# @arg $1 string Optional commit to revert. Defaults to HEAD.
+# @arg $2 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The changes were reverted in the working tree and index.
+# @exitcode 64 More than two arguments were given.
+# @exitcode other The status of git revert.
+# @example
+#   git::commit::revert-without-commit 3ce3b61
 git::commit::revert-without-commit() { [[ "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:-.}" revert --no-commit "${1:-HEAD}"; }
 
-### Revert a commit and create the revert commit.
+# @description Revert a commit and create the revert commit.
+#
+# @arg $1 string Optional commit to revert. Defaults to HEAD.
+# @arg $2 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The revert commit was created.
+# @exitcode 64 More than two arguments were given.
+# @exitcode other The status of git revert.
+# @example
+#   git::commit::revert 3ce3b61
 git::commit::revert() { [[ "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:-.}" revert "${1:-HEAD}"; }
 
-### Fetch one remote or all remotes.
+# @description Fetch one remote or all remotes.
+#
+# @arg $1 string Optional remote. Defaults to every remote.
+# @arg $2 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The fetch finished.
+# @exitcode 64 More than two arguments were given.
+# @exitcode other The status of git fetch.
+# @example
+#   git::fetch upstream
 git::fetch() { [[ "$#" -le 2 ]] || return 64; local remote="${1:-}" directory="${2:-.}"; if [[ -n "$remote" ]]; then git::_run-in-directory "$directory" fetch "$remote"; else git::_run-in-directory "$directory" fetch --all; fi; }
 
-### Convert a shallow clone into a complete history.
-###
-### Arguments
-###
-### * REMOTE - Remote to fetch. Defaults to every remote.
-### * DIRECTORY - Repository directory. Defaults to the current directory.
+# @description Convert a shallow clone into a complete history.
+#
+# @arg $1 string Optional remote to fetch. Defaults to every remote.
+# @arg $2 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The history is complete.
+# @exitcode 64 More than two arguments were given.
+# @exitcode 66 The repository has no remote.
+# @exitcode other The status of the git command that failed.
+# @example
+#   git::fetch-unshallow origin
 git::fetch-unshallow() {
   [[ "$#" -le 2 ]] || return 64
   local directory="${2:-.}" remote='' remotes=''
@@ -731,15 +1170,27 @@ git::fetch-unshallow() {
   done <<<"${remotes}"
 }
 
-### Show a stash patch.
+# @description Show a stash patch.
+#
+# @arg $1 string Optional stash. Defaults to stash@{0}.
+# @arg $2 string Optional repository directory. Defaults to the current directory.
+# @stdout The unified diff of the stash.
+# @exitcode 0 The patch was written.
+# @exitcode 64 More than two arguments were given.
+# @exitcode other The status of git stash.
+# @example
+#   git::stash::patch 'stash@{1}'
 git::stash::patch() { [[ "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:-.}" stash show --patch "${1:-stash@{0}}"; }
 
-### Save tracked changes and untracked files in a new stash.
-###
-### Arguments
-###
-### * MESSAGE - Optional stash message.
-### * DIRECTORY - Repository directory. Defaults to the current directory.
+# @description Save tracked changes and untracked files in a new stash.
+#
+# @arg $1 string Optional stash message.
+# @arg $2 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The changes were stashed.
+# @exitcode 64 More than two arguments were given.
+# @exitcode other The status of git stash.
+# @example
+#   git::stash::push 'before rebase'
 git::stash::push() {
   [[ "$#" -le 2 ]] || return 64
   local directory="${2:-.}"
@@ -748,22 +1199,50 @@ git::stash::push() {
   git::_run-in-directory "${directory}" "${arguments[@]}"
 }
 
-### Apply and remove a stash.
+# @description Apply and remove a stash.
+#
+# @arg $1 string Optional stash. Defaults to stash@{0}.
+# @arg $2 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The stash was applied and removed.
+# @exitcode 64 More than two arguments were given.
+# @exitcode other The status of git stash.
+# @example
+#   git::stash::pop
 git::stash::pop() { [[ "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:-.}" stash pop "${1:-stash@{0}}"; }
 
-### Delete a stash.
+# @description Delete a stash.
+#
+# @arg $1 string Optional stash. Defaults to stash@{0}.
+# @arg $2 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The stash was deleted.
+# @exitcode 64 More than two arguments were given.
+# @exitcode other The status of git stash.
+# @example
+#   git::stash::drop 'stash@{2}'
 git::stash::drop() { [[ "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:-.}" stash drop "${1:-stash@{0}}"; }
 
-### Reset a working tree to a revision.
+# @description Reset a working tree to a revision.
+#
+# @arg $1 string Revision to reset to.
+# @arg $2 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The working tree and index match the revision.
+# @exitcode 64 The argument count is not one or two.
+# @exitcode other The status of git reset.
+# @example
+#   git::fetch origin && git::reset origin/main
 git::reset() { [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:-.}" reset --hard "$1"; }
 
-### Update a branch from a remote with rebase.
-###
-### Arguments
-###
-### * BRANCH - Remote branch to pull. Defaults to the current branch.
-### * REMOTE - Remote name. Defaults to origin.
-### * DIRECTORY - Repository directory. Defaults to the current directory.
+# @description Update a branch from a remote with rebase.
+#
+# @arg $1 string Optional remote branch to pull. Defaults to the current branch.
+# @arg $2 string Optional remote. Defaults to origin.
+# @arg $3 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The branch was updated.
+# @exitcode 1 No branch was given and HEAD is detached.
+# @exitcode 64 More than three arguments were given.
+# @exitcode other The status of git pull.
+# @example
+#   git::pull-rebase main upstream
 git::pull-rebase() {
   [[ "$#" -le 3 ]] || return 64
   local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
@@ -771,13 +1250,16 @@ git::pull-rebase() {
   git::_run-in-directory "${directory}" pull --rebase "${remote}" "${branch}"
 }
 
-### Apply one commit, fetching it from a remote only when the repository lacks it.
-###
-### Arguments
-###
-### * REVISION - Commit to apply.
-### * REMOTE - Remote to fetch a missing commit from. Defaults to origin.
-### * DIRECTORY - Repository directory. Defaults to the current directory.
+# @description Apply one commit, fetching it from a remote only when the repository lacks it.
+#
+# @arg $1 string Commit to apply.
+# @arg $2 string Optional remote to fetch a missing commit from. Defaults to origin.
+# @arg $3 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The commit was applied.
+# @exitcode 64 The arguments are invalid.
+# @exitcode other The status of the git command that failed.
+# @example
+#   git::cherry-pick 3ce3b61 upstream
 git::cherry-pick() {
   [[ "$#" -ge 1 && "$#" -le 3 && -n "$1" ]] || return 64
   local revision="$1" remote="${2:-origin}" directory="${3:-.}"
@@ -785,10 +1267,26 @@ git::cherry-pick() {
   git::_run-in-directory "${directory}" cherry-pick "${revision}"
 }
 
-### Continue an in-progress cherry-pick.
+# @description Continue an in-progress cherry-pick.
+#
+# @arg $1 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The cherry-pick continued.
+# @exitcode 64 More than one argument was given.
+# @exitcode other The status of git cherry-pick.
+# @example
+#   git add src/util.sh && git::cherry-pick-continue
 git::cherry-pick-continue() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" cherry-pick --continue; }
 
-### Abort an in-progress cherry-pick.
+# @description Abort an in-progress cherry-pick.
+#
+# Untracked files left by the cherry-pick are stashed, or removed when stashing fails.
+#
+# @arg $1 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The cherry-pick was aborted.
+# @exitcode 64 More than one argument was given.
+# @exitcode other The status of the git command that failed.
+# @example
+#   git::cherry-pick-abort
 git::cherry-pick-abort() {
   [[ "$#" -le 1 ]] || return 64
   local directory="${1:-.}" path=''
@@ -801,7 +1299,17 @@ git::cherry-pick-abort() {
   git::_run-in-directory "$directory" clean -fd
 }
 
-### Push a branch to a remote.
+# @description Push a branch to a remote.
+#
+# @arg $1 string Optional branch. Defaults to the current branch.
+# @arg $2 string Optional remote. Defaults to origin.
+# @arg $3 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The branch was pushed.
+# @exitcode 1 No branch was given and HEAD is detached.
+# @exitcode 64 More than three arguments were given.
+# @exitcode other The status of git push.
+# @example
+#   git::push feature/login
 git::push() {
   [[ "$#" -le 3 ]] || return 64
   local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
@@ -809,7 +1317,17 @@ git::push() {
   git::_run-in-directory "$directory" push "$remote" "$branch"
 }
 
-### Push a branch without overwriting a remote update.
+# @description Push a branch without overwriting a remote update.
+#
+# @arg $1 string Optional branch. Defaults to the current branch.
+# @arg $2 string Optional remote. Defaults to origin.
+# @arg $3 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The branch was pushed.
+# @exitcode 1 No branch was given and HEAD is detached.
+# @exitcode 64 More than three arguments were given.
+# @exitcode other The status of git push.
+# @example
+#   git rebase origin/main && git::push::force-with-lease
 git::push::force-with-lease() {
   [[ "$#" -le 3 ]] || return 64
   local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
@@ -817,13 +1335,17 @@ git::push::force-with-lease() {
   git::_run-in-directory "$directory" push --force-with-lease "$remote" "$branch"
 }
 
-### Push the current HEAD to a Gerrit review reference.
-###
-### Arguments
-###
-### * BRANCH - Target branch of the review. Defaults to the current branch.
-### * REMOTE - Remote name. Defaults to origin.
-### * DIRECTORY - Repository directory. Defaults to the current directory.
+# @description Push the current HEAD to a Gerrit review reference.
+#
+# @arg $1 string Optional target branch of the review. Defaults to the current branch.
+# @arg $2 string Optional remote. Defaults to origin.
+# @arg $3 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The review was pushed.
+# @exitcode 1 No branch was given and HEAD is detached.
+# @exitcode 64 More than three arguments were given.
+# @exitcode other The status of git push.
+# @example
+#   gerrit::push-review main
 gerrit::push-review() {
   [[ "$#" -le 3 ]] || return 64
   local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
@@ -831,13 +1353,17 @@ gerrit::push-review() {
   git::_run-in-directory "${directory}" push "${remote}" "HEAD:refs/for/${branch}"
 }
 
-### Push the current HEAD to a Gerrit review reference as work in progress.
-###
-### Arguments
-###
-### * BRANCH - Target branch of the review. Defaults to the current branch.
-### * REMOTE - Remote name. Defaults to origin.
-### * DIRECTORY - Repository directory. Defaults to the current directory.
+# @description Push the current HEAD to a Gerrit review reference as work in progress.
+#
+# @arg $1 string Optional target branch of the review. Defaults to the current branch.
+# @arg $2 string Optional remote. Defaults to origin.
+# @arg $3 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The review was pushed.
+# @exitcode 1 No branch was given and HEAD is detached.
+# @exitcode 64 More than three arguments were given.
+# @exitcode other The status of git push.
+# @example
+#   gerrit::push-review-wip main
 gerrit::push-review-wip() {
   [[ "$#" -le 3 ]] || return 64
   local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
@@ -845,13 +1371,17 @@ gerrit::push-review-wip() {
   git::_run-in-directory "${directory}" push "${remote}" "HEAD:refs/for/${branch}%wip"
 }
 
-### Delete a branch on a remote.
-###
-### Arguments
-###
-### * BRANCH - Branch to delete. Defaults to the current branch.
-### * REMOTE - Remote name. Defaults to origin.
-### * DIRECTORY - Repository directory. Defaults to the current directory.
+# @description Delete a branch on a remote.
+#
+# @arg $1 string Optional branch to delete. Defaults to the current branch.
+# @arg $2 string Optional remote. Defaults to origin.
+# @arg $3 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The remote branch was deleted.
+# @exitcode 1 No branch was given and HEAD is detached.
+# @exitcode 64 More than three arguments were given.
+# @exitcode other The status of git push.
+# @example
+#   git::remote::delete-branch feature/login
 git::remote::delete-branch() {
   [[ "$#" -le 3 ]] || return 64
   local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
@@ -859,10 +1389,26 @@ git::remote::delete-branch() {
   git::_run-in-directory "${directory}" push "${remote}" --delete "${branch}"
 }
 
-### Update all submodules recursively.
+# @description Update all submodules recursively.
+#
+# @arg $1 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 Every submodule was initialized and updated.
+# @exitcode 64 More than one argument was given.
+# @exitcode other The status of git submodule.
+# @example
+#   git::submodule::update-all
 git::submodule::update-all() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" submodule update --init --recursive; }
 
-### Discard all changes in a working tree.
+# @description Discard all changes in a working tree.
+#
+# The changes, including untracked files, are first saved in a stash, and the branch is reset to the parent of HEAD.
+#
+# @arg $1 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The changes were stashed and the latest commit was removed.
+# @exitcode 64 More than one argument was given.
+# @exitcode other The status of the git command that failed, including when HEAD has no parent.
+# @example
+#   git::commit::discard
 git::commit::discard() {
   [[ "$#" -le 1 ]] || return 64
   local directory="${1:-.}"
@@ -871,12 +1417,16 @@ git::commit::discard() {
   git::_run-in-directory "$directory" reset --hard HEAD^
 }
 
-### Hard reset the current branch to the branch with the same name on a remote.
-###
-### Arguments
-###
-### * REMOTE - Remote name. Defaults to origin.
-### * DIRECTORY - Repository directory. Defaults to the current directory.
+# @description Hard reset the current branch to the branch with the same name on a remote.
+#
+# @arg $1 string Optional remote. Defaults to origin.
+# @arg $2 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The branch matches the remote branch.
+# @exitcode 1 HEAD is detached.
+# @exitcode 64 More than two arguments were given.
+# @exitcode other The status of the git command that failed.
+# @example
+#   git::reset-remote upstream
 git::reset-remote() {
   [[ "$#" -le 2 ]] || return 64
   local remote="${1:-origin}" directory="${2:-.}" branch=''
@@ -885,21 +1435,34 @@ git::reset-remote() {
   git::_run-in-directory "${directory}" reset --hard "${remote}/${branch}"
 }
 
-### Pull the configured base branch with fast-forward-only semantics.
+# @description Pull the configured base branch with fast-forward-only semantics.
+#
+# The base branch is checked out and fast-forwarded from origin, and the original branch is then rebased onto it.
+#
+# @arg $1 string Optional base branch. Defaults to main.
+# @arg $2 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The base branch was updated and the current branch was rebased.
+# @exitcode 64 More than two arguments were given.
+# @exitcode 65 HEAD is detached.
+# @exitcode 75 The base branch could not be fast-forwarded, or the original branch could not be checked out again.
+# @exitcode other The status of git checkout or git rebase.
+# @example
+#   git::pull-base-branch develop
 git::pull-base-branch() { [[ "$#" -le 2 ]] || return 64; local base="${1:-main}" directory="${2:-.}" current=''; current="$(git::branch::current "$directory")" || return 65; git::_run-in-directory "$directory" checkout "$base" -- || return "$?"; if ! git::_run-in-directory "$directory" pull --ff-only origin "$base"; then git::_run-in-directory "$directory" checkout "$current" -- >/dev/null 2>&1 || true; return 75; fi; git::_run-in-directory "$directory" checkout "$current" -- || return 75; git::_run-in-directory "$directory" rebase "$base"; }
 
-### Import the variables of a dotenv file into the current process.
-###
-### The file is parsed as data and never executed. Every line is validated
-### before any variable changes; see env::dotenv::_entries for the syntax.
-###
-### Arguments
-###
-### * FILE - Regular dotenv file.
-###
-### Exit status
-###
-### 65 when a line is not valid dotenv syntax.
+# @description Import the variables of a dotenv file into the current process.
+#
+# The file is parsed as data and never executed. Every line is validated
+# before any variable changes; see env::dotenv::_entries for the syntax.
+#
+# @arg $1 string Regular dotenv file. A symbolic link is refused.
+# @set Each variable of the file is set and exported.
+# @exitcode 0 The variables were imported.
+# @exitcode 64 The argument is not one regular file.
+# @exitcode 65 A line is not valid dotenv syntax; no variable changes.
+# @exitcode other The status of the parser.
+# @example
+#   env::dotenv::import .env && printf '%s\n' "${DATABASE_URL}"
 env::dotenv::import() {
   [[ "$#" -eq 1 && -f "$1" && ! -L "$1" ]] || return 64
   env::dotenv::_entries "$1" >/dev/null || return "$?"
@@ -910,7 +1473,8 @@ env::dotenv::import() {
   done < <(env::dotenv::_entries "$1")
 }
 
-### Write export commands for a dotenv file that Bash and Zsh can evaluate.
+# @description Write export commands for a dotenv file that Bash and Zsh can evaluate.
+# @internal
 env::dotenv::_export-commands() {
   [[ "$#" -eq 1 ]] || return 64
   env::dotenv::_entries "$1" >/dev/null || return "$?"
@@ -921,14 +1485,15 @@ env::dotenv::_export-commands() {
   done < <(env::dotenv::_entries "$1")
 }
 
-### Write the KEY and VALUE of every assignment in a dotenv file as NUL-separated pairs.
-###
-### Blank lines and lines starting with # are skipped, and an assignment may
-### start with export. Unquoted values end at an unescaped # preceded by a
-### blank and lose surrounding blanks. Single-quoted values are literal.
-### Double-quoted values accept the escapes \n, \t, \r, \", \\, and \$. The
-### whole file is validated before anything is written; a malformed line
-### returns 65 and writes nothing.
+# @description Write the KEY and VALUE of every assignment in a dotenv file as NUL-separated pairs.
+#
+# Blank lines and lines starting with # are skipped, and an assignment may
+# start with export. Unquoted values end at an unescaped # preceded by a
+# blank and lose surrounding blanks. Single-quoted values are literal.
+# Double-quoted values accept the escapes \n, \t, \r, \", \\, and \$. The
+# whole file is validated before anything is written; a malformed line
+# returns 65 and writes nothing.
+# @internal
 env::dotenv::_entries() {
   [[ "$#" -eq 1 && -f "$1" && ! -L "$1" ]] || return 64
   local line='' key='' rest='' value='' character='' quote='' index=0 length=0 number=0
@@ -986,7 +1551,19 @@ env::dotenv::_entries() {
   done
 }
 
-### Set an environment variable for the current shell.
+# @description Set an environment variable for the current shell.
+#
+# The export line is written to the startup file of each shell, replacing an earlier export of the same name.
+#
+# @arg $1 string Variable name.
+# @arg $2 string Value.
+# @arg $3 string Optional comma-separated shells, bash and zsh. Defaults to bash,zsh.
+# @set The variable is exported in the current shell.
+# @exitcode 0 The variable was set and saved.
+# @exitcode 64 The name or the shell list is invalid.
+# @exitcode other The status of the file operation that failed.
+# @example
+#   env::set-variable EDITOR vim bash
 env::set-variable() {
   [[ "$#" -ge 2 && "$#" -le 3 && "$1" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] || return 64
   local name="$1" value="$2" shells="${3:-bash,zsh}" shell='' rc='' quoted=''
@@ -1001,7 +1578,18 @@ env::set-variable() {
   export "${name}=${value}"
 }
 
-### Add a directory to PATH without creating duplicates.
+# @description Add a directory to PATH without creating duplicates.
+#
+# A line that adds the directory once is written to the startup file of each shell.
+#
+# @arg $1 string Existing directory.
+# @arg $2 string Optional comma-separated shells, bash and zsh. Defaults to bash,zsh.
+# @set PATH gains the directory in the current shell when it is missing.
+# @exitcode 0 PATH was updated and saved.
+# @exitcode 64 The directory does not exist or the shell list is invalid.
+# @exitcode other The status of the file operation that failed.
+# @example
+#   env::add-path "${HOME}/.local/bin"
 env::add-path() {
   [[ "$#" -ge 1 && "$#" -le 2 && -d "$1" ]] || return 64
   local path="$1" shells="${2:-bash,zsh}" shell='' rc='' quoted='' line=''
@@ -1018,17 +1606,20 @@ env::add-path() {
   case ":${PATH:-}:" in *":$path:"*) ;; *) PATH="${PATH:+${PATH}:}${path}"; export PATH ;; esac
 }
 
-### Load a dotenv file in every new Bash and Zsh session.
-###
-### Bash startup files load BashStock and call env::dotenv::import. Zsh cannot
-### load a Bash library, so its startup file asks Bash for the parsed values
-### and evaluates the resulting export commands. Each startup file receives the
-### line once, and the file is always read as data.
-###
-### Arguments
-###
-### * FILE - Regular dotenv file. A relative path is stored as an absolute path.
-### * SHELLS - Comma-separated bash and zsh. Defaults to bash,zsh.
+# @description Load a dotenv file in every new Bash and Zsh session.
+#
+# Bash startup files load BashStock and call env::dotenv::import. Zsh cannot
+# load a Bash library, so its startup file asks Bash for the parsed values
+# and evaluates the resulting export commands. Each startup file receives the
+# line once, and the file is always read as data.
+#
+# @arg $1 string Regular dotenv file. A relative path is stored as an absolute path.
+# @arg $2 string Optional comma-separated shells, bash and zsh. Defaults to bash,zsh.
+# @exitcode 0 The startup files load the file.
+# @exitcode 64 The file is not a regular file or the shell list is invalid.
+# @exitcode other The status of the file operation that failed.
+# @example
+#   env::dotenv::register "${HOME}/.config/app/.env" zsh
 env::dotenv::register() {
   [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" && ! -L "$1" ]] || return 64
   local file="$1" shells="${2:-bash,zsh}" shell='' rc='' line='' library='' quoted_file=''
@@ -1056,16 +1647,33 @@ env::dotenv::register() {
   done
 }
 
-### Create a symbolic link in a user's local bin directory.
+# @description Create a symbolic link in a user's local bin directory.
+#
+# @arg $1 string Existing file or directory to link to.
+# @arg $2 string Optional link name. Defaults to the base name of the source.
+# @arg $3 string Optional bin directory. Defaults to $HOME/.local/bin.
+# @exitcode 0 The link was created.
+# @exitcode 64 The arguments are invalid or the source does not exist.
+# @exitcode 74 The bin directory could not be created.
+# @exitcode other The status of symlink::create.
+# @example
+#   symlink::create-in-local-bin /opt/flutter/bin/flutter
 symlink::create-in-local-bin() { [[ "$#" -ge 1 && "$#" -le 3 && -e "$1" ]] || return 64; local source="$1" name="${2:-$(basename -- "$1")}" directory="${3:-$HOME/.local/bin}"; mkdir -p -- "$directory" || return 74; symlink::create "$source" "$directory/$name"; }
 
-### Create $HOME/.ssh and give it and its files the modes SSH expects.
-###
-### Entries owned by another user are first given back to the current user
-### through administrator execution. Directories become 700 and files 644,
-### except private keys, config, and authorized_keys, which become 600. A
-### private key is recognized by its PEM or OpenSSH header, so no passphrase
-### is ever requested.
+# @description Create $HOME/.ssh and give it and its files the modes SSH expects.
+#
+# Entries owned by another user are first given back to the current user
+# through administrator execution. Directories become 700 and files 644,
+# except private keys, config, and authorized_keys, which become 600. A
+# private key is recognized by its PEM or OpenSSH header, so no passphrase
+# is ever requested.
+#
+# @noargs
+# @exitcode 0 The directory and its files have the expected modes.
+# @exitcode 64 An argument was given.
+# @exitcode 74 A mode or owner could not be changed.
+# @example
+#   ssh::setup-directory
 ssh::setup-directory() {
   [[ "$#" -eq 0 ]] || return 64
   local directory="${HOME}/.ssh" path='' header=''
@@ -1084,7 +1692,8 @@ ssh::setup-directory() {
   done < <(find "${directory}" -type f -print0)
 }
 
-### Replace one marker-managed SSH Host block and validate the resulting configuration.
+# @description Replace one marker-managed SSH Host block and validate the resulting configuration.
+# @internal
 ssh::config::_write-block() {
   [[ "$#" -eq 3 && -n "$1" && -n "$2" && -n "$3" ]] || return 64
   local file="$1" pattern="$2" options="$3" begin='' end='' line='' content='' preserved='' old_content='' keys='' option='' key='' validation_host='localhost' token=''
@@ -1136,14 +1745,38 @@ ssh::config::_write-block() {
   fi
 }
 
-### Update one key in a marker-managed SSH Host block.
+# @description Update one key in a marker-managed SSH Host block.
+#
+# The Host block is created when missing. Only blocks written by BashStock are changed.
+#
+# @arg $1 string SSH configuration file.
+# @arg $2 string Host pattern.
+# @arg $3 string Key, such as IdentityFile.
+# @arg $4 string Value on one line.
+# @exitcode 0 The key was written.
+# @exitcode 64 The arguments are invalid.
+# @exitcode other The status of the file update.
+# @example
+#   ssh::config::update "${HOME}/.ssh/config" github.com IdentityFile '~/.ssh/github'
 ssh::config::update() {
   [[ "$#" -eq 4 && -n "$1" && -n "$2" && "$3" =~ ^[A-Za-z][A-Za-z0-9]*$ && -n "$4" ]] || return 64
   [[ "$4" != *$'\n'* && "$4" != *$'\r'* ]] || return 64
   ssh::config::_write-block "$1" "$2" "  $3 $4"
 }
 
-### Create an SSH configuration file when necessary and update one key.
+# @description Create an SSH configuration file when necessary and update one key.
+#
+# @arg $1 string SSH configuration file. It and its directory are created when missing.
+# @arg $2 string Host pattern.
+# @arg $3 string Key, such as User.
+# @arg $4 string Value on one line.
+# @exitcode 0 The key was written.
+# @exitcode 64 The arguments are invalid or the file is a symbolic link.
+# @exitcode 66 The path exists but is not a regular file.
+# @exitcode 74 The file could not be created.
+# @exitcode other The status of ssh::config::update.
+# @example
+#   ssh::config::set "${HOME}/.ssh/config" 'build-*' User builder
 ssh::config::set() {
   [[ "$#" -eq 4 && -n "$1" ]] || return 64
   [[ ! -L "$1" ]] || return 64
@@ -1155,7 +1788,15 @@ ssh::config::set() {
   ssh::config::update "$@"
 }
 
-### Enable AddKeysToAgent for an optional SSH Host pattern.
+# @description Enable AddKeysToAgent for an optional SSH Host pattern.
+#
+# @arg $1 string Optional SSH configuration file. Defaults to $HOME/.ssh/config.
+# @arg $2 string Optional Host pattern. Defaults to *.
+# @exitcode 0 AddKeysToAgent is enabled.
+# @exitcode 64 More than two arguments were given.
+# @exitcode other The status of ssh::config::set.
+# @example
+#   ssh::config::enable-auto-add-keys
 ssh::config::enable-auto-add-keys() {
   [[ "$#" -le 2 ]] || return 64
   local file='' pattern=''
@@ -1164,9 +1805,19 @@ ssh::config::enable-auto-add-keys() {
   ssh::config::set "$file" "$pattern" AddKeysToAgent yes
 }
 
-### Disable SSH host-key checks for an optional Host pattern.
-###
-### Normal use should register the correct host key in known_hosts instead.
+# @description Disable SSH host-key checks for an optional Host pattern.
+#
+# Normal use should register the correct host key in known_hosts instead.
+#
+# @arg $1 string Optional SSH configuration file. Defaults to $HOME/.ssh/config.
+# @arg $2 string Optional Host pattern. Defaults to *.
+# @exitcode 0 Host-key checks are disabled for the pattern.
+# @exitcode 64 More than two arguments were given or the file is a symbolic link.
+# @exitcode 66 The path exists but is not a regular file.
+# @exitcode 74 The file could not be created.
+# @exitcode other The status of the file update.
+# @example
+#   ssh::config::disable-host-key-checking "${HOME}/.ssh/config" '192.168.56.*'
 ssh::config::disable-host-key-checking() {
   [[ "$#" -le 2 ]] || return 64
   local file='' pattern=''
@@ -1181,7 +1832,16 @@ ssh::config::disable-host-key-checking() {
   ssh::config::_write-block "$file" "$pattern" $'  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null'
 }
 
-### List regular files that ssh-keygen can read as private keys.
+# @description List regular files that ssh-keygen can read as private keys.
+#
+# @arg $1 string Optional directory. Defaults to $HOME/.ssh.
+# @stdout One private key path per line.
+# @exitcode 0 The paths were written; none may match.
+# @exitcode 64 More than one argument was given.
+# @exitcode 66 The directory does not exist or is a symbolic link.
+# @exitcode 69 ssh-keygen is unavailable.
+# @example
+#   ssh::key::private-files
 ssh::key::private-files() {
   [[ "$#" -le 1 ]] || return 64
   local directory='' path=''
@@ -1198,14 +1858,31 @@ ssh::key::private-files() {
   )
 }
 
-### Add one private key to ssh-agent.
+# @description Add one private key to ssh-agent.
+#
+# @arg $1 string Private key file.
+# @exitcode 0 The key was added.
+# @exitcode 64 The argument is not one regular file.
+# @exitcode 69 ssh-add is unavailable.
+# @exitcode other The status of ssh-add.
+# @example
+#   ssh::key::add "${HOME}/.ssh/id_ed25519"
 ssh::key::add() {
   [[ "$#" -eq 1 && -f "$1" && ! -L "$1" ]] || return 64
   command -v ssh-add >/dev/null 2>&1 || return 69
   ssh-add "$1"
 }
 
-### Add every detected private key in a directory to ssh-agent.
+# @description Add every detected private key in a directory to ssh-agent.
+#
+# @arg $1 string Optional directory. Defaults to $HOME/.ssh.
+# @exitcode 0 Every key was added.
+# @exitcode 64 More than one argument was given.
+# @exitcode 66 The directory does not exist or is a symbolic link.
+# @exitcode 69 ssh-add or ssh-keygen is unavailable.
+# @exitcode other The status of the last ssh-add that failed.
+# @example
+#   ssh::key::add-all
 ssh::key::add-all() {
   [[ "$#" -le 1 ]] || return 64
   local directory='' path='' status=0
@@ -1218,16 +1895,29 @@ ssh::key::add-all() {
   return "$status"
 }
 
-### Add every detected private key in a directory to ssh-agent.
+# @description Add every detected private key in a directory to ssh-agent.
+#
+# This is an alias of ssh::key::add-all.
+#
+# @arg $1 string Optional directory. Defaults to $HOME/.ssh.
+# @exitcode 0 Every key was added.
+# @exitcode other The status of ssh::key::add-all.
+# @example
+#   ssh::key::add-all-private-keys
 ssh::key::add-all-private-keys() { ssh::key::add-all "$@"; }
 
-### Send ICMP echo requests to a host.
-###
-### Arguments
-###
-### * HOST - Host name or address. Defaults to google.com.
-### * ATTEMPTS - Number of requests. Defaults to 3.
-### * TIMEOUT_SECONDS - Time to wait for each reply. Defaults to 5.
+# @description Send ICMP echo requests to a host.
+#
+# @arg $1 string Optional host name or address. Defaults to google.com.
+# @arg $2 integer Optional number of requests. Defaults to 3.
+# @arg $3 integer Optional seconds to wait for each reply. Defaults to 5.
+# @stdout The output of ping.
+# @exitcode 0 A reply was received.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 69 ping is unavailable or the operating system is unsupported.
+# @exitcode other The status of ping.
+# @example
+#   net::ping 192.168.1.1 1 2
 net::ping() {
   [[ "$#" -le 3 ]] || return 64
   local host="${1:-google.com}" attempts="${2:-3}" timeout="${3:-5}"
@@ -1241,7 +1931,8 @@ net::ping() {
   esac
 }
 
-### Test whether a string is one IPv4 or IPv6 address.
+# @description Test whether a string is one IPv4 or IPv6 address.
+# @internal
 net::_is-ip-address() {
   [[ "$#" -eq 1 ]] || return 64
   local octet='(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])'
@@ -1249,16 +1940,33 @@ net::_is-ip-address() {
   [[ "$1" =~ ^[0-9A-Fa-f:.]+$ && "$1" == *:*:* && "$1" != *:::* ]]
 }
 
-### Disable every active swap area through administrator execution.
+# @description Disable every active swap area through administrator execution.
+#
+# @noargs
+# @exitcode 0 Every swap area is disabled.
+# @exitcode 64 An argument was given.
+# @exitcode 69 swapoff is unavailable.
+# @exitcode other The status of swapoff.
+# @example
+#   swap::disable-all
 swap::disable-all() {
   [[ "$#" -eq 0 ]] || return 64
   command::require swapoff || return "$?"
   command::run-as-root swapoff --all
 }
 
-### Disable every swap file, remove its /etc/fstab entry, and delete it.
-###
-### Swap partitions are kept. The first failure stops the removal and is reported.
+# @description Disable every swap file, remove its /etc/fstab entry, and delete it.
+#
+# Swap partitions are kept. The first failure stops the removal and is reported.
+#
+# @noargs
+# @stderr The swap file and step that failed.
+# @exitcode 0 Every swap file was removed.
+# @exitcode 64 An argument was given.
+# @exitcode 69 /proc/swaps cannot be read.
+# @exitcode 74 A swap file could not be disabled, unregistered, or deleted.
+# @example
+#   swap::remove-all-files && swap::create 4294967296
 swap::remove-all-files() {
   [[ "$#" -eq 0 ]] || return 64
   [[ -r /proc/swaps ]] || return 69
@@ -1275,14 +1983,21 @@ swap::remove-all-files() {
   done < <(awk 'NR > 1 && $2 == "file" {print $1}' /proc/swaps)
 }
 
-### Create a swap file, enable it, and register it in /etc/fstab.
-###
-### The file is created and enabled through administrator execution.
-###
-### Arguments
-###
-### * SIZE_BYTES - Size of the file. Defaults to 8589934592 (8 GiB).
-### * PATH - Swap file path. Defaults to /swapfile; an existing path returns 73.
+# @description Create a swap file, enable it, and register it in /etc/fstab.
+#
+# The file is created and enabled through administrator execution.
+#
+# @arg $1 integer Optional size in bytes. Defaults to 8589934592 (8 GiB).
+# @arg $2 string Optional absolute swap file path. Defaults to /swapfile.
+# @stderr A message when the path already exists.
+# @exitcode 0 The swap file is enabled and registered.
+# @exitcode 64 The size or path is invalid.
+# @exitcode 69 The system is not Linux or mkswap is unavailable.
+# @exitcode 73 The path already exists.
+# @exitcode 74 The file could not be created or enabled.
+# @exitcode other The status of the /etc/fstab update.
+# @example
+#   swap::create 4294967296
 swap::create() {
   [[ "$#" -le 2 ]] || return 64
   local size="${1:-8589934592}" path="${2:-/swapfile}"
@@ -1308,19 +2023,28 @@ swap::create() {
   fi
 }
 
-### List active swap devices.
+# @description List active swap devices.
+#
+# @noargs
+# @stdout The output of swapon --show.
+# @exitcode 0 The swap areas were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 swapon is unavailable.
+# @example
+#   swap::list
 swap::list() { [[ "$#" -eq 0 ]] || return 64; command -v swapon >/dev/null 2>&1 || return 69; swapon --show; }
 
-### Write the paths below a directory that match a case-insensitive Bash ERE, separated by NUL.
-###
-### Arguments
-###
-### * EXPRESSION - Extended regular expression evaluated by Bash on each path.
-### * DIRECTORY - Directory to search. Defaults to the current directory.
-###
-### Exit status
-###
-### 1 when no path matches; 64 when EXPRESSION is not a valid expression.
+# @description Write the paths below a directory that match a case-insensitive Bash ERE, separated by NUL.
+#
+# @arg $1 string Extended regular expression evaluated by Bash on each path.
+# @arg $2 string Optional directory to search. Defaults to the current directory.
+# @stdout NUL-separated matching paths.
+# @exitcode 0 At least one path matches.
+# @exitcode 1 No path matches.
+# @exitcode 64 The arguments are invalid or the expression is not valid.
+# @exitcode 66 The directory does not exist.
+# @example
+#   path::find '\.(jpe?g|png)$' "${HOME}/Pictures" | xargs -0 ls -l
 path::find() {
   [[ "$#" -ge 1 && "$#" -le 2 && -n "$1" ]] || return 64
   local expression="$1" directory="${2:-.}" path='' found=1 status=0
@@ -1341,16 +2065,22 @@ path::find() {
   )
 }
 
-### Write the directories and text files below a path, with the contents of each text file.
-###
-### Directories are written as paths. Regular files whose MIME type is text/*
-### are written by file::_print-text; other files are skipped.
-###
-### Arguments
-###
-### * PATH - Starting path. Defaults to the current directory.
-### * MIN_DEPTH - Minimum depth below PATH. Defaults to 1.
-### * MAX_DEPTH - Maximum depth below PATH. Unlimited when omitted.
+# @description Write the directories and text files below a path, with the contents of each text file.
+#
+# Directories are written as paths. Regular files whose MIME type is text/*
+# are written by file::_print-text; other files are skipped.
+#
+# @arg $1 string Optional starting path. Defaults to the current directory.
+# @arg $2 integer Optional minimum depth. Defaults to 1.
+# @arg $3 integer Optional maximum depth. Unlimited when omitted.
+# @stdout Directory paths and the contents of text files.
+# @exitcode 0 The tree was written.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 66 The path does not exist.
+# @exitcode 69 file is unavailable.
+# @exitcode other The status of the file that could not be written.
+# @example
+#   file::tree-with-contents src 1 2 > context.txt
 file::tree-with-contents() {
   [[ "$#" -le 3 ]] || return 64
   local path="${1:-.}" minimum="${2:-1}" maximum="${3:-}" entry=''
@@ -1368,7 +2098,8 @@ file::tree-with-contents() {
   done < <(find "${arguments[@]}" -print0)
 }
 
-### Write a text file between header lines; files of other MIME types write nothing.
+# @description Write a text file between header lines; files of other MIME types write nothing.
+# @internal
 file::_print-text() {
   [[ "$#" -eq 1 && -f "$1" ]] || return 64
   local type=''
@@ -1379,14 +2110,18 @@ file::_print-text() {
   [[ -z "$(tail -c 1 -- "$1")" ]] || printf '\n'
 }
 
+# @description Test whether a TCP connection to HOST and PORT succeeds, without output.
+#
+# @arg $1 string Host name or address.
+# @arg $2 integer TCP port.
+# @arg $3 integer Optional connection timeout in seconds. Defaults to 10.
+# @exitcode 0 The connection succeeded.
+# @exitcode 1 The connection failed.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 69 nc is unavailable.
+# @example
+#   net::tcp::test github.com 22 5 && git::fetch
 # shellcheck disable=SC2329
-### Test whether a TCP connection to HOST and PORT succeeds, without output.
-###
-### Arguments
-###
-### * HOST - Host name or address.
-### * PORT - TCP port.
-### * TIMEOUT_SECONDS - Connection timeout. Defaults to 10.
 net::tcp::test() {
   [[ "$#" -ge 2 && "$#" -le 3 && -n "$1" && "$2" =~ ^[0-9]+$ ]] || return 64
   local timeout="${3:-10}"
@@ -1395,22 +2130,54 @@ net::tcp::test() {
   nc -z -w "${timeout}" "$1" "$2" >/dev/null 2>&1
 }
 
-### Open a serial device with a configured baud rate.
+# @description Open a serial device with a configured baud rate.
+#
+# @arg $1 string Serial device.
+# @arg $2 integer Optional baud rate. Defaults to 115200.
+# @exitcode 0 The baud rate was set.
+# @exitcode 64 The arguments are invalid or the device does not exist.
+# @exitcode 69 stty is unavailable.
+# @exitcode other The status of stty.
+# @example
+#   serial::configure /dev/ttyUSB0 9600
 serial::configure() { [[ "$#" -ge 1 && "$#" -le 2 && -e "$1" ]] || return 64; local device="$1" baud="${2:-115200}"; command -v stty >/dev/null 2>&1 || return 69; stty -F "$device" "$baud" 2>/dev/null || stty -f "$device" "$baud"; }
 
-### Write literal data to a serial device.
+# @description Write literal data to a serial device.
+#
+# @arg $1 string Serial device.
+# @arg $2 string Data to write without a terminator.
+# @exitcode 0 The data was written.
+# @exitcode 1 The device could not be written.
+# @exitcode 64 The argument count is not two or the device does not exist.
+# @example
+#   serial::write /dev/ttyUSB0 'AT'
 serial::write() { [[ "$#" -eq 2 && -e "$1" ]] || return 64; printf '%s' "$2" >"$1"; }
 
-### Write a command and terminator to a serial device.
+# @description Write a command and terminator to a serial device.
+#
+# @arg $1 string Serial device.
+# @arg $2 string Command to write.
+# @arg $3 string Optional terminator: none, cr, lf, or crlf. Defaults to cr.
+# @arg $4 number Optional seconds to wait after writing. Defaults to 0.
+# @exitcode 0 The command was written.
+# @exitcode 64 The arguments, terminator, or wait time are invalid.
+# @exitcode 74 The device could not be written.
+# @example
+#   serial::write-command /dev/ttyUSB0 'AT+GMR' crlf 0.5
 serial::write-command() { [[ "$#" -ge 2 && "$#" -le 4 && -e "$1" ]] || return 64; local device="$1" data="$2" terminator="${3:-cr}" wait="${4:-0}" suffix=''; case "$terminator" in none) suffix='' ;; cr) suffix=$'\r' ;; lf) suffix=$'\n' ;; crlf) suffix=$'\r\n' ;; *) return 64 ;; esac; printf '%s%s' "$data" "$suffix" >"$device" || return 74; [[ "$wait" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 64; [[ "$wait" == 0 ]] || sleep "$wait"; }
 
-### Open a serial device in GNU Screen through administrator execution and log the session.
-###
-### Arguments
-###
-### * DEVICE - Serial device path.
-### * BAUD_RATE - Baud rate. Defaults to 115200.
-### * LOG_FILE - Log file. Defaults to a file named with the date and time in ${TTY_LOG_DIR:-.}.
+# @description Open a serial device in GNU Screen through administrator execution and log the session.
+#
+# @arg $1 string Serial device path.
+# @arg $2 integer Optional baud rate. Defaults to 115200.
+# @arg $3 string Optional log file. Defaults to a file named with the date and time in ${TTY_LOG_DIR:-.}.
+# @exitcode 0 The session ended successfully.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 69 screen is unavailable.
+# @exitcode 74 The log directory could not be created.
+# @exitcode other The status of screen.
+# @example
+#   TTY_LOG_DIR="${HOME}/logs" screen::open-serial /dev/ttyUSB0
 screen::open-serial() {
   [[ "$#" -ge 1 && "$#" -le 3 && -e "$1" ]] || return 64
   local device="$1" baud="${2:-115200}" log="${3:-}" stamp=''
@@ -1424,9 +2191,17 @@ screen::open-serial() {
   command::run-as-root screen -L -Logfile "${log}" "${device}" "${baud}"
 }
 
-### End every GNU Screen process of every user through administrator execution.
-###
-### Having no Screen process is a success.
+# @description End every GNU Screen process of every user through administrator execution.
+#
+# Having no Screen process is a success.
+#
+# @noargs
+# @exitcode 0 No Screen process remains.
+# @exitcode 64 An argument was given.
+# @exitcode 69 pkill is unavailable.
+# @exitcode other The status of pkill.
+# @example
+#   screen::kill-all
 screen::kill-all() {
   [[ "$#" -eq 0 ]] || return 64
   command::require pkill || return "$?"
@@ -1437,16 +2212,37 @@ screen::kill-all() {
   return "${status}"
 }
 
-### Run an external command while preserving its output and status.
+# @description Run an external command while preserving its output and status.
+# @internal
 util::_run-command() { [[ "$#" -ge 1 ]] || return 64; command -v "$1" >/dev/null 2>&1 || return 69; local command_name="$1"; shift; command "$command_name" "$@"; }
 
-### Capture packets addressed to a host.
+# @description Capture packets addressed to a host.
+#
+# tcpdump is retried through sudo when it fails without administrator rights.
+#
+# @arg $1 string Host name or address.
+# @arg $2 string Optional interface. Defaults to any.
+# @stdout The packets that tcpdump captures.
+# @exitcode 0 The capture ended successfully.
+# @exitcode 64 The argument count is not one or two.
+# @exitcode 69 The capture failed and sudo is unavailable.
+# @exitcode other The status of tcpdump.
+# @example
+#   net::capture-host 192.168.1.20 eth0
 net::capture-host() { [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64; local host="$1" interface="${2:-any}"; if tcpdump -i "$interface" host "$host" 2>/dev/null; then return 0; fi; command -v sudo >/dev/null 2>&1 || return 69; sudo tcpdump -i "$interface" host "$host"; }
 
-### Write a TCP port number the operating system reports as unused.
-###
-### A socket is bound to port 0 on the loopback address, and the port the
-### system assigned is written before the socket closes.
+# @description Write a TCP port number the operating system reports as unused.
+#
+# A socket is bound to port 0 on the loopback address, and the port the
+# system assigned is written before the socket closes.
+#
+# @noargs
+# @stdout The port number.
+# @exitcode 0 The port was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 perl is unavailable or the socket could not be bound.
+# @example
+#   port="$(net::unused-port)" && python3 -m http.server "${port}"
 net::unused-port() {
   [[ "$#" -eq 0 ]] || return 64
   command::require perl || return "$?"
@@ -1458,29 +2254,37 @@ net::unused-port() {
   '
 }
 
-### Release a serial device so another process, such as a Python tool, can open it.
-###
-### The reference implementation called file-close on the device, which
-### killed every holder at once; this follows file::release instead: SIGTERM
-### first, SIGKILL only for holders left after the timeout.
-###
-### Arguments
-###
-### * DEVICE - Serial device path.
-### * TIMEOUT_SECONDS - Time to wait after SIGTERM. Defaults to 2.
+# @description Release a serial device so another process, such as a Python tool, can open it.
+#
+# The reference implementation called file-close on the device, which
+# killed every holder at once; this follows file::release instead: SIGTERM
+# first, SIGKILL only for holders left after the timeout.
+#
+# @arg $1 string Serial device path.
+# @arg $2 integer Optional seconds to wait after SIGTERM. Defaults to 2.
+# @exitcode 0 No process holds the device.
+# @exitcode 64 The arguments are invalid or the device does not exist.
+# @exitcode other The status of file::release.
+# @example
+#   serial::release /dev/ttyACM0 && esptool.py --port /dev/ttyACM0 chip_id
 serial::release() {
   [[ "$#" -ge 1 && "$#" -le 2 && -e "$1" ]] || return 64
   file::release "$@"
 }
 
-### Initialize a Google Repo workspace with shallow history.
-###
-### Arguments
-###
-### * URL - Manifest repository URL.
-### * BRANCH - Manifest branch.
-### * MANIFEST - Manifest file name.
-### * DIRECTORY - Workspace directory, created when missing. Defaults to the current directory.
+# @description Initialize a Google Repo workspace with shallow history.
+#
+# @arg $1 string Manifest repository URL.
+# @arg $2 string Manifest branch.
+# @arg $3 string Manifest file name.
+# @arg $4 string Optional workspace directory, created when missing. Defaults to the current directory.
+# @exitcode 0 The workspace was initialized.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 69 repo is unavailable.
+# @exitcode 74 The directory could not be created.
+# @exitcode other The status of repo init.
+# @example
+#   repo::init https://android.googlesource.com/platform/manifest android-14.0.0_r1 default.xml aosp
 repo::init() {
   [[ "$#" -ge 3 && "$#" -le 4 && -n "$1" && -n "$2" && -n "$3" ]] || return 64
   local directory="${4:-.}"
@@ -1489,13 +2293,17 @@ repo::init() {
   (cd -- "${directory}" && repo init --depth=1 -u "$1" -b "$2" -m "$3")
 }
 
-### Synchronize one path of a Google Repo workspace, forcing the sync.
-###
-### Arguments
-###
-### * PATH - Project path to synchronize.
-### * JOBS - Parallel jobs. Defaults to 4.
-### * DIRECTORY - Workspace directory. Defaults to the current directory.
+# @description Synchronize one path of a Google Repo workspace, forcing the sync.
+#
+# @arg $1 string Project path to synchronize.
+# @arg $2 integer Optional parallel jobs. Defaults to 4.
+# @arg $3 string Optional workspace directory. Defaults to the current directory.
+# @exitcode 0 The project was synchronized.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 69 repo is unavailable.
+# @exitcode other The status of repo sync.
+# @example
+#   repo::sync frameworks/base 8 aosp
 repo::sync() {
   [[ "$#" -ge 1 && "$#" -le 3 && -n "$1" ]] || return 64
   local jobs="${2:-4}" directory="${3:-.}"
@@ -1504,12 +2312,16 @@ repo::sync() {
   (cd -- "${directory}" && repo sync --force-sync -j "${jobs}" "$1")
 }
 
-### Write the current Google Repo manifest with revisions to a file.
-###
-### Arguments
-###
-### * OUTPUT - Output file. Defaults to ./manifest.xml.
-### * DIRECTORY - Workspace directory. Defaults to the current directory.
+# @description Write the current Google Repo manifest with revisions to a file.
+#
+# @arg $1 string Optional output file. Defaults to ./manifest.xml.
+# @arg $2 string Optional workspace directory. Defaults to the current directory.
+# @exitcode 0 The manifest was written.
+# @exitcode 64 More than two arguments were given.
+# @exitcode 69 repo is unavailable.
+# @exitcode other The status of repo manifest.
+# @example
+#   repo::write-manifest pinned.xml aosp
 repo::write-manifest() {
   [[ "$#" -le 2 ]] || return 64
   local output="${1:-./manifest.xml}" directory="${2:-.}"
@@ -1518,36 +2330,88 @@ repo::write-manifest() {
   (cd -- "${directory}" && repo manifest -r -o "${output}")
 }
 
-### Run git fsck in every project of a Google Repo workspace.
+# @description Run git fsck in every project of a Google Repo workspace.
+#
+# @arg $1 string Optional workspace directory. Defaults to the current directory.
+# @stdout The output of git fsck for each project.
+# @exitcode 0 Every project passed.
+# @exitcode 64 More than one argument was given.
+# @exitcode 69 repo is unavailable.
+# @exitcode other The status of repo forall.
+# @example
+#   repo::check aosp
 repo::check() {
   [[ "$#" -le 1 ]] || return 64
   command::require repo || return "$?"
   (cd -- "${1:-.}" && repo forall -c 'git fsck')
 }
 
-### List running Docker containers.
+# @description List running Docker containers.
+#
+# @noargs
+# @stdout The output of docker ps.
+# @exitcode 0 The containers were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 docker is unavailable.
+# @exitcode other The status of docker ps.
+# @example
+#   docker::container::list-running
 docker::container::list-running() { [[ "$#" -eq 0 ]] || return 64; util::_run-command docker ps; }
 
-### List Docker containers.
+# @description List Docker containers.
+#
+# @noargs
+# @stdout The output of docker ps -a.
+# @exitcode 0 The containers were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 docker is unavailable.
+# @exitcode other The status of docker ps.
+# @example
+#   docker::container::list
 docker::container::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command docker ps -a; }
 
-### Copy files between a Docker container and the host.
+# @description Copy files between a Docker container and the host.
+#
+# @arg $1 string Container name or ID.
+# @arg $2 string Path in the container.
+# @arg $3 string Optional host destination. Defaults to the current directory.
+# @exitcode 0 The files were copied.
+# @exitcode 64 The argument count is not two or three.
+# @exitcode 69 docker is unavailable.
+# @exitcode other The status of docker cp.
+# @example
+#   docker::container::pull web /var/log/nginx ./logs
 docker::container::pull() { [[ "$#" -ge 2 && "$#" -le 3 ]] || return 64; local container="$1" source="$2" destination="${3:-.}"; util::_run-command docker cp "$container:$source" "$destination"; }
-### Copy a host path into a container.
-###
-### Arguments
-###
-### * CONTAINER - Container name or ID.
-### * HOST_PATH - Path on the host.
-### * CONTAINER_PATH - Destination in the container. Defaults to the working directory, ".".
+
+# @description Copy a host path into a container.
+#
+# @arg $1 string Container name or ID.
+# @arg $2 string Path on the host.
+# @arg $3 string Optional destination in the container. Defaults to its working directory.
+# @exitcode 0 The files were copied.
+# @exitcode 64 The argument count is not two or three.
+# @exitcode 69 docker is unavailable.
+# @exitcode other The status of docker cp.
+# @example
+#   docker::container::push web ./nginx.conf /etc/nginx/nginx.conf
 docker::container::push() {
   [[ "$#" -ge 2 && "$#" -le 3 ]] || return 64
   util::_run-command docker cp "$2" "$1:${3:-.}"
 }
 
-### Run an interactive shell or a command in a container.
-###
-### Without COMMAND, Bash is used when the container has it and sh otherwise.
+# @description Run an interactive shell or a command in a container.
+#
+# Without COMMAND, Bash is used when the container has it and sh otherwise.
+#
+# @arg $1 string Container name or ID.
+# @arg $@ string Optional command and its arguments.
+# @exitcode 0 The shell or command exited successfully.
+# @exitcode 64 No container was given.
+# @exitcode 69 docker is unavailable.
+# @exitcode other The status of docker exec.
+# @example
+#   docker::container::shell web
+#   docker::container::shell web nginx -t
 docker::container::shell() {
   [[ "$#" -ge 1 && -n "$1" ]] || return 64
   local container="$1"
@@ -1559,16 +2423,52 @@ docker::container::shell() {
   fi
 }
 
-### Follow the log of a container.
+# @description Follow the log of a container.
+#
+# @arg $1 string Container name or ID.
+# @stdout The container log, followed until interrupted.
+# @exitcode 0 docker logs ended successfully.
+# @exitcode 64 The argument count is not one.
+# @exitcode 69 docker is unavailable.
+# @exitcode other The status of docker logs.
+# @example
+#   docker::container::logs web
 docker::container::logs() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   util::_run-command docker logs --follow "$1"
 }
-### Stop a container.
+
+# @description Stop a container.
+#
+# @arg $1 string Container name or ID.
+# @exitcode 0 The container stopped.
+# @exitcode 64 The argument count is not one.
+# @exitcode 69 docker is unavailable.
+# @exitcode other The status of docker stop.
+# @example
+#   docker::container::stop web
 docker::container::stop() { [[ "$#" -eq 1 ]] || return 64; util::_run-command docker stop "$1"; }
-### Start a container.
+
+# @description Start a container.
+#
+# @arg $1 string Container name or ID.
+# @exitcode 0 The container started.
+# @exitcode 64 The argument count is not one.
+# @exitcode 69 docker is unavailable.
+# @exitcode other The status of docker start.
+# @example
+#   docker::container::start web
 docker::container::start() { [[ "$#" -eq 1 ]] || return 64; util::_run-command docker start "$1"; }
-### Stop every running container; having none is a success.
+
+# @description Stop every running container; having none is a success.
+#
+# @noargs
+# @exitcode 0 No container is running.
+# @exitcode 64 An argument was given.
+# @exitcode 69 docker is unavailable.
+# @exitcode other The status of the docker command that failed.
+# @example
+#   docker::container::stop-all
 docker::container::stop-all() {
   [[ "$#" -eq 0 ]] || return 64
   command::require docker || return "$?"
@@ -1579,7 +2479,16 @@ docker::container::stop-all() {
     docker stop "${identifier}" >/dev/null || return "$?"
   done <<<"${identifiers}"
 }
-### Remove every container, running or not.
+
+# @description Remove every container, running or not.
+#
+# @noargs
+# @exitcode 0 No container remains.
+# @exitcode 64 An argument was given.
+# @exitcode 69 docker is unavailable.
+# @exitcode other The status of the docker command that failed.
+# @example
+#   docker::container::remove-all
 docker::container::remove-all() {
   [[ "$#" -eq 0 ]] || return 64
   command::require docker || return "$?"
@@ -1590,7 +2499,16 @@ docker::container::remove-all() {
     docker rm --force "${identifier}" >/dev/null || return "$?"
   done <<<"${identifiers}"
 }
-### Remove every Docker volume.
+
+# @description Remove every Docker volume.
+#
+# @noargs
+# @exitcode 0 No volume remains.
+# @exitcode 64 An argument was given.
+# @exitcode 69 docker is unavailable.
+# @exitcode other The status of the docker command that failed.
+# @example
+#   docker::volume::remove-all
 docker::volume::remove-all() {
   [[ "$#" -eq 0 ]] || return 64
   command::require docker || return "$?"
@@ -1601,14 +2519,24 @@ docker::volume::remove-all() {
     docker volume rm --force "${volume}" >/dev/null || return "$?"
   done <<<"${volumes}"
 }
-### Remove every container and then every volume, stopping at the first failure.
+
+# @description Remove every container and then every volume, stopping at the first failure.
+#
+# @noargs
+# @exitcode 0 No container or volume remains.
+# @exitcode 64 An argument was given.
+# @exitcode 69 docker is unavailable.
+# @exitcode other The status of the docker command that failed.
+# @example
+#   docker::remove-all
 docker::remove-all() {
   [[ "$#" -eq 0 ]] || return 64
   docker::container::remove-all || return "$?"
   docker::volume::remove-all
 }
 
-### Run an ADB command with an optional serial number.
+# @description Run an ADB command with an optional serial number.
+# @internal
 adb::_run() {
   [[ "$#" -ge 1 ]] || return 64
   local serial='' seen_serial=0
@@ -1627,19 +2555,91 @@ adb::_run() {
   [[ "$seen_serial" -eq 0 ]] || args=(-s "$serial" "${args[@]}")
   util::_run-command adb "${args[@]}"
 }
-### Wait for an ADB device to connect, optionally selected with --serial.
+
+# @description Wait for an ADB device to connect, optionally selected with --serial.
+#
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @exitcode 0 The device is connected.
+# @exitcode 64 --serial is repeated or has no value.
+# @exitcode 69 adb is unavailable.
+# @exitcode other The status of adb wait-for-device.
+# @example
+#   adb::device::wait --serial emulator-5554
 adb::device::wait() { adb::_run wait-for-device "$@"; }
-### Copy files from an ADB device to the host.
+
+# @description Copy files from an ADB device to the host.
+#
+# @arg $@ string Device paths followed by an optional host destination.
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @exitcode 0 The files were copied.
+# @exitcode 64 No path was given.
+# @exitcode 69 adb is unavailable.
+# @exitcode other The status of adb pull.
+# @example
+#   adb::device::pull /sdcard/DCIM/Camera ./camera --serial emulator-5554
 adb::device::pull() { [[ "$#" -ge 1 ]] || return 64; adb::_run pull "$@"; }
-### Copy files from the host to an ADB device.
+
+# @description Copy files from the host to an ADB device.
+#
+# @arg $@ string Host paths followed by the device destination.
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @exitcode 0 The files were copied.
+# @exitcode 64 No path was given.
+# @exitcode 69 adb is unavailable.
+# @exitcode other The status of adb push.
+# @example
+#   adb::device::push app-debug.apk /data/local/tmp/
 adb::device::push() { [[ "$#" -ge 1 ]] || return 64; adb::_run push "$@"; }
-### Clear the selected device log buffers.
+
+# @description Clear the selected device log buffers.
+#
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @exitcode 0 The log buffers were cleared.
+# @exitcode 64 --serial is repeated or has no value.
+# @exitcode 69 adb is unavailable.
+# @exitcode other The status of adb logcat.
+# @example
+#   adb::logcat::clear --serial emulator-5554
 adb::logcat::clear() { adb::_run logcat -c "$@"; }
-### Write the selected device log buffers once.
+
+# @description Write the selected device log buffers once.
+#
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @stdout The current log buffers.
+# @exitcode 0 The log was written.
+# @exitcode 64 --serial is repeated or has no value.
+# @exitcode 69 adb is unavailable.
+# @exitcode other The status of adb logcat.
+# @example
+#   adb::logcat::once > device.log
 adb::logcat::once() { adb::_run logcat -d "$@"; }
-### Stream logs from the selected device.
+
+# @description Stream logs from the selected device.
+#
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @stdout The device log, streamed until interrupted.
+# @exitcode 0 adb logcat ended successfully.
+# @exitcode 64 --serial is repeated or has no value.
+# @exitcode 69 adb is unavailable.
+# @exitcode other The status of adb logcat.
+# @example
+#   adb::logcat::continuous | grep -i crash
 adb::logcat::continuous() { adb::_run logcat "$@"; }
-### Reboot the selected device.
+
+# @description Reboot the selected device.
+#
+# The function returns after the device has disconnected and connected again.
+#
+# @arg $1 integer Optional seconds to wait for the device to come back. Defaults to 60.
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @exitcode 0 The device rebooted and reconnected.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 69 adb is unavailable.
+# @exitcode 74 The clock or sleep failed.
+# @exitcode 75 The device did not reconnect in time.
+# @exitcode other The status of adb reboot.
+# @example
+#   adb::device::reboot 120 --serial emulator-5554
 adb::device::reboot() {
   [[ "$#" -le 3 ]] || return 64
   local timeout=60 serial='' start='' state='' disconnected=0
@@ -1664,7 +2664,18 @@ adb::device::reboot() {
   done
   return 75
 }
-### Write the first connected ADB device serial.
+
+# @description Write the first connected ADB device serial.
+#
+# @noargs
+# @stdout The serial of the first connected device.
+# @exitcode 0 The serial was written.
+# @exitcode 1 No device is connected.
+# @exitcode 64 An argument was given.
+# @exitcode 69 adb is unavailable.
+# @exitcode other The status of adb devices.
+# @example
+#   serial="$(adb::device::first)"
 adb::device::first() {
   [[ "$#" -eq 0 ]] || return 64
   local devices=''
@@ -1672,14 +2683,35 @@ adb::device::first() {
   [[ -n "$devices" ]] || return 1
   printf '%s\n' "${devices%%$'\n'*}"
 }
-### List connected ADB device serials.
+
+# @description List connected ADB device serials.
+#
+# @noargs
+# @stdout One serial per line for devices in the device state.
+# @exitcode 0 The serials were written; there may be none.
+# @exitcode 64 An argument was given.
+# @exitcode 69 adb is unavailable.
+# @exitcode other The status of adb devices.
+# @example
+#   adb::device::list
 adb::device::list() {
   [[ "$#" -eq 0 ]] || return 64
   local devices=''
   devices="$(adb::_run devices)" || return "$?"
   printf '%s\n' "$devices" | awk 'NR>1 && $2=="device" {print $1}'
 }
-### Wait up to TIMEOUT_SECONDS for a path on the device; return 75 on timeout.
+
+# @description Wait up to TIMEOUT_SECONDS for a path on the device; return 75 on timeout.
+#
+# @arg $1 string Path on the device.
+# @arg $2 integer Optional seconds to wait. Defaults to 30.
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @exitcode 0 The path exists.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 74 The clock or sleep failed.
+# @exitcode 75 The path did not appear in time.
+# @example
+#   adb::device::wait-for-path /sdcard/Download/report.json 60
 adb::device::wait-for-path() {
   [[ "$#" -ge 1 && "$#" -le 4 && -n "$1" ]] || return 64
   local path="$1" timeout=30 start='' quoted=''
@@ -1700,7 +2732,18 @@ adb::device::wait-for-path() {
   done
   return 75
 }
-### Save one screenshot atomically and print its path.
+
+# @description Save one screenshot atomically and print its path.
+#
+# @arg $1 string Optional output PNG file. Defaults to ${WORK_DIR:-.}/STAMP/STAMP-adb-image.png.
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @stdout The path of the saved screenshot.
+# @exitcode 0 The screenshot was saved.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 74 The file could not be written.
+# @exitcode 75 The device returned no image.
+# @example
+#   adb::device::screen::capture-once ./screen.png --serial emulator-5554
 adb::device::screen::capture-once() {
   [[ "$#" -le 3 ]] || return 64
   local output='' stamp='' directory='' temporary=''
@@ -1724,7 +2767,18 @@ adb::device::screen::capture-once() {
   mv -f -- "$temporary" "$output" || { rm -f -- "$temporary"; return 74; }
   printf '%s\n' "$output"
 }
-### Select one requested device path and pull it to the host.
+
+# @description Select one requested device path and pull it to the host.
+#
+# @arg $@ string Device paths to choose from.
+# @option --output-directory <DIRECTORY> Host directory to copy to. Defaults to the current directory.
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @exitcode 0 The selected path was copied.
+# @exitcode 64 No path was given or an option has no value.
+# @exitcode 74 The output directory could not be created.
+# @exitcode other The status of the prompt or of adb pull.
+# @example
+#   adb::device::select-and-pull /sdcard/Download /sdcard/DCIM --output-directory ./device
 adb::device::select-and-pull() {
   [[ "$#" -ge 1 ]] || return 64
   local output='.' serial='' selected=''
@@ -1743,13 +2797,35 @@ adb::device::select-and-pull() {
   mkdir -p -- "$output" || return 74
   adb::_run pull "$selected" "$output" "${serial_args[@]}"
 }
+
+# @description Reboot the selected device into its bootloader.
+#
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @exitcode 0 The device is rebooting into its bootloader.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 69 adb is unavailable.
+# @exitcode other The status of adb reboot.
+# @example
+#   adb::device::bootloader::enter --serial 0123456789ABCDEF
 # shellcheck disable=SC2329
-### Reboot the selected device into its bootloader.
 adb::device::bootloader::enter() {
   [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
   adb::_run reboot bootloader "$@"
 }
-### Request bootloader unlocking and wait for the device to reconnect.
+
+# @description Request bootloader unlocking and wait for the device to reconnect.
+#
+# The unlock must be confirmed on the device. Unlocking erases user data.
+#
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @exitcode 0 The bootloader was unlocked and ADB reconnected.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 69 fastboot or adb is unavailable.
+# @exitcode 74 The clock or sleep failed.
+# @exitcode 75 The device did not reach fastboot or ADB in time.
+# @exitcode other The status of the adb or fastboot command that failed.
+# @example
+#   adb::device::bootloader::unlock --serial 0123456789ABCDEF
 adb::device::bootloader::unlock() {
   [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
   command -v fastboot >/dev/null 2>&1 || return 69
@@ -1769,7 +2845,9 @@ adb::device::bootloader::unlock() {
   fastboot "${fastboot_args[@]}" flashing unlock || return "$?"
   adb::_wait-device 60 "$@"
 }
-### Wait for the selected device to return to the connected state.
+
+# @description Wait for the selected device to return to the connected state.
+# @internal
 adb::_wait-device() {
   [[ "$#" -eq 1 || ( "$#" -eq 3 && "$2" == '--serial' && -n "$3" ) ]] || return 64
   local timeout="$1" start='' state=''
@@ -1783,11 +2861,17 @@ adb::_wait-device() {
   done
   return 75
 }
-### Disable dm-verity on a rooted device, reboot it, and wait until ADB reconnects.
-###
-### Arguments
-###
-### * --serial SERIAL - Device serial. ADB chooses the device when omitted.
+
+# @description Disable dm-verity on a rooted device, reboot it, and wait until ADB reconnects.
+#
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @exitcode 0 dm-verity is disabled and ADB reconnected.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 74 sleep failed.
+# @exitcode 75 The device did not reconnect in time.
+# @exitcode other The status of the adb command that failed.
+# @example
+#   adb::device::verity::disable && adb::device::partition::remount
 adb::device::verity::disable() {
   [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
   adb::_run root "$@" || return "$?"
@@ -1797,14 +2881,19 @@ adb::device::verity::disable() {
   sleep 5 || return 74
   adb::_wait-device 180 "$@"
 }
-### Make the system partitions of a rooted device writable.
-###
-### adb root and adb remount run first, and the root file system is then
-### remounted read-write.
-###
-### Arguments
-###
-### * --serial SERIAL - Device serial. ADB chooses the device when omitted.
+
+# @description Make the system partitions of a rooted device writable.
+#
+# adb root and adb remount run first, and the root file system is then
+# remounted read-write.
+#
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @exitcode 0 The partitions are writable.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 75 The device did not reconnect in time.
+# @exitcode other The status of the adb command that failed.
+# @example
+#   adb::device::partition::remount --serial emulator-5554
 adb::device::partition::remount() {
   [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
   adb::_run root "$@" || return "$?"
@@ -1812,15 +2901,68 @@ adb::device::partition::remount() {
   adb::_run remount "$@" || return "$?"
   adb::_run shell 'mount -o rw,remount /' "$@"
 }
-### Write the selected device build fingerprint.
+
+# @description Write the selected device build fingerprint.
+#
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @stdout The value of ro.build.fingerprint.
+# @exitcode 0 The value was written.
+# @exitcode 64 --serial is repeated or has no value.
+# @exitcode 69 adb is unavailable.
+# @exitcode other The status of adb shell.
+# @example
+#   adb::device::build::fingerprint
 adb::device::build::fingerprint() { adb::_run shell getprop ro.build.fingerprint "$@"; }
-### Write the selected device build timestamp as Unix seconds.
+
+# @description Write the selected device build timestamp as Unix seconds.
+#
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @stdout The value of ro.build.date.utc.
+# @exitcode 0 The value was written.
+# @exitcode 64 --serial is repeated or has no value.
+# @exitcode 69 adb is unavailable.
+# @exitcode other The status of adb shell.
+# @example
+#   date -d "@$(adb::device::build::date)"
 adb::device::build::date() { adb::_run shell getprop ro.build.date.utc "$@"; }
-### Write the selected device active slot suffix.
+
+# @description Write the selected device active slot suffix.
+#
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @stdout The value of ro.boot.slot_suffix, such as _a; empty on devices without slots.
+# @exitcode 0 The value was written.
+# @exitcode 64 --serial is repeated or has no value.
+# @exitcode 69 adb is unavailable.
+# @exitcode other The status of adb shell.
+# @example
+#   adb::device::slot::suffix
 adb::device::slot::suffix() { adb::_run shell getprop ro.boot.slot_suffix "$@"; }
-### Write the selected device kernel release.
+
+# @description Write the selected device kernel release.
+#
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @stdout The output of uname -r on the device.
+# @exitcode 0 The value was written.
+# @exitcode 64 --serial is repeated or has no value.
+# @exitcode 69 adb is unavailable.
+# @exitcode other The status of adb shell.
+# @example
+#   adb::device::build::kernel-version
 adb::device::build::kernel-version() { adb::_run shell uname -r "$@"; }
-### Save repeated screenshots; MAX_COUNT of zero runs until interrupted.
+
+# @description Save repeated screenshots; MAX_COUNT of zero runs until interrupted.
+#
+# @arg $1 string Optional output directory. Defaults to ./screencap-loop.
+# @arg $2 number Optional seconds between screenshots. Defaults to 1.
+# @arg $3 integer Optional number of screenshots; 0 runs until interrupted. Defaults to 0.
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @stdout The path of each saved screenshot.
+# @exitcode 0 The requested screenshots were saved.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 74 The directory could not be created or sleep failed.
+# @exitcode other The status of adb::device::screen::capture-once.
+# @example
+#   adb::device::screen::capture-continuous ./frames 0.5 20
 adb::device::screen::capture-continuous() {
   [[ "$#" -le 5 ]] || return 64
   local directory='./screencap-loop' interval=1 max=0 index=0
@@ -1842,7 +2984,18 @@ adb::device::screen::capture-continuous() {
     sleep "$interval" || return 74
   done
 }
-### Write a device partition SHA-256 checksum.
+
+# @description Write a device partition SHA-256 checksum.
+#
+# @arg $1 string Partition path below /dev/block.
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @stdout The output of sha256sum on the device.
+# @exitcode 0 The checksum was written.
+# @exitcode 64 The path or options are invalid.
+# @exitcode 69 adb is unavailable.
+# @exitcode other The status of adb shell.
+# @example
+#   adb::device::partition::sha256 /dev/block/by-name/boot_a
 adb::device::partition::sha256() {
   [[ "$#" -eq 1 || "$#" -eq 3 ]] || return 64
   local path="$1"
@@ -1853,7 +3006,9 @@ adb::device::partition::sha256() {
   fi
   adb::_run shell sha256sum "$path" "$@"
 }
-### Require a rooted ADB device for sysfs wake lock operations.
+
+# @description Require a rooted ADB device for sysfs wake lock operations.
+# @internal
 adb::wake::_require-root() {
   adb::_run root "$@" || return "$?"
   adb::_wait-device 30 "$@" || return "$?"
@@ -1861,7 +3016,19 @@ adb::wake::_require-root() {
   user_id="$(adb::_run shell id -u "$@")" || return "$?"
   [[ "$user_id" == 0 ]] || return 69
 }
-### Hold a kernel wake lock using a tag, defaulting to debug.
+
+# @description Hold a kernel wake lock using a tag, defaulting to debug.
+#
+# The device must allow adb root.
+#
+# @arg $1 string Optional wake lock tag. Defaults to debug.
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @exitcode 0 The wake lock is held.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 69 adb root is unavailable or /sys/power/wake_lock is not writable.
+# @exitcode other The status of the adb command that failed.
+# @example
+#   adb::wake::lock benchmark
 adb::wake::lock() {
   [[ "$#" -le 3 ]] || return 64
   local tag=debug
@@ -1872,7 +3039,19 @@ adb::wake::lock() {
   adb::_run shell "test -w /sys/power/wake_lock" "$@" || return 69
   adb::_run shell "printf '%s' '$tag' > /sys/power/wake_lock" "$@"
 }
-### Release a kernel wake lock using the same tag.
+
+# @description Release a kernel wake lock using the same tag.
+#
+# The device must allow adb root.
+#
+# @arg $1 string Optional wake lock tag. Defaults to debug.
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @exitcode 0 The wake lock was released.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 69 adb root is unavailable or /sys/power/wake_unlock is not writable.
+# @exitcode other The status of the adb command that failed.
+# @example
+#   adb::wake::unlock benchmark
 adb::wake::unlock() {
   [[ "$#" -le 3 ]] || return 64
   local tag=debug
@@ -1883,7 +3062,17 @@ adb::wake::unlock() {
   adb::_run shell "test -w /sys/power/wake_unlock" "$@" || return 69
   adb::_run shell "printf '%s' '$tag' > /sys/power/wake_unlock" "$@"
 }
-### Print active kernel wake locks.
+
+# @description Print active kernel wake locks.
+#
+# @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
+# @stdout The active wake lock tags.
+# @exitcode 0 The tags were written.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 69 adb root is unavailable or /sys/power/wake_lock is not readable.
+# @exitcode other The status of the adb command that failed.
+# @example
+#   adb::wake::list
 adb::wake::list() {
   [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
   adb::wake::_require-root "$@" || return "$?"
@@ -1891,15 +3080,42 @@ adb::wake::list() {
   adb::_run shell "cat /sys/power/wake_lock" "$@"
 }
 
-### Write the IDs of the processes whose executable name is exactly NAME, one per line.
+# @description Write the IDs of the processes whose executable name is exactly NAME, one per line.
+#
+# @arg $1 string Executable name.
+# @stdout One process ID per line.
+# @exitcode 0 At least one process matches.
+# @exitcode 1 No process matches.
+# @exitcode 64 The argument count is not one.
+# @exitcode 69 pgrep is unavailable.
+# @example
+#   process::ids-by-name sshd
 process::ids-by-name() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; util::_run-command pgrep -x "$1"; }
 
-### Write the IDs of the processes whose command line matches an ERE evaluated by pgrep -f.
+# @description Write the IDs of the processes whose command line matches an ERE evaluated by pgrep -f.
+#
+# @arg $1 string Extended regular expression matched against the full command line.
+# @stdout One process ID per line.
+# @exitcode 0 At least one process matches.
+# @exitcode 1 No process matches.
+# @exitcode 64 The argument count is not one.
+# @exitcode 69 pgrep is unavailable.
+# @example
+#   process::ids-by-name-regex 'python3 .*manage\.py runserver'
 process::ids-by-name-regex() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; util::_run-command pgrep -f "$1"; }
 
-### Write the threads of one process.
-###
-### Linux uses ps -T and macOS ps -M.
+# @description Write the threads of one process.
+#
+# Linux uses ps -T and macOS ps -M.
+#
+# @arg $1 integer Process ID.
+# @stdout The ps listing of the threads.
+# @exitcode 0 The threads were written.
+# @exitcode 1 No process has the ID.
+# @exitcode 64 The argument is not one process ID.
+# @exitcode 69 ps is unavailable or the operating system is unsupported.
+# @example
+#   process::threads-by-pid "$$"
 process::threads-by-pid() {
   [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64
   command::require ps || return "$?"
@@ -1910,7 +3126,8 @@ process::threads-by-pid() {
   esac
 }
 
-### Write the first process ID whose executable name is NAME.
+# @description Write the first process ID whose executable name is NAME.
+# @internal
 process::_first-id-by-name() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local process_ids=''
@@ -1919,11 +3136,16 @@ process::_first-id-by-name() {
   printf '%s\n' "${process_ids%%$'\n'*}"
 }
 
-### Write the threads of the first process whose executable name is NAME.
-###
-### Exit status
-###
-### 1 when no process has the name.
+# @description Write the threads of the first process whose executable name is NAME.
+#
+# @arg $1 string Executable name.
+# @stdout The ps listing of the threads.
+# @exitcode 0 The threads were written.
+# @exitcode 1 No process has the name.
+# @exitcode 64 The argument count is not one.
+# @exitcode other The status of process::threads-by-pid.
+# @example
+#   process::threads-by-name java
 process::threads-by-name() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local id=''
@@ -1931,10 +3153,11 @@ process::threads-by-name() {
   process::threads-by-pid "${id}"
 }
 
-### Test whether tracing a process needs administrator execution.
-###
-### Tracing needs it when another user owns the process, or when Yama allows
-### tracing only of descendants.
+# @description Test whether tracing a process needs administrator execution.
+#
+# Tracing needs it when another user owns the process, or when Yama allows
+# tracing only of descendants.
+# @internal
 process::_trace-needs-root() {
   [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64
   local owner='' scope=0
@@ -1945,10 +3168,19 @@ process::_trace-needs-root() {
   [[ "${scope}" != 0 ]]
 }
 
-### Attach strace to a process on Linux.
-###
-### Administrator execution is used only when the process cannot be traced
-### with the current permissions.
+# @description Attach strace to a process on Linux.
+#
+# Administrator execution is used only when the process cannot be traced
+# with the current permissions.
+#
+# @arg $1 integer Process ID.
+# @stderr The system calls that strace reports.
+# @exitcode 0 strace ended successfully.
+# @exitcode 64 The argument is not one process ID.
+# @exitcode 69 The system is not Linux or strace is unavailable.
+# @exitcode other The status of strace.
+# @example
+#   syscall::trace-by-pid "$(pgrep -x nginx | head -n 1)"
 syscall::trace-by-pid() {
   [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64
   [[ "$(system::operating-system)" == linux ]] || return 69
@@ -1960,10 +3192,19 @@ syscall::trace-by-pid() {
   fi
 }
 
-### Attach ltrace to a process on Linux.
-###
-### Administrator execution is used only when the process cannot be traced
-### with the current permissions.
+# @description Attach ltrace to a process on Linux.
+#
+# Administrator execution is used only when the process cannot be traced
+# with the current permissions.
+#
+# @arg $1 integer Process ID.
+# @stderr The library calls that ltrace reports.
+# @exitcode 0 ltrace ended successfully.
+# @exitcode 64 The argument is not one process ID.
+# @exitcode 69 The system is not Linux or ltrace is unavailable.
+# @exitcode other The status of ltrace.
+# @example
+#   lib::trace-by-pid 4242
 lib::trace-by-pid() {
   [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64
   [[ "$(system::operating-system)" == linux ]] || return 69
@@ -1975,41 +3216,133 @@ lib::trace-by-pid() {
   fi
 }
 
-### Attach GDB in batch mode to a process and write the backtrace of every thread.
+# @description Attach GDB in batch mode to a process and write the backtrace of every thread.
+#
+# @arg $1 integer Process ID.
+# @stdout The backtrace of every thread.
+# @exitcode 0 The backtrace was written.
+# @exitcode 64 The argument is not one process ID.
+# @exitcode 69 gdb is unavailable.
+# @exitcode other The status of gdb.
+# @example
+#   gdb::attach-pid 4242 > backtrace.txt
 gdb::attach-pid() {
   [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64
   command::require gdb || return "$?"
   gdb -q -batch -p "$1" -ex 'thread apply all bt'
 }
 
-### Start COMMAND with its arguments under gdbserver listening on PORT.
+# @description Start COMMAND with its arguments under gdbserver listening on PORT.
+#
+# @arg $1 integer TCP port to listen on.
+# @arg $2 string Command to run.
+# @arg $@ string Optional arguments of the command.
+# @exitcode 0 gdbserver ended successfully.
+# @exitcode 64 The port or command is invalid.
+# @exitcode 69 gdbserver is unavailable.
+# @exitcode other The status of gdbserver.
+# @example
+#   gdb::server::start 2345 ./build/app --verbose
 gdb::server::start() { [[ "$#" -ge 2 && "$1" =~ ^[0-9]+$ && -n "$2" ]] || return 64; util::_run-command gdbserver ":$1" "${@:2}"; }
 
-### Load ELF in GDB and connect to the GDB server at HOST and PORT.
+# @description Load ELF in GDB and connect to the GDB server at HOST and PORT.
+#
+# @arg $1 string ELF file with symbols.
+# @arg $2 string Host of the GDB server.
+# @arg $3 integer Port of the GDB server.
+# @exitcode 0 GDB ended successfully.
+# @exitcode 64 The arguments are invalid or the ELF file does not exist.
+# @exitcode 69 gdb is unavailable.
+# @exitcode other The status of gdb.
+# @example
+#   gdb::connect ./build/app 192.168.1.50 2345
 gdb::connect() { [[ "$#" -eq 3 && -f "$1" && "$3" =~ ^[0-9]+$ ]] || return 64; util::_run-command gdb "$1" -ex "target remote $2:$3"; }
 
-### Run ELF in GDB with optional program arguments and stop at SYMBOL.
+# @description Run ELF in GDB with optional program arguments and stop at SYMBOL.
+#
+# @arg $1 string ELF file to run.
+# @arg $2 string Symbol or location to break at.
+# @arg $@ string Optional program arguments.
+# @exitcode 0 GDB ended successfully.
+# @exitcode 64 The ELF file does not exist or no symbol was given.
+# @exitcode 69 gdb is unavailable.
+# @exitcode other The status of gdb.
+# @example
+#   gdb::run-until ./build/app parse_config --config test.ini
 gdb::run-until() { [[ "$#" -ge 2 && -f "$1" && -n "$2" ]] || return 64; util::_run-command gdb -ex "break $2" -ex run --args "$1" "${@:3}"; }
 
-### Open ELF and a core dump in GDB.
+# @description Open ELF and a core dump in GDB.
+#
+# @arg $1 string ELF file that produced the core dump.
+# @arg $2 string Core dump file.
+# @exitcode 0 GDB ended successfully.
+# @exitcode 64 The argument count is not two or a file does not exist.
+# @exitcode 69 gdb is unavailable.
+# @exitcode other The status of gdb.
+# @example
+#   gdb::core::open ./build/app core.4242
 gdb::core::open() { [[ "$#" -eq 2 && -f "$1" && -f "$2" ]] || return 64; util::_run-command gdb "$1" "$2"; }
 
-### Write the node paths of the Linux device tree.
+# @description Write the node paths of the Linux device tree.
+#
+# @noargs
+# @stdout One node path per line below /sys/firmware/devicetree/base.
+# @exitcode 0 The nodes were written.
+# @exitcode 64 An argument was given.
+# @exitcode 66 The system has no device tree.
+# @example
+#   device-tree::node::list | grep -i i2c
 device-tree::node::list() { [[ "$#" -eq 0 ]] || return 64; [[ -d /sys/firmware/devicetree/base ]] || return 66; find /sys/firmware/devicetree/base -mindepth 1 -print; }
 
-### Write the I2C buses with i2cdetect -l.
+# @description Write the I2C buses with i2cdetect -l.
+#
+# @noargs
+# @stdout The output of i2cdetect -l.
+# @exitcode 0 The buses were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 i2cdetect is unavailable.
+# @exitcode other The status of i2cdetect.
+# @example
+#   i2c::bus::list
 i2c::bus::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command i2cdetect -l; }
 
-### Write the devices on one I2C bus with i2cdetect -y.
+# @description Write the devices on one I2C bus with i2cdetect -y.
+#
+# @arg $1 integer I2C bus number.
+# @stdout The address map that i2cdetect writes.
+# @exitcode 0 The devices were written.
+# @exitcode 64 The argument is not one bus number.
+# @exitcode 69 i2cdetect is unavailable.
+# @exitcode other The status of i2cdetect.
+# @example
+#   i2c::device::list 1
 i2c::device::list() { [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64; util::_run-command i2cdetect -y "$1"; }
 
-### Write the GPIO chips with gpiodetect.
+# @description Write the GPIO chips with gpiodetect.
+#
+# @noargs
+# @stdout The output of gpiodetect.
+# @exitcode 0 The chips were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 gpiodetect is unavailable.
+# @exitcode other The status of gpiodetect.
+# @example
+#   gpio::chip::list
 gpio::chip::list() {
   [[ "$#" -eq 0 ]] || return 64
   util::_run-command gpiodetect
 }
 
-### Write the GPIO lines of one chip, or of every chip, with gpioinfo.
+# @description Write the GPIO lines of one chip, or of every chip, with gpioinfo.
+#
+# @arg $1 string Optional chip name or number. Defaults to every chip.
+# @stdout The output of gpioinfo.
+# @exitcode 0 The lines were written.
+# @exitcode 64 More than one argument was given.
+# @exitcode 69 gpioinfo is unavailable.
+# @exitcode other The status of gpioinfo.
+# @example
+#   gpio::line::list gpiochip0
 gpio::line::list() {
   [[ "$#" -le 1 ]] || return 64
   local arguments=()
@@ -2017,38 +3350,88 @@ gpio::line::list() {
   util::_run-command gpioinfo "${arguments[@]}"
 }
 
-### Write the USB devices with lsusb.
+# @description Write the USB devices with lsusb.
+#
+# @noargs
+# @stdout The output of lsusb.
+# @exitcode 0 The devices were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 lsusb is unavailable.
+# @exitcode other The status of lsusb.
+# @example
+#   usb::device::list
 usb::device::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command lsusb; }
 
-### Write the PCI devices with lspci.
+# @description Write the PCI devices with lspci.
+#
+# @noargs
+# @stdout The output of lspci.
+# @exitcode 0 The devices were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 lspci is unavailable.
+# @exitcode other The status of lspci.
+# @example
+#   pci::device::list
 pci::device::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command lspci; }
 
-### Convert AsciiDoc to HTML with diagram support.
-###
-### Arguments
-###
-### * INPUT - AsciiDoc file.
-### * OUTPUT_DIRECTORY - Directory for the HTML. Defaults to the current directory.
+# @description Convert AsciiDoc to HTML with diagram support.
+#
+# @arg $1 string AsciiDoc file.
+# @arg $2 string Optional directory for the HTML. Defaults to the current directory.
+# @exitcode 0 The HTML was written.
+# @exitcode 64 The arguments are invalid or the file does not exist.
+# @exitcode 69 asciidoctor is unavailable.
+# @exitcode other The status of asciidoctor.
+# @example
+#   asciidoc::html docs/design.adoc build/html
 asciidoc::html() {
   [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64
   util::_run-command asciidoctor -r asciidoctor-diagram -b html5 -D "${2:-.}" "$1"
 }
 
-### Run a Flutter project in Chrome in release mode.
+# @description Run a Flutter project in Chrome in release mode.
+#
+# @arg $1 string Optional Flutter project directory. Defaults to the current directory.
+# @exitcode 0 The application ended successfully.
+# @exitcode 64 More than one argument was given.
+# @exitcode 69 flutter is unavailable.
+# @exitcode other The status of flutter run or cd.
+# @example
+#   flutter::run-chrome-release apps/mobile
 flutter::run-chrome-release() { [[ "$#" -le 1 ]] || return 64; (cd "${1:-.}" && util::_run-command flutter run --release -d chrome); }
 
-### Run a Flutter project as a Linux desktop application in release mode.
+# @description Run a Flutter project as a Linux desktop application in release mode.
+#
+# @arg $1 string Optional Flutter project directory. Defaults to the current directory.
+# @exitcode 0 The application ended successfully.
+# @exitcode 64 More than one argument was given.
+# @exitcode 69 flutter is unavailable.
+# @exitcode other The status of flutter run or cd.
+# @example
+#   flutter::run-linux-release apps/desktop
 flutter::run-linux-release() { [[ "$#" -le 1 ]] || return 64; (cd "${1:-.}" && util::_run-command flutter run --release -d linux); }
 
-### Run the Flutter tests of a project with optional flutter test arguments.
+# @description Run the Flutter tests of a project with optional flutter test arguments.
+#
+# @arg $1 string Optional Flutter project directory, used when it is an existing directory. Defaults to the current directory.
+# @arg $@ string Optional arguments of flutter test.
+# @exitcode 0 The tests passed.
+# @exitcode 69 flutter is unavailable.
+# @exitcode other The status of flutter test or cd.
+# @example
+#   flutter::test apps/mobile --name 'login'
 flutter::test() { [[ "$#" -ge 0 ]] || return 64; local directory='.'; [[ "$#" -gt 0 && -d "$1" ]] && { directory="$1"; shift; }; (cd "$directory" && util::_run-command flutter test "$@"); }
 
-### Run the Flutter tests with coverage and write the LCOV HTML report.
-###
-### Arguments
-###
-### * OUTPUT_DIRECTORY - Report directory. Defaults to coverage/html below DIRECTORY.
-### * DIRECTORY - Flutter project directory. Defaults to the current directory.
+# @description Run the Flutter tests with coverage and write the LCOV HTML report.
+#
+# @arg $1 string Optional report directory. Defaults to coverage/html below the project directory.
+# @arg $2 string Optional Flutter project directory. Defaults to the current directory.
+# @exitcode 0 The tests passed and the report was written.
+# @exitcode 64 More than two arguments were given.
+# @exitcode 69 flutter or genhtml is unavailable.
+# @exitcode other The status of flutter test or genhtml.
+# @example
+#   flutter::coverage '' apps/mobile
 flutter::coverage() {
   [[ "$#" -le 2 ]] || return 64
   local directory="${2:-.}" output="${1:-}"
@@ -2059,89 +3442,208 @@ flutter::coverage() {
   genhtml "${directory%/}/coverage/lcov.info" -o "${output}"
 }
 
-### Write the path of the file that defines a systemd unit.
+# @description Write the path of the file that defines a systemd unit.
+#
+# @arg $1 string Unit name, such as ssh.service.
+# @stdout The path of the unit file; empty for a unit without a file.
+# @exitcode 0 The path was written.
+# @exitcode 64 The argument is not one valid unit name.
+# @exitcode 69 The system is not Linux or systemctl is unavailable.
+# @exitcode other The status of systemctl.
+# @example
+#   systemd::file ssh.service
 systemd::file() {
   [[ "$#" -eq 1 ]] || return 64
   systemd::_require-unit "$1" || return "$?"
   systemctl show --property=FragmentPath --value -- "$1"
 }
 
-### Require Linux with systemctl and a valid unit name.
+# @description Require Linux with systemctl and a valid unit name.
+# @internal
 systemd::_require-unit() {
   [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9@._:\\-]+$ ]] || return 64
   [[ "$(system::operating-system)" == linux ]] || return 69
   command::require systemctl
 }
 
-### Write the After, Requires, and Wants dependencies of a systemd unit as KEY=VALUE lines.
+# @description Write the After, Requires, and Wants dependencies of a systemd unit as KEY=VALUE lines.
+#
+# @arg $1 string Unit name.
+# @stdout After=, Requires=, and Wants= lines.
+# @exitcode 0 The dependencies were written.
+# @exitcode 64 The argument is not one valid unit name.
+# @exitcode 69 The system is not Linux or systemctl is unavailable.
+# @exitcode other The status of systemctl.
+# @example
+#   systemd::dependencies docker.service
 systemd::dependencies() {
   [[ "$#" -eq 1 ]] || return 64
   systemd::_require-unit "$1" || return "$?"
   systemctl show --property=After --property=Requires --property=Wants -- "$1"
 }
 
-### Restart a systemd unit through administrator execution.
+# @description Restart a systemd unit through administrator execution.
+#
+# @arg $1 string Unit name.
+# @exitcode 0 The unit was restarted.
+# @exitcode 64 The argument is not one valid unit name.
+# @exitcode 69 The system is not Linux or systemctl is unavailable.
+# @exitcode other The status of systemctl.
+# @example
+#   systemd::restart nginx.service
 systemd::restart() {
   [[ "$#" -eq 1 ]] || return 64
   systemd::_require-unit "$1" || return "$?"
   command::run-as-root systemctl restart -- "$1"
 }
 
-### Start a systemd unit through administrator execution.
+# @description Start a systemd unit through administrator execution.
+#
+# @arg $1 string Unit name.
+# @exitcode 0 The unit was started.
+# @exitcode 64 The argument is not one valid unit name.
+# @exitcode 69 The system is not Linux or systemctl is unavailable.
+# @exitcode other The status of systemctl.
+# @example
+#   systemd::start docker.service
 systemd::start() {
   [[ "$#" -eq 1 ]] || return 64
   systemd::_require-unit "$1" || return "$?"
   command::run-as-root systemctl start -- "$1"
 }
 
-### Stop a systemd unit through administrator execution.
+# @description Stop a systemd unit through administrator execution.
+#
+# @arg $1 string Unit name.
+# @exitcode 0 The unit was stopped.
+# @exitcode 64 The argument is not one valid unit name.
+# @exitcode 69 The system is not Linux or systemctl is unavailable.
+# @exitcode other The status of systemctl.
+# @example
+#   systemd::stop docker.service
 systemd::stop() {
   [[ "$#" -eq 1 ]] || return 64
   systemd::_require-unit "$1" || return "$?"
   command::run-as-root systemctl stop -- "$1"
 }
 
-### Enable a systemd unit at boot through administrator execution.
+# @description Enable a systemd unit at boot through administrator execution.
+#
+# @arg $1 string Unit name.
+# @exitcode 0 The unit was enabled.
+# @exitcode 64 The argument is not one valid unit name.
+# @exitcode 69 The system is not Linux or systemctl is unavailable.
+# @exitcode other The status of systemctl.
+# @example
+#   systemd::enable ssh.service
 systemd::enable() {
   [[ "$#" -eq 1 ]] || return 64
   systemd::_require-unit "$1" || return "$?"
   command::run-as-root systemctl enable -- "$1"
 }
 
-### Disable a systemd unit at boot through administrator execution.
+# @description Disable a systemd unit at boot through administrator execution.
+#
+# @arg $1 string Unit name.
+# @exitcode 0 The unit was disabled.
+# @exitcode 64 The argument is not one valid unit name.
+# @exitcode 69 The system is not Linux or systemctl is unavailable.
+# @exitcode other The status of systemctl.
+# @example
+#   systemd::disable cups.service
 systemd::disable() {
   [[ "$#" -eq 1 ]] || return 64
   systemd::_require-unit "$1" || return "$?"
   command::run-as-root systemctl disable -- "$1"
 }
 
-### Write the current state of a systemd unit and return the status of systemctl status.
+# @description Write the current state of a systemd unit and return the status of systemctl status.
+#
+# @arg $1 string Unit name.
+# @stdout The output of systemctl status.
+# @exitcode 0 The unit is active.
+# @exitcode 64 The argument is not one valid unit name.
+# @exitcode 69 The system is not Linux or systemctl is unavailable.
+# @exitcode other The status of systemctl status, such as 3 for an inactive unit.
+# @example
+#   systemd::status ssh.service
 systemd::status() {
   [[ "$#" -eq 1 ]] || return 64
   systemd::_require-unit "$1" || return "$?"
   systemctl status --no-pager -- "$1"
 }
 
-### Write every loaded systemd service, including stopped ones.
+# @description Write every loaded systemd service, including stopped ones.
+#
+# @noargs
+# @stdout The output of systemctl list-units --type=service.
+# @exitcode 0 The services were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 systemctl is unavailable.
+# @exitcode other The status of systemctl.
+# @example
+#   systemd::service::list
 systemd::service::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command systemctl list-units --type=service; }
 
-### Write the running systemd services.
+# @description Write the running systemd services.
+#
+# @noargs
+# @stdout The running services.
+# @exitcode 0 The services were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 systemctl is unavailable.
+# @exitcode other The status of systemctl.
+# @example
+#   systemd::service::list-running
 systemd::service::list-running() { [[ "$#" -eq 0 ]] || return 64; util::_run-command systemctl list-units --type=service --state=running; }
 
-### Write the failed systemd services.
+# @description Write the failed systemd services.
+#
+# @noargs
+# @stdout The failed services.
+# @exitcode 0 The services were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 systemctl is unavailable.
+# @exitcode other The status of systemctl.
+# @example
+#   systemd::service::list-failed
 systemd::service::list-failed() { [[ "$#" -eq 0 ]] || return 64; util::_run-command systemctl list-units --type=service --state=failed; }
 
-### Write every systemd service unit file and its enablement state.
+# @description Write every systemd service unit file and its enablement state.
+#
+# @noargs
+# @stdout The service unit files and their states.
+# @exitcode 0 The files were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 systemctl is unavailable.
+# @exitcode other The status of systemctl.
+# @example
+#   systemd::service::list-files | grep enabled
 systemd::service::list-files() { [[ "$#" -eq 0 ]] || return 64; util::_run-command systemctl list-unit-files --type=service; }
 
-### Decrypt a GPG file to standard output without adding a newline.
+# @description Decrypt a GPG file to standard output without adding a newline.
+#
+# @arg $1 string Encrypted file.
+# @stdout The decrypted content.
+# @exitcode 0 The file was decrypted.
+# @exitcode 64 The argument is not one existing file.
+# @exitcode 69 gpg is unavailable.
+# @exitcode other The status of gpg.
+# @example
+#   gpg::decrypt secrets.env.gpg > .env
 gpg::decrypt() { [[ "$#" -eq 1 && -f "$1" ]] || return 64; util::_run-command gpg --decrypt "$1"; }
 
-### Write a public GPG key in ASCII armor.
-###
-### Arguments
-###
-### * FINGERPRINT - Key to export. Defaults to the first secret key.
+# @description Write a public GPG key in ASCII armor.
+#
+# @arg $1 string Optional key fingerprint. Defaults to the first secret key.
+# @stdout The ASCII-armored public key.
+# @exitcode 0 The key was written.
+# @exitcode 1 No fingerprint was given and no secret key exists.
+# @exitcode 64 More than one argument was given.
+# @exitcode 69 gpg is unavailable.
+# @exitcode other The status of gpg.
+# @example
+#   gpg::public-key::armor > public.asc
 gpg::public-key::armor() {
   [[ "$#" -le 1 ]] || return 64
   local fingerprint="${1:-}" fingerprints=''
@@ -2153,11 +3655,16 @@ gpg::public-key::armor() {
   gpg --armor --export -- "${fingerprint}"
 }
 
-### Write the fingerprints of every primary secret GPG key, one per line.
-###
-### Exit status
-###
-### 1 when no secret key exists.
+# @description Write the fingerprints of every primary secret GPG key, one per line.
+#
+# @noargs
+# @stdout One fingerprint per line.
+# @exitcode 0 The fingerprints were written.
+# @exitcode 1 No secret key exists.
+# @exitcode 64 An argument was given.
+# @exitcode 69 gpg is unavailable.
+# @example
+#   gpg::secret-key::fingerprints
 gpg::secret-key::fingerprints() {
   [[ "$#" -eq 0 ]] || return 64
   command::require gpg || return "$?"
@@ -2169,23 +3676,36 @@ gpg::secret-key::fingerprints() {
   printf '%s\n' "${fingerprints}"
 }
 
-### Write the secret GPG keys in the human-readable GPG format.
+# @description Write the secret GPG keys in the human-readable GPG format.
+#
+# @noargs
+# @stdout The output of gpg --list-secret-keys.
+# @exitcode 0 The keys were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 gpg is unavailable.
+# @exitcode other The status of gpg.
+# @example
+#   gpg::secret-key::list
 gpg::secret-key::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command gpg --list-secret-keys; }
 
-### Link the English XDG user directory names to the directories of the current locale.
-###
-### Each standard XDG directory is resolved with xdg-user-dir. A localized
-### directory that does not exist is skipped and never created. An existing
-### English directory is merged into the localized one, overwriting entries
-### with the same name, and then replaced by the link.
-###
-### Arguments
-###
-### * HOME_DIRECTORY - Home directory to update. Defaults to $HOME.
-###
-### Exit status
-###
-### 73 when an English name is held by something other than a directory or link.
+# @description Link the English XDG user directory names to the directories of the current locale.
+#
+# Each standard XDG directory is resolved with xdg-user-dir. A localized
+# directory that does not exist is skipped and never created. An existing
+# English directory is merged into the localized one, overwriting entries
+# with the same name, and then replaced by the link.
+#
+# @arg $1 string Optional home directory to update. Defaults to $HOME.
+# @stderr A message for each English name that is not a directory.
+# @exitcode 0 Every link was created or already existed.
+# @exitcode 64 More than one argument was given.
+# @exitcode 66 The home directory does not exist.
+# @exitcode 69 xdg-user-dir is unavailable.
+# @exitcode 73 An English name is held by something other than a directory or link.
+# @exitcode 74 A directory could not be resolved, removed, or linked.
+# @exitcode other The status of directory::merge.
+# @example
+#   user::directory::create-english-links
 user::directory::create-english-links() {
   [[ "$#" -le 1 ]] || return 64
   local home="${1:-${HOME}}" pair='' key='' name='' localized='' english='' status=0
@@ -2214,8 +3734,19 @@ user::directory::create-english-links() {
   return "${status}"
 }
 
-### Write available stable Android Build Tools versions in ascending order.
-### Use Android CLI when available, otherwise use sdkmanager.
+# @description Write available stable Android Build Tools versions in ascending order.
+#
+# Use Android CLI when available, otherwise use sdkmanager.
+#
+# @noargs
+# @stdout One version per line, oldest first.
+# @exitcode 0 The versions were written.
+# @exitcode 1 No stable version was found.
+# @exitcode 64 An argument was given.
+# @exitcode 69 perl, or both android and sdkmanager, are unavailable.
+# @exitcode other The status of the SDK command that failed.
+# @example
+#   android::build-tools::versions | tail -n 3
 android::build-tools::versions() {
   [[ "$#" -eq 0 ]] || return 64
   command::require perl || return "$?"
@@ -2236,7 +3767,16 @@ android::build-tools::versions() {
   printf '%s\n' "${versions}"
 }
 
-### Write the newest available stable Android Build Tools version.
+# @description Write the newest available stable Android Build Tools version.
+#
+# @noargs
+# @stdout The newest version, such as 35.0.0.
+# @exitcode 0 The version was written.
+# @exitcode 1 No stable version was found.
+# @exitcode 64 An argument was given.
+# @exitcode other The status of android::build-tools::versions.
+# @example
+#   sdkmanager "build-tools;$(android::build-tools::latest-version)"
 android::build-tools::latest-version() {
   [[ "$#" -eq 0 ]] || return 64
   local versions=''
@@ -2244,10 +3784,20 @@ android::build-tools::latest-version() {
   printf '%s\n' "${versions##*$'\n'}"
 }
 
-### Write the stable Go versions the platform package source offers, oldest first.
-###
-### Ubuntu lists the versioned golang-X.Y packages, Fedora the golang package,
-### and macOS the Homebrew go formulae. Each value is accepted by go::install.
+# @description Write the stable Go versions the platform package source offers, oldest first.
+#
+# Ubuntu lists the versioned golang-X.Y packages, Fedora the golang package,
+# and macOS the Homebrew go formulae. Each value is accepted by go::install.
+#
+# @noargs
+# @stdout One version per line, oldest first.
+# @exitcode 0 The versions were written.
+# @exitcode 1 No version was found.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform or its package tool is unsupported or unavailable.
+# @exitcode other The status of the package query that failed.
+# @example
+#   go::version::list
 go::version::list() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' versions=''
@@ -2270,7 +3820,16 @@ go::version::list() {
   printf '%s\n' "${versions}"
 }
 
-### Write the newest stable Go version from go::version::list.
+# @description Write the newest stable Go version from go::version::list.
+#
+# @noargs
+# @stdout The newest version, such as 1.23.
+# @exitcode 0 The version was written.
+# @exitcode 1 No version was found.
+# @exitcode 64 An argument was given.
+# @exitcode other The status of go::version::list.
+# @example
+#   go::install "$(go::version::latest)"
 go::version::latest() {
   [[ "$#" -eq 0 ]] || return 64
   local versions=''
@@ -2278,7 +3837,16 @@ go::version::latest() {
   printf '%s\n' "${versions##*$'\n'}"
 }
 
-### Write stable Ruby versions that rbenv can install in ascending order.
+# @description Write stable Ruby versions that rbenv can install in ascending order.
+#
+# @noargs
+# @stdout One version per line, oldest first.
+# @exitcode 0 The versions were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 rbenv is unavailable.
+# @exitcode 74 rbenv could not list the versions.
+# @example
+#   ruby::version::list | tail -n 5
 ruby::version::list() {
   [[ "$#" -eq 0 ]] || return 64
   local rbenv='' versions='' version=''
@@ -2291,15 +3859,31 @@ ruby::version::list() {
   done <<<"${versions}" | package::_sort-versions
 }
 
-### Write the newest stable Ruby version that rbenv can install.
+# @description Write the newest stable Ruby version that rbenv can install.
+#
+# @noargs
+# @stdout The newest version, such as 3.3.5.
+# @exitcode 0 The version was written.
+# @exitcode 1 No stable version was found.
+# @exitcode 64 An argument was given.
+# @example
+#   ruby::version::latest
 ruby::version::latest() {
   [[ "$#" -eq 0 ]] || return 64
   ruby::version::list | package::_latest-stable-version
 }
 
-### Install Rosetta on Apple silicon when it is missing, accepting its license.
-###
-### Intel Macs and Macs that already run x86_64 code succeed without changes.
+# @description Install Rosetta on Apple silicon when it is missing, accepting its license.
+#
+# Intel Macs and Macs that already run x86_64 code succeed without changes.
+#
+# @noargs
+# @exitcode 0 Rosetta is installed or not needed.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS or softwareupdate is unavailable.
+# @exitcode other The status of softwareupdate.
+# @example
+#   rosetta::install
 rosetta::install() {
   [[ "$#" -eq 0 ]] || return 64
   [[ "$(system::operating-system)" == darwin ]] || return 69
@@ -2310,10 +3894,20 @@ rosetta::install() {
   util::_run-command softwareupdate --install-rosetta --agree-to-license
 }
 
-### Write the configured IPv4 and IPv6 DNS servers, one per line.
-###
-### Linux uses the servers of systemd-resolved when resolvectl answers, and
-### otherwise the nameserver lines of /etc/resolv.conf. macOS uses scutil --dns.
+# @description Write the configured IPv4 and IPv6 DNS servers, one per line.
+#
+# Linux uses the servers of systemd-resolved when resolvectl answers, and
+# otherwise the nameserver lines of /etc/resolv.conf. macOS uses scutil --dns.
+#
+# @noargs
+# @stdout One server address per line without duplicates.
+# @exitcode 0 The servers were written.
+# @exitcode 64 An argument was given.
+# @exitcode 66 /etc/resolv.conf cannot be read.
+# @exitcode 69 The operating system is unsupported or scutil is unavailable.
+# @exitcode 74 scutil failed.
+# @example
+#   net::dns::servers
 net::dns::servers() {
   [[ "$#" -eq 0 ]] || return 64
   local servers=''
@@ -2335,14 +3929,30 @@ net::dns::servers() {
   printf '%s\n' "${servers}" | awk 'NF && !seen[$0]++'
 }
 
-### Open the UTM application on macOS.
+# @description Open the UTM application on macOS.
+#
+# @noargs
+# @exitcode 0 UTM was opened.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS.
+# @exitcode other The status of open.
+# @example
+#   utm::open
 utm::open() {
   [[ "$#" -eq 0 ]] || return 64
   [[ "$(system::operating-system)" == darwin ]] || return 69
   open -a UTM
 }
 
-### Open the Mozc settings dialog on a Linux desktop.
+# @description Open the Mozc settings dialog on a Linux desktop.
+#
+# @noargs
+# @exitcode 0 The dialog was closed.
+# @exitcode 64 An argument was given.
+# @exitcode 69 mozc_tool is unavailable.
+# @exitcode other The status of mozc_tool.
+# @example
+#   mozc::config::open
 mozc::config::open() {
   [[ "$#" -eq 0 ]] || return 64
   local tool=''
@@ -2356,10 +3966,26 @@ mozc::config::open() {
   mozc_tool --mode=config_dialog
 }
 
-### Extract one archive, or every recognized archive below a directory, next to itself.
+# @description Extract one archive, or every recognized archive below a directory, next to itself.
+#
+# @arg $1 string Optional archive file or directory to search. Defaults to the current directory.
+# @exitcode 0 Every archive was extracted.
+# @exitcode 64 More than one argument was given.
+# @exitcode other The status of archive::extract-file for the first archive that failed.
+# @example
+#   archive::extract "${HOME}/Downloads"
 archive::extract() { [[ "$#" -le 1 ]] || return 64; local path="${1:-.}" file; if [[ -f "$path" ]]; then archive::extract-file "$path"; else while IFS= read -r -d '' file; do archive::extract-file "$file" || return "$?"; done < <(archive::_find "$path"); fi; }
 
-### Attach strace to the first process whose executable name is NAME.
+# @description Attach strace to the first process whose executable name is NAME.
+#
+# @arg $1 string Executable name.
+# @stderr The system calls that strace reports.
+# @exitcode 0 strace ended successfully.
+# @exitcode 1 No process has the name.
+# @exitcode 64 The argument count is not one.
+# @exitcode other The status of syscall::trace-by-pid.
+# @example
+#   syscall::trace-by-name nginx
 syscall::trace-by-name() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local id=''
@@ -2367,7 +3993,16 @@ syscall::trace-by-name() {
   syscall::trace-by-pid "${id}"
 }
 
-### Attach ltrace to the first process whose executable name is NAME.
+# @description Attach ltrace to the first process whose executable name is NAME.
+#
+# @arg $1 string Executable name.
+# @stderr The library calls that ltrace reports.
+# @exitcode 0 ltrace ended successfully.
+# @exitcode 1 No process has the name.
+# @exitcode 64 The argument count is not one.
+# @exitcode other The status of lib::trace-by-pid.
+# @example
+#   lib::trace-by-name myapp
 lib::trace-by-name() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local id=''
@@ -2375,7 +4010,16 @@ lib::trace-by-name() {
   lib::trace-by-pid "${id}"
 }
 
-### Attach GDB to the first process whose executable name is NAME.
+# @description Attach GDB to the first process whose executable name is NAME.
+#
+# @arg $1 string Executable name.
+# @stdout The backtrace of every thread.
+# @exitcode 0 The backtrace was written.
+# @exitcode 1 No process has the name.
+# @exitcode 64 The argument count is not one.
+# @exitcode other The status of gdb::attach-pid.
+# @example
+#   gdb::attach-by-name myapp > backtrace.txt
 gdb::attach-by-name() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local id=''
@@ -2383,16 +4027,31 @@ gdb::attach-by-name() {
   gdb::attach-pid "${id}"
 }
 
-### Restart the Jenkins service through administrator execution.
+# @description Restart the Jenkins service through administrator execution.
+#
+# @noargs
+# @exitcode 0 Jenkins was restarted.
+# @exitcode 64 An argument was given.
+# @exitcode other The status of systemd::restart.
+# @example
+#   jenkins::restart
 jenkins::restart() {
   [[ "$#" -eq 0 ]] || return 64
   systemd::restart jenkins.service
 }
 
-### Keep the sudo credentials of the calling process fresh in the background.
-###
-### sudo is authenticated once, and a background process renews the
-### credentials every 60 seconds until the calling process exits.
+# @description Keep the sudo credentials of the calling process fresh in the background.
+#
+# sudo is authenticated once, and a background process renews the
+# credentials every 60 seconds until the calling process exits.
+#
+# @noargs
+# @exitcode 0 The credentials are fresh and the renewal runs in the background.
+# @exitcode 64 An argument was given.
+# @exitcode 69 sudo is unavailable.
+# @exitcode 77 sudo authentication failed.
+# @example
+#   sudo::start-keep-alive && go::install && rust::install
 sudo::start-keep-alive() {
   [[ "$#" -eq 0 ]] || return 64
   command::require sudo || return "$?"
@@ -2406,7 +4065,8 @@ sudo::start-keep-alive() {
   ) >/dev/null 2>&1 &
 }
 
-### Write the named user, or the user who invoked sudo, or the current user.
+# @description Write the named user, or the user who invoked sudo, or the current user.
+# @internal
 sudo::passwordless::_user() {
   [[ "$#" -le 1 ]] || return 64
   local user="${1:-${SUDO_USER:-}}"
@@ -2417,26 +4077,33 @@ sudo::passwordless::_user() {
   printf '%s\n' "${user}"
 }
 
-### Write the drop-in file that holds the passwordless sudo rule of a user.
+# @description Write the drop-in file that holds the passwordless sudo rule of a user.
+# @internal
 sudo::passwordless::_file() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   # sudo skips drop-in files whose names contain a dot.
   printf '/etc/sudoers.d/zz-bashstock-passwordless-%s\n' "${1//./_}"
 }
 
-### Let a user run every command through sudo without entering a password.
-###
-### The rule `USER ALL=(ALL) NOPASSWD: ALL` is written to its own file in
-### /etc/sudoers.d without opening an editor. visudo checks the rule before it
-### is installed and the whole configuration afterwards. sudo applies the last
-### matching rule, so the file name sorts after other drop-in files, and the
-### main sudoers file of macOS, Ubuntu, and Fedora reads the directory after
-### its group rules. If sudo still asks the user for a password, the file is
-### removed and the function fails. Running it again rewrites the same file.
-###
-### Arguments
-###
-### * USER - Optional login name. The default is the user who invoked sudo, or the current user.
+# @description Let a user run every command through sudo without entering a password.
+#
+# The rule `USER ALL=(ALL) NOPASSWD: ALL` is written to its own file in
+# /etc/sudoers.d without opening an editor. visudo checks the rule before it
+# is installed and the whole configuration afterwards. sudo applies the last
+# matching rule, so the file name sorts after other drop-in files, and the
+# main sudoers file of macOS, Ubuntu, and Fedora reads the directory after
+# its group rules. If sudo still asks the user for a password, the file is
+# removed and the function fails. Running it again rewrites the same file.
+#
+# @arg $1 string Optional login name. Defaults to the user who invoked sudo, or the current user.
+# @stderr A message when the user does not exist or sudo does not apply the rule.
+# @exitcode 0 The user can run sudo without a password.
+# @exitcode 64 More than one argument was given or the user does not exist.
+# @exitcode 69 sudo still asks for a password; the file was removed.
+# @exitcode 74 The rule could not be written, checked, or installed.
+# @exitcode other The status of the user lookup.
+# @example
+#   sudo::passwordless::enable "$(id -un)"
 sudo::passwordless::enable() {
   [[ "$#" -le 1 ]] || return 64
   local user='' file='' directory='' status=0
@@ -2469,15 +4136,19 @@ sudo::passwordless::enable() {
   fi
 }
 
-### Remove the passwordless sudo rule that sudo::passwordless::enable added.
-###
-### Only the BashStock drop-in file of the user is removed, so sudo asks for
-### the password again unless another sudoers rule also grants NOPASSWD. The
-### function succeeds when the file does not exist.
-###
-### Arguments
-###
-### * USER - Optional login name. The default is the user who invoked sudo, or the current user.
+# @description Remove the passwordless sudo rule that sudo::passwordless::enable added.
+#
+# Only the BashStock drop-in file of the user is removed, so sudo asks for
+# the password again unless another sudoers rule also grants NOPASSWD. The
+# function succeeds when the file does not exist.
+#
+# @arg $1 string Optional login name. Defaults to the user who invoked sudo, or the current user.
+# @exitcode 0 The rule file does not exist.
+# @exitcode 64 More than one argument was given.
+# @exitcode 74 The file could not be removed.
+# @exitcode other The status of the user lookup.
+# @example
+#   sudo::passwordless::disable
 sudo::passwordless::disable() {
   [[ "$#" -le 1 ]] || return 64
   local user='' file=''
@@ -2487,9 +4158,17 @@ sudo::passwordless::disable() {
   command::run-as-root rm -f -- "${file}" || return 74
 }
 
-### Empty the Linux desktop trash of the current user through administrator execution.
-###
-### The entries directly under Trash/files and Trash/info are removed.
+# @description Empty the Linux desktop trash of the current user through administrator execution.
+#
+# The entries directly under Trash/files and Trash/info are removed.
+#
+# @noargs
+# @exitcode 0 The trash is empty.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not Linux.
+# @exitcode 74 An entry could not be removed.
+# @example
+#   storage::clear-trash
 storage::clear-trash() {
   [[ "$#" -eq 0 ]] || return 64
   [[ "$(system::operating-system)" == linux ]] || return 69
@@ -2500,14 +4179,19 @@ storage::clear-trash() {
   done
 }
 
-### Select a USB partition, or a USB disk without partitions, and write its device path.
-###
-### One candidate is selected automatically; several are offered for
-### interactive selection with their size, file system, and label.
-###
-### Exit status
-###
-### 1 when no USB block device is connected.
+# @description Select a USB partition, or a USB disk without partitions, and write its device path.
+#
+# One candidate is selected automatically; several are offered for
+# interactive selection with their size, file system, and label.
+#
+# @noargs
+# @stdout The device path, such as /dev/sdb1.
+# @exitcode 0 The path was written.
+# @exitcode 1 No USB block device is connected.
+# @exitcode 64 An argument was given.
+# @exitcode other The status of lsblk or the prompt.
+# @example
+#   device="$(usb::partition::select)"
 usb::partition::select() {
   [[ "$#" -eq 0 ]] || return 64
   local candidates='' line='' selected=''
@@ -2525,7 +4209,8 @@ usb::partition::select() {
   printf '%s\n' "${selected%% *}"
 }
 
-### Unmount every mount point of a block device through administrator execution.
+# @description Unmount every mount point of a block device through administrator execution.
+# @internal
 usb::_unmount() {
   [[ "$#" -eq 1 && -b "$1" ]] || return 64
   local mount_point=''
@@ -2535,9 +4220,10 @@ usb::_unmount() {
   done < <(lsblk -nro MOUNTPOINT "$1")
 }
 
-### Write the USB block devices that can be selected: partitions, or disks without partitions.
-###
-### Each line holds the device path, the size, the file system type, and the label, separated by tabs.
+# @description Write the USB block devices that can be selected: partitions, or disks without partitions.
+#
+# Each line holds the device path, the size, the file system type, and the label, separated by tabs.
+# @internal
 usb::_candidates() {
   [[ "$#" -eq 0 ]] || return 64
   [[ "$(system::operating-system)" == linux ]] || return 69
@@ -2556,9 +4242,18 @@ usb::_candidates() {
   done < <(lsblk -dnpo NAME,TRAN | awk '$2 == "usb" {print $1}')
 }
 
-### Select a USB file system, unmount it, and repair it through administrator execution.
-###
-### FAT uses fsck.fat -a, exFAT fsck.exfat -a, and other types fsck -y.
+# @description Select a USB file system, unmount it, and repair it through administrator execution.
+#
+# FAT uses fsck.fat -a, exFAT fsck.exfat -a, and other types fsck -y.
+#
+# @noargs
+# @exitcode 0 The file system was repaired or is clean.
+# @exitcode 1 No USB block device is connected.
+# @exitcode 64 An argument was given.
+# @exitcode 74 The file system type could not be read.
+# @exitcode other The status of the unmount or of fsck.
+# @example
+#   usb::filesystem::repair
 usb::filesystem::repair() {
   [[ "$#" -eq 0 ]] || return 64
   local device='' type=''
@@ -2572,9 +4267,17 @@ usb::filesystem::repair() {
   esac
 }
 
-### Select a USB partition, unmount it, and format it as FAT32 through administrator execution.
-###
-### Everything on the selected partition is erased.
+# @description Select a USB partition, unmount it, and format it as FAT32 through administrator execution.
+#
+# Everything on the selected partition is erased.
+#
+# @noargs
+# @exitcode 0 The partition was formatted.
+# @exitcode 1 No USB block device is connected.
+# @exitcode 64 An argument was given.
+# @exitcode other The status of the unmount or of mkfs.vfat.
+# @example
+#   usb::filesystem::format-fat32
 usb::filesystem::format-fat32() {
   [[ "$#" -eq 0 ]] || return 64
   local device=''
@@ -2583,13 +4286,16 @@ usb::filesystem::format-fat32() {
   command::run-as-root mkfs.vfat -F 32 "${device}"
 }
 
-### Fetch a remote base branch, switch to the local branch, and rebase it onto the remote one.
-###
-### Arguments
-###
-### * BRANCH - Base branch. Defaults to main.
-### * REMOTE - Remote name. Defaults to upstream.
-### * DIRECTORY - Repository directory. Defaults to the current directory.
+# @description Fetch a remote base branch, switch to the local branch, and rebase it onto the remote one.
+#
+# @arg $1 string Optional base branch. Defaults to main.
+# @arg $2 string Optional remote. Defaults to upstream.
+# @arg $3 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The branch was rebased.
+# @exitcode 64 More than three arguments were given.
+# @exitcode other The status of the git command that failed.
+# @example
+#   git::rebase-base-branch develop origin
 git::rebase-base-branch() {
   [[ "$#" -le 3 ]] || return 64
   local branch="${1:-main}" remote="${2:-upstream}" directory="${3:-.}"
@@ -2598,21 +4304,35 @@ git::rebase-base-branch() {
   git::_run-in-directory "${directory}" rebase "${remote}/${branch}"
 }
 
-### Hard reset every project of a Google Repo workspace and remove untracked files.
-###
-### Every uncommitted change in every project is discarded. Ignored files are kept.
+# @description Hard reset every project of a Google Repo workspace and remove untracked files.
+#
+# Every uncommitted change in every project is discarded. Ignored files are kept.
+#
+# @arg $1 string Optional workspace directory. Defaults to the current directory.
+# @exitcode 0 Every project was reset.
+# @exitcode 64 More than one argument was given.
+# @exitcode 69 repo is unavailable.
+# @exitcode other The status of repo forall.
+# @example
+#   repo::reset aosp
 repo::reset() {
   [[ "$#" -le 1 ]] || return 64
   command::require repo || return "$?"
   (cd -- "${1:-.}" && repo forall -c 'git reset --hard && git clean -fd')
 }
 
-### Generate SELinux allow rules from the AVC denials of an audit log.
-###
-### Arguments
-###
-### * INPUT_FILE - Audit log.
-### * OUTPUT_FILE - Rule file. Defaults to selinux.txt next to INPUT_FILE.
+# @description Generate SELinux allow rules from the AVC denials of an audit log.
+#
+# @arg $1 string Audit log, such as /var/log/audit/audit.log.
+# @arg $2 string Optional rule file. Defaults to selinux.txt next to the audit log.
+# @stderr A message when the log has no AVC denial.
+# @exitcode 0 The rules were written.
+# @exitcode 1 The log has no AVC denial.
+# @exitcode 64 The arguments are invalid or the log does not exist.
+# @exitcode 69 audit2allow is unavailable.
+# @exitcode other The status of audit2allow.
+# @example
+#   selinux::generate-rule /var/log/audit/audit.log ./allow.te
 selinux::generate-rule() {
   [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64
   local output="${2:-$(path::directory-name "$1")/selinux.txt}" denials=''
@@ -2624,10 +4344,17 @@ selinux::generate-rule() {
   printf '%s\n' "${denials}" | audit2allow >"${output}"
 }
 
-### Start an interactive Bash in a new GNOME Terminal window.
-###
-### When COMMAND is given, it runs with its arguments first, and the
-### interactive shell starts after it ends.
+# @description Start an interactive Bash in a new GNOME Terminal window.
+#
+# When COMMAND is given, it runs with its arguments first, and the
+# interactive shell starts after it ends.
+#
+# @arg $@ string Optional command and arguments to run before the interactive shell.
+# @exitcode 0 GNOME Terminal opened the window.
+# @exitcode 69 gnome-terminal is unavailable.
+# @exitcode other The status of gnome-terminal.
+# @example
+#   terminal::gnome-bash make watch
 terminal::gnome-bash() {
   command::require gnome-terminal || return "$?"
   if [[ "$#" -eq 0 ]]; then
@@ -2637,21 +4364,37 @@ terminal::gnome-bash() {
   fi
 }
 
-### Set the default editor of new Bash and Zsh sessions and the current process.
-###
-### Arguments
-###
-### * EDITOR - Editor command. Defaults to code --wait.
-### * SHELLS - Comma-separated bash and zsh. Defaults to bash.
+# @description Set the default editor of new Bash and Zsh sessions and the current process.
+#
+# @arg $1 string Optional editor command. Defaults to code --wait.
+# @arg $2 string Optional comma-separated shells, bash and zsh. Defaults to bash.
+# @set EDITOR is exported in the current process.
+# @exitcode 0 The editor was set.
+# @exitcode 64 More than two arguments were given or the shell list is invalid.
+# @exitcode other The status of env::set-variable.
+# @example
+#   shell::editor::set-default vim bash,zsh
 shell::editor::set-default() {
   [[ "$#" -le 2 ]] || return 64
   env::set-variable EDITOR "${1:-code --wait}" "${2:-bash}"
 }
 
-### Set a string value for one top-level key in a macOS property list.
-###
-### The file is created as an empty dictionary when it does not exist and is
-### validated with plutil before and after the change.
+# @description Set a string value for one top-level key in a macOS property list.
+#
+# The file is created as an empty dictionary when it does not exist and is
+# validated with plutil before and after the change.
+#
+# @arg $1 string Property list file. A symbolic link is refused.
+# @arg $2 string Top-level key without a dot.
+# @arg $3 string String value.
+# @exitcode 0 The value was written.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 65 The file is not a valid property list.
+# @exitcode 66 The path is not a regular file.
+# @exitcode 69 plutil is unavailable.
+# @exitcode 74 The file could not be created or changed.
+# @example
+#   plist::set "${HOME}/Library/Preferences/com.example.app.plist" Theme dark
 plist::set() {
   [[ "$#" -eq 3 && -n "$1" && -n "$2" && "$2" != *.* && ! -L "$1" ]] || return 64
   command::require plutil || return "$?"
@@ -2670,19 +4413,26 @@ plist::set() {
   plutil -lint -s "$1" || return 65
 }
 
-### Replace or append one top-level scalar field in a textproto file.
-###
-### The file is read with its comments, quoted strings, and nested messages
-### taken into account, so only a FIELD at the top level is changed. An
-### existing field line is replaced; a missing field is appended. A field that
-### occurs more than once at the top level, a field that holds a message, and
-### unbalanced braces or strings in the result return 65 without a change.
-###
-### Arguments
-###
-### * FILE - Existing textproto file.
-### * FIELD - Field name.
-### * VALUE - Literal scalar value written after the field name.
+# @description Replace or append one top-level scalar field in a textproto file.
+#
+# The file is read with its comments, quoted strings, and nested messages
+# taken into account, so only a FIELD at the top level is changed. An
+# existing field line is replaced; a missing field is appended. A field that
+# occurs more than once at the top level, a field that holds a message, and
+# unbalanced braces or strings in the result return 65 without a change.
+#
+# @arg $1 string Existing textproto file. A symbolic link is refused.
+# @arg $2 string Field name.
+# @arg $3 string Literal scalar value on one line, quoted when it is a string.
+# @exitcode 0 The field was written.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 65 The field is ambiguous or holds a message, or the file is unbalanced.
+# @exitcode 66 The file cannot be read.
+# @exitcode 69 perl is unavailable.
+# @exitcode other The status of file::write-text.
+# @example
+#   textproto::set-scalar config.textproto timeout_seconds 30
+#   textproto::set-scalar config.textproto name '"production"'
 textproto::set-scalar() {
   [[ "$#" -eq 3 && -f "$1" && ! -L "$1" && "$2" =~ ^[A-Za-z_][A-Za-z0-9_]*$ && -n "$3" ]] || return 64
   string::_require-one-line "$3" || return "$?"
@@ -2741,15 +4491,18 @@ textproto::set-scalar() {
   file::write-text "$1" "${content%x}"
 }
 
-### Make Bash and Zsh completion ignore letter case.
-###
-### Bash reads the setting from $HOME/.inputrc. A new .inputrc first includes
-### /etc/inputrc, because Readline stops reading the system file once a
-### personal one exists. Zsh receives a matcher-list zstyle in $HOME/.zshrc.
-###
-### Arguments
-###
-### * SHELLS - Comma-separated bash and zsh. Defaults to bash,zsh.
+# @description Make Bash and Zsh completion ignore letter case.
+#
+# Bash reads the setting from $HOME/.inputrc. A new .inputrc first includes
+# /etc/inputrc, because Readline stops reading the system file once a
+# personal one exists. Zsh receives a matcher-list zstyle in $HOME/.zshrc.
+#
+# @arg $1 string Optional comma-separated shells, bash and zsh. Defaults to bash,zsh.
+# @exitcode 0 The setting was written.
+# @exitcode 64 More than one argument was given or the shell list is invalid.
+# @exitcode other The status of the file operation that failed.
+# @example
+#   shell::completion::enable-ignore-case bash
 shell::completion::enable-ignore-case() {
   [[ "$#" -le 1 ]] || return 64
   local shells="${1:-bash,zsh}" shell='' line=''
@@ -2776,7 +4529,14 @@ shell::completion::enable-ignore-case() {
   done
 }
 
-### Remove $HOME/.git-credentials and the global credential.helper; both may be absent.
+# @description Remove $HOME/.git-credentials and the global credential.helper; both may be absent.
+#
+# @noargs
+# @exitcode 0 Neither the file nor the helper remains.
+# @exitcode 64 An argument was given.
+# @exitcode other The status of git config or rm.
+# @example
+#   git::credentials::remove
 git::credentials::remove() {
   [[ "$#" -eq 0 ]] || return 64
   if git config --global --get-all credential.helper >/dev/null 2>&1; then
@@ -2785,17 +4545,34 @@ git::credentials::remove() {
   rm -f -- "$HOME/.git-credentials"
 }
 
-### Make origin fetch every branch in a repository.
+# @description Make origin fetch every branch in a repository.
+#
+# @arg $1 string Optional repository directory. Defaults to the current directory.
+# @exitcode 0 The refspec was set.
+# @exitcode 64 More than one argument was given.
+# @exitcode other The status of git config.
+# @example
+#   git::config::enable-origin-all-fetch && git::fetch origin
 git::config::enable-origin-all-fetch() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'; }
 
-### Enable pruning on fetch in the global Git configuration.
+# @description Enable pruning on fetch in the global Git configuration.
+#
+# @noargs
+# @exitcode 0 The setting was written.
+# @exitcode 64 An argument was given.
+# @exitcode other The status of git config.
+# @example
+#   git::config::enable-prune-fetch
 git::config::enable-prune-fetch() { [[ "$#" -eq 0 ]] || return 64; git config --global fetch.prune true; }
 
-### Set the default branch name of new repositories.
-###
-### Arguments
-###
-### * BRANCH - Branch name. Defaults to main.
+# @description Set the default branch name of new repositories.
+#
+# @arg $1 string Optional branch name. Defaults to main.
+# @exitcode 0 The setting was written.
+# @exitcode 64 More than one argument was given or the name is not a valid branch name.
+# @exitcode other The status of git config.
+# @example
+#   git::config::set-default-branch trunk
 git::config::set-default-branch() {
   [[ "$#" -le 1 ]] || return 64
   local branch="${1:-main}"
@@ -2803,24 +4580,35 @@ git::config::set-default-branch() {
   git config --global init.defaultBranch "${branch}"
 }
 
-### Enable rebase on pull in the global Git configuration.
+# @description Enable rebase on pull in the global Git configuration.
+#
+# @noargs
+# @exitcode 0 The setting was written.
+# @exitcode 64 An argument was given.
+# @exitcode other The status of git config.
+# @example
+#   git::config::enable-rebase-on-pull
 git::config::enable-rebase-on-pull() { [[ "$#" -eq 0 ]] || return 64; git config --global pull.rebase true; }
 
-### Set the global Git email address.
-###
-### Arguments
-###
-### * EMAIL - Email address. Defaults to GIT_EMAIL, then to input from the
-###   controlling terminal. When none is available, an existing global value
-###   is kept and a missing one returns 66.
+# @description Set the global Git email address.
+#
+# @arg $1 string Optional email address. Defaults to GIT_EMAIL, then to input from the controlling terminal.
+# @exitcode 0 The address was set, or an existing one was kept.
+# @exitcode 64 More than one argument was given or the value has several lines.
+# @exitcode 66 No address is available and none is configured.
+# @exitcode 74 The terminal could not be read.
+# @exitcode other The status of git config.
+# @example
+#   git::config::set-email developer@example.com
 git::config::set-email() {
   [[ "$#" -le 1 ]] || return 64
   git::config::_set-identity user.email "${1:-}" GIT_EMAIL 'email address'
 }
 
-### Read a Git identity value from an argument, an environment variable, or the terminal.
-###
-### The current global value is kept when none of these sources is available.
+# @description Read a Git identity value from an argument, an environment variable, or the terminal.
+#
+# The current global value is kept when none of these sources is available.
+# @internal
 git::config::_set-identity() {
   [[ "$#" -eq 4 ]] || return 64
   local key="$1" value="$2" variable="$3" label="$4"
@@ -2838,23 +4626,29 @@ git::config::_set-identity() {
   git config --global "${key}" "${value}"
 }
 
-### Set the global Git user name.
-###
-### Arguments
-###
-### * USERNAME - Display name. Defaults to GIT_USERNAME, then to input from the
-###   controlling terminal. When none is available, an existing global value
-###   is kept and a missing one returns 66.
+# @description Set the global Git user name.
+#
+# @arg $1 string Optional display name. Defaults to GIT_USERNAME, then to input from the controlling terminal.
+# @exitcode 0 The name was set, or an existing one was kept.
+# @exitcode 64 More than one argument was given or the value has several lines.
+# @exitcode 66 No name is available and none is configured.
+# @exitcode 74 The terminal could not be read.
+# @exitcode other The status of git config.
+# @example
+#   git::config::set-username 'Alex Example'
 git::config::set-username() {
   [[ "$#" -le 1 ]] || return 64
   git::config::_set-identity user.name "${1:-}" GIT_USERNAME 'user name'
 }
 
-### Set the global Git HTTP post buffer.
-###
-### Arguments
-###
-### * SIZE_BYTES - Buffer size in bytes. Defaults to 524288000 (500 MiB).
+# @description Set the global Git HTTP post buffer.
+#
+# @arg $1 integer Optional buffer size in bytes. Defaults to 524288000 (500 MiB).
+# @exitcode 0 The setting was written.
+# @exitcode 64 More than one argument was given or the size is not an integer.
+# @exitcode other The status of git config.
+# @example
+#   git::config::set-http-buffer 1048576000
 git::config::set-http-buffer() {
   [[ "$#" -le 1 ]] || return 64
   local size="${1:-524288000}"
@@ -2862,23 +4656,42 @@ git::config::set-http-buffer() {
   git config --global http.postBuffer "${size}"
 }
 
-### Make Git Credential Manager store credentials with GPG and pass.
-###
-### The guidance for initializing the pass store is written to standard error.
+# @description Make Git Credential Manager store credentials with GPG and pass.
+#
+# The guidance for initializing the pass store is written to standard error.
+#
+# @noargs
+# @stderr How to initialize the pass store.
+# @exitcode 0 The setting was written.
+# @exitcode 64 An argument was given.
+# @exitcode other The status of git config.
+# @example
+#   git::config::use-gpg-credential-store && pass::store::init
 git::config::use-gpg-credential-store() {
   [[ "$#" -eq 0 ]] || return 64
   git config --global credential.credentialStore gpg || return "$?"
   console::_write-error 'Git Credential Manager now stores credentials with pass; initialize it with pass::store::init FINGERPRINT.'
 }
 
-### Use Git Credential Manager as the global credential helper.
+# @description Use Git Credential Manager as the global credential helper.
+#
+# @noargs
+# @exitcode 0 The setting was written.
+# @exitcode 64 An argument was given.
+# @exitcode other The status of git config.
+# @example
+#   git-credential-manager::install && git::config::use-credential-manager
 git::config::use-credential-manager() { [[ "$#" -eq 0 ]] || return 64; git config --global credential.helper manager; }
 
-### Remove a pass store and everything in it.
-###
-### Arguments
-###
-### * STORE_DIRECTORY - Store to remove. Defaults to PASSWORD_STORE_DIR, then $HOME/.password-store.
+# @description Remove a pass store and everything in it.
+#
+# @arg $1 string Optional store directory. Defaults to PASSWORD_STORE_DIR, then $HOME/.password-store.
+# @exitcode 0 The store was removed.
+# @exitcode 64 More than one argument was given, or the directory is / or a symbolic link.
+# @exitcode 66 The store does not exist.
+# @exitcode 74 The store could not be removed.
+# @example
+#   pass::store::remove "${HOME}/.password-store-old"
 pass::store::remove() {
   [[ "$#" -le 1 ]] || return 64
   local directory=''
@@ -2888,18 +4701,24 @@ pass::store::remove() {
   rm -rf -- "${directory}" || return 74
 }
 
-### Write the pass store directory: the argument, PASSWORD_STORE_DIR, or $HOME/.password-store.
+# @description Write the pass store directory: the argument, PASSWORD_STORE_DIR, or $HOME/.password-store.
+# @internal
 pass::store::_directory() {
   [[ "$#" -le 1 ]] || return 64
   printf '%s\n' "${1:-${PASSWORD_STORE_DIR:-${HOME}/.password-store}}"
 }
 
-### Initialize a pass store for a GPG key without removing an existing store.
-###
-### Arguments
-###
-### * FINGERPRINT - GPG key. Defaults to the first secret key.
-### * STORE_DIRECTORY - Store directory. Defaults to PASSWORD_STORE_DIR, then $HOME/.password-store.
+# @description Initialize a pass store for a GPG key without removing an existing store.
+#
+# @arg $1 string Optional GPG key fingerprint. Defaults to the first secret key.
+# @arg $2 string Optional store directory. Defaults to PASSWORD_STORE_DIR, then $HOME/.password-store.
+# @exitcode 0 The store was initialized.
+# @exitcode 1 No fingerprint was given and no secret key exists.
+# @exitcode 64 More than two arguments were given.
+# @exitcode 69 pass is unavailable.
+# @exitcode other The status of pass init.
+# @example
+#   pass::store::init "$(gpg::secret-key::fingerprints | head -n 1)"
 pass::store::init() {
   [[ "$#" -le 2 ]] || return 64
   local fingerprint="${1:-}" directory='' fingerprints=''
@@ -2912,16 +4731,20 @@ pass::store::init() {
   PASSWORD_STORE_DIR="${directory}" pass init "${fingerprint}"
 }
 
-### Create a GPG key and use it for pass, Git credentials, and Git commit signing.
-###
-### The options are passed to gpg::key::generate. pass is installed and its
-### store initialized with the new key, Git Credential Manager stores
-### credentials with GPG, Git signs commits with the key, and the public key is
-### written in ASCII armor. The first failing step stops the setup.
-###
-### Arguments
-###
-### * OPTIONS - Options of gpg::key::generate.
+# @description Create a GPG key and use it for pass, Git credentials, and Git commit signing.
+#
+# The options are passed to gpg::key::generate. pass is installed and its
+# store initialized with the new key, Git Credential Manager stores
+# credentials with GPG, Git signs commits with the key, and the public key is
+# written in ASCII armor. The first failing step stops the setup.
+#
+# @arg $@ string Options of gpg::key::generate, such as --user-id and --passphrase-fd.
+# @stdout The ASCII-armored public key of the new key.
+# @exitcode 0 Every step finished.
+# @exitcode 74 The new key could not be identified.
+# @exitcode other The status of the step that failed.
+# @example
+#   gpg::setup --user-id 'Alex Example <developer@example.com>' --passphrase-fd 3 3<passphrase.txt
 gpg::setup() {
   local before='' after='' fingerprint='' candidate=''
   before="$(gpg::secret-key::fingerprints 2>/dev/null)" || before=''
@@ -2939,21 +4762,30 @@ gpg::setup() {
   gpg::public-key::armor "${fingerprint}"
 }
 
-### Generate a 4096-bit RSA SSH key and write its public key.
-###
-### An existing key is replaced only after confirmation on the controlling
-### terminal; without a terminal it is kept and 73 is returned.
-###
-### Arguments
-###
-### * --comment COMMENT - Key comment. Defaults to an empty comment.
-### * --output FILE - Private key path. Defaults to $HOME/.ssh/id_rsa.
-### * --passphrase-fd FD - File descriptor to read the passphrase from. Defaults to no passphrase.
+# @description Generate a 4096-bit RSA SSH key and write its public key.
+#
+# An existing key is replaced only after confirmation on the controlling
+# terminal; without a terminal it is kept and 73 is returned.
+#
+# @option --comment <COMMENT> Key comment. Defaults to an empty comment.
+# @option --output <FILE> Private key path. Defaults to $HOME/.ssh/id_rsa.
+# @option --passphrase-fd <FD> File descriptor to read the passphrase from. Defaults to no passphrase.
+# @stdout The public key.
+# @exitcode 0 The key was generated.
+# @exitcode 64 An option is unknown or has an invalid value.
+# @exitcode 66 The passphrase could not be read.
+# @exitcode 69 ssh-keygen is unavailable.
+# @exitcode 73 The key exists and was kept.
+# @exitcode 74 The directory could not be created or the old key removed.
+# @exitcode other The status of ssh-keygen.
+# @example
+#   ssh::key::generate-rsa4096 --comment 'build server' --output "${HOME}/.ssh/build_rsa"
 ssh::key::generate-rsa4096() {
   ssh::key::_generate rsa id_rsa "$@"
 }
 
-### Generate an SSH key and write its public key.
+# @description Generate an SSH key and write its public key.
+# @internal
 ssh::key::_generate() {
   local type="$1" default_name="$2" comment='' output='' passphrase_fd='' passphrase=''
   local arguments=()
@@ -3000,51 +4832,81 @@ ssh::key::_generate() {
   cat -- "${output}.pub"
 }
 
-### Generate an Ed25519 SSH key and write its public key.
-###
-### An existing key is replaced only after confirmation on the controlling
-### terminal; without a terminal it is kept and 73 is returned.
-###
-### Arguments
-###
-### * --comment COMMENT - Key comment. Defaults to an empty comment.
-### * --output FILE - Private key path. Defaults to $HOME/.ssh/id_ed25519.
-### * --passphrase-fd FD - File descriptor to read the passphrase from. Defaults to no passphrase.
+# @description Generate an Ed25519 SSH key and write its public key.
+#
+# An existing key is replaced only after confirmation on the controlling
+# terminal; without a terminal it is kept and 73 is returned.
+#
+# @option --comment <COMMENT> Key comment. Defaults to an empty comment.
+# @option --output <FILE> Private key path. Defaults to $HOME/.ssh/id_ed25519.
+# @option --passphrase-fd <FD> File descriptor to read the passphrase from. Defaults to no passphrase.
+# @stdout The public key.
+# @exitcode 0 The key was generated.
+# @exitcode 64 An option is unknown or has an invalid value.
+# @exitcode 66 The passphrase could not be read.
+# @exitcode 69 ssh-keygen is unavailable.
+# @exitcode 73 The key exists and was kept.
+# @exitcode 74 The directory could not be created or the old key removed.
+# @exitcode other The status of ssh-keygen.
+# @example
+#   ssh::key::generate-ed25519 --comment "$(id -un)@$(hostname)" --passphrase-fd 3 3<passphrase.txt
 ssh::key::generate-ed25519() {
   ssh::key::_generate ed25519 id_ed25519 "$@"
 }
 
-### End every SSH process of the current user.
+# @description End every SSH process of the current user.
+#
+# @noargs
+# @exitcode 0 At least one SSH process was signaled.
+# @exitcode 1 No SSH process was running.
+# @exitcode 64 An argument was given.
+# @exitcode 69 pkill is unavailable.
+# @example
+#   ssh::kill-all
 ssh::kill-all() {
   [[ "$#" -eq 0 ]] || return 64
   command -v pkill >/dev/null 2>&1 || return 69
   pkill -u "$(id -un)" ssh
 }
 
-### Use the macOS Keychain as the global Git credential helper.
+# @description Use the macOS Keychain as the global Git credential helper.
+#
+# @noargs
+# @exitcode 0 The setting was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS.
+# @exitcode other The status of git config.
+# @example
+#   git::config::use-osx-keychain
 git::config::use-osx-keychain() { [[ "$#" -eq 0 ]] || return 64; [[ "$(system::operating-system)" == darwin ]] || return 69; git config --global credential.helper osxkeychain; }
 
-### Write the installed Git Credential Manager version.
+# @description Write the installed Git Credential Manager version.
+#
+# @noargs
+# @stdout The installed version.
+# @exitcode 0 The version was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 git-credential-manager is unavailable.
+# @exitcode other The status of git-credential-manager.
+# @example
+#   git-credential-manager::version::list
 git-credential-manager::version::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command git-credential-manager --version; }
 
-### Write the release asset names that may hold one Git Credential Manager version.
-###
-### Releases before 2.7 name the Linux x64 archive gcm-linux_amd64.VERSION.tar.gz.
+# @description Write the release asset names that may hold one Git Credential Manager version.
+#
+# Releases before 2.7 name the Linux x64 archive gcm-linux_amd64.VERSION.tar.gz.
+# @internal
 git-credential-manager::_asset-names() {
   [[ "$#" -eq 3 ]] || return 64
   printf 'gcm-%s-%s-%s.tar.gz\n' "$1" "$2" "$3"
   [[ "$1" != linux || "$2" != x64 ]] || printf 'gcm-linux_amd64.%s.tar.gz\n' "$3"
 }
 
-### Download one Git Credential Manager version and keep it when it starts on this system.
-###
-### Arguments
-###
-### * PLATFORM - osx or linux.
-### * ARCHITECTURE - x64 or arm64.
-### * VERSION - Release version.
-###
-### Returns 69 when no archive exists for the platform or the program cannot start here.
+# @description Download one Git Credential Manager version and keep it when it starts on this system.
+# @internal
+# @arg $1 string PLATFORM osx or linux.
+# @arg $2 string ARCHITECTURE x64 or arm64.
+# @arg $3 string VERSION Release version.
 git-credential-manager::_install-version() {
   [[ "$#" -eq 3 ]] || return 64
   local version="$3" destination='' temporary='' asset='' downloaded=0 actual_version=''
@@ -3075,7 +4937,8 @@ git-credential-manager::_install-version() {
   rm -rf -- "${temporary}"
 }
 
-### Install the ICU library that Git Credential Manager, a .NET program, needs on Linux.
+# @description Install the ICU library that Git Credential Manager, a .NET program, needs on Linux.
+# @internal
 git-credential-manager::_install-icu() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' name=''
@@ -3097,17 +4960,23 @@ git-credential-manager::_install-icu() {
   esac
 }
 
-### Install an official Git Credential Manager release for this OS and CPU.
-###
-### Each release is built for a minimum C library: 3.0 needs glibc 2.34, so
-### Ubuntu 18.04 and 20.04 run 2.9. On Linux the ICU library is installed
-### first, because the program does not start without it. Without VERSION, releases are tried from
-### the newest until one starts on this system. A requested VERSION that does
-### not start returns 69 without installing anything.
-###
-### Arguments
-###
-### * VERSION - Optional major.minor.patch release.
+# @description Install an official Git Credential Manager release for this OS and CPU.
+#
+# Each release is built for a minimum C library: 3.0 needs glibc 2.34, so
+# Ubuntu 18.04 and 20.04 run 2.9. On Linux the ICU library is installed
+# first, because the program does not start without it. Without VERSION, releases are tried from
+# the newest until one starts on this system. A requested VERSION that does
+# not start returns 69 without installing anything.
+#
+# @arg $1 string Optional major.minor.patch release. Defaults to the newest release that starts.
+# @stderr A message when no release starts on this system.
+# @exitcode 0 Git Credential Manager was installed and configured.
+# @exitcode 64 More than one argument was given or the version is malformed.
+# @exitcode 69 The platform or CPU is unsupported, or no release starts.
+# @exitcode 74 A download or file operation failed.
+# @exitcode other The status of the step that failed.
+# @example
+#   git-credential-manager::install 2.6.1
 git-credential-manager::install() {
   [[ "$#" -le 1 ]] || return 64
   local version="${1:-}" platform='' architecture='' candidates='' candidate='' status=69
@@ -3149,12 +5018,15 @@ git-credential-manager::install() {
   "${HOME}/.local/bin/git-credential-manager" configure
 }
 
-### Apply the user identity and the standard global Git settings.
-###
-### Arguments
-###
-### * EMAIL - Email address passed to git::config::set-email.
-### * USERNAME - Display name passed to git::config::set-username.
+# @description Apply the user identity and the standard global Git settings.
+#
+# @arg $1 string Optional email address passed to git::config::set-email.
+# @arg $2 string Optional display name passed to git::config::set-username.
+# @exitcode 0 Every setting was applied.
+# @exitcode 64 More than two arguments were given.
+# @exitcode other The status of the setting that failed.
+# @example
+#   git::config::setup developer@example.com 'Alex Example'
 git::config::setup() {
   [[ "$#" -le 2 ]] || return 64
   git::config::set-email "${1:-}" || return "$?"
@@ -3164,7 +5036,16 @@ git::config::setup() {
   git::config::enable-prune-fetch
 }
 
-### Register the official Go package source for the current platform.
+# @description Register the official Go package source for the current platform.
+#
+# Go comes from the distribution or Homebrew, so this only checks that the package tool is available.
+#
+# @noargs
+# @exitcode 0 The package source is available.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is unsupported or its package tool is unavailable.
+# @example
+#   go::repository::register
 go::repository::register() {
   [[ "$#" -eq 0 ]] || return 64
   case "$(package::_platform)" in
@@ -3175,7 +5056,15 @@ go::repository::register() {
   esac
 }
 
-### Install Go from the platform package source.
+# @description Install Go from the platform package source.
+#
+# @arg $1 string Optional version from go::version::list. Defaults to the package source default.
+# @exitcode 0 Go was installed.
+# @exitcode 64 More than one argument was given.
+# @exitcode 69 The platform is unsupported or the version is not offered.
+# @exitcode other The status of the package installation.
+# @example
+#   go::install "$(go::version::latest)"
 go::install() {
   [[ "$#" -le 1 ]] || return 64
   go::repository::register || return "$?"
@@ -3194,7 +5083,16 @@ go::install() {
   esac
 }
 
-### Install Rust using rustup and an optional toolchain version.
+# @description Install Rust using rustup and an optional toolchain version.
+#
+# @arg $1 string Optional toolchain, such as 1.81.0 or nightly. Defaults to stable.
+# @exitcode 0 Rust was installed and $HOME/.cargo/bin was added to PATH.
+# @exitcode 64 More than one argument was given.
+# @exitcode 69 curl or a C compiler is unavailable, or the platform is unsupported.
+# @exitcode 74 rustup could not be downloaded.
+# @exitcode other The status of the rustup installer.
+# @example
+#   rust::install 1.81.0
 rust::install() {
   [[ "$#" -le 1 ]] || return 64
   command -v curl >/dev/null 2>&1 || return 69
@@ -3220,7 +5118,16 @@ rust::install() {
   env::add-path "$HOME/.cargo/bin"
 }
 
-### Write the stable Rust versions, oldest first, from the rust-lang/rust releases.
+# @description Write the stable Rust versions, oldest first, from the rust-lang/rust releases.
+#
+# @noargs
+# @stdout One version per line, oldest first.
+# @exitcode 0 The versions were written.
+# @exitcode 1 No version was found.
+# @exitcode 64 An argument was given.
+# @exitcode other The status of the GitHub query.
+# @example
+#   rust::versions | tail -n 1
 rust::versions() {
   [[ "$#" -eq 0 ]] || return 64
   local versions=''
@@ -3229,7 +5136,16 @@ rust::versions() {
   printf '%s\n' "${versions}"
 }
 
-### Keep Flutter SDK changes in a retrievable stash and switch versions.
+# @description Keep Flutter SDK changes in a retrievable stash and switch versions.
+#
+# @arg $1 string Optional tag to check out. Defaults to the newest stable version.
+# @arg $2 string Optional Flutter SDK directory. Defaults to $HOME/.local/flutter.
+# @exitcode 0 The SDK is at the version.
+# @exitcode 64 More than two arguments were given.
+# @exitcode 66 The directory is not a Git checkout.
+# @exitcode other The status of the git command that failed.
+# @example
+#   flutter::use-version 3.24.3
 flutter::use-version() {
   [[ "$#" -le 2 ]] || return 64
   local version='' directory=''
@@ -3246,16 +5162,53 @@ flutter::use-version() {
   git -C "$directory" -c advice.detachedHead=false checkout --detach "$version"
 }
 
-### Remove one JFrog CLI server configuration.
+# @description Remove one JFrog CLI server configuration.
+#
+# @arg $1 string Server ID.
+# @exitcode 0 The configuration was removed.
+# @exitcode 64 The argument count is not one.
+# @exitcode 69 jf is unavailable.
+# @exitcode other The status of jf config remove.
+# @example
+#   jfrog::config::clear artifactory-prod
 jfrog::config::clear() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; util::_run-command jf config remove "$1"; }
 
-### Remove every JFrog CLI server configuration.
+# @description Remove every JFrog CLI server configuration.
+#
+# @noargs
+# @exitcode 0 Every configuration was removed.
+# @exitcode 64 An argument was given.
+# @exitcode 69 jf is unavailable.
+# @exitcode other The status of jf config clean.
+# @example
+#   jfrog::config::clear-all
 jfrog::config::clear-all() { [[ "$#" -eq 0 ]] || return 64; util::_run-command jf config clean; }
 
-### Display JFrog CLI server configurations.
+# @description Display JFrog CLI server configurations.
+#
+# @noargs
+# @stdout The output of jf config show.
+# @exitcode 0 The configurations were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 jf is unavailable.
+# @exitcode other The status of jf config show.
+# @example
+#   jfrog::config::list
 jfrog::config::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command jf config show; }
 
-### Register and verify a JFrog CLI server.
+# @description Register and verify a JFrog CLI server.
+#
+# The access token is read from JFROG_ACCESS_TOKEN and passed to jf on standard input, never as an argument.
+#
+# @arg $1 string Server ID.
+# @arg $2 string Platform URL, such as https://example.jfrog.io.
+# @arg $3 string User name.
+# @exitcode 0 The server was registered and answered ping.
+# @exitcode 64 An argument is empty or JFROG_ACCESS_TOKEN is unset.
+# @exitcode 69 jf is unavailable.
+# @exitcode other The status of jf config add or jf rt ping.
+# @example
+#   JFROG_ACCESS_TOKEN="$(pass show jfrog/token)" jfrog::setup prod https://example.jfrog.io builder
 jfrog::setup() {
   [[ "$#" -eq 3 && -n "$1" && -n "$2" && -n "$3" && -n "${JFROG_ACCESS_TOKEN:-}" ]] || return 64
   command -v jf >/dev/null 2>&1 || return 69
@@ -3265,17 +5218,23 @@ jfrog::setup() {
   env -u JFROG_ACCESS_TOKEN jf rt ping --server-id "$1"
 }
 
-### Install the OpenCode command-line application.
-###
-### macOS uses the Homebrew tap. Linux installs the official opencode-ai npm
-### package into $HOME/.local; its installer picks the build for the CPU and C
-### library, and the glibc builds run on Ubuntu 18.04 and later. Linux needs
-### npm: the Ubuntu nodejs package does not provide it, so install Node.js with
-### `node::install VERSION official` first there.
-###
-### Arguments
-###
-### * VERSION - Optional major.minor.patch version of OpenCode.
+# @description Install the OpenCode command-line application.
+#
+# macOS uses the Homebrew tap. Linux installs the official opencode-ai npm
+# package into $HOME/.local; its installer picks the build for the CPU and C
+# library, and the glibc builds run on Ubuntu 18.04 and later. Linux needs
+# npm: the Ubuntu nodejs package does not provide it, so install Node.js with
+# `node::install VERSION official` first there.
+#
+# @arg $1 string Optional major.minor.patch version of OpenCode. Defaults to the newest version.
+# @stdout The installed version.
+# @exitcode 0 OpenCode was installed.
+# @exitcode 64 More than one argument was given or the version is malformed.
+# @exitcode 69 npm is unavailable, or Homebrew does not offer the version.
+# @exitcode 74 $HOME/.local could not be created.
+# @exitcode other The status of the installation.
+# @example
+#   opencode::install
 opencode::install() {
   [[ "$#" -le 1 ]] || return 64
   local version="${1:-}" platform='' available=''
@@ -3298,14 +5257,35 @@ opencode::install() {
   fi
 }
 
-### Log in to an Artifactory Docker registry using a token on standard input.
+# @description Log in to an Artifactory Docker registry using a token on standard input.
+#
+# The token is passed to docker on standard input, never as an argument.
+#
+# @arg $1 string Registry host.
+# @arg $2 string User name.
+# @arg $3 string Access token.
+# @exitcode 0 The login succeeded.
+# @exitcode 64 The argument count is not three or an argument is empty.
+# @exitcode 69 docker is unavailable.
+# @exitcode other The status of docker login.
+# @example
+#   docker::login-artifactory example.jfrog.io builder "$(pass show jfrog/token)"
 docker::login-artifactory() {
   [[ "$#" -eq 3 && -n "$1" && -n "$2" && -n "$3" ]] || return 64
   command -v docker >/dev/null 2>&1 || return 69
   printf '%s\n' "$3" | docker login "$1" --username "$2" --password-stdin
 }
 
-### Export a Chrome profile's Bookmarks file.
+# @description Export a Chrome profile's Bookmarks file.
+#
+# @arg $1 string Chrome profile directory.
+# @arg $2 string Optional output file. Defaults to ./bookmarks.json.
+# @exitcode 0 The file was copied.
+# @exitcode 64 The arguments are invalid or the profile is not a directory.
+# @exitcode 66 The profile has no Bookmarks file.
+# @exitcode other The status of cp.
+# @example
+#   chrome::profile::export-bookmarks "${HOME}/.config/google-chrome/Default" backup/bookmarks.json
 chrome::profile::export-bookmarks() {
   [[ "$#" -ge 1 && "$#" -le 2 && -d "$1" && ! -L "$1" ]] || return 64
   local output=''
@@ -3314,7 +5294,16 @@ chrome::profile::export-bookmarks() {
   cp -- "$1/Bookmarks" "$output"
 }
 
-### Export a Chrome profile's Preferences file.
+# @description Export a Chrome profile's Preferences file.
+#
+# @arg $1 string Chrome profile directory.
+# @arg $2 string Optional output file. Defaults to ./preferences.json.
+# @exitcode 0 The file was copied.
+# @exitcode 64 The arguments are invalid or the profile is not a directory.
+# @exitcode 66 The profile has no Preferences file.
+# @exitcode other The status of cp.
+# @example
+#   chrome::profile::export-preferences "${HOME}/.config/google-chrome/Profile 1"
 chrome::profile::export-preferences() {
   [[ "$#" -ge 1 && "$#" -le 2 && -d "$1" && ! -L "$1" ]] || return 64
   local output=''
@@ -3323,7 +5312,17 @@ chrome::profile::export-preferences() {
   cp -- "$1/Preferences" "$output"
 }
 
-### Write the first known email address from a Chrome profile.
+# @description Write the first known email address from a Chrome profile.
+#
+# @arg $1 string Chrome profile directory.
+# @stdout The email address.
+# @exitcode 0 The address was written.
+# @exitcode 1 The profile has no email address.
+# @exitcode 64 The argument is not a profile with a Preferences file.
+# @exitcode 69 jq is unavailable.
+# @exitcode 74 Preferences could not be read.
+# @example
+#   chrome::profile::email "${HOME}/.config/google-chrome/Default"
 chrome::profile::email() {
   [[ "$#" -eq 1 && -d "$1" && -f "$1/Preferences" && ! -L "$1/Preferences" ]] || return 64
   command -v jq >/dev/null 2>&1 || return 69
@@ -3333,7 +5332,17 @@ chrome::profile::email() {
   printf '%s\n' "$email"
 }
 
-### Find Chrome profiles whose known email matches literally.
+# @description Find Chrome profiles whose known email matches literally.
+#
+# @arg $1 string Email address.
+# @arg $2 string Optional Chrome user data directory. Defaults to the standard directory of the platform.
+# @stdout One matching profile directory per line.
+# @exitcode 0 At least one profile matches.
+# @exitcode 1 No profile matches.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 66 The user data directory does not exist.
+# @example
+#   chrome::profile::find-by-email developer@example.com
 chrome::profile::find-by-email() {
   [[ "$#" -ge 1 && "$#" -le 2 && -n "$1" ]] || return 64
   local email="$1" root='' path=''
@@ -3354,7 +5363,16 @@ chrome::profile::find-by-email() {
   )
 }
 
-### Extend swap capacity up to a target size.
+# @description Extend swap capacity up to a target size.
+#
+# @arg $1 integer Target total swap size in bytes.
+# @arg $2 integer Optional largest size to add in bytes. Defaults to the target.
+# @arg $3 string Optional swap file path for the addition. Defaults to /swapfile.
+# @exitcode 0 The swap capacity reaches the target, or the allowed addition was made.
+# @exitcode 64 The arguments are invalid.
+# @exitcode other The status of mem::swap-total-bytes or swap::create.
+# @example
+#   swap::ensure-total-size 8589934592
 swap::ensure-total-size() {
   [[ "$#" -ge 1 && "$#" -le 3 && "$1" =~ ^[1-9][0-9]*$ ]] || return 64
   local target="$1" max='' path='' current='' add=''
@@ -3368,13 +5386,17 @@ swap::ensure-total-size() {
   swap::create "$add" "$path"
 }
 
-### Remove the VS Code user data directory.
-###
-### VS Code is not checked for running instances.
-###
-### Arguments
-###
-### * PROFILE_DIRECTORY - Directory to remove. Defaults to the standard user data directory.
+# @description Remove the VS Code user data directory.
+#
+# VS Code is not checked for running instances.
+#
+# @arg $1 string Optional directory to remove. Defaults to the standard user data directory.
+# @exitcode 0 The directory was removed.
+# @exitcode 64 More than one argument was given.
+# @exitcode 66 The directory does not exist, is /, or is a symbolic link.
+# @exitcode 74 The directory could not be removed.
+# @example
+#   vscode::remove-user-data
 vscode::remove-user-data() {
   [[ "$#" -le 1 ]] || return 64
   local directory=''
@@ -3389,25 +5411,74 @@ vscode::remove-user-data() {
   rm -rf -- "${directory}" || return 74
 }
 
-### Set the default ADB device for later calls in the current shell by exporting ANDROID_SERIAL.
+# @description Set the default ADB device for later calls in the current shell by exporting ANDROID_SERIAL.
+#
+# @arg $1 string Device serial.
+# @set ANDROID_SERIAL is exported in the current shell.
+# @exitcode 0 The variable was set.
+# @exitcode 64 The argument is not one valid serial.
+# @example
+#   adb::device::set-default "$(adb::device::first)"
 adb::device::set-default() {
   [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9._:-]+$ ]] || return 64
   export ANDROID_SERIAL="$1"
 }
 
-### Start the host ADB server.
+# @description Start the host ADB server.
+#
+# @noargs
+# @exitcode 0 The server is running.
+# @exitcode 64 An argument was given.
+# @exitcode 69 adb is unavailable.
+# @exitcode other The status of adb start-server.
+# @example
+#   adb::server::start
 adb::server::start() { [[ "$#" -eq 0 ]] || return 64; util::_run-command adb start-server; }
 
-### Stop the host ADB server.
+# @description Stop the host ADB server.
+#
+# @noargs
+# @exitcode 0 The server stopped.
+# @exitcode 64 An argument was given.
+# @exitcode 69 adb is unavailable.
+# @exitcode other The status of adb kill-server.
+# @example
+#   adb::server::stop
 adb::server::stop() { [[ "$#" -eq 0 ]] || return 64; util::_run-command adb kill-server; }
 
-### Stop and then start the host ADB server.
+# @description Stop and then start the host ADB server.
+#
+# @noargs
+# @exitcode 0 The server was restarted.
+# @exitcode 64 An argument was given.
+# @exitcode 69 adb is unavailable.
+# @exitcode other The status of adb.
+# @example
+#   adb::server::restart
 adb::server::restart() { [[ "$#" -eq 0 ]] || return 64; adb::server::stop || return "$?"; adb::server::start; }
 
-### List stashes.
+# @description List stashes.
+#
+# @arg $1 string Optional repository directory. Defaults to the current directory.
+# @stdout The output of git stash list.
+# @exitcode 0 The stashes were written.
+# @exitcode 64 More than one argument was given.
+# @exitcode other The status of git stash.
+# @example
+#   git::stash::list
 git::stash::list() { [[ "$#" -le 1 ]] || return 64; git::_run-in-directory "${1:-.}" stash list; }
 
-### Write the last modification time of a file as Unix seconds.
+# @description Write the last modification time of a file as Unix seconds.
+#
+# @arg $1 string File or symbolic link.
+# @stdout The modification time in seconds since 1970-01-01 UTC.
+# @exitcode 0 The time was written.
+# @exitcode 64 The argument count is not one or the path is empty.
+# @exitcode 66 The path does not exist.
+# @exitcode 69 stat is unavailable or the operating system is unsupported.
+# @exitcode 74 stat failed.
+# @example
+#   file::modified-time-unix-seconds /etc/hosts
 file::modified-time-unix-seconds() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   [[ -e "$1" || -L "$1" ]] || return 66
@@ -3419,7 +5490,8 @@ file::modified-time-unix-seconds() {
   esac
 }
 
-### List the named arguments and value candidates for gpg::key::generate.
+# @description List the named arguments and value candidates for gpg::key::generate.
+# @internal
 gpg::key::_generate-args() {
   case "${1-}" in
     --usage)
@@ -3434,20 +5506,22 @@ gpg::key::_generate-args() {
   esac
 }
 
-### Generate a GPG primary key and an encryption subkey in one operation.
-###
-### Options
-###
-### * --usage USAGE - Primary key usage: sign, cert, auth, or a comma-separated
-###   combination. Defaults to sign.
-### * --algorithm ALGORITHM - ed25519, rsa3072, or rsa4096. Defaults to ed25519,
-###   which pairs an Ed25519 primary key with a Curve25519 encryption subkey.
-### * --expires EXPIRES - GnuPG expiration such as 5y, 12m, or 0. Defaults to 5y.
-### * --user-id USER_ID - "Name <email>". Defaults to the Git user name and email.
-### * --pinentry - Ask for the passphrase through pinentry.
-### * --passphrase-fd FD - Read the passphrase from a file descriptor.
-###
-### Without --pinentry or --passphrase-fd, the key has no passphrase.
+# @description Generate a GPG primary key and an encryption subkey in one operation.
+#
+# @option --usage <USAGE> Primary key usage: sign, cert, auth, or a comma-separated combination. Defaults to sign.
+# @option --algorithm <ALGORITHM> ed25519, rsa3072, or rsa4096. Defaults to ed25519, which pairs an Ed25519 primary key with a Curve25519 encryption subkey.
+# @option --expires <EXPIRES> GnuPG expiration such as 5y, 12m, or 0. Defaults to 5y.
+# @option --user-id <USER_ID> "Name <email>". Defaults to the Git user name and email.
+# @option --pinentry Ask for the passphrase through pinentry.
+# @option --passphrase-fd <FD> Read the passphrase from a file descriptor.
+# @exitcode 0 The key was generated.
+# @exitcode 64 An option is unknown or invalid, or no user ID is available.
+# @exitcode 69 gpg is unavailable.
+# @exitcode 74 The parameter file could not be written.
+# @exitcode other The status of gpg.
+# @example
+#   gpg::key::generate --user-id 'Alex Example <developer@example.com>' --pinentry
+#   gpg::key::generate --algorithm rsa4096 --expires 2y --passphrase-fd 3 3<passphrase.txt
 gpg::key::generate() {
   local usage='sign' algorithm='ed25519' expires='5y' user_id='' pinentry='false' passphrase_fd=''
   while [[ "$#" -gt 0 ]]; do
@@ -3522,10 +5596,18 @@ gpg::key::generate() {
   return "${status}"
 }
 
-### Write the current DNS manager: systemd-resolved, network-manager, or unknown.
+# @description Write the current DNS manager: systemd-resolved, network-manager, or unknown.
+#
+# @noargs
+# @stdout systemd-resolved, network-manager, or unknown.
+# @exitcode 0 The manager was written.
+# @exitcode 64 An argument was given.
+# @example
+#   [[ "$(net::dns::manager)" == systemd-resolved ]] && resolvectl status
 net::dns::manager() { [[ "$#" -eq 0 ]] || return 64; net::dns::_manager; }
 
-### Write one setting from the effective NetworkManager configuration.
+# @description Write one setting from the effective NetworkManager configuration.
+# @internal
 net::dns::_network-manager-setting() {
   [[ "$#" -eq 1 && "$1" =~ ^[a-z-]+$ ]] || return 64
   command -v NetworkManager >/dev/null 2>&1 || return 1
@@ -3533,7 +5615,8 @@ net::dns::_network-manager-setting() {
     awk -F= -v key="$1" '/^\[/ {section=$0} section == "[main]" && $1 == key {print $2; exit}'
 }
 
-### Write the current DNS manager by inspecting resolv.conf and NetworkManager settings.
+# @description Write the current DNS manager by inspecting resolv.conf and NetworkManager settings.
+# @internal
 net::dns::_manager() {
   [[ "$#" -eq 0 ]] || return 64
   local target='' dns=''
@@ -3558,7 +5641,8 @@ net::dns::_manager() {
   esac
 }
 
-### Back up /etc/resolv.conf when it differs from the link that will replace it.
+# @description Back up /etc/resolv.conf when it differs from the link that will replace it.
+# @internal
 net::dns::_backup-resolv-conf() {
   [[ "$#" -eq 1 && "$1" == /* ]] || return 64
   [[ -e /etc/resolv.conf || -L /etc/resolv.conf ]] || return 0
@@ -3571,10 +5655,11 @@ net::dns::_backup-resolv-conf() {
   command::run-as-root cp -P -- /etc/resolv.conf "/etc/resolv.conf.bashstock-${stamp}" || return 74
 }
 
-### Write UUIDs of active connections that NetworkManager itself manages, excluding VPNs.
-###
-### Connections on devices that another program configures, such as the docker0
-### bridge, are reported as "connected (externally)" and are left alone.
+# @description Write UUIDs of active connections that NetworkManager itself manages, excluding VPNs.
+#
+# Connections on devices that another program configures, such as the docker0
+# bridge, are reported as "connected (externally)" and are left alone.
+# @internal
 net::dns::_active-network-manager-connections() {
   [[ "$#" -eq 0 ]] || return 64
   command::require nmcli || return "$?"
@@ -3589,7 +5674,8 @@ net::dns::_active-network-manager-connections() {
   done < <(nmcli -t -f UUID,TYPE,DEVICE connection show --active 2>/dev/null)
 }
 
-### Restart systemd-resolved and confirm that it is active.
+# @description Restart systemd-resolved and confirm that it is active.
+# @internal
 net::dns::_restart-systemd-resolved() {
   [[ "$#" -eq 0 ]] || return 64
   command::require systemctl || return "$?"
@@ -3597,7 +5683,8 @@ net::dns::_restart-systemd-resolved() {
   systemctl is-active --quiet systemd-resolved || return 75
 }
 
-### Restart NetworkManager and wait until it writes its runtime resolv.conf.
+# @description Restart NetworkManager and wait until it writes its runtime resolv.conf.
+# @internal
 net::dns::_restart-network-manager() {
   [[ "$#" -eq 0 ]] || return 64
   command::require systemctl || return "$?"
@@ -3611,12 +5698,10 @@ net::dns::_restart-network-manager() {
   done
 }
 
-### Verify the DNS manager, configured servers, resolv.conf link, and name resolution.
-###
-### Arguments
-###
-### * MANAGER - Expected DNS manager.
-### * SERVER... - DNS servers that must be configured.
+# @description Verify the DNS manager, configured servers, resolv.conf link, and name resolution.
+# @internal
+# @arg $1 string MANAGER Expected DNS manager.
+# @arg $2 string SERVER... DNS servers that must be configured.
 net::dns::_verify() {
   [[ "$#" -ge 1 ]] || return 64
   local manager="$1" actual='' configured='' server=''
@@ -3646,7 +5731,17 @@ net::dns::_verify() {
   net::dns::test example.com || return 75
 }
 
-### Make systemd-resolved manage DNS and /etc/resolv.conf.
+# @description Make systemd-resolved manage DNS and /etc/resolv.conf.
+#
+# The previous /etc/resolv.conf is kept as a backup.
+#
+# @noargs
+# @exitcode 0 systemd-resolved manages DNS.
+# @exitcode 64 An argument was given.
+# @exitcode 74 /etc/resolv.conf could not be linked.
+# @exitcode other The status of the service, backup, or verification step that failed.
+# @example
+#   net::dns::use-systemd-resolved
 net::dns::use-systemd-resolved() {
   [[ "$#" -eq 0 ]] || return 64
   local link='/run/systemd/resolve/stub-resolv.conf'
@@ -3657,7 +5752,18 @@ net::dns::use-systemd-resolved() {
   net::dns::_verify systemd-resolved
 }
 
-### Make NetworkManager manage DNS and /etc/resolv.conf directly.
+# @description Make NetworkManager manage DNS and /etc/resolv.conf directly.
+#
+# The previous /etc/resolv.conf is kept as a backup.
+#
+# @noargs
+# @exitcode 0 NetworkManager manages DNS.
+# @exitcode 64 An argument was given.
+# @exitcode 69 NetworkManager is unavailable.
+# @exitcode 74 The configuration or link could not be written.
+# @exitcode other The status of the restart, backup, or verification step that failed.
+# @example
+#   net::dns::use-network-manager
 net::dns::use-network-manager() {
   [[ "$#" -eq 0 ]] || return 64
   local link='/run/NetworkManager/resolv.conf'
@@ -3671,7 +5777,20 @@ net::dns::use-network-manager() {
   net::dns::_verify network-manager
 }
 
-### Configure Google Public DNS while keeping the current DNS manager.
+# @description Configure Google Public DNS while keeping the current DNS manager.
+#
+# systemd-resolved receives a drop-in file, and NetworkManager receives the servers on every active connection. IPv6 servers are added only to connections with IPv6 configured.
+#
+# @noargs
+# @stderr A message when the DNS manager is unknown.
+# @exitcode 0 Google Public DNS is in use.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The DNS manager is unknown or NetworkManager has no active connection.
+# @exitcode 74 A configuration could not be written.
+# @exitcode 75 A connection could not be reactivated.
+# @exitcode other The status of the restart or verification step that failed.
+# @example
+#   net::dns::use-google && net::dns::servers
 net::dns::use-google() {
   [[ "$#" -eq 0 ]] || return 64
   local manager='' connection='' connections=''

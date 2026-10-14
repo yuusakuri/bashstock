@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
+# @file os-fedora
+# @brief Fedora implementations of the platform operations.
+# @description The module defines only internal functions called by the os module.
 
-### Create a non-login Fedora system account.
+# @description Create a non-login Fedora system account.
+# @internal
 platform::_create-system-user() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -10,7 +14,8 @@ platform::_create-system-user() {
     --shell /usr/sbin/nologin "$1" || return 73
 }
 
-### Create a Fedora login account and roll it back after password failure.
+# @description Create a Fedora login account and roll it back after password failure.
+# @internal
 platform::_create-login-user() {
   if [[ "$#" -ne 2 ]]; then
     return 64
@@ -32,7 +37,8 @@ platform::_create-login-user() {
   return 73
 }
 
-### Change ownership recursively without crossing Fedora mount points.
+# @description Change ownership recursively without crossing Fedora mount points.
+# @internal
 platform::_change-owner-recursively() {
   if [[ "$#" -lt 2 || "$#" -gt 3 ]]; then
     return 64
@@ -47,7 +53,8 @@ platform::_change-owner-recursively() {
   find "$1" -xdev -exec chown --no-dereference "${2}:${group}" {} + || return 74
 }
 
-### Write a path's permission mode with GNU stat.
+# @description Write a path's permission mode with GNU stat.
+# @internal
 platform::_path-mode() {
   if [[ "$#" -ne 1 || -z "$1" ]]; then
     return 64
