@@ -316,7 +316,7 @@ chmod +x "${HOME}/.local/bin/codex"'
   MACHINE='x86_64'
   run codex::install 0.162.1
   [ "${status}" -eq 0 ]
-  [ "${lines[-1]}" = 'codex-cli 0.162.1' ]
+  [ "${lines[${#lines[@]} - 1]}" = 'codex-cli 0.162.1' ]
   IFS='|' read -r interactive arguments path <"${HOME}/installer.log"
   [ "${interactive}" = 1 ]
   [ "${arguments}" = '--release 0.162.1' ]
