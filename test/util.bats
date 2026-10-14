@@ -408,6 +408,91 @@ TABLE
   fi
 }
 
+@test "archive verification covers tar, compressed, zip, and 7z formats" {
+  local work="${BATS_TEST_TMPDIR}/formats" format='' file='' seven=''
+  mkdir -p "$work/content/dir" "$work/single"
+  printf 'value\n' >"$work/content/dir/file"
+  ln -s file "$work/content/dir/link"
+  printf 'line\n' >"$work/single/note.txt"
+  tar -cf "$work/sample.tar" -C "$work/content" .
+  for format in gzip:tgz:gz xz:txz:xz bzip2:tbz2:bz2 zstd:tzst:zst; do
+    command -v "${format%%:*}" >/dev/null 2>&1 || continue
+    tar -cf - -C "$work/content" . | "${format%%:*}" -c >"$work/sample.$(cut -d: -f2 <<<"$format")"
+    "${format%%:*}" -c "$work/single/note.txt" >"$work/note.txt.${format##*:}"
+  done
+  seven="$(archive::_7zip 2>/dev/null)" || seven=''
+  if [[ -n "$seven" ]]; then
+    (cd "$work/content" && "$seven" a -snl "$work/sample.7z" . >/dev/null)
+  fi
+  rm -rf "$work/single"
+
+  run archive::verify "$work"
+  [ "$status" -eq 0 ]
+  for file in "$work"/sample.* "$work"/note.txt.*; do
+    run archive::extract-file "$file" "$work/out/${file##*/}"
+    [ "$status" -eq 0 ]
+    case "$file" in
+      */note.txt.*) [ "$(<"$work/out/${file##*/}/note.txt")" = line ] ;;
+      *)
+        [ "$(<"$work/out/${file##*/}/dir/file")" = value ]
+        [ "$(readlink "$work/out/${file##*/}/dir/link")" = file ]
+        ;;
+    esac
+  done
+
+  run archive::extract-file "$work/note.txt.gz"
+  [ "$status" -eq 0 ]
+  [ "$(<"$work/note.txt")" = line ]
+  mkdir "$work/blocked" "$work/blocked/note.txt"
+  cp "$work/note.txt.gz" "$work/blocked/"
+  run archive::extract-file "$work/blocked/note.txt.gz"
+  [ "$status" -eq 73 ]
+}
+
+@test "archive removal deletes broken archives only and keeps archives it cannot verify" {
+  local work="${BATS_TEST_TMPDIR}/broken" limited="${BATS_TEST_TMPDIR}/limited-bin"
+  mkdir -p "$work/content" "$limited"
+  printf 'value\n' >"$work/content/file"
+  tar -czf "$work/good.tar.gz" -C "$work/content" .
+  head -c 40 "$work/good.tar.gz" >"$work/truncated.tgz"
+  printf 'not gzip' >"$work/plain.gz"
+  printf 'not a tar archive' >"$work/random.tar"
+
+  run --separate-stderr archive::verify "$work"
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *truncated.tgz* && "$stderr" == *plain.gz* && "$stderr" == *random.tar* ]]
+  [[ "$stderr" != *good.tar.gz* ]]
+  [ -f "$work/truncated.tgz" ]
+
+  run archive::remove-broken "$work"
+  [ "$status" -eq 1 ]
+  [ -f "$work/good.tar.gz" ]
+  [ ! -e "$work/truncated.tgz" ] && [ ! -e "$work/plain.gz" ] && [ ! -e "$work/random.tar" ]
+  run archive::remove-broken "$work"
+  [ "$status" -eq 0 ]
+
+  # Without zstd and 7-Zip the archives cannot be verified, so they stay.
+  printf 'unknown' >"$work/data.zst"
+  printf 'unknown' >"$work/data.7z"
+  ln -s "$(command -v find)" "$limited/find"
+  ln -s "$(command -v tar)" "$limited/tar"
+  ln -s "$(command -v gzip)" "$limited/gzip"
+  status=0
+  (PATH="$limited" && archive::remove-broken "$work") 2>"$work.err" || status="$?"
+  [ "$status" -eq 69 ]
+  [ -f "$work/data.zst" ] && [ -f "$work/data.7z" ] && [ -f "$work/good.tar.gz" ]
+  [[ "$(<"$work.err")" == *zstd* && "$(<"$work.err")" == *7-Zip* ]]
+  rm -f "$work/data.zst" "$work/data.7z"
+
+  if command -v zip >/dev/null 2>&1 && command -v unzip >/dev/null 2>&1; then
+    (cd "$work/content" && zip -q -P secret "$work/encrypted.zip" file)
+    run --separate-stderr archive::remove-broken "$work"
+    [ "$status" -eq 69 ]
+    [ -f "$work/encrypted.zip" ]
+    [[ "$stderr" == *'encrypted.zip is encrypted'* ]]
+  fi
+}
+
 @test "path and content searches write NUL-separated matches" {
   local root="${BATS_TEST_TMPDIR}/search"
   mkdir -p "$root/Sub Dir"

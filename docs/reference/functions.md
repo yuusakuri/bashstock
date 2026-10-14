@@ -292,7 +292,7 @@ BashStockが公開する関数をモジュールごとに示します。
 | [`screen::open`](modules/util.md#screenopen) | Open a GNU Screen session. |
 | [`archive::verify`](modules/util.md#archiveverify) | Verify all recognized archives below a path. |
 | [`archive::remove-broken`](modules/util.md#archiveremove-broken) | Remove archives that fail verification. |
-| [`archive::extract-file`](modules/util.md#archiveextract-file) | Extract one tar.gz, tgz, or zip archive. |
+| [`archive::extract-file`](modules/util.md#archiveextract-file) | Extract one archive or decompress one compressed file. |
 | [`archive::compress-tar-gzip`](modules/util.md#archivecompress-tar-gzip) | Compress paths into a gzip-compressed tar archive. |
 | [`diff::directories`](modules/util.md#diffdirectories) | Run diff for two directories. |
 | [`git::clone-shallow`](modules/util.md#gitclone-shallow) | Clone a repository with depth one. |
