@@ -182,7 +182,9 @@ SCRIPT
     chmod +x "$HOME/.local/bin/opencode"
   }
   run opencode::install 1.2.3
+  [ "$status" -eq 64 ]
+  run opencode::install
   [ "$status" -eq 0 ]
   [ "$output" = 1.2.3 ]
-  [ "$(<"$BATS_TEST_TMPDIR/npm.args")" = "install --global --prefix $HOME/.local opencode-ai@1.2.3" ]
+  [ "$(<"$BATS_TEST_TMPDIR/npm.args")" = "install --global --prefix $HOME/.local opencode-ai" ]
 }

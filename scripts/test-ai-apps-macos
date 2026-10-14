@@ -15,5 +15,5 @@ chatgpt::install
 
 [[ -d /Applications/Claude.app ]]
 [[ -d /Applications/ChatGPT.app ]]
-[[ "$(claude --version)" == "$(claude-code::versions)"* ]]
-[[ "$(codex --version)" == *" $(codex::versions)" ]]
+claude --version
+codex --version

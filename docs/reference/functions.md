@@ -503,7 +503,7 @@ BashStockが公開する関数をモジュールごとに示します。
 | [`jfrog::config::clear-all`](modules/util.md#jfrogconfigclear-all) | Remove every JFrog CLI server configuration. |
 | [`jfrog::config::list`](modules/util.md#jfrogconfiglist) | Display JFrog CLI server configurations. |
 | [`jfrog::setup`](modules/util.md#jfrogsetup) | Register and verify a JFrog CLI server. |
-| [`opencode::install`](modules/util.md#opencodeinstall) | Install the OpenCode command-line application. |
+| [`opencode::install`](modules/util.md#opencodeinstall) | Install the newest OpenCode command-line application. |
 | [`docker::login-artifactory`](modules/util.md#dockerlogin-artifactory) | Log in to an Artifactory Docker registry using a token on standard input. |
 | [`chrome::profile::export-bookmarks`](modules/util.md#chromeprofileexport-bookmarks) | Export a Chrome profile's Bookmarks file. |
 | [`chrome::profile::export-preferences`](modules/util.md#chromeprofileexport-preferences) | Export a Chrome profile's Preferences file. |
@@ -579,14 +579,10 @@ BashStockが公開する関数をモジュールごとに示します。
 | [`brave::install`](modules/install.md#braveinstall) | Install Brave from its official repository or Homebrew. |
 | [`chrome::versions`](modules/install.md#chromeversions) | Write Google Chrome versions available to the current platform. |
 | [`chrome::install`](modules/install.md#chromeinstall) | Install Google Chrome from the Google repository or Homebrew. |
-| [`claude-desktop::versions`](modules/install.md#claude-desktopversions) | Write the Claude Desktop versions available on this system. |
-| [`claude-desktop::install`](modules/install.md#claude-desktopinstall) | Install Claude Desktop, the app that also runs Claude Code sessions. |
-| [`claude-code::versions`](modules/install.md#claude-codeversions) | Write the Claude Code CLI versions available on this system. |
-| [`claude-code::install`](modules/install.md#claude-codeinstall) | Install the Claude Code CLI. |
-| [`codex::versions`](modules/install.md#codexversions) | Write the Codex CLI versions available on this system. |
-| [`codex::install`](modules/install.md#codexinstall) | Install the OpenAI Codex CLI. |
-| [`chatgpt::versions`](modules/install.md#chatgptversions) | Write the ChatGPT desktop app versions available on this system. |
-| [`chatgpt::install`](modules/install.md#chatgptinstall) | Install the ChatGPT desktop app, which also runs Codex. |
+| [`claude-desktop::install`](modules/install.md#claude-desktopinstall) | Install the newest Claude Desktop, the app that also runs Claude Code sessions. |
+| [`claude-code::install`](modules/install.md#claude-codeinstall) | Install the newest Claude Code CLI. |
+| [`codex::install`](modules/install.md#codexinstall) | Install the newest OpenAI Codex CLI. |
+| [`chatgpt::install`](modules/install.md#chatgptinstall) | Install the newest ChatGPT desktop app, which also runs Codex. |
 | [`gimp::versions`](modules/install.md#gimpversions) | Write GIMP versions available to the current platform. |
 | [`gimp::install`](modules/install.md#gimpinstall) | Install GIMP, and on Linux the G'MIC plugin from the selected source. |
 | [`gimp::gmic::versions`](modules/install.md#gimpgmicversions) | Write G'MIC GIMP plugin versions available from the selected source. |

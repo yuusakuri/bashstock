@@ -64,16 +64,15 @@
 | B01 | 仮想ディスプレイで VS Code を起動する | VS Code のウィンドウが表示される | `scripts/test-browsers-container` |
 | B02 | Google Chrome を導入し、ヘッドレスで HTML を描画してから仮想ディスプレイで起動する | 描画結果に元の要素が含まれ、ウィンドウが表示される | 同上 |
 | B03 | amd64 で Microsoft Edge を導入し、仮想ディスプレイで起動する。arm64 では導入を試す | amd64 ではウィンドウが表示される。arm64 では Microsoft が Linux 版を公開していないため終了状態 69 を返す | 同上 |
-| C01 | Ubuntu 22.04 以降で `claude-desktop::versions` の一つ前の版を指定して二度導入する | 両方成功し、導入済みの版が指定値と一致する | `scripts/test-claude-desktop-container` |
-| C02 | 版を省略して再び導入する | 最新版へ更新され、`claude-desktop` コマンドが存在する | 同上 |
+| C01 | Ubuntu 22.04 以降で Claude Desktop を二度導入する | 両方成功し、パッケージが導入され、`claude-desktop` コマンドが存在する | `scripts/test-claude-desktop-container` |
 | C03 | リポジトリ定義と鍵を検査する | 公式手順と同じ定義が一件だけあり、鍵の権限が 0644 で、`apt-get update` がエラーも警告も出さない | 同上 |
 | C04 | Ubuntu 20.04 で導入する | 終了状態 69 を返し、リポジトリを登録せず、パッケージも導入しない | 同上 |
 | C05 | 公開指紋と異なる署名鍵を受け取る | 終了状態 65 を返し、リポジトリを登録せず、パッケージも導入しない | `test/setup.bats` |
-| A01 | Ubuntu 20.04 以降と Fedora で `claude-code::versions` の一つ前の版を二度導入し、版を省略して再び導入する | 導入済みの版が指定値、続いて最新版と一致し、`claude --version` が同じ版を表示する。鍵の権限が 0644 で、リポジトリの更新がエラーも警告も出さない | `scripts/test-ai-apps-container` |
-| A02 | Ubuntu 18.04 で Claude Code を導入する | 終了状態 69 を返し、リポジトリを登録しない | 同上 |
-| A03 | `codex::versions` の一つ前の版を導入し、版を省略して再び導入する | `$HOME/.local/bin/codex --version` が指定した版、続いて最新版を表示し、`$HOME/.local/bin` が PATH の設定に入る | 同上 |
-| A04 | Ubuntu 24.04 以降と Fedora 43 以降で ChatGPT を導入し、最新版を指定して再実行する | 両方成功し、導入済みの版が一覧の最新版と一致し、`/usr/bin/chatgpt` が存在する。それより古い OS では終了状態 69 を返し、パッケージを導入しない | 同上 |
-| A05 | macOS で Claude Desktop、Claude Code、Codex、ChatGPT を導入する | `Claude.app` と `ChatGPT.app` が入り、`claude --version` と `codex --version` が cask の版を表示する | `scripts/test-ai-apps-macos` |
+| I01 | Ubuntu 20.04 以降と Fedora で Claude Code を二度導入する | 両方成功し、`/usr/bin/claude --version` が動く。鍵の権限が 0644 で、リポジトリの更新がエラーも警告も出さない | `scripts/test-ai-apps-container` |
+| I02 | Ubuntu 18.04 で Claude Code を導入する | 終了状態 69 を返し、リポジトリを登録しない | 同上 |
+| I03 | Codex を二度導入する | 両方成功し、`$HOME/.local/bin/codex --version` が動き、`$HOME/.local/bin` が PATH の設定に入る | 同上 |
+| I04 | Ubuntu 24.04 以降と Fedora 43 以降で ChatGPT を二度導入する | 両方成功し、パッケージが導入され、`/usr/bin/chatgpt` が存在する。それより古い OS では終了状態 69 を返し、パッケージを導入しない | 同上 |
+| I05 | macOS で Claude Desktop、Claude Code、Codex、ChatGPT を導入する | `Claude.app` と `ChatGPT.app` が入り、`claude --version` と `codex --version` が動く | `scripts/test-ai-apps-macos` |
 | N01 | systemd-resolved の実行環境で `net::dns::use-systemd-resolved` と `net::dns::use-google` をそれぞれ二度実行し、systemd-resolved を再起動する | `resolv.conf` が stub を指し、不要なバックアップを作らない。drop-in は 0644 で systemd-resolve 利用者が読め、再起動後も 8.8.8.8・8.8.4.4 が設定され、名前解決できる | `scripts/test-dns-host` |
 | N02 | NetworkManager を入れ、ダミー接続と WireGuard 接続がある状態で `net::dns::use-network-manager` と `net::dns::use-google` を実行し、NetworkManager を再起動する | `resolv.conf` が NetworkManager の実行時ファイルを指し、元のリンクがバックアップされる。ダミー接続だけに Google Public DNS と ignore-auto-dns が設定され、WireGuard 接続と、Docker が管理する docker0 の DNS は変わらない。再起動後も設定が残る | 同上 |
 | N03 | `net::dns::use-systemd-resolved` で戻す | systemd-resolved が管理し、Google Public DNS で名前解決できる | 同上 |

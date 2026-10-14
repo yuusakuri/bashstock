@@ -6209,7 +6209,7 @@ JFROG_ACCESS_TOKEN="$(pass show jfrog/token)" jfrog::setup prod https://example.
 
 ### opencode::install
 
-Install the OpenCode command-line application.
+Install the newest OpenCode command-line application.
 
 macOS uses the Homebrew tap. Linux installs the official opencode-ai npm
 package into $HOME/.local; its installer picks the build for the CPU and C
@@ -6223,15 +6223,13 @@ npm: the Ubuntu nodejs package does not provide it, so install Node.js with
 opencode::install
 ```
 
-#### Arguments
-
-* **$1** (string): Optional major.minor.patch version of OpenCode. Defaults to the newest version.
+_Function has no arguments._
 
 #### Exit codes
 
 * **0**: OpenCode was installed.
-* **64**: More than one argument was given or the version is malformed.
-* **69**: npm is unavailable, or Homebrew does not offer the version.
+* **64**: An argument was given.
+* **69**: npm is unavailable.
 * **74**: $HOME/.local could not be created.
 * other The status of the installation.
 

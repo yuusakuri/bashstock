@@ -2120,16 +2120,14 @@ claude-desktop::_require-release() {
   package::_require-release ubuntu 22 'Claude Desktop'
 }
 
-# @description Write the Debian architecture when Claude Desktop publishes packages for it.
+# @description Require a CPU that Claude Desktop publishes Debian packages for.
 # @internal
-claude-desktop::_architecture() {
+claude-desktop::_require-architecture() {
   [[ "$#" -eq 0 ]] || return 64
   local architecture=''
   architecture="$(package::_deb-architecture)" || return "$?"
   case "${architecture}" in
-    amd64 | arm64)
-      printf '%s\n' "${architecture}"
-      ;;
+    amd64 | arm64) ;;
     *)
       console::_write-error "Claude Desktop does not provide packages for ${architecture}."
       return 69
@@ -2164,70 +2162,41 @@ claude-desktop::_register-repository() {
   package::_refresh
 }
 
-# @description Write the Claude Desktop versions available on this system.
-#
-# macOS lists the version of the Homebrew cask claude. Ubuntu lists the
-# packages of Anthropic's APT repository for the current CPU.
-#
-# @noargs
-# @stdout Claude Desktop versions, oldest first, one per line.
-# @exitcode 0 The versions were written.
-# @exitcode 64 An argument was given.
-# @exitcode 69 The system is neither macOS nor Ubuntu 22.04 or later, or the CPU is not amd64 or arm64.
-# @exitcode 74 The repository index could not be downloaded.
-# @example
-#   claude-desktop::versions
-claude-desktop::versions() {
-  [[ "$#" -eq 0 ]] || return 64
-  local platform='' architecture='' index_entries=''
-  platform="$(package::_platform)" || return "$?"
-  if [[ "${platform}" == 'darwin' ]]; then
-    package::_cask-versions claude
-    return
-  fi
-  claude-desktop::_require-release || return "$?"
-  architecture="$(claude-desktop::_architecture)" || return "$?"
-  index_entries="$(package::_deb-index-entries \
-    "https://downloads.claude.ai/claude-desktop/apt/stable/dists/stable/main/binary-${architecture}/Packages.gz" \
-    claude-desktop)" || return "$?"
-  printf '%s\n' "${index_entries}" | cut -f 1 | package::_sort-versions
-}
-
-# @description Install Claude Desktop, the app that also runs Claude Code sessions.
+# @description Install the newest Claude Desktop, the app that also runs Claude Code sessions.
 #
 # macOS installs the Homebrew cask claude, which updates itself. Ubuntu 22.04
 # or later installs from Anthropic's APT repository, and later releases
 # arrive through the system's regular APT upgrades. Anthropic does not
 # publish Claude Desktop for Fedora; use claude-code::install there.
 #
-# @arg $1 string Optional version from claude-desktop::versions. Defaults to the newest one.
+# @noargs
 # @exitcode 0 Claude Desktop is installed.
-# @exitcode 64 The argument count is wrong.
+# @exitcode 64 An argument was given.
 # @exitcode 65 The downloaded signing key is not Anthropic's published key.
-# @exitcode 69 The system is neither macOS nor Ubuntu 22.04 or later, the CPU is unsupported, or the version is unavailable.
+# @exitcode 69 The system is neither macOS nor Ubuntu 22.04 or later, or the CPU is unsupported.
 # @exitcode 74 The repository key could not be downloaded.
 # @exitcode other The status of the package manager.
 # @example
 #   claude-desktop::install
 claude-desktop::install() {
-  [[ "$#" -le 1 ]] || return 64
+  [[ "$#" -eq 0 ]] || return 64
   local platform=''
   platform="$(package::_platform)" || return "$?"
   if [[ "${platform}" == 'darwin' ]]; then
-    package::_install-cask claude "${1:-}"
+    package::_install-cask claude
     return
   fi
   claude-desktop::_require-release || return "$?"
-  claude-desktop::_architecture >/dev/null || return "$?"
+  claude-desktop::_require-architecture || return "$?"
   package::_refresh || return "$?"
   package::_install ca-certificates curl gnupg || return "$?"
   claude-desktop::_register-repository || return "$?"
-  package::_install-version claude-desktop "${1:-}"
+  package::_install claude-desktop
 }
 
-# @description Write the package architecture for Claude Code on Linux after checking the release.
+# @description Require a Linux release and CPU that Claude Code publishes packages for.
 # @internal
-claude-code::_architecture() {
+claude-code::_require-system() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' architecture=''
   platform="$(package::_platform)" || return "$?"
@@ -2247,7 +2216,6 @@ claude-code::_architecture() {
     console::_write-error 'Claude Code provides Linux packages only for x86_64 and arm64.'
     return 69
   fi
-  printf '%s\n' "${architecture}"
 }
 
 # @description Register Anthropic's Claude Code repository on the stable channel.
@@ -2291,102 +2259,46 @@ gpgkey=file://${keyring}
   fi
 }
 
-# @description Write the Claude Code CLI versions available on this system.
-#
-# macOS lists the version of the Homebrew cask claude-code. Ubuntu and Fedora
-# list the packages of Anthropic's stable repository for the current CPU.
-#
-# @noargs
-# @stdout Claude Code versions, oldest first, one per line.
-# @exitcode 0 The versions were written.
-# @exitcode 64 An argument was given.
-# @exitcode 69 The platform is unsupported, Ubuntu is older than 20.04, or the CPU is not x86_64 or arm64.
-# @exitcode 74 The repository index could not be read.
-# @example
-#   claude-code::versions | tail -n 1
-claude-code::versions() {
-  [[ "$#" -eq 0 ]] || return 64
-  local platform='' architecture='' index_entries=''
-  platform="$(package::_platform)" || return "$?"
-  if [[ "${platform}" == 'darwin' ]]; then
-    package::_cask-versions claude-code
-    return
-  fi
-  architecture="$(claude-code::_architecture)" || return "$?"
-  if [[ "${platform}" == 'fedora' ]]; then
-    package::_rpm-repository-versions https://downloads.claude.ai/claude-code/rpm/stable claude-code
-    return
-  fi
-  index_entries="$(package::_deb-index-entries \
-    "https://downloads.claude.ai/claude-code/apt/stable/dists/stable/main/binary-${architecture}/Packages" \
-    claude-code)" || return "$?"
-  printf '%s\n' "${index_entries}" | cut -f 1 | package::_sort-versions
-}
-
-# @description Install the Claude Code CLI.
+# @description Install the newest Claude Code CLI.
 #
 # macOS installs the Homebrew cask claude-code. Ubuntu 20.04 or later and
 # Fedora install from Anthropic's signed stable repository, so later
 # releases arrive with the system's package upgrades. Signing in is left to
 # the first run of claude.
 #
-# @arg $1 string Optional version from claude-code::versions. Defaults to the newest one.
+# @noargs
 # @exitcode 0 Claude Code is installed.
-# @exitcode 64 The argument count is wrong.
+# @exitcode 64 An argument was given.
 # @exitcode 65 The downloaded signing key is not Anthropic's published key.
-# @exitcode 69 The platform is unsupported, Ubuntu is older than 20.04, the CPU is unsupported, or the version is unavailable.
+# @exitcode 69 The platform is unsupported, Ubuntu is older than 20.04, or the CPU is unsupported.
 # @exitcode 74 The repository key could not be downloaded.
 # @exitcode other The status of the package manager.
 # @example
 #   claude-code::install && claude --version
 claude-code::install() {
-  [[ "$#" -le 1 ]] || return 64
+  [[ "$#" -eq 0 ]] || return 64
   local platform=''
   platform="$(package::_platform)" || return "$?"
   case "${platform}" in
     darwin)
-      package::_install-cask claude-code "${1:-}"
+      package::_install-cask claude-code
       return
       ;;
     ubuntu)
-      claude-code::_architecture >/dev/null || return "$?"
+      claude-code::_require-system || return "$?"
       package::_refresh || return "$?"
       package::_install ca-certificates curl gnupg || return "$?"
       ;;
     fedora)
-      claude-code::_architecture >/dev/null || return "$?"
+      claude-code::_require-system || return "$?"
       package::_install ca-certificates curl gnupg2 || return "$?"
       ;;
   esac
   claude-code::_register-repository || return "$?"
-  package::_install-version claude-code "${1:-}"
+  package::_install claude-code
 }
 
-# @description Write the Codex CLI versions available on this system.
-#
-# macOS lists the version of the Homebrew cask codex. Linux lists the stable
-# releases of openai/codex on GitHub, which the official installer accepts.
-#
-# @noargs
-# @stdout Codex CLI versions, oldest first, one per line.
-# @exitcode 0 The versions were written.
-# @exitcode 64 An argument was given.
-# @exitcode 69 The platform is unsupported.
-# @exitcode 74 The release list could not be downloaded.
-# @example
-#   codex::versions | tail -n 1
-codex::versions() {
-  [[ "$#" -eq 0 ]] || return 64
-  local platform=''
-  platform="$(package::_platform)" || return "$?"
-  if [[ "${platform}" == 'darwin' ]]; then
-    package::_cask-versions codex
-  else
-    package::_github-release-versions openai/codex rust-v
-  fi
-}
-
-# @description Install the OpenAI Codex CLI.
+# @description Install the newest OpenAI Codex CLI.
 #
 # macOS installs the Homebrew cask codex. Linux runs OpenAI's standalone
 # installer, which verifies the release checksum, installs the static musl
@@ -2394,23 +2306,21 @@ codex::versions() {
 # to PATH through env::add-path, so the installer leaves the shell startup
 # files alone. Signing in is left to the first run of codex.
 #
-# @arg $1 string Optional major.minor.patch version from codex::versions. Defaults to the newest release.
+# @noargs
 # @stdout The installer's progress and the installed version.
 # @exitcode 0 Codex is installed.
-# @exitcode 64 The argument count is wrong or the version is malformed.
-# @exitcode 69 The platform or CPU is unsupported, tar is missing, or Homebrew does not provide the version.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform or CPU is unsupported, or tar is missing.
 # @exitcode 74 The installer could not be downloaded or $HOME/.local/bin could not be created.
 # @exitcode other The status of the installer or of Homebrew.
 # @example
 #   codex::install && codex --version
 codex::install() {
-  [[ "$#" -le 1 ]] || return 64
-  local version="${1:-}" platform='' directory='' status=0
-  local arguments=()
-  [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
+  [[ "$#" -eq 0 ]] || return 64
+  local platform='' directory='' status=0
   platform="$(package::_platform)" || return "$?"
   if [[ "${platform}" == 'darwin' ]]; then
-    package::_install-cask codex "${version}"
+    package::_install-cask codex
     return
   fi
   case "$(uname -m)" in
@@ -2426,9 +2336,8 @@ codex::install() {
   env::add-path "${HOME}/.local/bin" || return "$?"
   directory="$(package::_temporary-directory)" || return "$?"
   package::_download https://chatgpt.com/codex/install.sh "${directory}/install.sh" || status="$?"
-  [[ -z "${version}" ]] || arguments=(--release "${version}")
   if [[ "${status}" -eq 0 ]]; then
-    CODEX_NON_INTERACTIVE=1 sh "${directory}/install.sh" ${arguments[@]+"${arguments[@]}"} </dev/null || status="$?"
+    CODEX_NON_INTERACTIVE=1 sh "${directory}/install.sh" </dev/null || status="$?"
   fi
   rm -rf -- "${directory}"
   [[ "${status}" -eq 0 ]] || return "${status}"
@@ -2461,88 +2370,43 @@ chatgpt::_architecture() {
   printf '%s\n' "${architecture}"
 }
 
-# @description Write the ChatGPT desktop app versions available on this system.
-#
-# macOS lists the version of the Homebrew cask chatgpt. Ubuntu and Fedora
-# list the packages of OpenAI's repository for the current CPU.
-#
-# @noargs
-# @stdout ChatGPT versions, oldest first, one per line.
-# @exitcode 0 The versions were written.
-# @exitcode 64 An argument was given.
-# @exitcode 69 The platform is unsupported, the release is older than Ubuntu 24.04 or Fedora 43, or the CPU is unsupported.
-# @exitcode 74 The repository index could not be read.
-# @example
-#   chatgpt::versions
-chatgpt::versions() {
-  [[ "$#" -eq 0 ]] || return 64
-  local platform='' architecture='' index_entries=''
-  platform="$(package::_platform)" || return "$?"
-  if [[ "${platform}" == 'darwin' ]]; then
-    package::_cask-versions chatgpt
-    return
-  fi
-  architecture="$(chatgpt::_architecture)" || return "$?"
-  if [[ "${platform}" == 'fedora' ]]; then
-    package::_rpm-repository-versions "https://persistent.oaistatic.com/codex-app-prod/linux/rpm/${architecture}" chatgpt
-    return
-  fi
-  index_entries="$(package::_deb-index-entries \
-    "https://persistent.oaistatic.com/codex-app-prod/linux/deb/dists/stable/main/binary-${architecture}/Packages" \
-    chatgpt)" || return "$?"
-  printf '%s\n' "${index_entries}" | cut -f 1 | package::_sort-versions
-}
-
-# @description Install the ChatGPT desktop app, which also runs Codex.
+# @description Install the newest ChatGPT desktop app, which also runs Codex.
 #
 # macOS installs the Homebrew cask chatgpt. Ubuntu 24.04 or later and
-# Fedora 43 or later install OpenAI's package, which registers OpenAI's
-# signed repository so later releases arrive with the system's package
-# upgrades. Fedora can install only the newest release, because OpenAI
-# publishes a download link for that one alone.
+# Fedora 43 or later install OpenAI's newest package, which registers
+# OpenAI's signed repository so later releases arrive with the system's
+# package upgrades.
 #
-# @arg $1 string Optional version from chatgpt::versions. Defaults to the newest one.
+# @noargs
 # @exitcode 0 The ChatGPT desktop app is installed.
-# @exitcode 64 The argument count is wrong.
+# @exitcode 64 An argument was given.
 # @exitcode 65 The downloaded package is for another CPU or is not a valid package.
-# @exitcode 69 The platform, release, or CPU is unsupported, or the version is unavailable.
+# @exitcode 69 The platform, release, or CPU is unsupported.
 # @exitcode 74 The package could not be downloaded.
 # @exitcode other The status of the package manager.
 # @example
 #   chatgpt::install
 chatgpt::install() {
-  [[ "$#" -le 1 ]] || return 64
-  local platform='' architecture='' versions='' version='' index_entries='' filename='' directory='' status=0
+  [[ "$#" -eq 0 ]] || return 64
+  local platform='' architecture='' directory='' file='' status=0
   platform="$(package::_platform)" || return "$?"
   if [[ "${platform}" == 'darwin' ]]; then
-    package::_install-cask chatgpt "${1:-}"
+    package::_install-cask chatgpt
     return
   fi
   architecture="$(chatgpt::_architecture)" || return "$?"
-  versions="$(chatgpt::versions)" || return "$?"
-  version="$(package::_select-listed-version "${versions}" "${1:-}" ChatGPT)" || return "$?"
   if [[ "${platform}" == 'ubuntu' ]]; then
-    index_entries="$(package::_deb-index-entries \
-      "https://persistent.oaistatic.com/codex-app-prod/linux/deb/dists/stable/main/binary-${architecture}/Packages" \
-      chatgpt)" || return "$?"
-    filename="$(awk -F '\t' -v version="${version}" '$1 == version { print $2; exit }' <<<"${index_entries}")"
-    [[ "${filename}" == pool/* ]] || return 74
-    deb::install-from-url "https://persistent.oaistatic.com/codex-app-prod/linux/deb/${filename}" "${architecture}"
+    deb::install-from-url \
+      "https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_${architecture}.deb" "${architecture}"
     return
-  fi
-  if [[ "${version}" != "$(printf '%s\n' "${versions}" | tail -n 1)" ]]; then
-    console::_write-error "OpenAI publishes only the newest ChatGPT package for Fedora; ${version} cannot be installed."
-    return 69
   fi
   command::require dnf || return "$?"
   directory="$(package::_temporary-directory)" || return "$?"
+  file="${directory}/chatgpt.${architecture}.rpm"
   package::_download "https://persistent.oaistatic.com/codex-app-prod/linux/rpm/latest/chatgpt.${architecture}.rpm" \
-    "${directory}/chatgpt.${architecture}.rpm" || status="$?"
+    "${file}" || status="$?"
   if [[ "${status}" -eq 0 ]]; then
-    chmod 0755 "${directory}" && chmod 0644 "${directory}/chatgpt.${architecture}.rpm" || status=74
-  fi
-  if [[ "${status}" -eq 0 ]]; then
-    command::run-as-root dnf install -y "${directory}/chatgpt.${architecture}.rpm" || status="$?"
+    command::run-as-root dnf install -y "${file}" || status="$?"
   fi
   rm -rf -- "${directory}"
   return "${status}"

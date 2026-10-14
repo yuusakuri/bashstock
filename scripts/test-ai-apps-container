@@ -23,23 +23,16 @@ package_version() {
   fi
 }
 
-# Claude Code: the previous and the newest stable package, from the signed repository.
+# Claude Code: the newest stable package, twice, from the signed repository.
 if [[ "${ID}" == ubuntu && "${major}" -lt 20 ]]; then
   status=0
   claude-code::install || status="$?"
   [[ "${status}" -eq 69 ]]
   [[ ! -e /etc/apt/sources.list.d/claude-code.list ]]
 else
-  versions="$(claude-code::versions)"
-  latest="$(printf '%s\n' "${versions}" | tail -n 1)"
-  previous="$(printf '%s\n' "${versions}" | tail -n 2 | head -n 1)"
-  printf 'Claude Code versions: %s, %s\n' "${previous}" "${latest}"
-  claude-code::install "${previous}"
-  claude-code::install "${previous}"
-  [[ "$(package_version claude-code)" == "${previous}" ]]
   claude-code::install
-  [[ "$(package_version claude-code)" == "${latest}" ]]
-  [[ "$(/usr/bin/claude --version)" == "${latest%-*}"* ]]
+  claude-code::install
+  /usr/bin/claude --version
   if [[ "${ID}" == fedora ]]; then
     [[ "$(stat -c %a /etc/pki/rpm-gpg/RPM-GPG-KEY-claude-code)" == 644 ]]
     dnf repoquery --quiet --repo=claude-code claude-code | grep -q claude-code
@@ -50,23 +43,17 @@ else
   fi
 fi
 
-# Codex: the previous release, then the newest, from OpenAI's installer.
-versions="$(codex::versions)"
-latest="$(printf '%s\n' "${versions}" | tail -n 1)"
-previous="$(printf '%s\n' "${versions}" | tail -n 2 | head -n 1)"
-printf 'Codex versions: %s, %s\n' "${previous}" "${latest}"
-codex::install "${previous}"
-[[ "$("${HOME}/.local/bin/codex" --version)" == *" ${previous}" ]]
+# Codex: the newest release, twice, from OpenAI's installer.
 codex::install
-[[ "$("${HOME}/.local/bin/codex" --version)" == *" ${latest}" ]]
+codex::install
+"${HOME}/.local/bin/codex" --version
 grep -Fq "${HOME}/.local/bin" "${HOME}/.bashrc"
 
 # ChatGPT: OpenAI supports Ubuntu 24.04 or later and Fedora 43 or later.
 if [[ ("${ID}" == ubuntu && "${major}" -ge 24) || ("${ID}" == fedora && "${major}" -ge 43) ]]; then
-  latest="$(chatgpt::versions | tail -n 1)"
   chatgpt::install
-  chatgpt::install "${latest}"
-  [[ "$(package_version chatgpt)" == "${latest}"* ]]
+  chatgpt::install
+  package_version chatgpt
   [[ -x /usr/bin/chatgpt ]]
 else
   status=0

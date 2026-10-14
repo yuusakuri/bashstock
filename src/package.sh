@@ -399,31 +399,23 @@ package::_cask-versions() {
 }
 
 # @description Write stable release versions of a GitHub repository without a leading v.
-#
-# An optional tag prefix, such as rust-v for openai/codex, selects the tags
-# that start with it and is removed from the versions.
 # @internal
 package::_github-release-versions() {
-  [[ "$#" -ge 1 && "$#" -le 2 && "$1" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || return 64
+  [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || return 64
   command::require perl || return "$?"
   local json='' versions=''
   json="$(package::_fetch "https://api.github.com/repos/$1/releases?per_page=100")" || return "$?"
   versions="$(printf '%s' "${json}" | perl -MJSON::PP -e '
-    my $prefix = shift;
     local $/;
     my $data = eval { decode_json(<STDIN>) } or exit 74;
     for my $release (@$data) {
       next if $release->{draft} || $release->{prerelease};
       my $tag = $release->{tag_name};
-      if ($prefix ne "") {
-        next unless substr($tag, 0, length $prefix) eq $prefix;
-        $tag = substr($tag, length $prefix);
-      }
       $tag =~ s/^v(?=[0-9])//;
       # Repositories also tag other components, such as config-v0.10.0 in supabase/cli.
       print "$tag\n" if $tag =~ /^[0-9]+(?:\.[0-9]+)*$/;
     }
-  ' "${2:-}")" || return "$?"
+  ')" || return "$?"
   printf '%s\n' "${versions}" | package::_sort-stable-versions
 }
 

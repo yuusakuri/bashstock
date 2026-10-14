@@ -21,17 +21,9 @@ if [[ "${VERSION_ID%%.*}" -lt 22 ]]; then
   exit 0
 fi
 
-versions="$(claude-desktop::versions)"
-latest="$(printf '%s\n' "$versions" | tail -n 1)"
-previous="$(printf '%s\n' "$versions" | tail -n 2 | head -n 1)"
-[[ -n "$latest" && -n "$previous" && "$previous" != "$latest" ]]
-printf 'Claude Desktop versions: %s, %s\n' "$previous" "$latest"
-
-claude-desktop::install "$previous"
-claude-desktop::install "$previous"
-[[ "$(dpkg-query -W -f='${Version}' claude-desktop)" == "$previous" ]]
 claude-desktop::install
-[[ "$(dpkg-query -W -f='${Version}' claude-desktop)" == "$latest" ]]
+claude-desktop::install
+dpkg-query -W claude-desktop
 command -v claude-desktop
 
 # The package keeps the documented entry, so APT reads one source with one key.

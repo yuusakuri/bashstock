@@ -60,13 +60,9 @@ Most installers accept an optional version; each function documents its default.
 * [brave::install](#braveinstall)
 * [chrome::versions](#chromeversions)
 * [chrome::install](#chromeinstall)
-* [claude-desktop::versions](#claude-desktopversions)
 * [claude-desktop::install](#claude-desktopinstall)
-* [claude-code::versions](#claude-codeversions)
 * [claude-code::install](#claude-codeinstall)
-* [codex::versions](#codexversions)
 * [codex::install](#codexinstall)
-* [chatgpt::versions](#chatgptversions)
 * [chatgpt::install](#chatgptinstall)
 * [gimp::versions](#gimpversions)
 * [gimp::install](#gimpinstall)
@@ -1342,35 +1338,9 @@ chrome::install
 * **74**: The repository or its key could not be downloaded.
 * other The status of the package manager.
 
-### claude-desktop::versions
-
-Write the Claude Desktop versions available on this system.
-
-macOS lists the version of the Homebrew cask claude. Ubuntu lists the
-packages of Anthropic's APT repository for the current CPU.
-
-#### Example
-
-```bash
-claude-desktop::versions
-```
-
-_Function has no arguments._
-
-#### Exit codes
-
-* **0**: The versions were written.
-* **64**: An argument was given.
-* **69**: The system is neither macOS nor Ubuntu 22.04 or later, or the CPU is not amd64 or arm64.
-* **74**: The repository index could not be downloaded.
-
-#### Output on stdout
-
-* Claude Desktop versions, oldest first, one per line.
-
 ### claude-desktop::install
 
-Install Claude Desktop, the app that also runs Claude Code sessions.
+Install the newest Claude Desktop, the app that also runs Claude Code sessions.
 
 macOS installs the Homebrew cask claude, which updates itself. Ubuntu 22.04
 or later installs from Anthropic's APT repository, and later releases
@@ -1383,48 +1353,20 @@ publish Claude Desktop for Fedora; use claude-code::install there.
 claude-desktop::install
 ```
 
-#### Arguments
-
-* **$1** (string): Optional version from claude-desktop::versions. Defaults to the newest one.
-
-#### Exit codes
-
-* **0**: Claude Desktop is installed.
-* **64**: The argument count is wrong.
-* **65**: The downloaded signing key is not Anthropic's published key.
-* **69**: The system is neither macOS nor Ubuntu 22.04 or later, the CPU is unsupported, or the version is unavailable.
-* **74**: The repository key could not be downloaded.
-* other The status of the package manager.
-
-### claude-code::versions
-
-Write the Claude Code CLI versions available on this system.
-
-macOS lists the version of the Homebrew cask claude-code. Ubuntu and Fedora
-list the packages of Anthropic's stable repository for the current CPU.
-
-#### Example
-
-```bash
-claude-code::versions | tail -n 1
-```
-
 _Function has no arguments._
 
 #### Exit codes
 
-* **0**: The versions were written.
+* **0**: Claude Desktop is installed.
 * **64**: An argument was given.
-* **69**: The platform is unsupported, Ubuntu is older than 20.04, or the CPU is not x86_64 or arm64.
-* **74**: The repository index could not be read.
-
-#### Output on stdout
-
-* Claude Code versions, oldest first, one per line.
+* **65**: The downloaded signing key is not Anthropic's published key.
+* **69**: The system is neither macOS nor Ubuntu 22.04 or later, or the CPU is unsupported.
+* **74**: The repository key could not be downloaded.
+* other The status of the package manager.
 
 ### claude-code::install
 
-Install the Claude Code CLI.
+Install the newest Claude Code CLI.
 
 macOS installs the Homebrew cask claude-code. Ubuntu 20.04 or later and
 Fedora install from Anthropic's signed stable repository, so later
@@ -1437,48 +1379,20 @@ the first run of claude.
 claude-code::install && claude --version
 ```
 
-#### Arguments
-
-* **$1** (string): Optional version from claude-code::versions. Defaults to the newest one.
-
-#### Exit codes
-
-* **0**: Claude Code is installed.
-* **64**: The argument count is wrong.
-* **65**: The downloaded signing key is not Anthropic's published key.
-* **69**: The platform is unsupported, Ubuntu is older than 20.04, the CPU is unsupported, or the version is unavailable.
-* **74**: The repository key could not be downloaded.
-* other The status of the package manager.
-
-### codex::versions
-
-Write the Codex CLI versions available on this system.
-
-macOS lists the version of the Homebrew cask codex. Linux lists the stable
-releases of openai/codex on GitHub, which the official installer accepts.
-
-#### Example
-
-```bash
-codex::versions | tail -n 1
-```
-
 _Function has no arguments._
 
 #### Exit codes
 
-* **0**: The versions were written.
+* **0**: Claude Code is installed.
 * **64**: An argument was given.
-* **69**: The platform is unsupported.
-* **74**: The release list could not be downloaded.
-
-#### Output on stdout
-
-* Codex CLI versions, oldest first, one per line.
+* **65**: The downloaded signing key is not Anthropic's published key.
+* **69**: The platform is unsupported, Ubuntu is older than 20.04, or the CPU is unsupported.
+* **74**: The repository key could not be downloaded.
+* other The status of the package manager.
 
 ### codex::install
 
-Install the OpenAI Codex CLI.
+Install the newest OpenAI Codex CLI.
 
 macOS installs the Homebrew cask codex. Linux runs OpenAI's standalone
 installer, which verifies the release checksum, installs the static musl
@@ -1492,15 +1406,13 @@ files alone. Signing in is left to the first run of codex.
 codex::install && codex --version
 ```
 
-#### Arguments
-
-* **$1** (string): Optional major.minor.patch version from codex::versions. Defaults to the newest release.
+_Function has no arguments._
 
 #### Exit codes
 
 * **0**: Codex is installed.
-* **64**: The argument count is wrong or the version is malformed.
-* **69**: The platform or CPU is unsupported, tar is missing, or Homebrew does not provide the version.
+* **64**: An argument was given.
+* **69**: The platform or CPU is unsupported, or tar is missing.
 * **74**: The installer could not be downloaded or $HOME/.local/bin could not be created.
 * other The status of the installer or of Homebrew.
 
@@ -1508,41 +1420,14 @@ codex::install && codex --version
 
 * The installer's progress and the installed version.
 
-### chatgpt::versions
-
-Write the ChatGPT desktop app versions available on this system.
-
-macOS lists the version of the Homebrew cask chatgpt. Ubuntu and Fedora
-list the packages of OpenAI's repository for the current CPU.
-
-#### Example
-
-```bash
-chatgpt::versions
-```
-
-_Function has no arguments._
-
-#### Exit codes
-
-* **0**: The versions were written.
-* **64**: An argument was given.
-* **69**: The platform is unsupported, the release is older than Ubuntu 24.04 or Fedora 43, or the CPU is unsupported.
-* **74**: The repository index could not be read.
-
-#### Output on stdout
-
-* ChatGPT versions, oldest first, one per line.
-
 ### chatgpt::install
 
-Install the ChatGPT desktop app, which also runs Codex.
+Install the newest ChatGPT desktop app, which also runs Codex.
 
 macOS installs the Homebrew cask chatgpt. Ubuntu 24.04 or later and
-Fedora 43 or later install OpenAI's package, which registers OpenAI's
-signed repository so later releases arrive with the system's package
-upgrades. Fedora can install only the newest release, because OpenAI
-publishes a download link for that one alone.
+Fedora 43 or later install OpenAI's newest package, which registers
+OpenAI's signed repository so later releases arrive with the system's
+package upgrades.
 
 #### Example
 
@@ -1550,16 +1435,14 @@ publishes a download link for that one alone.
 chatgpt::install
 ```
 
-#### Arguments
-
-* **$1** (string): Optional version from chatgpt::versions. Defaults to the newest one.
+_Function has no arguments._
 
 #### Exit codes
 
 * **0**: The ChatGPT desktop app is installed.
-* **64**: The argument count is wrong.
+* **64**: An argument was given.
 * **65**: The downloaded package is for another CPU or is not a valid package.
-* **69**: The platform, release, or CPU is unsupported, or the version is unavailable.
+* **69**: The platform, release, or CPU is unsupported.
 * **74**: The package could not be downloaded.
 * other The status of the package manager.
 

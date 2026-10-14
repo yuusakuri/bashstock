@@ -5463,7 +5463,7 @@ jfrog::setup() {
   env -u JFROG_ACCESS_TOKEN jf rt ping --server-id "$1"
 }
 
-# @description Install the OpenCode command-line application.
+# @description Install the newest OpenCode command-line application.
 #
 # macOS uses the Homebrew tap. Linux installs the official opencode-ai npm
 # package into $HOME/.local; its installer picks the build for the CPU and C
@@ -5471,32 +5471,26 @@ jfrog::setup() {
 # npm: the Ubuntu nodejs package does not provide it, so install Node.js with
 # `node::install VERSION official` first there.
 #
-# @arg $1 string Optional major.minor.patch version of OpenCode. Defaults to the newest version.
+# @noargs
 # @stdout The installed version.
 # @exitcode 0 OpenCode was installed.
-# @exitcode 64 More than one argument was given or the version is malformed.
-# @exitcode 69 npm is unavailable, or Homebrew does not offer the version.
+# @exitcode 64 An argument was given.
+# @exitcode 69 npm is unavailable.
 # @exitcode 74 $HOME/.local could not be created.
 # @exitcode other The status of the installation.
 # @example
 #   opencode::install
 opencode::install() {
-  [[ "$#" -le 1 ]] || return 64
-  local version="${1:-}" platform='' available=''
-  [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
+  [[ "$#" -eq 0 ]] || return 64
+  local platform=''
   platform="$(package::_platform)" || return "$?"
   if [[ "${platform}" == darwin ]]; then
-    if [[ -n "${version}" ]]; then
-      available="$(package::_brew-formula-stable-version anomalyco/tap/opencode)" || return "$?"
-      [[ "${available}" == "${version}" ]] || return 69
-    fi
     package::_install anomalyco/tap/opencode || return "$?"
     opencode --version
   else
     command::require npm || return "$?"
     mkdir -p -- "${HOME}/.local" || return 74
-    npm install --global --prefix "${HOME}/.local" "opencode-ai${version:+@${version}}" ||
-      return "$?"
+    npm install --global --prefix "${HOME}/.local" opencode-ai || return "$?"
     env::add-path "${HOME}/.local/bin" || return "$?"
     "${HOME}/.local/bin/opencode" --version
   fi

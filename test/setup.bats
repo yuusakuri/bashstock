@@ -214,10 +214,12 @@ use_fake_curl() {
   : >"${ROOT_LOG}"
   KEY_FINGERPRINT='31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE'
   run claude-desktop::install 2.31226.1
+  [ "${status}" -eq 64 ]
+  run claude-desktop::install
   [ "${status}" -eq 0 ]
   [ "$(<"${FAKE_ROOT}/etc/apt/sources.list.d/claude-desktop.list")" = 'deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/claude-desktop-archive-keyring.asc] https://downloads.claude.ai/claude-desktop/apt/stable stable main' ]
   grep -Eq '^install -m 0644 .*/key\.asc /usr/share/keyrings/claude-desktop-archive-keyring\.asc$' "${ROOT_LOG}"
-  [ "$(tail -n 1 "${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades claude-desktop=2.31226.1' ]
+  [ "$(tail -n 1 "${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y claude-desktop' ]
 }
 
 @test "Claude Desktop changes nothing on unsupported releases and CPUs" {
@@ -279,10 +281,12 @@ use_fake_curl() {
   : >"${ROOT_LOG}"
   KEY_FINGERPRINT='31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE'
   run claude-code::install 2.1.287-1
+  [ "${status}" -eq 64 ]
+  run claude-code::install
   [ "${status}" -eq 0 ]
   [ "$(<"${FAKE_ROOT}/etc/apt/sources.list.d/claude-code.list")" = 'deb [signed-by=/etc/apt/keyrings/claude-code.asc] https://downloads.claude.ai/claude-code/apt/stable stable main' ]
   grep -Eq '^install -m 0644 .*/claude-code\.asc /etc/apt/keyrings/claude-code\.asc$' "${ROOT_LOG}"
-  [ "$(tail -n 1 "${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades claude-code=2.1.287-1' ]
+  [ "$(tail -n 1 "${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y claude-code' ]
 
   use_platform fedora 44
   : >"${ROOT_LOG}"
@@ -302,28 +306,28 @@ use_fake_curl() {
   [ ! -s "${ROOT_LOG}" ]
 }
 
-@test "Codex on Linux runs OpenAI's installer for the requested release without prompts" {
+@test "Codex on Linux runs OpenAI's installer without prompts" {
   use_platform ubuntu 22.04 jammy
   export HOME="${BATS_TEST_TMPDIR}/home"
   mkdir -p "${HOME}"
   uname() { [[ "$1" == '-m' ]] && printf '%s\n' "${MACHINE}"; }
-  CURL_BODY='printf "%s|%s|%s\n" "${CODEX_NON_INTERACTIVE}" "$*" "${PATH}" >"${HOME}/installer.log"
+  CURL_BODY='printf "%s|%s|%s\n" "${CODEX_NON_INTERACTIVE}" "$#" "${PATH}" >"${HOME}/installer.log"
 mkdir -p "${HOME}/.local/bin"
 printf "#!/bin/sh\necho codex-cli 0.162.1\n" >"${HOME}/.local/bin/codex"
 chmod +x "${HOME}/.local/bin/codex"'
   use_fake_curl
 
   MACHINE='x86_64'
-  run codex::install 0.162.1
+  run codex::install
   [ "${status}" -eq 0 ]
   [ "${lines[${#lines[@]} - 1]}" = 'codex-cli 0.162.1' ]
-  IFS='|' read -r interactive arguments path <"${HOME}/installer.log"
+  IFS='|' read -r interactive count path <"${HOME}/installer.log"
   [ "${interactive}" = 1 ]
-  [ "${arguments}" = '--release 0.162.1' ]
+  [ "${count}" = 0 ]
   [[ ":${path}:" == *":${HOME}/.local/bin:"* ]]
   grep -Fq "${HOME}/.local/bin" "${HOME}/.bashrc"
 
-  run codex::install 0.162
+  run codex::install 0.162.1
   [ "${status}" -eq 64 ]
   MACHINE='armv7l'
   rm -f "${HOME}/installer.log"
@@ -332,22 +336,11 @@ chmod +x "${HOME}/.local/bin/codex"'
   [ ! -e "${HOME}/installer.log" ]
 }
 
-@test "Codex versions come from the rust-v release tags of openai/codex" {
-  use_platform fedora 44
-  curl() {
-    printf '%s' '[{"tag_name":"rust-v0.162.1"},{"tag_name":"rust-v0.161.0"},{"tag_name":"rust-v0.163.0-alpha.1","prerelease":true},{"tag_name":"v1.0.0"}]'
-  }
-  run codex::versions
-  [ "${status}" -eq 0 ]
-  [ "${output}" = $'0.161.0\n0.162.1' ]
-}
-
-@test "ChatGPT installs OpenAI's package for the listed version and refuses unsupported releases" {
+@test "ChatGPT installs OpenAI's newest package and refuses unsupported releases" {
   record_root_commands
   apt-get() { :; }
   dpkg() { [[ "$1" == '--print-architecture' ]] && printf 'amd64\n'; }
   dpkg-deb() { printf 'amd64\n'; }
-  CURL_BODY=$'Package: chatgpt\nVersion: 26.1007.71326\nFilename: pool/main/c/chatgpt/chatgpt_26.1007.71326_amd64.deb\n\nPackage: chatgpt\nVersion: 26.1001.10000\nFilename: pool/main/c/chatgpt/chatgpt_26.1001.10000_amd64.deb\n'
   use_fake_curl
   CURL_URLS="${BATS_TEST_TMPDIR}/curl-urls.log"
   eval "original_$(declare -f curl)"
@@ -359,21 +352,17 @@ chmod +x "${HOME}/.local/bin/codex"'
   [ ! -s "${ROOT_LOG}" ]
 
   use_platform ubuntu 24.04 noble
-  run chatgpt::versions
+  run chatgpt::install 26.1007.71326
+  [ "${status}" -eq 64 ]
+  run chatgpt::install
   [ "${status}" -eq 0 ]
-  [ "${output}" = $'26.1001.10000\n26.1007.71326' ]
-  run chatgpt::install 26.1001.10000
-  [ "${status}" -eq 0 ]
-  grep -Fxq 'https://persistent.oaistatic.com/codex-app-prod/linux/deb/pool/main/c/chatgpt/chatgpt_26.1001.10000_amd64.deb' "${CURL_URLS}"
+  grep -Fxq 'https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_amd64.deb' "${CURL_URLS}"
   [[ "$(tail -n 1 "${ROOT_LOG}")" == 'env DEBIAN_FRONTEND=noninteractive apt-get install -y '*'/package.deb' ]]
 
   use_platform fedora 44
   : >"${ROOT_LOG}"
   uname() { [[ "$1" == '-m' ]] && printf 'x86_64\n'; }
-  dnf() { [[ "$1" == 'repoquery' ]] && printf '26.1001.10000-1\n26.1007.71326-1\n'; }
-  run --separate-stderr chatgpt::install 26.1001.10000-1
-  [ "${status}" -eq 69 ]
-  [ ! -s "${ROOT_LOG}" ]
+  dnf() { :; }
   run chatgpt::install
   [ "${status}" -eq 0 ]
   [[ "$(<"${ROOT_LOG}")" == 'dnf install -y '*'/chatgpt.x86_64.rpm' ]]
