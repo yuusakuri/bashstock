@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091,SC2016,SC2317,SC2329
+
+set -uo pipefail
+
+# Run on a disposable GitHub Actions macOS runner. The settings functions that
+# mac::setup calls are applied twice and read back; nothing is downloaded, so
+# this runs on every push. The full mac::setup with its installers runs only
+# when the installer workflow is started by hand (scripts/test-macos-setup).
+[[ "$(uname -s)" == Darwin ]] || exit 69
+[[ -n "${GITHUB_ACTIONS:-}" ]] || exit 64
+source ./dist/bashstock.sh
+
+failures=0
+failed_checks=''
+mismatch=''
+
+# @description Run a check and record its result without stopping the remaining checks.
+check() {
+  mismatch=''
+  if "$@" >/dev/null; then
+    printf 'PASS: %s\n' "$*"
+  else
+    printf 'FAIL: %s\n' "$*" >&2
+    printf '::error::FAIL: %s\n' "$*"
+    failures=$((failures + 1))
+    failed_checks+="  $*"$'\n'
+    [[ -z "${mismatch}" ]] || failed_checks+="${mismatch}"$'\n'
+  fi
+}
+
+# @description Compare a command's output with the expected text.
+output_is() {
+  local expected="$1" actual=''
+  shift
+  actual="$("$@" 2>&1)"
+  [[ "${actual}" == "${expected}" ]] || {
+    mismatch="$(printf '    expected %q, got %q' "${expected}" "${actual}")"
+    printf '%s\n' "${mismatch}" >&2
+    return 1
+  }
+}
+
+# @description Apply the settings that mac::setup applies before it installs anything.
+apply_settings() {
+  check sudo::passwordless::enable
+  check env::dotenv::register "${HOME}/.env"
+  check shell::editor::set-default 'code --wait' bash,zsh
+  check shell::zsh::enable-interactive-comments
+  check homebrew::cask::disable-quarantine
+  check env::add-path "${HOME}/.local/bin"
+  check shell::completion::enable-ignore-case
+  check mac::wake-on-lan::enable
+  check mac::keyboard::use-function-keys
+  check key-binding::disable-option-t
+  check mac::keyboard::set-repeat
+  check mac::dock::set-autohide-instant
+  check mac::trackpad::disable-smart-zoom
+  check mac::dock::hide-recent-applications
+  check mac::dock::set-minimize-effect
+  check mac::dock::set-position
+  check mac::applications::remove-bundled
+  check mac::quarantine::remove-applications
+  check mac::gatekeeper::disable
+  check git::config::setup
+  check git::config::use-osx-keychain
+}
+
+printf 'BASHSTOCK_SETUP_VALUE="from dotenv"\n' >"${HOME}/.env"
+mkdir -p "${HOME}/.local/bin"
+# /bin/bash -i otherwise warns on stderr that the default shell is now zsh.
+export BASH_SILENCE_DEPRECATION_WARNING=1
+export GIT_EMAIL=tester@example.invalid GIT_USERNAME='Setup Tester'
+sw_vers
+uname -m
+
+printf '== first run\n'
+apply_settings
+# The second run must succeed without duplicating settings.
+printf '== second run\n'
+apply_settings
+
+printf '== sudo\n'
+check sudo -n true
+check test -f "$(sudo::passwordless::_file "$(id -un)")"
+
+printf '== preferences\n'
+check output_is 1 defaults read NSGlobalDomain com.apple.keyboard.fnState
+check output_is 30 defaults read NSGlobalDomain InitialKeyRepeat
+check output_is 1 defaults read NSGlobalDomain KeyRepeat
+check output_is 0 defaults read com.apple.dock autohide-time-modifier
+check output_is 0 defaults read com.apple.dock autohide-delay
+check output_is 0 defaults read com.apple.dock show-recents
+check output_is scale defaults read com.apple.dock mineffect
+check output_is left defaults read com.apple.dock orientation
+check output_is 0 defaults read com.apple.AppleMultitouchTrackpad TrackpadTwoFingerDoubleTapGesture
+check output_is 0 defaults read NSGlobalDomain com.apple.trackpad.twoFingerDoubleTapGesture
+pmset -g | grep -i womp || printf 'pmset reports no wake-on-LAN setting on this runner\n'
+
+printf '== key binding\n'
+bindings="${HOME}/Library/KeyBindings/DefaultKeyBinding.dict"
+check plutil -lint "${bindings}"
+check output_is 'noop:' plutil -extract '~t' raw -o - "${bindings}"
+
+printf '== startup files\n'
+for pattern in '^setopt interactivecomments$' '^export HOMEBREW_CASK_OPTS=' '^export EDITOR=' \
+  'env::dotenv::_export-commands'; do
+  check output_is 1 grep -c -- "${pattern}" "${HOME}/.zshrc"
+done
+for pattern in '^export HOMEBREW_CASK_OPTS=' '^export EDITOR=' 'env::dotenv::import'; do
+  check output_is 1 grep -c -- "${pattern}" "${HOME}/.bashrc"
+done
+check output_is 1 grep -c '^set completion-ignore-case on$' "${HOME}/.inputrc"
+# New shells read the startup files that the settings wrote.
+check output_is 'from dotenv|code --wait|--no-quarantine' \
+  zsh -lic 'print -r -- "$BASHSTOCK_SETUP_VALUE|$EDITOR|$HOMEBREW_CASK_OPTS"'
+# Without a terminal, bash -i reports on stderr that job control is off.
+check output_is 'from dotenv|code --wait|--no-quarantine' sh -c 'bash -ic "$1" 2>/dev/null' bash \
+  'printf "%s|%s|%s" "$BASHSTOCK_SETUP_VALUE" "$EDITOR" "$HOMEBREW_CASK_OPTS"'
+
+printf '== applications and Gatekeeper\n'
+for app in iMovie Pages GarageBand Keynote Numbers; do
+  check test ! -e "/Applications/${app}.app"
+done
+spctl --status || true
+
+printf '== Git\n'
+check output_is tester@example.invalid git config --global user.email
+check output_is 'Setup Tester' git config --global user.name
+check output_is main git config --global init.defaultBranch
+check output_is true git config --global pull.rebase
+check output_is true git config --global fetch.prune
+check output_is osxkeychain git config --global credential.helper
+
+printf '%s check(s) failed\n%s' "${failures}" "${failed_checks}"
+[[ "${failures}" -eq 0 ]]

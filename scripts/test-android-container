@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091,SC2317,SC2329
+
+set -euo pipefail
+
+# Run as root from the checkout in a disposable Ubuntu or Fedora container started with
+# --device /dev/kvm. Only a JDK for sdkmanager and avdmanager is added, so
+# android::emulator::install has to provide the emulator's system libraries.
+source /etc/os-release
+case "${ID}" in
+  ubuntu)
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update >/dev/null
+    apt-get install -y --no-install-recommends ca-certificates curl diffutils perl iproute2 procps \
+      >/dev/null
+    apt-get install -y --no-install-recommends openjdk-21-jdk-headless >/dev/null 2>&1 ||
+      apt-get install -y --no-install-recommends openjdk-17-jdk-headless >/dev/null
+    ;;
+  fedora)
+    dnf install -y ca-certificates curl diffutils perl-JSON-PP perl-File-Temp iproute procps-ng \
+      which >/dev/null
+    # java-latest-openjdk can be an early-access build, so the newest LTS JDK
+    # that the release provides is used.
+    for jdk in 25 21 17; do
+      dnf install -y "java-${jdk}-openjdk-headless" >/dev/null 2>&1 && break
+    done
+    command -v java >/dev/null
+    ;;
+esac
+
+source ./dist/bashstock.sh
+printf '%s %s %s\n' "${PRETTY_NAME}" "$(uname -m)" "$(getconf GNU_LIBC_VERSION)"
+java -version 2>&1 | head -n 1
+
+if [[ "$(uname -m)" != x86_64 ]]; then
+  # Google publishes the Android CLI only for x86_64 Linux.
+  export HOME="${RUNNER_TEMP}/bashstock-android-home"
+  mkdir -p "${HOME}"
+  status=0
+  android::sdk::install 2>/dev/null || status="$?"
+  [[ "${status}" -eq 69 ]]
+  [[ ! -e "${HOME}/.local/bin/android" && ! -e "${HOME}/Android/Sdk" ]]
+  printf 'Android CLI reports this CPU as unsupported with status 69.\n'
+  exit 0
+fi
+
+if [[ "$(printf '%s\n' 2.30 "$(getconf GNU_LIBC_VERSION | awk '{print $2}')" | sort -V | head -n 1)" != 2.30 ]]; then
+  # The current emulator needs glibc 2.30, so only the other components start here.
+  export HOME="${RUNNER_TEMP}/bashstock-android-home"
+  export ANDROID_HOME="${HOME}/Android/Sdk"
+  mkdir -p "${HOME}"
+  android::sdk::install
+  android::platform-tools::install
+  android::sdk-platform::install 35
+  android::build-tools::install 35.0.0
+  android::command-line-tools::install
+  "${ANDROID_HOME}/platform-tools/adb" version
+  "${ANDROID_HOME}/build-tools/35.0.0/aapt2" version
+  "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --version
+  test -s "${ANDROID_HOME}/platforms/android-35/android.jar"
+  status=0
+  android::emulator::install || status="$?"
+  [[ "${status}" -eq 69 ]]
+  printf 'The emulator is reported as unsupported with status 69.\n'
+  exit 0
+fi
+
+bash ./scripts/test-android-linux

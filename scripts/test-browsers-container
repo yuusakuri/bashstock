@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091
+
+set -euo pipefail
+
+# Install VS Code, Google Chrome, and Microsoft Edge and open a window of each
+# on a virtual X display. The container runs as root, so every application
+# starts without its sandbox.
+
+source /opt/bashstock.sh
+source /etc/os-release
+architecture="$(uname -m)"
+work="$(mktemp -d)"
+
+if [[ "$ID" == ubuntu ]]; then
+  apt-get update >/dev/null
+  DEBIAN_FRONTEND=noninteractive apt-get install -y xvfb xdotool >/dev/null
+else
+  dnf install -y xorg-x11-server-Xvfb xdotool >/dev/null
+fi
+Xvfb :99 -screen 0 1280x800x24 >/dev/null 2>&1 &
+export DISPLAY=:99
+for _ in $(seq 1 30); do
+  xdotool getdisplaygeometry >/dev/null 2>&1 && break
+  sleep 1
+done
+
+# @description Start an application in the background and wait for a visible window of CLASS.
+expect_window() {
+  local class="$1"
+  shift
+  "$@" >"$work/$class.log" 2>&1 &
+  local pid="$!"
+  # A search fails with BadWindow when a short-lived window closes while it is
+  # read, so the search is repeated instead of waiting inside xdotool.
+  local found=1
+  for _ in $(seq 1 90); do
+    if xdotool search --onlyvisible --class "$class" 2>/dev/null | grep -q .; then
+      found=0
+      break
+    fi
+    sleep 1
+  done
+  if [[ "$found" -ne 0 ]]; then
+    tail -n 40 "$work/$class.log"
+    return 1
+  fi
+  printf 'Window of %s is visible.\n' "$class"
+  kill "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+}
+
+# @description Require 69 from an installer when the vendor publishes nothing for this system.
+expect_unavailable() {
+  local status=0
+  "$@" || status="$?"
+  [[ "$status" -eq 69 ]]
+}
+
+printf '== VS Code\n'
+vscode::install
+expect_window code code --no-sandbox --disable-gpu --user-data-dir "$work/code" --new-window
+
+printf '== Google Chrome\n'
+[[ -n "$(chrome::versions)" ]]
+chrome::install
+google-chrome --version
+google-chrome --headless --no-sandbox --disable-gpu --dump-dom 'data:text/html,<p>bashstock</p>' |
+  grep -F '<p>bashstock</p>'
+expect_window google-chrome google-chrome --no-sandbox --disable-gpu --no-first-run \
+  --user-data-dir="$work/chrome" about:blank
+
+printf '== Microsoft Edge\n'
+edge_versions="$(microsoft-edge::versions)"
+if [[ "$architecture" != x86_64 ]]; then
+  # Microsoft builds Edge for Linux on amd64 only.
+  [[ -z "$edge_versions" ]]
+  expect_unavailable microsoft-edge::install
+else
+  [[ -n "$edge_versions" ]]
+  microsoft-edge::install
+  microsoft-edge --version
+  expect_window microsoft-edge microsoft-edge --no-sandbox --disable-gpu --no-first-run \
+    --user-data-dir="$work/edge" about:blank
+fi

@@ -6,6 +6,9 @@ default:
 build:
     ./scripts/build
 
+docs:
+    ./scripts/docs
+
 lint:
     ./scripts/lint
 

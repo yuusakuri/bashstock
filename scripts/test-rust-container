@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091
+
+set -euo pipefail
+
+source /opt/bashstock.sh
+directory="$(mktemp -d)"
+trap 'rm -rf -- "$directory"' EXIT
+
+rust::install
+rust::install
+rustc --version
+cargo --version
+cat >"${directory}/hello.rs" <<'RUST'
+fn main() { println!("rust-ok"); }
+RUST
+rustc "${directory}/hello.rs" -o "${directory}/hello"
+[[ "$("${directory}/hello")" == rust-ok ]]
+[[ -x "${HOME}/.cargo/bin/rustc" ]]
+[[ "$(bash -c 'source "$HOME/.bashrc"; command -v cargo')" == "${HOME}/.cargo/bin/cargo" ]]

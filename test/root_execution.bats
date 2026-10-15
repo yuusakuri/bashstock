@@ -123,7 +123,7 @@ load test_helper
   sudo() { printf '<%s>' "$@" >>"${BATS_TEST_TMPDIR}/sudo-args"; }
 
   command::run-as-root printf '%s' value
-  [ "$(<"${BATS_TEST_TMPDIR}/sudo-args")" = '<-n><-v><-n><--><printf><%s><value>' ]
+  [ "$(<"${BATS_TEST_TMPDIR}/sudo-args")" = '<-n><--><true><-n><--><printf><%s><value>' ]
 
   sudo() { return 1; }
   run command::run-as-root printf '%s' value

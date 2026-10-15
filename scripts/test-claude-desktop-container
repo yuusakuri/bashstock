@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091
+
+set -euo pipefail
+
+# Run inside a disposable Ubuntu container.
+apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get install -y curl ca-certificates perl
+
+source /opt/bashstock.sh
+source /etc/os-release
+source_file=/etc/apt/sources.list.d/claude-desktop.list
+keyring=/usr/share/keyrings/claude-desktop-archive-keyring.asc
+
+if [[ "${VERSION_ID%%.*}" -lt 22 ]]; then
+  status=0
+  claude-desktop::install || status="$?"
+  [[ "$status" -eq 69 ]]
+  [[ ! -e "$source_file" ]]
+  if dpkg-query -W claude-desktop >/dev/null 2>&1; then exit 1; fi
+  exit 0
+fi
+
+claude-desktop::install
+claude-desktop::install
+dpkg-query -W claude-desktop
+command -v claude-desktop
+
+# The package keeps the documented entry, so APT reads one source with one key.
+[[ "$(<"$source_file")" == "deb [arch=amd64,arm64 signed-by=$keyring] https://downloads.claude.ai/claude-desktop/apt/stable stable main" ]]
+[[ "$(find /etc/apt/sources.list.d -name 'claude-desktop*' | wc -l)" -eq 1 ]]
+[[ "$(stat -c %a "$keyring")" == 644 ]]
+apt-get update 2>&1 | tee /tmp/bashstock-apt-update.log
+if grep -E '^(E|W):' /tmp/bashstock-apt-update.log; then exit 1; fi
+apt-cache policy claude-desktop | grep -F 'https://downloads.claude.ai/claude-desktop/apt/stable'

@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091,SC2016
+
+set -euo pipefail
+
+# Run as the sudo user tester inside an Ubuntu container whose PID 1 is
+# systemd, started by scripts/boot-systemd-container.
+sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y xdg-user-dirs >/dev/null
+source /opt/bashstock.sh
+
+# Localized XDG directories, as a Japanese desktop session creates them.
+mkdir -p "$HOME/.config" "$HOME/デスクトップ" "$HOME/ダウンロード" "$HOME/Documents"
+printf 'kept\n' >"$HOME/Documents/report.txt"
+mkdir -p "$HOME/ドキュメント"
+cat >"$HOME/.config/user-dirs.dirs" <<'DIRS'
+XDG_DESKTOP_DIR="$HOME/デスクトップ"
+XDG_DOWNLOAD_DIR="$HOME/ダウンロード"
+XDG_DOCUMENTS_DIR="$HOME/ドキュメント"
+DIRS
+printf 'BASHSTOCK_SETUP_VALUE="from dotenv"\n' >"$HOME/.env"
+
+export GIT_EMAIL=tester@example.invalid GIT_USERNAME='Setup Tester'
+ubuntu::setup
+ubuntu::setup
+
+printf '== startup files\n'
+[[ "$(grep -c 'env::dotenv::import' "$HOME/.bashrc")" -eq 1 ]]
+[[ "$(grep -c '^export EDITOR=' "$HOME/.bashrc")" -eq 1 ]]
+[[ "$(grep -c '^set completion-ignore-case on$' "$HOME/.inputrc")" -eq 1 ]]
+# A new login session reads the startup files that ubuntu::setup wrote.
+session="$(sudo su -l "$(id -un)" -c 'bash -ic '\''printf "%s|%s|%s" "$BASHSTOCK_SETUP_VALUE" "$EDITOR" "$(bind -v | grep completion-ignore-case)"'\''' 2>/dev/null)"
+printf '%s\n' "$session"
+[[ "$session" == 'from dotenv|code --wait|set completion-ignore-case on' ]]
+
+printf '== user directories\n'
+[[ "$(readlink "$HOME/Desktop")" == "$HOME/デスクトップ" ]]
+[[ "$(readlink "$HOME/Downloads")" == "$HOME/ダウンロード" ]]
+[[ "$(readlink "$HOME/Documents")" == "$HOME/ドキュメント" ]]
+[[ "$(<"$HOME/ドキュメント/report.txt")" == kept ]]
+
+printf '== group, Git, and SSH\n'
+sudo su -l "$(id -un)" -c 'id -nG' | grep -qw dialout
+[[ "$(git config --global user.email)" == tester@example.invalid ]]
+[[ "$(git config --global user.name)" == 'Setup Tester' ]]
+[[ "$(git config --global init.defaultBranch)" == main ]]
+[[ "$(git config --global pull.rebase)" == true ]]
+[[ "$(git config --global fetch.prune)" == true ]]
+[[ "$(git config --global credential.helper)" == manager ]]
+[[ "$(stat -c %a "$HOME/.ssh")" == 700 ]]

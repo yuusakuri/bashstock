@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091
+
+set -euo pipefail
+
+source /opt/bashstock.sh
+version='3.4.5'
+ruby::install "$version"
+ruby::install "$version"
+[[ "$(ruby -e 'print RUBY_VERSION')" == "$version" ]]
+[[ "$(ruby -e 'puts 6 * 7')" == 42 ]]
+gem --version
+[[ "$(bash -c 'source "$HOME/.bashrc"; ruby -e "print RUBY_VERSION"')" == "$version" ]]

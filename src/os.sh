@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
+# @file os
+# @brief Dispatch of platform operations to the supported operating systems.
+# @description Each platform operation is implemented by os-darwin, os-ubuntu, or os-fedora.
 
-### Write the identifier of the supported operating-system provider.
+# @description Write the identifier of the supported operating-system provider.
+# @internal
 platform::_identifier() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -38,17 +42,36 @@ platform::_identifier() {
   printf 'unknown\n'
 }
 
-### Return unavailable until an operating-system provider defines user creation.
+# @description Write one value from /etc/os-release without evaluating the file.
+# @internal
+platform::_os-release-value() {
+  [[ "$#" -eq 1 && "$1" =~ ^[A-Z_]+$ ]] || return 64
+  [[ -r /etc/os-release ]] || return 66
+  local key='' value=''
+  while IFS='=' read -r key value; do
+    [[ "${key}" == "$1" ]] || continue
+    value="${value#\"}"
+    value="${value%\"}"
+    printf '%s\n' "${value}"
+    return 0
+  done </etc/os-release
+  return 1
+}
+
+# @description Return unavailable until an operating-system provider defines user creation.
+# @internal
 platform::_create-system-user() {
   return 69
 }
 
-### Return unavailable until an operating-system provider defines login creation.
+# @description Return unavailable until an operating-system provider defines login creation.
+# @internal
 platform::_create-login-user() {
   return 69
 }
 
-### Return unavailable until an operating-system provider defines ownership changes.
+# @description Return unavailable until an operating-system provider defines ownership changes.
+# @internal
 platform::_change-owner-recursively() {
   return 69
 }

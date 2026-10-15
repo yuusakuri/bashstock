@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091
+
+set -euo pipefail
+
+source /opt/bashstock.sh
+source /etc/os-release
+if [[ "$ID" == ubuntu && "$VERSION_ID" == 18.04 ]]; then
+  # Ubuntu 18.04 has no pipx package, so only the official PyPI source can provide it.
+  status=0
+  pipx::install || status="$?"
+  [[ "$status" -eq 69 ]]
+  pipx::install '' official
+  pipx::install '' official
+  latest="$(pipx::versions official | tail -n 1)"
+else
+  pipx::install
+  pipx::install
+  latest="$(pipx::versions | tail -n 1)"
+fi
+printf 'pipx version: %s\n' "$latest"
+installed="$(bash -c 'source "$HOME/.bashrc"; pipx --version')"
+[[ "$latest" == "$installed" || "$latest" == "$installed"-* || "$latest" == *:"$installed"-* ]]
+pipx list
+
+# An application installed by pipx starts from the PATH that pipx::install configured.
+bash -c 'source "$HOME/.bashrc"; pipx install pycowsay && pycowsay bashstock' | grep -F bashstock

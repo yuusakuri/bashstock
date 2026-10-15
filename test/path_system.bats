@@ -40,6 +40,22 @@ load test_helper
   ! path::is-empty-directory "${directory}"
 }
 
+@test "path mode is a portable octal value" {
+  local file="${BATS_TEST_TMPDIR}/file"
+  printf 'value' >"${file}"
+  chmod 640 "${file}"
+
+  run path::mode "${file}"
+  [ "${status}" -eq 0 ]
+  [ "${output}" = '640' ]
+
+  run path::mode "${BATS_TEST_TMPDIR}/missing"
+  [ "${status}" -eq 66 ]
+
+  run path::mode
+  [ "${status}" -eq 64 ]
+}
+
 @test "path extension handles hidden files and multiple dots" {
   run path::extension 'archive.tar.gz'
   [ "${output}" = '.gz' ]
@@ -88,6 +104,31 @@ load test_helper
   HOSTNAME='fixed-host'
   run system::host-name
   [ "${output}" = 'fixed-host' ]
+}
+
+@test "sleep controls use the platform root helper" {
+  local operating_system='linux'
+  system::operating-system() { printf '%s\n' "${operating_system}"; }
+  command::require() { [[ "$1" == systemctl || "$1" == pmset ]]; }
+  command::run-as-root() { printf '%s\n' "$*" >>"${BATS_TEST_TMPDIR}/root-commands"; }
+
+  run system::disable-sleep
+  [ "${status}" -eq 0 ]
+  [ "$(<"${BATS_TEST_TMPDIR}/root-commands")" = 'systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target' ]
+
+  : >"${BATS_TEST_TMPDIR}/root-commands"
+  run system::enable-sleep
+  [ "${status}" -eq 0 ]
+  [ "$(<"${BATS_TEST_TMPDIR}/root-commands")" = 'systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target' ]
+
+  operating_system='darwin'
+  : >"${BATS_TEST_TMPDIR}/root-commands"
+  run system::disable-sleep
+  [ "${status}" -eq 0 ]
+  [ "$(<"${BATS_TEST_TMPDIR}/root-commands")" = 'pmset -a sleep 0' ]
+
+  run system::disable-sleep unexpected
+  [ "${status}" -eq 64 ]
 }
 
 @test "shell and terminal predicates validate arguments" {

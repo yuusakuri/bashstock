@@ -1,3 +1,6 @@
 [submodule "vendor/bats-core"]
 	path = vendor/bats-core
 	url = https://github.com/bats-core/bats-core.git
+[submodule "vendor/shdoc"]
+	path = vendor/shdoc
+	url = https://github.com/reconquest/shdoc.git

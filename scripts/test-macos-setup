@@ -1,0 +1,212 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091,SC2016,SC2317,SC2329
+
+set -uo pipefail
+
+# Run on a disposable GitHub Actions macOS runner. mac::setup removes bundled
+# applications, disables Gatekeeper, and installs many applications, so this
+# script never runs on a Mac in daily use.
+[[ "$(uname -s)" == Darwin ]] || exit 69
+[[ -n "${GITHUB_ACTIONS:-}" ]] || exit 64
+source ./dist/bashstock.sh
+
+failures=0
+failed_checks=''
+mismatch=''
+
+# @description Run a check and record its result without stopping the remaining checks.
+#
+# A failure is also written as a GitHub annotation, so it stays visible when
+# the log is too long to read in full.
+check() {
+  mismatch=''
+  if "$@" >/dev/null; then
+    printf 'PASS: %s\n' "$*"
+  else
+    printf 'FAIL: %s\n' "$*" >&2
+    printf '::error::FAIL: %s\n' "$*"
+    failures=$((failures + 1))
+    failed_checks+="  $*"$'\n'
+    [[ -z "${mismatch}" ]] || failed_checks+="${mismatch}"$'\n'
+  fi
+}
+
+# @description Write the bundle identifier that opens files with an extension.
+handler_of() {
+  duti -x "$1" | sed -n 3p
+}
+
+# @description Compare a command's output with the expected text.
+output_is() {
+  local expected="$1" actual=''
+  shift
+  actual="$("$@" 2>&1)"
+  [[ "${actual}" == "${expected}" ]] || {
+    mismatch="$(printf '    expected %q, got %q' "${expected}" "${actual}")"
+    printf '%s\n' "${mismatch}" >&2
+    return 1
+  }
+}
+
+# @description Write the steps that failed in one mac::setup log, one per line.
+failed_steps() {
+  sed -n 's/^.*Setup step failed with status [0-9]*: \(.*\)$/\1/p' "$1"
+}
+
+# @description Run mac::setup, keep its error output, and check its failed steps.
+#
+# Runners without Hypervisor.framework cannot start the Colima VM, so Colima
+# and the Docker CLI that waits for a running engine are the only steps that
+# may fail there. The returned status must be the first failed step's status.
+run_setup() {
+  local log="$1" status=0 first='' unexpected=''
+  mac::setup 2> >(tee "${log}" >&2) || status="$?"
+  sleep 1
+  printf '== mac::setup returned %s; failed steps:\n' "${status}"
+  failed_steps "${log}"
+  first="$(sed -n 's/^.*Setup step failed with status \([0-9]*\): .*$/\1/p' "${log}" | head -n 1)"
+  unexpected="$(failed_steps "${log}" | grep -vx -e 'colima::install' -e 'docker::install' || true)"
+  if [[ "$(sysctl -n kern.hv_support 2>/dev/null)" == 1 ]]; then
+    unexpected="$(failed_steps "${log}")"
+  fi
+  check test -z "${unexpected}"
+  check test "${status}" -eq "${first:-0}"
+}
+
+printf 'BASHSTOCK_SETUP_VALUE="from dotenv"\n' >"${HOME}/.env"
+# /bin/bash -i otherwise warns on stderr that the default shell is now zsh.
+export BASH_SILENCE_DEPRECATION_WARNING=1
+export GIT_EMAIL=tester@example.invalid GIT_USERNAME='Setup Tester'
+sw_vers
+uname -m
+printf 'Hypervisor.framework: %s\n' "$(sysctl -n kern.hv_support 2>/dev/null || printf unknown)"
+
+run_setup "${RUNNER_TEMP}/mac-setup-1.log"
+# The second run must succeed in the same way without duplicating settings.
+run_setup "${RUNNER_TEMP}/mac-setup-2.log"
+
+printf '== preferences\n'
+check output_is 1 defaults read NSGlobalDomain com.apple.keyboard.fnState
+check output_is 30 defaults read NSGlobalDomain InitialKeyRepeat
+check output_is 1 defaults read NSGlobalDomain KeyRepeat
+check output_is 0 defaults read com.apple.dock autohide-time-modifier
+check output_is 0 defaults read com.apple.dock autohide-delay
+check output_is 0 defaults read com.apple.dock show-recents
+check output_is scale defaults read com.apple.dock mineffect
+check output_is left defaults read com.apple.dock orientation
+check output_is 0 defaults read com.apple.AppleMultitouchTrackpad TrackpadTwoFingerDoubleTapGesture
+check output_is 0 defaults read NSGlobalDomain com.apple.trackpad.twoFingerDoubleTapGesture
+pmset -g | grep -i womp || printf 'pmset reports no wake-on-LAN setting on this runner\n'
+
+printf '== key binding\n'
+bindings="${HOME}/Library/KeyBindings/DefaultKeyBinding.dict"
+check plutil -lint "${bindings}"
+check output_is 'noop:' plutil -extract '~t' raw -o - "${bindings}"
+cp "${bindings}" "${RUNNER_TEMP}/bindings.before"
+check key-binding::disable-option-t
+check cmp "${RUNNER_TEMP}/bindings.before" "${bindings}"
+
+printf '== startup files\n'
+for pattern in '^setopt interactivecomments$' '^export HOMEBREW_CASK_OPTS=' '^export EDITOR=' 'env::dotenv::_export-commands'; do
+  check output_is 1 grep -c -- "${pattern}" "${HOME}/.zshrc"
+done
+check output_is 1 grep -c '^set completion-ignore-case on$' "${HOME}/.inputrc"
+# A new login shell reads the startup files that mac::setup wrote.
+check output_is 'from dotenv|code --wait|--no-quarantine' \
+  zsh -lic 'print -r -- "$BASHSTOCK_SETUP_VALUE|$EDITOR|$HOMEBREW_CASK_OPTS"'
+# Without a terminal, bash -i reports on stderr that job control is off.
+check output_is 'from dotenv|code --wait' sh -c 'bash -ic "$1" 2>/dev/null' bash \
+  'printf "%s|%s" "$BASHSTOCK_SETUP_VALUE" "$EDITOR"'
+
+printf '== Git\n'
+check output_is tester@example.invalid git config --global user.email
+check output_is 'Setup Tester' git config --global user.name
+check output_is main git config --global init.defaultBranch
+check output_is true git config --global pull.rebase
+check output_is true git config --global fetch.prune
+check output_is osxkeychain git config --global credential.helper
+
+printf '== packages\n'
+# The QMK CLI comes from its official installer, not Homebrew, and is checked below.
+for formula in duti sqlite postgresql rustup ffmpeg pnpm tree ripgrep fd gh python shellcheck shfmt \
+  pipx colima rbenv; do
+  check brew list --formula "${formula}"
+done
+for cask in google-chrome brave-browser obs zoom webex visual-studio-code android-studio thunderbird \
+  discord google-drive dropbox megasync onedrive gimp adobe-acrobat-reader iina karabiner-elements \
+  marta antigravity antigravity-ide rancher qmk-toolbox font-udev-gothic; do
+  check brew list --cask "${cask}"
+done
+for command in node pnpm java ruby opencode qmk supabase code; do
+  check command -v "${command}"
+done
+check qmk --version
+
+printf '== removed applications and Gatekeeper\n'
+for app in iMovie Pages GarageBand Keynote Numbers; do
+  check test ! -e "/Applications/${app}.app"
+done
+for app in 'Visual Studio Code' IINA 'QMK Toolbox'; do
+  check test -d "/Applications/${app}.app"
+  check sh -c '! xattr -p com.apple.quarantine "$1" 2>/dev/null' quarantine "/Applications/${app}.app"
+done
+spctl --status || true
+
+printf '== default applications\n'
+# For types that already had a default application, such as txt with TextEdit
+# or mp4 with QuickTime Player, duti succeeds on the runner but the handler
+# stays unchanged without a person to confirm it, so only the other types are
+# checked. The current handlers are written for the record.
+for extension in txt py mp4 mov webm; do
+  printf '%s: %s\n' "${extension}" "$(handler_of "${extension}")"
+done
+for extension in md json sh; do
+  check output_is com.microsoft.VSCode handler_of "${extension}"
+done
+check output_is com.colliderli.iina handler_of mkv
+check vscode::set-default-app
+check iina::set-default-app
+check output_is com.microsoft.VSCode handler_of md
+check output_is com.colliderli.iina handler_of mkv
+
+printf '== QMK Toolbox\n'
+check qmk::toolbox::install
+current="$(package::_brew-cask-version qmk-toolbox)"
+check qmk::toolbox::install "${current}"
+status=0
+qmk::toolbox::install 0.0.1 2>/dev/null || status="$?"
+check test "${status}" -eq 69
+for app in 'QMK Toolbox' IINA; do
+  open -a "${app}"
+  started=1
+  for _ in $(seq 30); do
+    if pgrep -f "/Applications/${app}.app/" >/dev/null; then
+      started=0
+      break
+    fi
+    sleep 1
+  done
+  check test "${started}" -eq 0
+done
+
+printf '== Xcode Command Line Tools and Rosetta\n'
+check xcode::command-line-tools::upgrade
+check xcode-select -p
+clang --version
+printf '#include <stdio.h>\nint main(void) { puts("built"); return 0; }\n' >"${RUNNER_TEMP}/hello.c"
+check clang -o "${RUNNER_TEMP}/hello" "${RUNNER_TEMP}/hello.c"
+check output_is built "${RUNNER_TEMP}/hello"
+check rosetta::install
+if [[ "$(uname -m)" == arm64 ]]; then
+  check /usr/bin/arch -x86_64 /usr/bin/true
+fi
+
+# The log is long, so the output before each failed setup step is repeated here.
+for log in "${RUNNER_TEMP}"/mac-setup-*.log; do
+  if grep -q 'Setup step failed' "${log}"; then
+    printf '== output before failed steps in %s\n' "${log##*/}"
+    grep -B 12 'Setup step failed' "${log}" | cut -c 1-300
+  fi
+done
+printf '%s check(s) failed\n%s' "${failures}" "${failed_checks}"
+[[ "${failures}" -eq 0 ]]

@@ -8,14 +8,14 @@
 
 ## 表記
 
-値を取る引数は`-Name VALUE`の形式にする。真偽値を表す引数は値を取らず、指定するだけで真になる。
+値を取る引数は`--name VALUE`の形式にする。真偽値を表す引数は値を取らず、指定するだけで真になる。
 
 ```bash
-example::run -Name sample -Count 3
-example::run -Name sample -Force
+example::run --name sample --count 3
+example::run --name sample --force
 ```
 
-引数名は大文字で始めるPascalCase形式にする。この表記はBash一般の規則ではなく、BashStock固有の公開APIとして本書に定義する。
+引数名は`--`に続く小文字のkebab-case形式（例：`--output-directory`）にする。GNUの長いoptionと同じ表記で、`--name=VALUE`の結合形と短いoptionは受け付けない。
 
 ## 関数内の解析
 
@@ -29,17 +29,17 @@ user::create() {
 
   while [ "$#" -gt 0 ]; do
     case "$1" in
-      -Name)
+      --name)
         arg::require-next "$#" "$1" || return "$?"
         name=$2
         shift 2
         ;;
-      -Shell)
+      --shell)
         arg::require-next "$#" "$1" || return "$?"
         shell=$2
         shift 2
         ;;
-      -Force)
+      --force)
         force='true'
         shift
         ;;
@@ -49,7 +49,7 @@ user::create() {
     esac
   done
 
-  arg::require -Name "${name}" || return "$?"
+  arg::require --name "${name}" || return "$?"
 
   # 本処理
 }
@@ -80,11 +80,11 @@ user::create() {
 ```bash
 user::_create-args() {
   case "${1-}" in
-    -Shell)
+    --shell)
       printf '%s\n' /bin/bash /bin/zsh
       ;;
     '')
-      printf '%s\n' -Name -Shell -Force
+      printf '%s\n' --name --shell --force
       ;;
   esac
 }

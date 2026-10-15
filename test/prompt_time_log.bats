@@ -45,11 +45,11 @@ bats_require_minimum_version 1.5.0
     printf '0\n'
   }
 
-  run time::utc-date-time-milliseconds
+  run time::utc-date-time-milliseconds-extended
   [ "${output}" = '1970-01-01T00:00:00.000Z' ]
-  run time::utc-date-time-seconds
+  run time::utc-date-time-seconds-extended
   [ "${output}" = '1970-01-01T00:00:00Z' ]
-  run time::utc-date
+  run time::utc-date-extended
   [ "${output}" = '1970-01-01' ]
   run time::unix-milliseconds
   [ "${output}" = '0' ]
@@ -59,35 +59,37 @@ bats_require_minimum_version 1.5.0
   [ "${output}" = '0' ]
 
   export TZ='Asia/Tokyo'
-  run time::local-date-time-milliseconds
+  run time::local-date-time-milliseconds-extended
   [ "${output}" = '1970-01-01T09:00:00.000+09:00' ]
-  run time::local-date-time-seconds
+  run time::local-date-time-seconds-extended
   [ "${output}" = '1970-01-01T09:00:00+09:00' ]
-  run time::local-date
+  run time::local-date-extended
   [ "${output}" = '1970-01-01' ]
+  run time::local-date-time-seconds-basic
+  [ "${output}" = '19700101T090000' ]
 }
 
-@test "monotonic and boottime clocks return milliseconds" {
+@test "monotonic and boot-time clocks return milliseconds" {
   run time::monotonic-milliseconds
   [ "${status}" -eq 0 ]
   [[ "${output}" =~ ^[0-9]+$ ]]
 
-  run time::boottime-milliseconds
+  run time::boot-time-milliseconds
   [ "${status}" -eq 0 ]
   [[ "${output}" =~ ^[0-9]+$ ]]
 }
 
 @test "time functions reject arguments" {
-  run time::utc-date unexpected
+  run time::utc-date-extended unexpected
   [ "${status}" -eq 64 ]
   run time::monotonic-milliseconds unexpected
   [ "${status}" -eq 64 ]
-  run time::boottime-milliseconds unexpected
+  run time::boot-time-milliseconds unexpected
   [ "${status}" -eq 64 ]
 }
 
 @test "log functions prefix every message line" {
-  time::local-date-time-milliseconds() {
+  time::local-date-time-milliseconds-extended() {
     printf '2026-01-02T03:04:05.006+09:00\n'
   }
 
