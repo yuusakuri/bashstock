@@ -84,7 +84,7 @@ command::run-as-root() {
     sudo -v || return 77
     sudo -- "$@"
   else
-    sudo -n -v || return 77
+    sudo -n -- true || return 77
     sudo -n -- "$@"
   fi
 }
