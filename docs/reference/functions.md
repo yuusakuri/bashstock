@@ -576,6 +576,7 @@ BashStockが公開する関数をモジュールごとに示します。
 | [`ssh-server::install`](modules/install.md#ssh-serverinstall) | Install the OpenSSH server, enable it at boot, and start it. |
 | [`vscode::versions`](modules/install.md#vscodeversions) | Write VS Code versions available to the current platform. |
 | [`vscode::install`](modules/install.md#vscodeinstall) | Install VS Code from the Microsoft repository or Homebrew. |
+| [`gh::install`](modules/install.md#ghinstall) | Install GitHub CLI from its official Ubuntu APT repository. |
 | [`brave::versions`](modules/install.md#braveversions) | Write Brave versions available to the current platform. |
 | [`brave::install`](modules/install.md#braveinstall) | Install Brave from its official repository or Homebrew. |
 | [`chrome::versions`](modules/install.md#chromeversions) | Write Google Chrome versions available to the current platform. |
@@ -640,6 +641,7 @@ BashStockが公開する関数をモジュールごとに示します。
 | [`mozc::ibus::set-hiragana-as-default`](modules/desktop.md#mozcibusset-hiragana-as-default) | Start Mozc in Hiragana mode and restart IBus. |
 | [`keyboard::setup-ime-keys`](modules/desktop.md#keyboardsetup-ime-keys) | Map the Convert and Nonconvert keys of USB keyboards to henkan and muhenkan. |
 | [`ubuntu::setup`](modules/desktop.md#ubuntusetup) | Apply the common Ubuntu user configuration, stopping at the first failure. |
+| [`ubuntu::setup-external`](modules/desktop.md#ubuntusetup-external) | Install GnuPG and GitHub CLI when they are not already available. |
 | [`ubuntu::setup-desktop`](modules/desktop.md#ubuntusetup-desktop) | Apply the Ubuntu user configuration and desktop settings, stopping at the first failure. |
 | [`ubuntu::setup-desktop-22`](modules/desktop.md#ubuntusetup-desktop-22) | Install the newest Mozc for Ubuntu 22.04 and apply the desktop settings. |
 | [`homebrew::install`](modules/desktop.md#homebrewinstall) | Install Homebrew with the official installer when it is missing. |

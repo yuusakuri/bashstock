@@ -21,6 +21,7 @@ GNOME settings use gsettings and macOS settings use defaults.
 * [mozc::ibus::set-hiragana-as-default](#mozcibusset-hiragana-as-default)
 * [keyboard::setup-ime-keys](#keyboardsetup-ime-keys)
 * [ubuntu::setup](#ubuntusetup)
+* [ubuntu::setup-external](#ubuntusetup-external)
 * [ubuntu::setup-desktop](#ubuntusetup-desktop)
 * [ubuntu::setup-desktop-22](#ubuntusetup-desktop-22)
 * [homebrew::install](#homebrewinstall)
@@ -325,9 +326,10 @@ keyboard::setup-ime-keys 4653 0001
 
 Apply the common Ubuntu user configuration, stopping at the first failure.
 
-The steps register ~/.env, set the editor to code --wait, ignore case in
-completion, link English names to localized user directories, add the user to
-dialout, configure Git with Git Credential Manager, and fix ~/.ssh permissions.
+Missing curl and Git are installed first. The steps then register ~/.env, set
+the editor to code --wait, ignore case in completion, link English names to
+localized user directories, add the user to dialout, configure Git with Git
+Credential Manager, fix ~/.ssh permissions, and install external tools.
 
 #### Example
 
@@ -342,11 +344,35 @@ _Function has no arguments._
 * **0**: Every step succeeded.
 * **64**: An argument was given.
 * **69**: The system is not Ubuntu.
+* **77**: sudo refused the credentials.
 * other The status of the first step that failed.
 
 #### Output on stderr
 
 * The step that failed.
+
+### ubuntu::setup-external
+
+Install GnuPG and GitHub CLI when they are not already available.
+
+GitHub CLI is installed from its official Ubuntu APT repository after checking
+the repository key against GitHub's published fingerprints.
+
+#### Example
+
+```bash
+ubuntu::setup-external
+```
+
+_Function has no arguments._
+
+#### Exit codes
+
+* **0**: The missing tools were installed or were already available.
+* **64**: An argument was given.
+* **69**: The system is not Ubuntu, or a required command is missing.
+* **77**: sudo refused the credentials.
+* other A package installation or repository setup failed.
 
 ### ubuntu::setup-desktop
 

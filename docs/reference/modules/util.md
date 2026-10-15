@@ -34,6 +34,7 @@ Most functions wrap one external command with argument checks and documented exi
 * [system::distribution-name](#systemdistribution-name)
 * [system::enable-sleep](#systemenable-sleep)
 * [system::disable-sleep](#systemdisable-sleep)
+* [system::disable-auto-lock](#systemdisable-auto-lock)
 * [time::posix-timezone](#timeposix-timezone)
 * [directory::merge](#directorymerge)
 * [directory::create-with-date-time](#directorycreate-with-date-time)
@@ -875,28 +876,6 @@ _Function has no arguments._
 * **77**: sudo refused the credentials.
 * other The status of pmset or systemctl.
 
-### system::disable-auto-lock
-
-Disable automatic screen locking in the current GNOME session.
-
-This changes the current user's GNOME screensaver setting. It does not change
-system sleep or whether the screensaver starts.
-
-#### Example
-
-```bash
-system::disable-auto-lock
-```
-
-_Function has no arguments._
-
-#### Exit codes
-
-* **0**: Automatic screen locking is disabled.
-* **64**: An argument was given.
-* **69**: The operating system is unsupported, or gsettings is missing.
-* **74**: The GNOME setting could not be changed.
-
 ### system::disable-sleep
 
 Disable system sleep.
@@ -918,6 +897,28 @@ _Function has no arguments._
 * **69**: A required command is missing, or the operating system is unsupported.
 * **77**: sudo refused the credentials.
 * other The status of pmset or systemctl.
+
+### system::disable-auto-lock
+
+Disable automatic screen locking in the current GNOME session.
+
+This changes the current user's GNOME screensaver setting. It does not change
+system sleep or whether the screensaver starts.
+
+#### Example
+
+```bash
+system::disable-auto-lock
+```
+
+_Function has no arguments._
+
+#### Exit codes
+
+* **0**: Automatic screen locking is disabled.
+* **64**: An argument was given.
+* **69**: The operating system is unsupported, or gsettings is missing.
+* **74**: The GNOME setting could not be changed.
 
 ### time::posix-timezone
 

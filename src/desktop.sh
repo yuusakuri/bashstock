@@ -432,21 +432,29 @@ setup::_ensure-file() {
 
 # @description Apply the common Ubuntu user configuration, stopping at the first failure.
 #
-# The steps register ~/.env, set the editor to code --wait, ignore case in
-# completion, link English names to localized user directories, add the user to
-# dialout, configure Git with Git Credential Manager, and fix ~/.ssh permissions.
+# Missing curl and Git are installed first. The steps then register ~/.env, set
+# the editor to code --wait, ignore case in completion, link English names to
+# localized user directories, add the user to dialout, configure Git with Git
+# Credential Manager, fix ~/.ssh permissions, and install external tools.
 #
 # @noargs
 # @stderr The step that failed.
 # @exitcode 0 Every step succeeded.
 # @exitcode 64 An argument was given.
 # @exitcode 69 The system is not Ubuntu.
+# @exitcode 77 sudo refused the credentials.
 # @exitcode other The status of the first step that failed.
 # @example
 #   GIT_EMAIL=alice@example.com GIT_USERNAME='Alice Example' ubuntu::setup
 ubuntu::setup() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform ubuntu || return "$?"
+  local missing_packages=()
+  command::exists curl || missing_packages+=(curl)
+  command::exists git || missing_packages+=(git)
+  if [[ "${#missing_packages[@]}" -gt 0 ]]; then
+    setup::_run-step package::_install "${missing_packages[@]}" || return "$?"
+  fi
   setup::_ensure-file "${HOME}/.env" || return "$?"
   setup::_run-step env::dotenv::register "${HOME}/.env" || return "$?"
   setup::_run-step shell::editor::set-default 'code --wait' || return "$?"
@@ -455,7 +463,32 @@ ubuntu::setup() {
   setup::_run-step user::add-to-group dialout || return "$?"
   setup::_run-step git::config::setup || return "$?"
   setup::_run-step git::config::use-credential-manager || return "$?"
-  setup::_run-step ssh::setup-directory
+  setup::_run-step ssh::setup-directory || return "$?"
+  ubuntu::setup-external
+}
+
+# @description Install GnuPG and GitHub CLI when they are not already available.
+#
+# GitHub CLI is installed from its official Ubuntu APT repository after checking
+# the repository key against GitHub's published fingerprints.
+#
+# @noargs
+# @exitcode 0 The missing tools were installed or were already available.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not Ubuntu, or a required command is missing.
+# @exitcode 77 sudo refused the credentials.
+# @exitcode other A package installation or repository setup failed.
+# @example
+#   ubuntu::setup-external
+ubuntu::setup-external() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform ubuntu || return "$?"
+  if ! command::exists gpg; then
+    setup::_run-step package::_install gnupg || return "$?"
+  fi
+  if ! command::exists gh; then
+    setup::_run-step gh::install || return "$?"
+  fi
 }
 
 # @description Apply the Ubuntu user configuration and desktop settings, stopping at the first failure.

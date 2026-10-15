@@ -920,6 +920,71 @@ gsettings_value() {
   [ "${status}" -eq 69 ]
 }
 
+@test "Ubuntu setup installs only missing common and external prerequisites" {
+  use_platform ubuntu 24.04 noble
+  HOME="${BATS_TEST_TMPDIR}/home"
+  STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
+  local installed=''
+  mkdir -p "${HOME}"
+  command::exists() { [[ " ${installed} " == *" $1 "* ]]; }
+  setup::_run-step() {
+    printf '%s\n' "$*" >>"${STEP_LOG}"
+    if [[ "$1" == package::_install ]]; then
+      shift
+      package::_install "$@"
+    fi
+  }
+  package::_install() {
+    printf 'package::_install %s\n' "$*" >>"${STEP_LOG}"
+    local package=''
+    for package in "$@"; do installed+=" ${package}"; done
+  }
+  gh::install() {
+    printf 'gh::install\n' >>"${STEP_LOG}"
+    installed+=' gh'
+  }
+
+  run ubuntu::setup
+  [ "${status}" -eq 0 ]
+  [ "$(sed -n '1p' "${STEP_LOG}")" = 'package::_install curl git' ]
+  [ "$(sed -n '2p' "${STEP_LOG}")" = 'package::_install curl git' ]
+  grep -Fqx 'package::_install gnupg' "${STEP_LOG}"
+  grep -Fqx 'gh::install' "${STEP_LOG}"
+  [ "$(tail -n 1 "${STEP_LOG}")" = 'gh::install' ]
+}
+
+@test "GitHub CLI repository setup checks both published key fingerprints" {
+  use_platform ubuntu 24.04 noble
+  record_root_commands
+  local gpg_fingerprints='' write_log="${BATS_TEST_TMPDIR}/writes.log"
+  package::_download() { printf 'keyring' >"$2"; }
+  package::_deb-architecture() { printf 'amd64\n'; }
+  package::_refresh() { printf 'refresh\n' >>"${write_log}"; }
+  package::_install() { printf 'install %s\n' "$*" >>"${write_log}"; }
+  file::write-text() { printf '%s\n%s' "$1" "$2" >"${write_log}.source"; }
+  gpg() {
+    printf 'pub:u:4096:1:old::::::\nfpr:::::::::%s:\npub:u:4096:1:new::::::\nfpr:::::::::%s:\n' \
+      "${gpg_fingerprints%% *}" "${gpg_fingerprints##* }"
+  }
+  command::require() { [[ "$1" == gpg || "$1" == mktemp ]]; }
+
+  gpg_fingerprints='2C6106201985B60E6C7AC87323F3D4EA75716059 7F38BBB59D064DBCB3D84D725612B36462313325'
+  run gh::install
+  [ "${status}" -eq 0 ]
+  grep -Fqx 'install -d -m 0755 /etc/apt/keyrings' "${ROOT_LOG}"
+  [ "$(wc -l <"${ROOT_LOG}")" -eq 2 ]
+  grep -F '/etc/apt/keyrings/githubcli-archive-keyring.gpg' "${ROOT_LOG}"
+  grep -Fqx 'URIs: https://cli.github.com/packages' "${write_log}.source"
+  grep -Fqx 'Architectures: amd64' "${write_log}.source"
+  [ "$(<"${write_log}")" = $'refresh\ninstall gh' ]
+
+  : >"${ROOT_LOG}"
+  gpg_fingerprints='0000000000000000000000000000000000000000 7F38BBB59D064DBCB3D84D725612B36462313325'
+  run gh::_register-repository
+  [ "${status}" -eq 65 ]
+  [ ! -s "${ROOT_LOG}" ]
+}
+
 @test "VS Code default app skips only extensions without a declared file type" {
   use_platform darwin
   DUTI_LOG="${BATS_TEST_TMPDIR}/duti.log"
