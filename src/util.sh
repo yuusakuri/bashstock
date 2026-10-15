@@ -603,16 +603,17 @@ system::disable-sleep() {
   esac
 }
 
-# @description Disable automatic screen locking in the current GNOME session.
+# @description Disable automatic screen locking for the current user.
 #
-# This changes the current user's GNOME screensaver setting. It does not change
-# system sleep or whether the screensaver starts.
+# Linux changes GNOME's lock-enabled setting. macOS disables the password prompt
+# after the screen saver or display turns off. Neither changes system sleep or
+# whether the screen saver starts.
 #
 # @noargs
 # @exitcode 0 Automatic screen locking is disabled.
 # @exitcode 64 An argument was given.
-# @exitcode 69 The operating system is unsupported, or gsettings is missing.
-# @exitcode 74 The GNOME setting could not be changed.
+# @exitcode 69 The operating system is unsupported, or a required command is missing.
+# @exitcode 74 The screen-lock setting could not be changed.
 # @example
 #   system::disable-auto-lock
 system::disable-auto-lock() {
@@ -621,6 +622,10 @@ system::disable-auto-lock() {
     linux)
       command::require gsettings || return "$?"
       gsettings set org.gnome.desktop.screensaver lock-enabled false || return 74
+      ;;
+    darwin)
+      command::require defaults || return "$?"
+      defaults write com.apple.screensaver askForPassword -bool false || return 74
       ;;
     *) return 69 ;;
   esac

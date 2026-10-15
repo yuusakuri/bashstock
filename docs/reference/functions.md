@@ -282,7 +282,7 @@ BashStockが公開する関数をモジュールごとに示します。
 | [`system::distribution-name`](modules/util.md#systemdistribution-name) | Write the distribution name. |
 | [`system::enable-sleep`](modules/util.md#systemenable-sleep) | Enable system sleep. |
 | [`system::disable-sleep`](modules/util.md#systemdisable-sleep) | Disable system sleep. |
-| [`system::disable-auto-lock`](modules/util.md#systemdisable-auto-lock) | Disable automatic screen locking in the current GNOME session. |
+| [`system::disable-auto-lock`](modules/util.md#systemdisable-auto-lock) | Disable automatic screen locking for the current user. |
 | [`time::posix-timezone`](modules/util.md#timeposix-timezone) | Write the POSIX TZ string for a UTC offset. |
 | [`directory::merge`](modules/util.md#directorymerge) | Merge every entry of SOURCE into DESTINATION by moving it, then remove SOURCE. |
 | [`directory::create-with-date-time`](modules/util.md#directorycreate-with-date-time) | Create a directory named with the local date and time and write its path. |

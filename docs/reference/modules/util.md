@@ -900,10 +900,11 @@ _Function has no arguments._
 
 ### system::disable-auto-lock
 
-Disable automatic screen locking in the current GNOME session.
+Disable automatic screen locking for the current user.
 
-This changes the current user's GNOME screensaver setting. It does not change
-system sleep or whether the screensaver starts.
+Linux changes GNOME's lock-enabled setting. macOS disables the password prompt
+after the screen saver or display turns off. Neither changes system sleep or
+whether the screen saver starts.
 
 #### Example
 
@@ -917,8 +918,8 @@ _Function has no arguments._
 
 * **0**: Automatic screen locking is disabled.
 * **64**: An argument was given.
-* **69**: The operating system is unsupported, or gsettings is missing.
-* **74**: The GNOME setting could not be changed.
+* **69**: The operating system is unsupported, or a required command is missing.
+* **74**: The screen-lock setting could not be changed.
 
 ### time::posix-timezone
 

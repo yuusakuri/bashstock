@@ -729,7 +729,7 @@ gsettings_value() {
   [ "$(gsettings_value org.gnome.desktop.input-sources sources)" = "[('ibus', 'mozc-jp')]" ]
 }
 
-@test "automatic screen lock is disabled only for Linux GNOME sessions" {
+@test "automatic screen lock is disabled for Linux GNOME and macOS users" {
   local operating_system='linux'
   system::operating-system() { printf '%s\n' "${operating_system}"; }
   use_fake_gsettings
@@ -738,7 +738,15 @@ gsettings_value() {
   [ "${status}" -eq 0 ]
   [ "$(gsettings_value org.gnome.desktop.screensaver lock-enabled)" = 'false' ]
 
+  local defaults_log="${BATS_TEST_TMPDIR}/defaults.log"
+  defaults() { printf '%s\n' "$*" >>"${defaults_log}"; }
+  command::require() { [[ "$1" == gsettings || "$1" == defaults ]]; }
   operating_system='darwin'
+  run system::disable-auto-lock
+  [ "${status}" -eq 0 ]
+  [ "$(<"${defaults_log}")" = 'write com.apple.screensaver askForPassword -bool false' ]
+
+  operating_system='fedora'
   run system::disable-auto-lock
   [ "${status}" -eq 69 ]
   run system::disable-auto-lock unexpected
