@@ -729,6 +729,22 @@ gsettings_value() {
   [ "$(gsettings_value org.gnome.desktop.input-sources sources)" = "[('ibus', 'mozc-jp')]" ]
 }
 
+@test "automatic screen lock is disabled only for Linux GNOME sessions" {
+  local operating_system='linux'
+  system::operating-system() { printf '%s\n' "${operating_system}"; }
+  use_fake_gsettings
+
+  run system::disable-auto-lock
+  [ "${status}" -eq 0 ]
+  [ "$(gsettings_value org.gnome.desktop.screensaver lock-enabled)" = 'false' ]
+
+  operating_system='darwin'
+  run system::disable-auto-lock
+  [ "${status}" -eq 69 ]
+  run system::disable-auto-lock unexpected
+  [ "${status}" -eq 64 ]
+}
+
 @test "Flutter installation preserves existing SDK changes in a retrievable stash" {
   use_platform darwin
   flutter::dependencies::install() { :; }

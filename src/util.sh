@@ -554,11 +554,26 @@ system::distribution-name() { [[ "$#" -eq 0 ]] || return 64; platform::_identifi
 # @noargs
 # @exitcode 0 Sleep is enabled again.
 # @exitcode 64 An argument was given.
-# @exitcode 69 The operating system is unsupported, or systemctl is missing on Linux.
+# @exitcode 69 A required command is missing, or the operating system is unsupported.
+# @exitcode 77 sudo refused the credentials.
 # @exitcode other The status of pmset or systemctl.
 # @example
 #   system::enable-sleep
-system::enable-sleep() { [[ "$#" -eq 0 ]] || return 64; case "$(system::operating-system)" in darwin) sudo pmset -a sleep 1 ;; linux) command -v systemctl >/dev/null 2>&1 || return 69; sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target ;; *) return 69 ;; esac; }
+system::enable-sleep() {
+  [[ "$#" -eq 0 ]] || return 64
+  case "$(system::operating-system)" in
+    darwin)
+      command::require pmset || return "$?"
+      command::run-as-root pmset -a sleep 1
+      ;;
+    linux)
+      command::require systemctl || return "$?"
+      command::run-as-root systemctl unmask \
+        sleep.target suspend.target hibernate.target hybrid-sleep.target
+      ;;
+    *) return 69 ;;
+  esac
+}
 
 # @description Disable system sleep.
 #
@@ -567,11 +582,49 @@ system::enable-sleep() { [[ "$#" -eq 0 ]] || return 64; case "$(system::operatin
 # @noargs
 # @exitcode 0 Sleep is disabled until system::enable-sleep.
 # @exitcode 64 An argument was given.
-# @exitcode 69 The operating system is unsupported, or systemctl is missing on Linux.
+# @exitcode 69 A required command is missing, or the operating system is unsupported.
+# @exitcode 77 sudo refused the credentials.
 # @exitcode other The status of pmset or systemctl.
 # @example
 #   system::disable-sleep
-system::disable-sleep() { [[ "$#" -eq 0 ]] || return 64; case "$(system::operating-system)" in darwin) sudo pmset -a sleep 0 ;; linux) command -v systemctl >/dev/null 2>&1 || return 69; sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target ;; *) return 69 ;; esac; }
+system::disable-sleep() {
+  [[ "$#" -eq 0 ]] || return 64
+  case "$(system::operating-system)" in
+    darwin)
+      command::require pmset || return "$?"
+      command::run-as-root pmset -a sleep 0
+      ;;
+    linux)
+      command::require systemctl || return "$?"
+      command::run-as-root systemctl mask \
+        sleep.target suspend.target hibernate.target hybrid-sleep.target
+      ;;
+    *) return 69 ;;
+  esac
+}
+
+# @description Disable automatic screen locking in the current GNOME session.
+#
+# This changes the current user's GNOME screensaver setting. It does not change
+# system sleep or whether the screensaver starts.
+#
+# @noargs
+# @exitcode 0 Automatic screen locking is disabled.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The operating system is unsupported, or gsettings is missing.
+# @exitcode 74 The GNOME setting could not be changed.
+# @example
+#   system::disable-auto-lock
+system::disable-auto-lock() {
+  [[ "$#" -eq 0 ]] || return 64
+  case "$(system::operating-system)" in
+    linux)
+      command::require gsettings || return "$?"
+      gsettings set org.gnome.desktop.screensaver lock-enabled false || return 74
+      ;;
+    *) return 69 ;;
+  esac
+}
 
 # @description Write the POSIX TZ string for a UTC offset.
 #

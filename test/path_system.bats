@@ -106,6 +106,31 @@ load test_helper
   [ "${output}" = 'fixed-host' ]
 }
 
+@test "sleep controls use the platform root helper" {
+  local operating_system='linux'
+  system::operating-system() { printf '%s\n' "${operating_system}"; }
+  command::require() { [[ "$1" == systemctl || "$1" == pmset ]]; }
+  command::run-as-root() { printf '%s\n' "$*" >>"${BATS_TEST_TMPDIR}/root-commands"; }
+
+  run system::disable-sleep
+  [ "${status}" -eq 0 ]
+  [ "$(<"${BATS_TEST_TMPDIR}/root-commands")" = 'systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target' ]
+
+  : >"${BATS_TEST_TMPDIR}/root-commands"
+  run system::enable-sleep
+  [ "${status}" -eq 0 ]
+  [ "$(<"${BATS_TEST_TMPDIR}/root-commands")" = 'systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target' ]
+
+  operating_system='darwin'
+  : >"${BATS_TEST_TMPDIR}/root-commands"
+  run system::disable-sleep
+  [ "${status}" -eq 0 ]
+  [ "$(<"${BATS_TEST_TMPDIR}/root-commands")" = 'pmset -a sleep 0' ]
+
+  run system::disable-sleep unexpected
+  [ "${status}" -eq 64 ]
+}
+
 @test "shell and terminal predicates validate arguments" {
   sample::function() {
     :
