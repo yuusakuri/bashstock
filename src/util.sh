@@ -265,15 +265,20 @@ file::find-by-content() {
   [[ "${status}" -ne 2 ]] || return 64
   output="$(mktemp -d "${TMPDIR:-/tmp}/bashstock-find.XXXXXX")" || return 74
   status=0
+  # The file list is collected first, so a directory that find cannot read
+  # fails the search instead of hiding behind the xargs status.
+  if ! find "${directory}" -type f -print0 >"${output}/files" 2>/dev/null; then
+    rm -rf -- "${output}"
+    return 74
+  fi
   # xargs reports one status for every grep, so a grep that could not read a
   # file leaves a marker instead; its own status 1 only means no match.
   # shellcheck disable=SC2016 # The worker script expands its own arguments.
-  find "${directory}" -type f -print0 |
-    BASHSTOCK_FIND_ERROR="${output}/error" xargs -0 -P "${processes}" -n 64 sh -c '
-      grep "$@"
-      [ "$?" -le 1 ] || : >"${BASHSTOCK_FIND_ERROR}"
-    ' sh -E -l --null "${binary_option}" -e "${expression}" -- >"${output}/matches" 2>/dev/null ||
-    status="$?"
+  BASHSTOCK_FIND_ERROR="${output}/error" xargs -0 -P "${processes}" -n 64 sh -c '
+    grep "$@"
+    [ "$?" -le 1 ] || : >"${BASHSTOCK_FIND_ERROR}"
+  ' sh -E -l --null "${binary_option}" -e "${expression}" -- \
+    <"${output}/files" >"${output}/matches" 2>/dev/null || status="$?"
   if [[ "${status}" -ne 0 || -e "${output}/error" ]]; then
     rm -rf -- "${output}"
     return 74
@@ -2382,10 +2387,10 @@ swap::remove-all-files() {
 # The file is created and enabled through administrator execution.
 #
 # @arg $1 integer Optional size in bytes. Defaults to 8589934592 (8 GiB).
-# @arg $2 string Optional absolute swap file path. Defaults to /swapfile.
+# @arg $2 string Optional absolute swap file path without blanks or backslashes. Defaults to /swapfile.
 # @stderr A message when the path already exists.
 # @exitcode 0 The swap file is enabled and registered.
-# @exitcode 64 The size or path is invalid.
+# @exitcode 64 The size or path is invalid, or the path has a blank or a backslash.
 # @exitcode 69 The system is not Linux or mkswap is unavailable.
 # @exitcode 73 The path already exists.
 # @exitcode 74 The file could not be created or enabled.
@@ -2396,6 +2401,8 @@ swap::create() {
   [[ "$#" -le 2 ]] || return 64
   local size="${1:-8589934592}" path="${2:-/swapfile}"
   [[ "${size}" =~ ^[1-9][0-9]*$ && "${path}" == /* ]] || return 64
+  # /etc/fstab separates fields with blanks and escapes with backslashes.
+  [[ "${path}" != *[[:space:]\\]* ]] || return 64
   [[ "$(system::operating-system)" == linux ]] || return 69
   command::require mkswap || return "$?"
   if [[ -e "${path}" || -L "${path}" ]]; then
@@ -3331,7 +3338,8 @@ adb::device::bootloader::enter() {
 
 # @description Request bootloader unlocking and wait for the device to reconnect.
 #
-# The unlock must be confirmed on the device. Unlocking erases user data.
+# The unlock must be confirmed on the device. Unlocking erases user data. A
+# device that stays in fastboot afterwards is rebooted.
 #
 # @option --serial <SERIAL> Device serial. ADB chooses the device when omitted.
 # @exitcode 0 The bootloader was unlocked and ADB reconnected.
@@ -3351,15 +3359,33 @@ adb::device::bootloader::unlock() {
   adb::device::bootloader::enter "$@" || return "$?"
   start="$(date +%s)" || return 74
   while (( $(date +%s) - start < 30 )); do
-    if fastboot "${fastboot_args[@]}" getvar version >/dev/null 2>&1; then
+    if fastboot ${fastboot_args[@]+"${fastboot_args[@]}"} getvar version >/dev/null 2>&1; then
       ready=1
       break
     fi
     sleep 0.25 || return 74
   done
   [[ "$ready" -eq 1 ]] || return 75
-  fastboot "${fastboot_args[@]}" flashing unlock || return "$?"
+  fastboot ${fastboot_args[@]+"${fastboot_args[@]}"} flashing unlock || return "$?"
+  # Some bootloaders stay in fastboot after the unlock. fastboot reboot waits
+  # forever for a missing device, so it is sent only while the device is listed.
+  if adb::_fastboot-listed "$@"; then
+    fastboot ${fastboot_args[@]+"${fastboot_args[@]}"} reboot || return "$?"
+  fi
   adb::_wait-device 60 "$@"
+}
+
+# @description Succeed when fastboot lists the selected device, or any device without --serial.
+# @internal
+adb::_fastboot-listed() {
+  [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
+  local devices=''
+  devices="$(fastboot devices 2>/dev/null)" || return 1
+  if [[ "$#" -eq 0 ]]; then
+    [[ -n "${devices}" ]]
+  else
+    awk -v serial="$2" '$1 == serial { found = 1 } END { exit !found }' <<<"${devices}"
+  fi
 }
 
 # @description Wait for the selected device to return to the connected state.
@@ -4612,8 +4638,11 @@ sudo::passwordless::_user() {
 # @internal
 sudo::passwordless::_file() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
-  # sudo skips drop-in files whose names contain a dot.
-  printf '/etc/sudoers.d/zz-bashstock-passwordless-%s\n' "${1//./_}"
+  # sudo skips drop-in files whose names contain a dot. Writing _ as __ and
+  # . as _- keeps the names of first.last and first_last apart.
+  local name="${1//_/__}"
+  name="${name//./_-}"
+  printf '/etc/sudoers.d/zz-bashstock-passwordless-%s\n' "${name}"
 }
 
 # @description Let a user run every command through sudo without entering a password.
@@ -5377,12 +5406,49 @@ ssh::key::_generate() {
     ssh-keygen "${arguments[@]}" -C "${comment}" -f "${temporary}/key" -N '' -q </dev/null || status="$?"
   fi
   if [[ "${status}" -eq 0 ]]; then
-    mv -f -- "${temporary}/key" "${output}" &&
-      mv -f -- "${temporary}/key.pub" "${output}.pub" || status=74
+    ssh::key::_replace-pair "${temporary}" "${output}" || status="$?"
   fi
   rm -rf -- "${temporary}"
   [[ "${status}" -eq 0 ]] || return "${status}"
   cat -- "${output}.pub"
+}
+
+# @description Move a new key pair from a directory over an existing pair, restoring the old pair on failure.
+#
+# The old files are moved into the directory first, so the private and public
+# keys are either both new or both old when the function returns.
+#
+# @internal
+ssh::key::_replace-pair() {
+  [[ "$#" -eq 2 && -f "$1/key" && -f "$1/key.pub" ]] || return 64
+  local directory="$1" output="$2" suffix=''
+  for suffix in '' .pub; do
+    if [[ -e "${output}${suffix}" || -L "${output}${suffix}" ]]; then
+      if ! mv -f -- "${output}${suffix}" "${directory}/old${suffix}"; then
+        ssh::key::_restore-pair "${directory}" "${output}"
+        return 74
+      fi
+    fi
+  done
+  if mv -f -- "${directory}/key" "${output}" &&
+    mv -f -- "${directory}/key.pub" "${output}.pub"; then
+    return 0
+  fi
+  rm -f -- "${output}" "${output}.pub"
+  ssh::key::_restore-pair "${directory}" "${output}"
+  return 74
+}
+
+# @description Move the old key pair saved by ssh::key::_replace-pair back into place.
+# @internal
+ssh::key::_restore-pair() {
+  [[ "$#" -eq 2 ]] || return 64
+  local suffix=''
+  for suffix in '' .pub; do
+    if [[ -e "$1/old${suffix}" || -L "$1/old${suffix}" ]]; then
+      mv -f -- "$1/old${suffix}" "$2${suffix}" || return 74
+    fi
+  done
 }
 
 # @description Generate an Ed25519 SSH key and write its public key.

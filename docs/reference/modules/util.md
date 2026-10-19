@@ -2568,12 +2568,12 @@ swap::create 4294967296
 #### Arguments
 
 * **$1** (integer): Optional size in bytes. Defaults to 8589934592 (8 GiB).
-* **$2** (string): Optional absolute swap file path. Defaults to /swapfile.
+* **$2** (string): Optional absolute swap file path without blanks or backslashes. Defaults to /swapfile.
 
 #### Exit codes
 
 * **0**: The swap file is enabled and registered.
-* **64**: The size or path is invalid.
+* **64**: The size or path is invalid, or the path has a blank or a backslash.
 * **69**: The system is not Linux or mkswap is unavailable.
 * **73**: The path already exists.
 * **74**: The file could not be created or enabled.
@@ -3582,7 +3582,8 @@ shellcheck disable=SC2329
 
 Request bootloader unlocking and wait for the device to reconnect.
 
-The unlock must be confirmed on the device. Unlocking erases user data.
+The unlock must be confirmed on the device. Unlocking erases user data. A
+device that stays in fastboot afterwards is rebooted.
 
 #### Example
 

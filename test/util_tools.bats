@@ -230,3 +230,29 @@ record_root_commands() {
   [ "${status}" -eq 0 ]
   [ "$(od -An -c "${device}" | tr -d ' ')" = 'AT\r\n' ]
 }
+
+@test "SSH key pair replacement keeps both old keys when a move fails" {
+  local directory="${BATS_TEST_TMPDIR}/work" key_path="${BATS_TEST_TMPDIR}/id_test"
+  mkdir -p "${directory}"
+  printf 'old private\n' >"${key_path}"
+  printf 'old public\n' >"${key_path}.pub"
+  printf 'new private\n' >"${directory}/key"
+  printf 'new public\n' >"${directory}/key.pub"
+  # Only the move of the new public key fails; restoring the old one works.
+  mv() {
+    [[ "$*" != *"${directory}/key.pub ${key_path}.pub" ]] || return 1
+    command mv "$@"
+  }
+  run ssh::key::_replace-pair "${directory}" "${key_path}"
+  [ "${status}" -eq 74 ]
+  [ "$(<"${key_path}")" = 'old private' ]
+  [ "$(<"${key_path}.pub")" = 'old public' ]
+
+  unset -f mv
+  printf 'new private\n' >"${directory}/key"
+  printf 'new public\n' >"${directory}/key.pub"
+  run ssh::key::_replace-pair "${directory}" "${key_path}"
+  [ "${status}" -eq 0 ]
+  [ "$(<"${key_path}")" = 'new private' ]
+  [ "$(<"${key_path}.pub")" = 'new public' ]
+}

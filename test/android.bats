@@ -163,6 +163,9 @@ SCRIPT
   cat >"$BATS_TEST_TMPDIR/bin/fastboot" <<'SCRIPT'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >>"$FASTBOOT_TEST_LOG"
+if [[ "$*" == devices && -n "${FASTBOOT_TEST_LISTED-}" ]]; then
+  printf '%s\tfastboot\n' "${FASTBOOT_TEST_LISTED}"
+fi
 SCRIPT
   chmod +x "$BATS_TEST_TMPDIR/bin/fastboot"
   export ADB_TEST_MODE=control
@@ -171,6 +174,15 @@ SCRIPT
   grep -Fqx -- '-s target-1 reboot bootloader' "$ADB_TEST_LOG"
   grep -Fqx -- '-s target-1 getvar version' "$FASTBOOT_TEST_LOG"
   grep -Fqx -- '-s target-1 flashing unlock' "$FASTBOOT_TEST_LOG"
+  # The device rebooted by itself, so fastboot reboot would wait forever.
+  ! grep -Fqx -- '-s target-1 reboot' "$FASTBOOT_TEST_LOG"
+
+  # A bootloader that stays in fastboot is rebooted.
+  : >"$FASTBOOT_TEST_LOG"
+  export FASTBOOT_TEST_LISTED=target-1
+  run adb::device::bootloader::unlock --serial target-1
+  [ "$status" -eq 0 ]
+  grep -Fqx -- '-s target-1 reboot' "$FASTBOOT_TEST_LOG"
 }
 
 @test "ADB partition checksum rejects paths outside device blocks before execution" {

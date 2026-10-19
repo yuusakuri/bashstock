@@ -552,6 +552,12 @@ TABLE
   PATH="${BATS_TEST_TMPDIR}/bin:${PATH}" run file::find-by-content 'needle' "$root" 1
   [ "$status" -eq 74 ]
   rm "${BATS_TEST_TMPDIR}/bin/grep"
+  # find lists the readable files but fails for a directory it cannot read.
+  printf '#!/bin/sh\n%s "$@"\nexit 1\n' "$(command -v find)" >"${BATS_TEST_TMPDIR}/bin/find"
+  chmod +x "${BATS_TEST_TMPDIR}/bin/find"
+  PATH="${BATS_TEST_TMPDIR}/bin:${PATH}" run file::find-by-content 'needle' "$root" 1
+  [ "$status" -eq 74 ]
+  rm "${BATS_TEST_TMPDIR}/bin/find"
   run file::find-by-content 'needle' "$root" 1 maybe
   [ "$status" -eq 64 ]
 }

@@ -96,6 +96,10 @@ record_root_commands() {
   [ "$status" -eq 73 ]
   run swap::create 1048576 relative
   [ "$status" -eq 64 ]
+  run swap::create 1048576 '/swap file'
+  [ "${status}" -eq 64 ]
+  run swap::create 1048576 '/swap\file'
+  [ "${status}" -eq 64 ]
 }
 
 @test "screen kill-all succeeds when no Screen process exists" {

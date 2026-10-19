@@ -1168,9 +1168,9 @@ use_fake_sudoers() {
   use_fake_sudoers
   run sudo::passwordless::enable first.last
   [ "${status}" -eq 0 ]
-  [ "$(<"${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-first_last")" = 'first.last ALL=(ALL) NOPASSWD: ALL' ]
+  [ "$(<"${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-first_-last")" = 'first.last ALL=(ALL) NOPASSWD: ALL' ]
   grep -Eq '^visudo -c -q -f .*/rule$' "${ROOT_LOG}"
-  grep -Fqx 'install -m 0440 '"$(sed -n 's/^visudo -c -q -f //p' "${ROOT_LOG}")"' /etc/sudoers.d/zz-bashstock-passwordless-first_last' "${ROOT_LOG}"
+  grep -Fqx 'install -m 0440 '"$(sed -n 's/^visudo -c -q -f //p' "${ROOT_LOG}")"' /etc/sudoers.d/zz-bashstock-passwordless-first_-last' "${ROOT_LOG}"
   grep -Fqx 'sudo -n -u first.last -- sudo -n -k true' "${ROOT_LOG}"
 
   SUDO_USER='invoker'
@@ -1196,11 +1196,17 @@ use_fake_sudoers() {
   use_fake_sudoers
   run sudo::passwordless::enable first.last
   [ "${status}" -eq 0 ]
-  [ -e "${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-first_last" ]
+  [ -e "${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-first_-last" ]
+
+  run sudo::passwordless::enable first_last
+  [ "${status}" -eq 0 ]
+  [ -e "${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-first__last" ]
 
   run sudo::passwordless::disable first.last
   [ "${status}" -eq 0 ]
-  [ ! -e "${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-first_last" ]
+  [ ! -e "${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-first_-last" ]
+  # Another user whose name differs only by . and _ keeps the rule.
+  [ -e "${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-first__last" ]
 
   run sudo::passwordless::disable first.last
   [ "${status}" -eq 0 ]
@@ -1576,4 +1582,23 @@ use_fake_sudoers() {
   [ "$(grep -c 'rbenv init' "$HOME/.bashrc")" -eq 1 ]
   grep -Fqx "export PATH=\"$HOME/.rbenv/bin:\${PATH}\"" "$HOME/.bashrc"
   bash -n "$HOME/.bashrc"
+}
+
+@test "UTM bundle replacement keeps the old bundle until the copy succeeds" {
+  local source="${BATS_TEST_TMPDIR}/mount/UTM.app" applications="${BATS_TEST_TMPDIR}/Applications"
+  mkdir -p "${source}/Contents" "${applications}/UTM.app/Contents"
+  printf 'new\n' >"${source}/Contents/version"
+  printf 'old\n' >"${applications}/UTM.app/Contents/version"
+
+  cp() { return 1; }
+  run utm::_copy-application "${source}" "${applications}"
+  [ "${status}" -eq 74 ]
+  [ "$(<"${applications}/UTM.app/Contents/version")" = old ]
+  [ -z "$(find "${applications}" -mindepth 1 -maxdepth 1 -name '.*')" ]
+
+  unset -f cp
+  run utm::_copy-application "${source}" "${applications}"
+  [ "${status}" -eq 0 ]
+  [ "$(<"${applications}/UTM.app/Contents/version")" = new ]
+  [ -z "$(find "${applications}" -mindepth 1 -maxdepth 1 -name '.*')" ]
 }

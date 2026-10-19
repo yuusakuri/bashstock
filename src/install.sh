@@ -1185,13 +1185,34 @@ utm::install() {
 }
 
 # @description Replace an application bundle in a destination directory.
+#
+# The new bundle is copied beside the old one first, and the old bundle is
+# removed only after the new one is in place; on failure the old one stays.
+#
 # @internal
 utm::_copy-application() {
   [[ "$#" -eq 2 && -d "$1" && -d "$2" ]] || return 64
-  local runner=()
+  local runner=() name='' target='' staged='' previous=''
+  name="$(path::base-name "$1")" || return 64
+  target="$2/${name}"
+  staged="$2/.${name}.bashstock-new"
+  previous="$2/.${name}.bashstock-old"
   [[ -w "$2" ]] || runner=(command::run-as-root)
-  ${runner[@]+"${runner[@]}"} rm -rf -- "$2/$(path::base-name "$1")" || return 74
-  ${runner[@]+"${runner[@]}"} cp -R -- "$1" "$2/" || return 74
+  ${runner[@]+"${runner[@]}"} rm -rf -- "${staged}" "${previous}" || return 74
+  if ! ${runner[@]+"${runner[@]}"} cp -R -- "$1" "${staged}"; then
+    ${runner[@]+"${runner[@]}"} rm -rf -- "${staged}"
+    return 74
+  fi
+  if [[ -e "${target}" ]] && ! ${runner[@]+"${runner[@]}"} mv -- "${target}" "${previous}"; then
+    ${runner[@]+"${runner[@]}"} rm -rf -- "${staged}"
+    return 74
+  fi
+  if ! ${runner[@]+"${runner[@]}"} mv -- "${staged}" "${target}"; then
+    [[ ! -e "${previous}" ]] || ${runner[@]+"${runner[@]}"} mv -- "${previous}" "${target}"
+    ${runner[@]+"${runner[@]}"} rm -rf -- "${staged}"
+    return 74
+  fi
+  ${runner[@]+"${runner[@]}"} rm -rf -- "${previous}" || return 74
 }
 
 # @description Write supported Ubuntu LTS versions from the Ubuntu release metadata.
