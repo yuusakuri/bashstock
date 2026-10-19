@@ -204,9 +204,14 @@ demo::_create-args() {
   [ "${COMPREPLY[*]}" = '--output-directory --serial' ]
 
   # Without adb there is no candidate; compgen then reports status 1, which Bash ignores.
+  # PATH holds only an empty directory, because a real adb would start a server
+  # that outlives the test.
+  local saved_path="${PATH}"
   rm "${BATS_TEST_TMPDIR}/bin/adb"
+  PATH="${BATS_TEST_TMPDIR}/bin"
   COMP_WORDS=(adb::wake::lock --serial '')
   COMP_CWORD=2
   arg::completion::dispatch || true
+  PATH="${saved_path}"
   [ "${#COMPREPLY[@]}" -eq 0 ]
 }
