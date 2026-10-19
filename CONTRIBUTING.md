@@ -34,7 +34,7 @@ git submodule update --init --recursive
 | --- | --- |
 | `just build` | `src/`の実装と`LICENSE`から単一の配布ファイル`dist/bashstock.sh`を生成し、構文を検査します。 |
 | `just docs` | `src/`のDocコメントから`docs/reference/functions.md`と`docs/reference/modules/`を生成します。 |
-| `just lint` | ソースと配布ファイルのBash構文、ShellCheck、Docコメント、生成済みリファレンスとの差分、差分の空白エラーを検査します。 |
+| `just lint` | ソースと配布ファイルのBash構文、ShellCheck、Docコメント、生成済みリファレンスとの差分、名前付き引数とTab補完の対応、差分の空白エラーを検査します。 |
 | `just test` | 配布物を生成してからBatsテストを実行します。 |
 | `just verify` | 静的検査、配布物の生成、全テストを順に実行します。 |
 

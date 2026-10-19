@@ -110,7 +110,7 @@ lint::check-doc-comments() {
       "${project_root}/scripts" \
       "${project_root}/src" \
       -type f \
-      \( -name '*.sh' -o -name '*.bash' -o -name 'test-*' -o -name 'lint' -o -name 'build' -o -name 'docs' \) \
+      \( -name '*.sh' -o -name '*.bash' -o -name 'test-*' -o -name 'lint' -o -name 'build' -o -name 'docs' -o -name 'check-completion' \) \
       -print0
   )
 
@@ -132,6 +132,7 @@ main() {
   "${project_root}/scripts/build"
   lint::check-syntax "${project_root}/dist/bashstock.sh"
   lint::check-shell "${project_root}/dist/bashstock.sh"
+  "${project_root}/scripts/check-completion"
   git -C "${project_root}" diff --check
 }
 

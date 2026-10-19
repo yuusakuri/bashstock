@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+# Check that every public function taking --named arguments has a Tab
+# completion helper that lists all of them, as the named-argument
+# specification requires. The distribution file is loaded in a separate Bash.
+
+project_root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
+readonly project_root
+
+# @description Write the --named arguments that a function parses, one per line.
+#
+# Arguments are read from case arms such as `--serial)` and from comparisons
+# such as `[[ "$1" == '--serial' ]]`, which is how the library parses them.
+#
+# @arg $1 string Function name.
+completion::parsed-options() {
+  declare -f "$1" |
+    sed -nE \
+      -e 's/^[[:space:]]+(--[a-z][a-z0-9-]*([[:space:]]*\|[[:space:]]*--[a-z][a-z0-9-]*)*)\)$/\1/p' \
+      -e "s/.*\"\\\$1\" == '(--[a-z][a-z0-9-]*)'.*/\\1/p" |
+    tr '|' '\n' | tr -d ' ' | sort -u
+}
+
+# @description Write the --named arguments of a function and of the internal parsers it passes "$@" to.
+#
+# @arg $1 string Function name.
+completion::accepted-options() {
+  local callee=''
+  {
+    completion::parsed-options "$1"
+    while IFS= read -r callee; do
+      completion::parsed-options "${callee}"
+    done < <(declare -f "$1" | grep -oE '[a-z][a-z0-9-]*(::[a-z0-9-]+)*::_[a-z0-9-]+ [^;|&]*"\$@"' | awk '{ print $1 }' | sort -u)
+  } | sort -u
+}
+
+# @description Report public functions whose named arguments the completion helper does not list.
+#
+# @noargs
+main() {
+  # shellcheck disable=SC1091
+  source "${project_root}/dist/bashstock.sh"
+  local name='' helper='' options='' listed='' option='' status=0
+  while IFS= read -r name; do
+    options="$(completion::accepted-options "${name}")"
+    [[ -n "${options}" ]] || continue
+    helper="$(arg::completion::_helper-name "${name}")"
+    if ! declare -F "${helper}" >/dev/null; then
+      printf 'check-completion: %s takes %s but has no %s.\n' "${name}" "$(tr '\n' ' ' <<<"${options}")" "${helper}" >&2
+      status=1
+      continue
+    fi
+    listed="$("${helper}")"
+    while IFS= read -r option; do
+      grep -Fqx -- "${option}" <<<"${listed}" ||
+        { printf 'check-completion: %s does not list %s of %s.\n' "${helper}" "${option}" "${name}" >&2; status=1; }
+    done <<<"${options}"
+  done < <(declare -F | awk '{ print $3 }' | grep -E '^[a-z][a-z0-9-]*(::[a-z0-9-]+)+$' | grep -v '::_')
+  return "${status}"
+}
+
+main "$@"

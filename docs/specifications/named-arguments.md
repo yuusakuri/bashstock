@@ -107,4 +107,6 @@ user::_create-args() {
 - 値補完が対象引数の直後だけで動作すること。
 - 補完定義を持つ公開関数へ`arg::completion::dispatch`が登録されること。
 
-[test/arguments.bats](../../test/arguments.bats)は、この契約を検証する例を含みます。
+`scripts/lint`は`scripts/check-completion`を実行し、名前付き引数を解析する公開関数に補完用内部関数があること、補完用内部関数がその引数をすべて列挙することを検査します。
+名前付き引数は、関数と、関数が`"$@"`を渡す内部の解析関数の`case`分岐と`"$1" == '--name'`の比較から読み取ります。
+[test/arguments.bats](../../test/arguments.bats)は、補完用内部関数が列挙する引数を対応する公開関数が受理することと、この契約を検証する例を含みます。
