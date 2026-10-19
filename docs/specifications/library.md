@@ -12,6 +12,14 @@
 | シェル | Bash 3.2以上 |
 | OS | macOS、Ubuntu、Fedora |
 
+Linux向けの導入関数は、Fedora 34と、Ubuntu 18.04以降のすべてのLTSメジャー版で、実行中のOSに適合するソフトウェアを導入して動作させます。
+Ubuntuの対象は18.04、20.04、22.04、24.04、26.04と、それ以降のLTSメジャー版です。
+版を省略した場合は、そのOSで動作する最新安定版を選びます。
+版を指定した場合も、依存パッケージと実行環境に適合することを確認します。
+
+導入の確認には、初回導入、再実行、版の指定、導入したソフトウェアの起動を含めます。
+サービス、シェルの起動設定、GUIの設定を伴う関数は、サービスの再起動、再ログイン、OSの再起動後にも設定が有効であることを確認します。
+
 ## 読み込み
 
 利用者は単一の配布ファイル`bashstock.sh`を`source`します。
@@ -77,8 +85,43 @@ Bashには関数の可視性を制限する仕組みがないため、内部関�
 
 ## Docコメント
 
-`src/`の関数は、関数定義の直前に英語の`###`Docコメントを持ちます。
-コメントは処理の責務、引数、標準出力、終了状態のうち、その関数を呼び出すために必要な情報を記載します。
+`src/`と`scripts/`の関数は、関数定義の直前に英語の[shdoc](https://github.com/reconquest/shdoc)形式のDocコメントを持ちます。
+Docコメントは`# @description`で始まり、関数定義の行まで空行を挟まずに続けます。
+
+```bash
+# @description Remove leading and trailing whitespace.
+#
+# @arg $1 string Value to trim.
+# @stdout The value without leading and trailing whitespace.
+# @exitcode 0 The value was written.
+# @exitcode 64 The argument count is not one.
+# @example
+#   string::trim '  hello world  '
+#   # hello world
+string::trim() {
+```
+
+公開関数は次のタグを持ちます。
+
+| タグ | 内容 |
+| --- | --- |
+| `@description` | 処理の責務です。1行目は`functions.md`の一覧に表示する要約にします。 |
+| `@arg $N TYPE TEXT`、`@option --name <VALUE> TEXT`、`@noargs` | 位置引数、名前付き引数、または引数を取らないことです。省略可能な引数は`Optional`と既定値を書きます。 |
+| `@stdout`、`@stderr`、`@stdin`、`@set` | 出力、診断、入力、変更する変数のうち、関数が扱うものです。 |
+| `@exitcode CODE TEXT` | 成功を含む、関数が返す終了状態です。外部コマンドの終了状態をそのまま返す場合は`@exitcode other`で示します。 |
+| `@example` | 2文字下げた実行例です。必須です。 |
+
+`@example`の中で`#`から始まる行は、直前のコードが標準出力へ書く内容です。
+`test/examples.bats`は、環境に依存しない`string`、`array`、`regex`、`number`、`path`の例を実行し、記載した出力と一致することを検査します。
+
+内部関数と`scripts/`の関数は`@description`だけを必須とし、内部関数には`@internal`を付けます。
+各モジュールは先頭に`@file`、`@brief`、`@description`を持ちます。
+Docコメントに`TODO`は残しません。
+`scripts/lint`はこれらの規則を検査します。
+
+`scripts/docs`は、Docコメントから`docs/reference/functions.md`と`docs/reference/modules/`を生成します。
+`scripts/docs --check`は生成結果とcommit済みのファイルを比較し、`scripts/lint`から実行されます。
+読み込んだ関数のDocコメントは、`help::show 関数名`で端末に表示できます。
 
 ## 入出力
 
@@ -95,6 +138,7 @@ Bashには関数の可視性を制限する仕組みがないため、内部関�
 | `0` | 処理に成功したか、述語の条件が成立しました。 |
 | `1` | 述語の条件が成立しないか、検索対象が見つかりません。 |
 | `64` | 引数の個数、形式、組み合わせが不正です。 |
+| `65` | 入力データの形式が不正です。 |
 | `66` | 入力ファイルまたは必要な入力元を利用できません。 |
 | `69` | 必要なコマンド、モジュール、実行環境を利用できません。 |
 | `73` | 利用者などの対象を作成できません。 |
@@ -125,6 +169,7 @@ Bashには関数の可視性を制限する仕組みがないため、内部関�
 
 公開関数は、グローバル変数、現在のディレクトリ、`IFS`、ロケール、シェルオプション、呼び出し元の`BASH_REMATCH`を呼び出し前の状態に保ちます。
 一時的な設定は関数のローカル変数またはサブシェルへ閉じ込めます。
+`BASH_REMATCH`は関数内の`local`では保護できないため、正規表現の判定は`( [[ ... =~ ... ]] )`のサブシェルで行います。`scripts/lint`がこの書き方を検査します。
 
 Tab補完の登録は、対話型Bashでの初回読み込み時、または`arg::completion::register-all`を明示的に呼び出した場合に実行します。
 ライブラリは呼び出し元の`set -e`、`set -u`、`pipefail`を変更せず、失敗を終了状態で返します。

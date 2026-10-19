@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091
+
+set -euo pipefail
+
+# Run inside a disposable Ubuntu or Fedora container as root.
+source /etc/os-release
+if [[ "${ID}" == fedora ]]; then
+  dnf install -y curl ca-certificates perl perl-JSON-PP findutils tar gzip
+else
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y curl ca-certificates perl
+fi
+source /opt/bashstock.sh
+major="${VERSION_ID%%.*}"
+
+# @description Write the installed version of a system package.
+package_version() {
+  if [[ "${ID}" == fedora ]]; then
+    rpm -q --qf '%{VERSION}-%{RELEASE}\n' "$1"
+  else
+    dpkg-query -W -f='${Version}\n' "$1"
+  fi
+}
+
+# Claude Code: the newest stable package, twice, from the signed repository.
+if [[ "${ID}" == ubuntu && "${major}" -lt 20 ]]; then
+  status=0
+  claude-code::install || status="$?"
+  [[ "${status}" -eq 69 ]]
+  [[ ! -e /etc/apt/sources.list.d/claude-code.list ]]
+else
+  claude-code::install
+  claude-code::install
+  /usr/bin/claude --version
+  if [[ "${ID}" == fedora ]]; then
+    [[ "$(stat -c %a /etc/pki/rpm-gpg/RPM-GPG-KEY-claude-code)" == 644 ]]
+    dnf repoquery --quiet --repo=claude-code claude-code | grep -q claude-code
+  else
+    [[ "$(stat -c %a /etc/apt/keyrings/claude-code.asc)" == 644 ]]
+    apt-get update 2>&1 | tee /tmp/bashstock-apt-update.log
+    if grep -E '^(E|W):' /tmp/bashstock-apt-update.log; then exit 1; fi
+  fi
+fi
+
+# Codex: the newest release, twice, from OpenAI's installer.
+codex::install
+codex::install
+"${HOME}/.local/bin/codex" --version
+grep -Fq "${HOME}/.local/bin" "${HOME}/.bashrc"
+
+# ChatGPT: OpenAI supports Ubuntu 24.04 or later and Fedora 43 or later.
+if [[ ("${ID}" == ubuntu && "${major}" -ge 24) || ("${ID}" == fedora && "${major}" -ge 43) ]]; then
+  chatgpt::install
+  chatgpt::install
+  package_version chatgpt
+  [[ -x /usr/bin/chatgpt ]]
+else
+  status=0
+  chatgpt::install || status="$?"
+  [[ "${status}" -eq 69 ]]
+  if package_version chatgpt >/dev/null 2>&1; then exit 1; fi
+fi

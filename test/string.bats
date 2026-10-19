@@ -72,6 +72,8 @@ load test_helper
 }
 
 @test "length functions distinguish characters from bytes" {
+  # Character counts follow the locale, so the test selects a UTF-8 locale itself.
+  export LC_ALL=C.UTF-8
   run string::length '日本'
   [ "${output}" = '2' ]
 
@@ -104,6 +106,8 @@ load test_helper
 }
 
 @test "requirement and slice functions validate input" {
+  # string::slice requires a UTF-8 locale, so the test selects one itself.
+  export LC_ALL=C.UTF-8
   string::require-non-empty Name value
   string::require-empty Name ''
   string::require-allowed Mode safe fast safe

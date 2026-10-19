@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091
+
+set -euo pipefail
+
+# The Docker package suite has already installed curl, Perl, Git, and a JDK.
+source /opt/bashstock.sh
+source /etc/os-release
+
+printf '== pass\n'
+pass::install
+pass::install
+GNUPGHOME="$(mktemp -d)"
+PASSWORD_STORE_DIR="$(mktemp -d)"
+export GNUPGHOME PASSWORD_STORE_DIR
+chmod 700 "$GNUPGHOME"
+gpg --batch --pinentry-mode loopback --passphrase '' \
+  --quick-generate-key 'BashStock CI <ci@example.invalid>' default default never
+pass init ci@example.invalid
+printf 'secret value\n' | pass insert --echo ci/item
+[[ "$(pass show ci/item)" == 'secret value' ]]
+
+printf '== Graphviz and PlantUML\n'
+graphviz::install
+graphviz::install
+printf 'digraph { alpha -> beta }\n' | dot -Tsvg | grep -F alpha
+plantuml::install
+work="$(mktemp -d)"
+printf '@startuml\nAlice -> Bob: Hello\n@enduml\n' >"$work/sequence.puml"
+plantuml -tsvg "$work/sequence.puml"
+grep -F Hello "$work/sequence.svg"
+
+printf '== GIMP and G'"'"'MIC\n'
+if [[ "$ID" == ubuntu && -z "$(gimp::gmic::versions)" ]]; then
+  # Ubuntu 26.04 ships GIMP 3 without a G'MIC plugin package.
+  status=0
+  gimp::install || status="$?"
+  [[ "$status" -eq 69 ]]
+  if [[ "$(dpkg --print-architecture)" == amd64 ]]; then
+    gimp::install '' official
+    gimp --version
+    dpkg -L gmic | grep -E '/gimp/3\.0/plug-ins/gmic_gimp_qt/gmic_gimp_qt$'
+  else
+    # The G'MIC project builds its packages for amd64 only.
+    status=0
+    gimp::install '' official || status="$?"
+    [[ "$status" -eq 69 ]]
+    gimp --version
+  fi
+else
+  gimp::install
+  gimp --version
+  if [[ "$ID" == ubuntu ]]; then
+    dpkg -L gimp-gmic | grep -E '/gimp/[0-9.]+/plug-ins/'
+  else
+    rpm -ql gmic-gimp | grep -E '/gimp/[0-9.]+/plug-ins/'
+  fi
+fi
+
+if [[ "$ID" == ubuntu ]]; then
+  printf '== Debian package from a URL\n'
+  # The statically linked fd package runs on every Ubuntu release and CPU.
+  deb::install-from-url "https://github.com/sharkdp/fd/releases/download/v10.2.0/fd-musl_10.2.0_$(dpkg --print-architecture).deb"
+  fd --version
+fi
+
+printf '== Git Credential Manager\n'
+git-credential-manager::install
+git-credential-manager::install
+"$HOME/.local/bin/git-credential-manager" --version
+git config --global --get-all credential.helper | grep -F git-credential-manager

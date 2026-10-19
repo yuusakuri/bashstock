@@ -59,7 +59,7 @@ copy_distribution() {
 @test "noninteractive sourcing is silent and preserves caller state and existing completion" {
   run bash -c '
     sample::run() { :; }
-    sample::_run-args() { printf "%s\n" -Name; }
+    sample::_run-args() { printf "%s\n" --name; }
     complete -W retained sample::run
     before_completion="$(complete -p sample::run)"
     before_directory="${PWD}"
@@ -93,7 +93,7 @@ copy_distribution() {
     source "$1"
     string::upper() { printf "retained\n"; }
     sample::run() { :; }
-    sample::_run-args() { printf "%s\n" -Name; }
+    sample::_run-args() { printf "%s\n" --name; }
     arg::completion::register-all
     before_completion="$(complete -p sample::run)"
     source "$1"
@@ -135,15 +135,15 @@ copy_distribution() {
 @test "interactive sourcing enables completion automatically and preserves it on reload" {
   run bash --noprofile --norc -ic '
     sample::run() { :; }
-    sample::_run-args() { printf "%s\n" -Name -Count; }
+    sample::_run-args() { printf "%s\n" --name --count; }
     source "$1" >"$2" || exit 90
     test ! -s "$2" || exit 91
     registered="$(complete -p sample::run)" || exit 92
     [[ "${registered}" == *"-F arg::completion::dispatch"* ]] || exit 93
-    COMP_WORDS=(sample::run -N)
+    COMP_WORDS=(sample::run --n)
     COMP_CWORD=1
     arg::completion::dispatch || exit 94
-    [[ "${#COMPREPLY[@]}" -eq 1 && "${COMPREPLY[0]}" == -Name ]] || exit 95
+    [[ "${#COMPREPLY[@]}" -eq 1 && "${COMPREPLY[0]}" == --name ]] || exit 95
     complete -W retained sample::run
     retained="$(complete -p sample::run)"
     source "$1" || exit 96

@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
+# @file option
+# @brief Checks for groups of named options.
+# @description option::require-single reports an error unless exactly one option of a group has a value.
 
-### Require exactly one named option value to be non-empty.
+# @description Require exactly one named option value to be non-empty.
+#
+# Use it when mutually exclusive options were parsed into separate variables.
+#
+# @arg $@ string Pairs of option name and value; at least two pairs.
+# @stderr A message listing the options when none or more than one is set.
+# @exitcode 0 Exactly one value is non-empty.
+# @exitcode 64 None or several values are set, or the pairs are invalid.
+# @example
+#   option::require-single --file "${file}" --url "${url}" || return "$?"
 option::require-single() {
   if [[ "$#" -lt 4 ]] || (($# % 2 != 0)); then
     return 64

@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
+# @file time
+# @brief Clocks, timestamps, and waiting.
+# @description Formats follow ISO 8601. Functions that need a clock provider return 69 when it is unavailable.
+
 # shellcheck disable=SC2119,SC2120
 
-### Write milliseconds from the requested monotonic clock.
+# @description Write milliseconds from the requested monotonic clock.
+# @internal
 time::_clock-milliseconds() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -17,7 +22,7 @@ time::_clock-milliseconds() {
         -e 'printf "%d\n", int(clock_gettime(CLOCK_MONOTONIC) * 1000)' \
         2>/dev/null || return 69
       ;;
-    linux:boottime)
+    linux:boot-time)
       perl -e '
         use strict;
         use warnings;
@@ -39,7 +44,7 @@ time::_clock-milliseconds() {
         -e 'printf "%d\n", int(clock_gettime(CLOCK_UPTIME_RAW) * 1000)' \
         2>/dev/null || return 69
       ;;
-    darwin:boottime)
+    darwin:boot-time)
       perl -MTime::HiRes=clock_gettime,CLOCK_MONOTONIC_RAW \
         -e 'printf "%d\n", int(clock_gettime(CLOCK_MONOTONIC_RAW) * 1000)' \
         2>/dev/null || return 69
@@ -50,7 +55,8 @@ time::_clock-milliseconds() {
   esac
 }
 
-### Write Unix-epoch milliseconds from the real-time clock.
+# @description Write Unix-epoch milliseconds from the real-time clock.
+# @internal
 time::_realtime-milliseconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -60,7 +66,8 @@ time::_realtime-milliseconds() {
     return 69
 }
 
-### Format an epoch-millisecond value in a fixed date-time form.
+# @description Format an epoch-millisecond value in a fixed date-time form.
+# @internal
 time::_format-milliseconds() {
   if [[ "$#" -ne 2 ]] || ! number::_is-non-negative-integer "$1"; then
     return 64
@@ -75,26 +82,28 @@ time::_format-milliseconds() {
     my $seconds = int($milliseconds / 1000);
     my $fraction = $milliseconds % 1000;
     my ($base, $offset);
-    if ($mode eq "utc-ms") {
+    if ($mode eq "utc-ms-extended") {
       $base = strftime("%Y-%m-%dT%H:%M:%S", gmtime($seconds));
       printf "%s.%03dZ\n", $base, $fraction;
-    } elsif ($mode eq "utc-s") {
+    } elsif ($mode eq "utc-s-extended") {
       print strftime("%Y-%m-%dT%H:%M:%SZ", gmtime($seconds)), "\n";
-    } elsif ($mode eq "utc-date") {
+    } elsif ($mode eq "utc-date-extended") {
       print strftime("%Y-%m-%d", gmtime($seconds)), "\n";
-    } elsif ($mode eq "local-ms" || $mode eq "local-s") {
+    } elsif ($mode eq "local-ms-extended" || $mode eq "local-s-extended") {
       my @local = localtime($seconds);
       $base = strftime("%Y-%m-%dT%H:%M:%S", @local);
       $offset = strftime("%z", @local);
       $offset =~ s/([+-][0-9]{2})([0-9]{2})\z/$1:$2/;
       exit 69 unless $offset =~ /\A[+-][0-9]{2}:[0-9]{2}\z/;
-      if ($mode eq "local-ms") {
+      if ($mode eq "local-ms-extended") {
         printf "%s.%03d%s\n", $base, $fraction, $offset;
       } else {
         print $base, $offset, "\n";
       }
-    } elsif ($mode eq "local-date") {
+    } elsif ($mode eq "local-date-extended") {
       print strftime("%Y-%m-%d", localtime($seconds)), "\n";
+    } elsif ($mode eq "local-s-basic") {
+      print strftime("%Y%m%dT%H%M%S", localtime($seconds)), "\n";
     } else {
       exit 64;
     }
@@ -105,13 +114,27 @@ time::_format-milliseconds() {
   }
 }
 
-### Report that the portable time provider is unavailable.
+# @description Report that the portable time provider is unavailable.
+# @internal
 time::_provider-error() {
   console::_write-error 'The portable time provider is unavailable.'
   return 69
 }
 
-### Write monotonic milliseconds that exclude suspended time.
+# @description Write monotonic milliseconds that exclude suspended time.
+#
+# Use it to measure elapsed time; the value has no fixed origin and does not
+# advance while the machine sleeps.
+#
+# @noargs
+# @stdout Milliseconds of a monotonic clock.
+# @exitcode 0 The value was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @example
+#   start="$(time::monotonic-milliseconds)"
+#   make build
+#   printf '%s ms\n' "$(( $(time::monotonic-milliseconds) - start ))"
 time::monotonic-milliseconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -119,15 +142,32 @@ time::monotonic-milliseconds() {
   time::_clock-milliseconds monotonic || time::_provider-error
 }
 
-### Write milliseconds since boot including suspended time.
-time::boottime-milliseconds() {
+# @description Write milliseconds since boot including suspended time.
+#
+# @noargs
+# @stdout Milliseconds since the system started.
+# @exitcode 0 The value was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @example
+#   time::boot-time-milliseconds
+time::boot-time-milliseconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
-  time::_clock-milliseconds boottime || time::_provider-error
+  time::_clock-milliseconds boot-time || time::_provider-error
 }
 
-### Write Unix-epoch milliseconds.
+# @description Write Unix-epoch milliseconds.
+#
+# @noargs
+# @stdout Milliseconds since 1970-01-01T00:00:00Z.
+# @exitcode 0 The value was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @example
+#   time::unix-milliseconds
+#   # 1791900000123
 time::unix-milliseconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -135,7 +175,15 @@ time::unix-milliseconds() {
   time::_realtime-milliseconds || time::_provider-error
 }
 
-### Write Unix-epoch seconds rounded down.
+# @description Write Unix-epoch seconds rounded down.
+#
+# @noargs
+# @stdout Seconds since 1970-01-01T00:00:00Z.
+# @exitcode 0 The value was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @example
+#   expires=$(( $(time::unix-seconds) + 3600 ))
 time::unix-seconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -148,7 +196,16 @@ time::unix-seconds() {
   printf '%s\n' "$((milliseconds / 1000))"
 }
 
-### Write Unix-epoch days rounded down.
+# @description Write Unix-epoch days rounded down.
+#
+# @noargs
+# @stdout Whole days since 1970-01-01.
+# @exitcode 0 The value was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @example
+#   time::unix-days
+#   # 20739
 time::unix-days() {
   if [[ "$#" -ne 0 ]]; then
     return 64
@@ -161,7 +218,8 @@ time::unix-days() {
   printf '%s\n' "$((milliseconds / 86400000))"
 }
 
-### Format the current real-time clock in a requested date-time form.
+# @description Format the current real-time clock in a requested date-time form.
+# @internal
 time::_date-time() {
   if [[ "$#" -ne 1 ]]; then
     return 64
@@ -179,38 +237,106 @@ time::_date-time() {
   }
 }
 
-### Write the current UTC date and time with milliseconds.
-time::utc-date-time-milliseconds() {
+# @description Write the current UTC date and time in ISO 8601 extended format with milliseconds.
+#
+# @noargs
+# @stdout A time such as 2026-10-14T03:04:05.678Z.
+# @exitcode 0 The value was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @example
+#   time::utc-date-time-milliseconds-extended
+#   # 2026-10-14T03:04:05.678Z
+time::utc-date-time-milliseconds-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time utc-ms
+  time::_date-time utc-ms-extended
 }
 
-### Write the current UTC date and time with seconds.
-time::utc-date-time-seconds() {
+# @description Write the current UTC date and time in ISO 8601 extended format with seconds.
+#
+# @noargs
+# @stdout A time such as 2026-10-14T03:04:05Z.
+# @exitcode 0 The value was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @example
+#   time::utc-date-time-seconds-extended
+#   # 2026-10-14T03:04:05Z
+time::utc-date-time-seconds-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time utc-s
+  time::_date-time utc-s-extended
 }
 
-### Write the current UTC date.
-time::utc-date() {
+# @description Write the current UTC date in ISO 8601 extended format.
+#
+# @noargs
+# @stdout A date such as 2026-10-14.
+# @exitcode 0 The value was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @example
+#   time::utc-date-extended
+#   # 2026-10-14
+time::utc-date-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time utc-date
+  time::_date-time utc-date-extended
 }
 
-### Write the current local date and time with milliseconds and an offset.
-time::local-date-time-milliseconds() {
+# @description Write the current local date and time in ISO 8601 extended format with milliseconds and an offset.
+#
+# @noargs
+# @stdout A time such as 2026-10-14T12:04:05.678+09:00.
+# @exitcode 0 The value was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @example
+#   time::local-date-time-milliseconds-extended
+#   # 2026-10-14T12:04:05.678+09:00
+time::local-date-time-milliseconds-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time local-ms
+  time::_date-time local-ms-extended
 }
 
-### Write the current local date and time with seconds and an offset.
-time::local-date-time-seconds() {
+# @description Write the current local date and time in ISO 8601 extended format with seconds and an offset.
+#
+# @noargs
+# @stdout A time such as 2026-10-14T12:04:05+09:00.
+# @exitcode 0 The value was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @example
+#   log_line="$(time::local-date-time-seconds-extended) started"
+time::local-date-time-seconds-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time local-s
+  time::_date-time local-s-extended
 }
 
-### Write the current local date.
-time::local-date() {
+# @description Write the current local date in ISO 8601 extended format.
+#
+# @noargs
+# @stdout A date such as 2026-10-14.
+# @exitcode 0 The value was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @example
+#   mkdir -p "backup/$(time::local-date-extended)"
+time::local-date-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time local-date
+  time::_date-time local-date-extended
+}
+
+# @description Write the current local date and time in ISO 8601 basic format with seconds.
+#
+# The basic format has no separators, so it suits file names.
+#
+# @noargs
+# @stdout A time such as 20261014T120405.
+# @exitcode 0 The value was written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @example
+#   cp config.yaml "config.yaml.$(time::local-date-time-seconds-basic)"
+time::local-date-time-seconds-basic() {
+  [[ "$#" -eq 0 ]] || return 64
+  time::_date-time local-s-basic
 }

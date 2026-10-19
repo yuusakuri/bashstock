@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2317
+
+set -euo pipefail
+
+# Run on a disposable GitHub Actions Ubuntu runner, which resolves names
+# through systemd-resolved. The script switches the DNS manager in both
+# directions and leaves the runner's uplink to systemd-networkd.
+
+# shellcheck disable=SC1091 # The distribution is generated before this script runs.
+source ./dist/bashstock.sh
+
+resolved_link=/run/systemd/resolve/stub-resolv.conf
+google_dropin=/etc/systemd/resolved.conf.d/90-bashstock-google.conf
+
+printf '== systemd-resolved\n'
+ls -l /etc/resolv.conf
+set -x
+[[ "$(net::dns::manager)" == systemd-resolved ]]
+net::dns::use-systemd-resolved
+net::dns::use-systemd-resolved
+[[ "$(readlink /etc/resolv.conf)" == *"${resolved_link}" ]]
+# The link already pointed at systemd-resolved, so nothing needed a backup.
+[[ -z "$(find /etc -maxdepth 1 -name 'resolv.conf.bashstock-*')" ]]
+
+net::dns::use-google
+net::dns::use-google
+[[ "$(stat -c '%a %U' "${google_dropin}")" == '644 root' ]]
+sudo -u systemd-resolve cat "${google_dropin}" >/dev/null
+resolvectl dns | grep -F 8.8.8.8
+sudo systemctl restart systemd-resolved
+resolvectl dns | grep -F 8.8.4.4
+net::dns::test example.com
+
+printf '== NetworkManager\n'
+# NetworkManager must not take the runner's uplink away from systemd-networkd.
+sudo install -d -m 0755 /etc/NetworkManager/conf.d
+printf '[keyfile]\nunmanaged-devices=interface-name:eth*;interface-name:en*\n' |
+  sudo tee /etc/NetworkManager/conf.d/00-ci-unmanaged.conf >/dev/null
+sudo apt-get update >/dev/null
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y network-manager >/dev/null
+sudo systemctl start NetworkManager
+sudo nmcli connection add type dummy ifname bsdummy0 con-name bashstock-dummy \
+  ipv4.method manual ipv4.addresses 192.0.2.10/24 ipv4.dns 1.1.1.1 ipv6.method disabled >/dev/null
+sudo nmcli connection up bashstock-dummy >/dev/null
+
+net::dns::use-network-manager
+[[ "$(net::dns::manager)" == network-manager ]]
+[[ "$(readlink /etc/resolv.conf)" == /run/NetworkManager/resolv.conf ]]
+# The systemd-resolved link was kept before it was replaced.
+[[ "$(readlink "$(find /etc -maxdepth 1 -name 'resolv.conf.bashstock-*' | head -n 1)")" == *"${resolved_link}" ]]
+
+# A VPN connection keeps its own DNS server.
+sudo nmcli connection add type wireguard ifname bswg0 con-name bashstock-vpn \
+  ipv4.method manual ipv4.addresses 198.51.100.2/32 ipv4.dns 192.0.2.53 ipv6.method disabled \
+  wireguard.private-key "$(head -c 32 /dev/urandom | base64)" >/dev/null
+sudo nmcli connection up bashstock-vpn >/dev/null
+
+net::dns::use-google
+[[ "$(nmcli -g ipv4.dns connection show bashstock-dummy)" == '8.8.8.8,8.8.4.4' ]]
+[[ "$(nmcli -g ipv4.ignore-auto-dns connection show bashstock-dummy)" == yes ]]
+[[ "$(nmcli -g ipv4.dns connection show bashstock-vpn)" == 192.0.2.53 ]]
+# Docker configures docker0 itself; NetworkManager only observes it.
+if nmcli -t -f NAME connection show --active | grep -qx docker0; then
+  [[ -z "$(nmcli -g ipv4.dns connection show docker0)" ]]
+fi
+grep -F 'nameserver 8.8.8.8' /etc/resolv.conf
+sudo systemctl restart NetworkManager
+sleep 3
+grep -F 'nameserver 8.8.8.8' /etc/resolv.conf
+
+printf '== back to systemd-resolved\n'
+sudo nmcli connection delete bashstock-vpn >/dev/null
+net::dns::use-systemd-resolved
+[[ "$(net::dns::manager)" == systemd-resolved ]]
+resolvectl dns | grep -F 8.8.8.8
+net::dns::test example.com

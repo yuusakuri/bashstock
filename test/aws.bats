@@ -75,7 +75,7 @@ load test_helper
   aws::instance-tag() {
     printf 'ready\n'
   }
-  time::boottime-milliseconds() {
+  time::boot-time-milliseconds() {
     printf '1\n'
   }
 
@@ -84,13 +84,13 @@ load test_helper
   [ "${output}" = 'ready' ]
 }
 
-@test "tag waiting uses boottime for its timeout" {
+@test "tag waiting uses boot time for its timeout" {
   local clock_marker="${BATS_TEST_TMPDIR}/clock-called"
 
   aws::instance-tag() {
     return 1
   }
-  time::boottime-milliseconds() {
+  time::boot-time-milliseconds() {
     if [[ -e "${clock_marker}" ]]; then
       printf '1000\n'
     else
@@ -109,7 +109,7 @@ load test_helper
 @test "tag waiting rejects a non-integer clock value" {
   local injection_marker="${BATS_TEST_TMPDIR}/clock-injection"
 
-  time::boottime-milliseconds() {
+  time::boot-time-milliseconds() {
     printf '0+$(touch %s)\n' "${injection_marker}"
   }
 

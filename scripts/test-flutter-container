@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091
+
+set -euo pipefail
+
+# Run inside a disposable Ubuntu or Fedora container.
+if [[ -f /etc/fedora-release ]]; then
+  if [[ "$(rpm -E %fedora)" == 34 ]]; then
+    cat >/etc/yum.repos.d/bashstock-archive.repo <<'REPO'
+[bashstock-fedora-archive]
+name=Fedora 34 official archive
+baseurl=https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/34/Everything/$basearch/os/
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-fedora-34-$basearch
+[bashstock-fedora-updates-archive]
+name=Fedora 34 updates official archive
+baseurl=https://archives.fedoraproject.org/pub/archive/fedora/linux/updates/34/Everything/$basearch/
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-fedora-34-$basearch
+REPO
+    for repository in /etc/yum.repos.d/*.repo; do
+      [[ "$repository" == */bashstock-archive.repo ]] ||
+        sed -i 's/^enabled=1/enabled=0/' "$repository"
+    done
+  fi
+  dnf install -y git curl ca-certificates perl perl-JSON-PP which xorg-x11-server-Xvfb
+else
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y git curl ca-certificates perl libjson-pp-perl xvfb xauth
+fi
+
+source /opt/bashstock.sh
+versions="$(flutter::versions)"
+latest="$(printf '%s\n' "$versions" | tail -n 1)"
+previous="$(printf '%s\n' "$versions" | tail -n 2 | head -n 1)"
+printf 'Flutter versions: %s, %s\n' "$previous" "$latest"
+
+flutter::install
+flutter::install
+# A new shell finds the SDK through the startup file the installer wrote.
+sdk="$(bash -c 'source "$HOME/.bashrc"; command -v flutter')"
+[[ "$sdk" == "$HOME/.local/flutter/bin/flutter" ]]
+# @description Write the framework version that the installed Flutter SDK reports.
+#
+# The first run after a switch downloads the matching Dart SDK and prints
+# its progress to standard output, so only the version field is read.
+flutter_version() {
+  "$sdk" --version --machine 2>/dev/null | sed -n 's/.*"frameworkVersion": *"\([^"]*\)".*/\1/p'
+}
+[[ "$(flutter_version)" == "$latest" ]]
+"$HOME/.local/flutter/bin/dart" --version
+
+flutter::use-version "$previous"
+[[ "$(flutter_version)" == "$previous" ]]
+flutter::install
+[[ "$(flutter_version)" == "$latest" ]]
+
+app="$(mktemp -d)/bashstock_app"
+"$sdk" create --platforms=linux "$app"
+cd "$app"
+"$sdk" test
+source /etc/os-release
+if [[ "$ID" == ubuntu && "$VERSION_ID" == 18.04 ]]; then
+  # Flutter supports Linux desktop builds on Ubuntu 20.04 and later only.
+  exit 0
+fi
+"$sdk" build linux --release
+case "$(uname -m)" in
+  x86_64) flutter_architecture=x64 ;;
+  *) flutter_architecture=arm64 ;;
+esac
+bundle="$app/build/linux/$flutter_architecture/release/bundle/bashstock_app"
+[[ -x "$bundle" ]]
+# The application keeps running on a virtual display until the timeout stops it.
+status=0
+timeout 15 xvfb-run -a "$bundle" || status="$?"
+[[ "$status" -eq 124 ]]

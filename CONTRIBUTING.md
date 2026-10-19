@@ -10,14 +10,15 @@
 | ツール | 用途 |
 | --- | --- |
 | Bash 3.2以上 | ビルドスクリプト、検査スクリプト、テスト、配布物を実行します。 |
-| Git | ソース、履歴、Bats-coreサブモジュールを取得します。 |
+| Git | ソース、履歴、Bats-coreとshdocのサブモジュールを取得します。 |
 | just 1.58.0 | 開発コマンドを実行します。 |
 | ShellCheck | Bashソースを静的解析します。 |
+| GNU Awk（`gawk`） | shdocで関数リファレンスを生成します。 |
 | Perl、`Time::HiRes`、`POSIX`、`JSON::PP` | 時刻処理とJSON処理を含むテストを実行します。 |
 
 ## セットアップ
 
-リポジトリを取得し、Bats-coreサブモジュールを初期化します。
+リポジトリを取得し、Bats-coreとshdocのサブモジュールを初期化します。
 
 ```bash
 git clone https://github.com/yuusakuri/bashstock.git
@@ -32,7 +33,8 @@ git submodule update --init --recursive
 | コマンド | 実行内容 |
 | --- | --- |
 | `just build` | `src/`の実装と`LICENSE`から単一の配布ファイル`dist/bashstock.sh`を生成し、構文を検査します。 |
-| `just lint` | ソースと配布ファイルのBash構文、ShellCheck、Docコメント、差分の空白エラーを検査します。 |
+| `just docs` | `src/`のDocコメントから`docs/reference/functions.md`と`docs/reference/modules/`を生成します。 |
+| `just lint` | ソースと配布ファイルのBash構文、ShellCheck、Docコメント、生成済みリファレンスとの差分、名前付き引数とTab補完の対応、正規表現の判定のサブシェル化、差分の空白エラーを検査します。 |
 | `just test` | 配布物を生成してからBatsテストを実行します。 |
 | `just verify` | 静的検査、配布物の生成、全テストを順に実行します。 |
 
@@ -50,8 +52,10 @@ git submodule update --init --recursive
 - ファイルパスの列挙にはヌル文字区切りを使用します。
 - 利用者の入力を`eval`へ渡しません。
 - 外部コマンドを使わずに実装できる処理は、Bashの組み込み機能を使用します。
+- 正規表現の判定は`( [[ ... =~ ... ]] )`のようにサブシェルで行い、呼び出し元の`BASH_REMATCH`を変えません。
 - ライブラリの読み込みと公開関数の実行では、呼び出し元のシェルオプション、`IFS`、カレントディレクトリを保持します。
 - 新しい動作には正常系と異常系のテストを用意します。
+- 関数にはライブラリ仕様のDocコメントの規則に従ってshdoc形式のコメントと実行例を付け、変更後は`just docs`で`docs/reference/`を再生成します。
 
 ## PRの作成
 

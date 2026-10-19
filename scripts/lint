@@ -7,11 +7,8 @@ set -o pipefail
 project_root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
 readonly project_root
 
-### Visit each project shell file.
-###
-### Arguments
-###
-### * command - The command to run for each file.
+# @description Visit each project shell file.
+# @arg $1 string command The command to run for each file.
 lint::visit-files() {
   local command="${1}"
   local file=''
@@ -25,18 +22,15 @@ lint::visit-files() {
       "${project_root}/src" \
       "${project_root}/test" \
       -type f \
-      \( -name '*.sh' -o -name '*.bash' -o -name '*.bats' -o -name 'test' -o -name 'lint' -o -name 'build' \) \
+      \( -name '*.sh' -o -name '*.bash' -o -name '*.bats' -o -name 'test' -o -name 'test-*' -o -name 'lint' -o -name 'build' \) \
       -print0
   )
 
   return "${status}"
 }
 
-### Check the syntax of one shell file.
-###
-### Arguments
-###
-### * file - The shell file.
+# @description Check the syntax of one shell file.
+# @arg $1 string file The shell file.
 lint::check-syntax() {
   local file="${1}"
 
@@ -47,11 +41,8 @@ lint::check-syntax() {
   bash -n "${file}"
 }
 
-### Run ShellCheck for one shell file.
-###
-### Arguments
-###
-### * file - The shell file.
+# @description Run ShellCheck for one shell file.
+# @arg $1 string file The shell file.
 lint::check-shell() {
   local file="${1}"
 
@@ -63,28 +54,54 @@ lint::check-shell() {
   shellcheck --external-sources "${file}"
 }
 
-### Check that every production function has an adjacent Doc comment.
-###
-### Arguments
-###
-### This function takes no arguments.
+# @description Check the shdoc comment of every function in src/ and scripts/.
+#
+# Every function needs an adjacent comment block with @description. A public
+# library function, one in src/ whose name has no ::_ part and that is not
+# marked @internal, also needs @example, @exitcode, and @arg, @option, or
+# @noargs, so that help::show and docs/reference describe how to call it.
+# Each module in src/ starts with @file, @brief, and @description, and no
+# comment block may keep an unfinished to-do marker.
+#
+# @noargs
 lint::check-doc-comments() {
   local file=''
   local status='0'
 
   while IFS= read -r -d '' file; do
-    awk '
+    awk -v library="$([[ "${file}" == "${project_root}/src/"* ]] && printf 1 || printf 0)" \
+      -v module="$([[ "${file}" == "${project_root}/src/"*.sh && "${file}" != */runtime/* ]] && printf 1 || printf 0)" '
+      function fail(message) {
+        printf "%s:%d: %s: %s\n", FILENAME, FNR, message, name > "/dev/stderr"
+        failed = 1
+      }
+      FNR <= 4 && /^# @file / { has_file = 1 }
+      FNR <= 4 && /^# @brief / { has_brief = 1 }
+      FNR <= 4 && /^# @description / { has_description = 1 }
+      /^[[:space:]]*#/ {
+        block = block "\n" $0
+        next
+      }
       /^[[:space:]]*[[:alnum:]_:.-]+\(\)[[:space:]]*\{/ {
-        if (previous !~ /^[[:space:]]*###/) {
-          printf "%s:%d: function lacks an adjacent Doc comment: %s\n",
-            FILENAME, FNR, $0 > "/dev/stderr"
-          failed = 1
+        name = $0
+        sub(/^[[:space:]]*/, "", name)
+        sub(/\(\).*$/, "", name)
+        if (block ~ /TODO/) fail("shdoc comment has a TODO")
+        if (block !~ /# @description/) {
+          fail("function lacks an adjacent shdoc comment with @description")
+        } else if (library && name ~ /::/ && name !~ /::_/ && block !~ /# @internal/) {
+          if (block !~ /# @example/) fail("public function lacks @example")
+          if (block !~ /# @exitcode/) fail("public function lacks @exitcode")
+          if (block !~ /# @(arg|option|noargs)/) fail("public function lacks @arg, @option, or @noargs")
         }
       }
-      NF {
-        previous = $0
-      }
+      { block = "" }
       END {
+        if (module && !(has_file && has_brief && has_description)) {
+          name = "module header"
+          FNR = 1
+          fail("module lacks # @file, # @brief, and # @description on lines 2 to 4")
+        }
         exit failed
       }
     ' "${file}" || status='1'
@@ -93,18 +110,49 @@ lint::check-doc-comments() {
       "${project_root}/scripts" \
       "${project_root}/src" \
       -type f \
-      \( -name '*.sh' -o -name '*.bash' -o -name 'lint' -o -name 'build' \) \
+      \( -name '*.sh' -o -name '*.bash' -o -name 'test-*' -o -name 'lint' -o -name 'build' -o -name 'docs' -o -name 'check-completion' \) \
       -print0
   )
 
   return "${status}"
 }
 
-### Run every static check.
-###
-### Arguments
-###
-### This function takes no arguments.
+# @description Require every Bash regex test in src to run in a subshell.
+#
+# The library keeps the caller's BASH_REMATCH, so a [[ ... =~ ... ]] test must
+# be written as ( [[ ... =~ ... ]] ). The listed functions read the captures
+# and already run their tests in a subshell or a pipeline.
+#
+# @noargs
+# @exitcode 0 Every regex test is isolated.
+# @exitcode 1 A regex test can change the caller's BASH_REMATCH.
+lint::check-regex-isolation() {
+  local file='' status=0
+  for file in "${project_root}"/src/*.sh "${project_root}"/src/runtime/*.sh; do
+    awk '
+      BEGIN {
+        allowed["file::_replace-line"] = 1
+        allowed["git::_sequence-editor"] = 1
+        allowed["node::versions"] = 1
+        allowed["jdk::version::list"] = 1
+        allowed["regex::capture-group"] = 1
+        allowed["regex::capture-groups"] = 1
+        allowed["env::dotenv::_entries"] = 1
+      }
+      /^[A-Za-z_][A-Za-z0-9_:.-]*\(\) *[({]/ { name = $1; sub(/\(\).*/, "", name) }
+      /^[[:space:]]*#/ { next }
+      /\[\[ .* =~ / && !/\( \[\[ / && !(name in allowed) {
+        printf "%s:%d: %s: run the regex test in a subshell: ( [[ ... =~ ... ]] )\n", FILENAME, FNR, name > "/dev/stderr"
+        failed = 1
+      }
+      END { exit failed }
+    ' "${file}" || status=1
+  done
+  return "${status}"
+}
+
+# @description Run every static check.
+# @noargs
 main() {
   if ! command -v shellcheck >/dev/null 2>&1; then
     printf 'lint: shellcheck is required.\n' >&2
@@ -114,9 +162,12 @@ main() {
   lint::visit-files lint::check-syntax
   lint::visit-files lint::check-shell
   lint::check-doc-comments
+  lint::check-regex-isolation
+  "${project_root}/scripts/docs" --check
   "${project_root}/scripts/build"
   lint::check-syntax "${project_root}/dist/bashstock.sh"
   lint::check-shell "${project_root}/dist/bashstock.sh"
+  "${project_root}/scripts/check-completion"
   git -C "${project_root}" diff --check
 }
 

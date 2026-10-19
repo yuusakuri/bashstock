@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
+# @file completion
+# @brief Tab completion of named arguments for public functions.
+# @description A public function NAME is completed by the helper NAME-args with its last :: segment prefixed by an underscore.
 
-### Write the completion helper name that corresponds to a public function.
+# @description Write the completion helper name that corresponds to a public function.
+# @internal
 arg::completion::_helper-name() {
   if [[ "$#" -ne 1 || -z "$1" ]]; then
     return 64
@@ -16,7 +20,8 @@ arg::completion::_helper-name() {
   printf '%s::_%s-args\n' "${namespace}" "${action}"
 }
 
-### Write the public function name that corresponds to a completion helper.
+# @description Write the public function name that corresponds to a completion helper.
+# @internal
 arg::completion::_target-name() {
   if [[ "$#" -ne 1 || "$1" != *'::_'*'-args' ]]; then
     return 64
@@ -29,11 +34,26 @@ arg::completion::_target-name() {
   printf '%s::%s\n' "${namespace}" "${action}"
 }
 
-### Dispatch Tab completion to the target function's completion helper.
-###
-### Registered with `complete -F` for every function that has a matching
-### `::_<action>-args` helper. Bash calls this with no arguments and reads
-### COMP_WORDS, COMP_CWORD, and COMPREPLY.
+# @description Dispatch Tab completion to the target function's completion helper.
+#
+# Registered with `complete -F` for every function that has a matching
+# `::_<action>-args` helper. Bash calls this with no arguments and reads
+# COMP_WORDS and COMP_CWORD. When the previous word is a named argument, the
+# helper receives it and writes the values for that argument; otherwise it
+# writes the argument names.
+#
+# @noargs
+# @set COMPREPLY The candidates that start with the current word.
+# @exitcode 0 Always, also when the function has no helper.
+# @example
+#   example::run() { :; }
+#   example::_run-args() {
+#     case "${1:-}" in
+#       --mode) printf '%s\n' fast safe ;;
+#       *) printf '%s\n' --mode ;;
+#     esac
+#   }
+#   complete -F arg::completion::dispatch example::run
 arg::completion::dispatch() {
   local target="${COMP_WORDS[0]}"
   local current="${COMP_WORDS[COMP_CWORD]}"
@@ -58,10 +78,17 @@ arg::completion::dispatch() {
   COMPREPLY=($(compgen -W "${candidates}" -- "${current}"))
 }
 
-### Register Tab completion for every function that has a completion helper.
-###
-### Registered automatically when the library is sourced in an interactive shell.
-### Call again after defining additional completion helpers.
+# @description Register Tab completion for every function that has a completion helper.
+#
+# Registered automatically when the library is sourced in an interactive shell.
+# Call again after defining additional completion helpers.
+#
+# @noargs
+# @exitcode 0 The completions were registered, or complete is unavailable.
+# @exitcode 64 An argument was given.
+# @example
+#   source my-functions.sh
+#   arg::completion::register-all
 arg::completion::register-all() {
   if [[ "$#" -ne 0 ]]; then
     return 64
