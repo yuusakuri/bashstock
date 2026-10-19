@@ -11,7 +11,7 @@ PSWinUtilの公開関数から、取得元と版の選択、OS・CPUの判定、
 | JDK、pipx、GUIアプリなどの導入関数 | 対象OSの提供パッケージとCPUを確認します。対象外のOS・CPUや要求版がない場合は、別の製品や版へ黙って切り替えません。 |
 | `android::cli::install`、`android::sdk::install` | Android CLIの公式配布物をOS・CPUで選びます。LinuxではAndroid Studioと同じ `$HOME/Android/Sdk`、macOSでは `$HOME/Library/Android/sdk` を使います。 |
 | Android SDK構成要素の各導入関数 | Platform Tools、SDK Platform、Build Tools、Command-line Tools、Emulatorを個別に導入し、実行ファイルまたは `android.jar` を確認します。導入時のライセンスは非対話で受諾します。Linux の Emulator は、起動に必要なシステムライブラリも導入します。現在の Emulator は glibc 2.30 以上を要求するため、Ubuntu 18.04（glibc 2.27）では起動確認に失敗して終了状態 69 を返します。 |
-| `android::system-images::versions`、`android::avd::create` | API、tag、ABI、改訂版を区別します。同名AVDは明示指定なしに置き換えず、導入済みイメージの版を下げません。作成と起動は別の関数です。 |
+| `android::system-images::versions`、`android::avd::create` | API、tag、ABI、改訂版を区別します。同名AVDは明示指定なしに置き換えません。導入済みのイメージはほかのAVDが使うため版を変えず、改訂版を省略した場合は導入済みの版を使い、異なる版を指定した場合は終了状態69を返します。作成と起動は別の関数です。 |
 | `android::avd::start`、`android::avd::stop`、`android::avd::delete` | ポートと接続状態を検査し、起動完了を待ちます。停止と削除はそれぞれ公開関数で実行します。 |
 | 既存のADB操作 | 端末の指定、失敗時の終了状態、パスの引用を保持します。再起動後は既定60秒で再接続を待ち、bootloader解除にはfastbootを使います。wake lockは対応端末のsysfsを操作します。 |
 

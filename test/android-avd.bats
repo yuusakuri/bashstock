@@ -19,7 +19,7 @@ load test_helper
   [ "$output" = 5556 ]
 }
 
-@test "AVD creation keeps an existing name, upgrades an older image, and refuses a downgrade" {
+@test "AVD creation keeps an existing name and the installed image revision" {
   export HOME="$BATS_TEST_TMPDIR/home"
   export ANDROID_HOME="$HOME/Android SDK verify"
   export ANDROID_AVD_HOME="$HOME/.android/avd"
@@ -72,18 +72,18 @@ SCRIPT
   [ "$status" -eq 0 ]
   [ -f "$ANDROID_AVD_HOME/test_avd.ini" ]
   local properties="$ANDROID_HOME/system-images/android-35/google_apis/arm64-v8a/source.properties"
-  # Google published revision 9 after 8 was installed: the image is upgraded.
+  # Revision 9 is offered after 8 was installed: other AVDs may use 8, so it stays.
   printf 'Pkg.Revision=8\n' >"$properties"
-  run android::avd::create upgraded_avd 35
+  run android::avd::create default_avd 35
   [ "$status" -eq 0 ]
-  [ "$(<"$properties")" = 'Pkg.Revision=9' ]
-  [ -f "$ANDROID_AVD_HOME/upgraded_avd.ini" ]
-  # An installed revision newer than the newest offered one is kept.
-  printf 'Pkg.Revision=10\n' >"$properties"
-  run android::avd::create another_avd 35
+  [ "$(<"$properties")" = 'Pkg.Revision=8' ]
+  [ -f "$ANDROID_AVD_HOME/default_avd.ini" ]
+  run android::avd::create explicit_avd 35 medium_phone google_apis arm64-v8a 9
   [ "$status" -eq 69 ]
-  [ "$(<"$properties")" = 'Pkg.Revision=10' ]
-  [ ! -e "$ANDROID_AVD_HOME/another_avd.ini" ]
+  [ "$(<"$properties")" = 'Pkg.Revision=8' ]
+  [ ! -e "$ANDROID_AVD_HOME/explicit_avd.ini" ]
+  run android::avd::create same_avd 35 medium_phone google_apis arm64-v8a 8.0
+  [ "$status" -eq 0 ]
 }
 
 @test "AVD stop targets the named emulator and waits for disconnection" {

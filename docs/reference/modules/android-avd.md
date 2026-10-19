@@ -96,8 +96,9 @@ android::system-images::versions 35 google_apis x86_64
 
 Create one AVD from a stable Google APIs image without starting it.
 
-The system image is installed first. An existing AVD with the same name is
-kept unless --replace is given, and then it is backed up until the new one exists.
+The system image is installed first unless it is already installed. An
+existing AVD with the same name is kept unless --replace is given, and then
+it is backed up until the new one exists.
 
 #### Example
 
@@ -119,13 +120,13 @@ android::avd::create pixel_api35 35 pixel_8 google_apis arm64-v8a '' --replace
 * **$3** (string): Optional avdmanager profile. Defaults to medium_phone.
 * **$4** (string): Optional image tag. Defaults to google_apis.
 * **$5** (string): Optional image ABI. Defaults to the host CPU's ABI.
-* **$6** (string): Optional image revision. Defaults to the newest one. An installed older image is upgraded; a newer one is never downgraded.
+* **$6** (string): Optional image revision. Defaults to the installed one, or to the newest one when the image is not installed. An installed image is never changed, because other AVDs may use it.
 
 #### Exit codes
 
 * **0**: The AVD was created.
 * **64**: An argument is malformed.
-* **69**: Command-line Tools or the emulator is missing, no image matches, or the installed image is newer than the requested revision.
+* **69**: Command-line Tools or the emulator is missing, no image matches, or the installed image has a different revision than the requested one.
 * **73**: The AVD exists and --replace was not given, or avdmanager could not create it.
 * **74**: The existing AVD could not be backed up or restored.
 * other The status of the Android CLI or avdmanager.

@@ -99,16 +99,6 @@ android::avd::_directory() {
   fi
 }
 
-# @description Succeed when an installed SDK revision is newer than a requested one.
-# @internal
-android::avd::_newer-revision() {
-  [[ "$#" -eq 2 ]] || return 64
-  local newest=''
-  ! android::avd::_same-revision "$1" "$2" || return 1
-  newest="$(printf '%s\n%s\n' "$1" "$2" | package::_sort-versions | tail -n 1)" || return 64
-  [[ "${newest}" == "$1" ]]
-}
-
 # @description Compare SDK revision values while ignoring zero-only trailing components.
 # @internal
 android::avd::_same-revision() {
@@ -123,19 +113,20 @@ android::avd::_same-revision() {
 
 # @description Create one AVD from a stable Google APIs image without starting it.
 #
-# The system image is installed first. An existing AVD with the same name is
-# kept unless --replace is given, and then it is backed up until the new one exists.
+# The system image is installed first unless it is already installed. An
+# existing AVD with the same name is kept unless --replace is given, and then
+# it is backed up until the new one exists.
 #
 # @arg $1 string New AVD name: letters, digits, ., _, and -.
 # @arg $2 integer Optional Android API level. Defaults to the newest available one.
 # @arg $3 string Optional avdmanager profile. Defaults to medium_phone.
 # @arg $4 string Optional image tag. Defaults to google_apis.
 # @arg $5 string Optional image ABI. Defaults to the host CPU's ABI.
-# @arg $6 string Optional image revision. Defaults to the newest one. An installed older image is upgraded; a newer one is never downgraded.
+# @arg $6 string Optional image revision. Defaults to the installed one, or to the newest one when the image is not installed. An installed image is never changed, because other AVDs may use it.
 # @option --replace Replace an existing AVD after keeping a recoverable backup; give it last.
 # @exitcode 0 The AVD was created.
 # @exitcode 64 An argument is malformed.
-# @exitcode 69 Command-line Tools or the emulator is missing, no image matches, or the installed image is newer than the requested revision.
+# @exitcode 69 Command-line Tools or the emulator is missing, no image matches, or the installed image has a different revision than the requested one.
 # @exitcode 73 The AVD exists and --replace was not given, or avdmanager could not create it.
 # @exitcode 74 The existing AVD could not be backed up or restored.
 # @exitcode other The status of the Android CLI or avdmanager.
@@ -175,29 +166,34 @@ android::avd::create() {
     api="$(printf '%s\n' "${candidates}" | awk '{print $1}' |
       package::_sort-versions | tail -n 1)" || return "$?"
   fi
-  if [[ -z "${revision}" ]]; then
-    revision="$(printf '%s\n' "${candidates}" | awk -v api="${api}" '$1 == api {print $4}' |
-      package::_sort-versions | tail -n 1)" || return "$?"
-  fi
-  selected="${api} ${tag} ${abi} ${revision}"
-  grep -Fqx -- "${selected}" <<<"${candidates}" || return 69
   package="system-images/android-${api}/${tag}/${abi}"
   if [[ -f "${directory}/${package}/source.properties" ]]; then
     installed="$(awk -F= '$1 == "Pkg.Revision" {gsub(/[[:space:]]/, "", $2); print $2; exit}' \
       "${directory}/${package}/source.properties")"
-    # A newer revision may be in use by other AVDs, so it is never replaced by an older one.
-    if android::avd::_newer-revision "${installed}" "${revision}"; then
-      console::_write-error "System image ${package} ${installed} is newer than ${revision}; it is not downgraded."
+  fi
+  if [[ -n "${installed}" ]]; then
+    # Other AVDs may use the installed image, so its revision is never changed.
+    if [[ -z "${revision}" ]]; then
+      revision="${installed}"
+    elif ! android::avd::_same-revision "${installed}" "${revision}"; then
+      console::_write-error "System image ${package} ${installed} is installed and is not changed to ${revision}."
       return 69
     fi
+  else
+    if [[ -z "${revision}" ]]; then
+      revision="$(printf '%s\n' "${candidates}" | awk -v api="${api}" '$1 == api {print $4}' |
+        package::_sort-versions | tail -n 1)" || return "$?"
+    fi
+    selected="${api} ${tag} ${abi} ${revision}"
+    grep -Fqx -- "${selected}" <<<"${candidates}" || return 69
+    command="$(android::_cli-command)" || return "$?"
+    "${command}" --no-metrics "--sdk=${directory}" sdk install "${package}@${revision}" < <(yes) ||
+      return "$?"
+    [[ -f "${directory}/${package}/source.properties" ]] || return 69
+    installed="$(awk -F= '$1 == "Pkg.Revision" {gsub(/[[:space:]]/, "", $2); print $2; exit}' \
+      "${directory}/${package}/source.properties")"
+    android::avd::_same-revision "${installed}" "${revision}" || return 69
   fi
-  command="$(android::_cli-command)" || return "$?"
-  "${command}" --no-metrics "--sdk=${directory}" sdk install "${package}@${revision}" < <(yes) ||
-    return "$?"
-  [[ -f "${directory}/${package}/source.properties" ]] || return 69
-  installed="$(awk -F= '$1 == "Pkg.Revision" {gsub(/[[:space:]]/, "", $2); print $2; exit}' \
-    "${directory}/${package}/source.properties")"
-  android::avd::_same-revision "${installed}" "${revision}" || return 69
 
   mkdir -p -- "${root}" || return 74
   if android::avd::list | grep -Fqx -- "${name}"; then
