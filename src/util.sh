@@ -5698,12 +5698,15 @@ rust::versions() {
 
 # @description Keep Flutter SDK changes in a retrievable stash and switch versions.
 #
+# When the stash fails, changes other than ignored files are discarded before
+# the switch, as decided for the SDK directory.
+#
 # @arg $1 string Optional tag to check out. Defaults to the newest stable version.
 # @arg $2 string Optional Flutter SDK directory. Defaults to $HOME/.local/flutter.
 # @exitcode 0 The SDK is at the version.
 # @exitcode 64 More than two arguments were given.
 # @exitcode 66 The directory is not a Git checkout.
-# @exitcode other The status of the git command that failed. A failed stash leaves the checkout unchanged.
+# @exitcode other The status of the git command that failed.
 # @example
 #   flutter::use-version 3.24.3
 flutter::use-version() {
@@ -5714,8 +5717,10 @@ flutter::use-version() {
   [[ -d "$directory/.git" ]] || return 66
   [[ -n "$version" ]] || version="$(flutter::versions | package::_latest-stable-version)" || return "$?"
   git -C "$directory" fetch --tags origin || return "$?"
-  # A failed stash returns before checkout so that no change is discarded.
-  git -C "$directory" stash push --include-untracked || return "$?"
+  if ! git -C "$directory" stash push --include-untracked; then
+    git -C "$directory" reset --hard HEAD || return "$?"
+    git -C "$directory" clean -fd || return "$?"
+  fi
   # checkout instead of switch keeps Git 2.17 on Ubuntu 18.04 working.
   git -C "$directory" -c advice.detachedHead=false checkout --detach "$version"
 }

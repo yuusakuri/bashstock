@@ -6140,6 +6140,9 @@ _Function has no arguments._
 
 Keep Flutter SDK changes in a retrievable stash and switch versions.
 
+When the stash fails, changes other than ignored files are discarded before
+the switch, as decided for the SDK directory.
+
 #### Example
 
 ```bash
@@ -6156,7 +6159,7 @@ flutter::use-version 3.24.3
 * **0**: The SDK is at the version.
 * **64**: More than two arguments were given.
 * **66**: The directory is not a Git checkout.
-* other The status of the git command that failed. A failed stash leaves the checkout unchanged.
+* other The status of the git command that failed.
 
 ### jfrog::config::clear
 

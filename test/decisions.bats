@@ -116,17 +116,19 @@ SCRIPT
     grep -Fxq extra
 }
 
-@test "Flutter version switching keeps changes when the stash fails" {
+@test "Flutter version switching discards changes except ignored files when the stash fails" {
   local sdk="$BATS_TEST_TMPDIR/flutter"
   git init -q "$sdk"
   git -C "$sdk" config user.name test
   git -C "$sdk" config user.email test@example.invalid
+  printf 'ignored\n' >"$sdk/.gitignore"
   printf 'one\n' >"$sdk/version"
   git -C "$sdk" add .
   git -C "$sdk" commit -qm first
   git -C "$sdk" tag 1.0.0
   printf 'local\n' >"$sdk/version"
   printf 'extra\n' >"$sdk/extra"
+  printf 'kept\n' >"$sdk/ignored"
   git() {
     case "$3" in
       fetch) return 0 ;;
@@ -136,9 +138,10 @@ SCRIPT
   }
 
   run flutter::use-version 1.0.0 "$sdk"
-  [ "$status" -eq 1 ]
-  [ "$(cat "$sdk/version")" = local ]
-  [ "$(cat "$sdk/extra")" = extra ]
+  [ "$status" -eq 0 ]
+  [ "$(cat "$sdk/version")" = one ]
+  [ ! -e "$sdk/extra" ]
+  [ "$(cat "$sdk/ignored")" = kept ]
 }
 
 @test "normal push rejects stale history and force-with-lease requires a fresh fetch" {
