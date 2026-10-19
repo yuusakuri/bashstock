@@ -99,6 +99,16 @@ android::avd::_directory() {
   fi
 }
 
+# @description Succeed when an installed SDK revision is newer than a requested one.
+# @internal
+android::avd::_newer-revision() {
+  [[ "$#" -eq 2 ]] || return 64
+  local newest=''
+  ! android::avd::_same-revision "$1" "$2" || return 1
+  newest="$(printf '%s\n%s\n' "$1" "$2" | package::_sort-versions | tail -n 1)" || return 64
+  [[ "${newest}" == "$1" ]]
+}
+
 # @description Compare SDK revision values while ignoring zero-only trailing components.
 # @internal
 android::avd::_same-revision() {
@@ -121,11 +131,11 @@ android::avd::_same-revision() {
 # @arg $3 string Optional avdmanager profile. Defaults to medium_phone.
 # @arg $4 string Optional image tag. Defaults to google_apis.
 # @arg $5 string Optional image ABI. Defaults to the host CPU's ABI.
-# @arg $6 string Optional image revision. An installed image is never downgraded.
+# @arg $6 string Optional image revision. Defaults to the newest one. An installed older image is upgraded; a newer one is never downgraded.
 # @option --replace Replace an existing AVD after keeping a recoverable backup; give it last.
 # @exitcode 0 The AVD was created.
 # @exitcode 64 An argument is malformed.
-# @exitcode 69 Command-line Tools or the emulator is missing, or no image matches.
+# @exitcode 69 Command-line Tools or the emulator is missing, no image matches, or the installed image is newer than the requested revision.
 # @exitcode 73 The AVD exists and --replace was not given, or avdmanager could not create it.
 # @exitcode 74 The existing AVD could not be backed up or restored.
 # @exitcode other The status of the Android CLI or avdmanager.
@@ -175,7 +185,11 @@ android::avd::create() {
   if [[ -f "${directory}/${package}/source.properties" ]]; then
     installed="$(awk -F= '$1 == "Pkg.Revision" {gsub(/[[:space:]]/, "", $2); print $2; exit}' \
       "${directory}/${package}/source.properties")"
-    android::avd::_same-revision "${installed}" "${revision}" || return 69
+    # A newer revision may be in use by other AVDs, so it is never replaced by an older one.
+    if android::avd::_newer-revision "${installed}" "${revision}"; then
+      console::_write-error "System image ${package} ${installed} is newer than ${revision}; it is not downgraded."
+      return 69
+    fi
   fi
   command="$(android::_cli-command)" || return "$?"
   "${command}" --no-metrics "--sdk=${directory}" sdk install "${package}@${revision}" < <(yes) ||

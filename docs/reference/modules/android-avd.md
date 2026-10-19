@@ -119,13 +119,13 @@ android::avd::create pixel_api35 35 pixel_8 google_apis arm64-v8a '' --replace
 * **$3** (string): Optional avdmanager profile. Defaults to medium_phone.
 * **$4** (string): Optional image tag. Defaults to google_apis.
 * **$5** (string): Optional image ABI. Defaults to the host CPU's ABI.
-* **$6** (string): Optional image revision. An installed image is never downgraded.
+* **$6** (string): Optional image revision. Defaults to the newest one. An installed older image is upgraded; a newer one is never downgraded.
 
 #### Exit codes
 
 * **0**: The AVD was created.
 * **64**: An argument is malformed.
-* **69**: Command-line Tools or the emulator is missing, or no image matches.
+* **69**: Command-line Tools or the emulator is missing, no image matches, or the installed image is newer than the requested revision.
 * **73**: The AVD exists and --replace was not given, or avdmanager could not create it.
 * **74**: The existing AVD could not be backed up or restored.
 * other The status of the Android CLI or avdmanager.

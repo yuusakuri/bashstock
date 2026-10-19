@@ -19,7 +19,7 @@ load test_helper
   [ "$output" = 5556 ]
 }
 
-@test "AVD creation keeps an existing name and refuses an image downgrade" {
+@test "AVD creation keeps an existing name, upgrades an older image, and refuses a downgrade" {
   export HOME="$BATS_TEST_TMPDIR/home"
   export ANDROID_HOME="$HOME/Android SDK verify"
   export ANDROID_AVD_HOME="$HOME/.android/avd"
@@ -71,10 +71,18 @@ SCRIPT
   run android::avd::create test_avd 35 --replace
   [ "$status" -eq 0 ]
   [ -f "$ANDROID_AVD_HOME/test_avd.ini" ]
-  sed -i.bak 's/Pkg.Revision=9/Pkg.Revision=8/' \
-    "$ANDROID_HOME/system-images/android-35/google_apis/arm64-v8a/source.properties"
+  local properties="$ANDROID_HOME/system-images/android-35/google_apis/arm64-v8a/source.properties"
+  # Google published revision 9 after 8 was installed: the image is upgraded.
+  printf 'Pkg.Revision=8\n' >"$properties"
+  run android::avd::create upgraded_avd 35
+  [ "$status" -eq 0 ]
+  [ "$(<"$properties")" = 'Pkg.Revision=9' ]
+  [ -f "$ANDROID_AVD_HOME/upgraded_avd.ini" ]
+  # An installed revision newer than the newest offered one is kept.
+  printf 'Pkg.Revision=10\n' >"$properties"
   run android::avd::create another_avd 35
   [ "$status" -eq 69 ]
+  [ "$(<"$properties")" = 'Pkg.Revision=10' ]
   [ ! -e "$ANDROID_AVD_HOME/another_avd.ini" ]
 }
 
