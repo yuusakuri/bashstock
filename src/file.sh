@@ -72,7 +72,7 @@ file::_require-bash-expression() {
 
   if ! (
     local status=''
-    [[ '' =~ $1 ]] 2>/dev/null
+    ( [[ '' =~ $1 ]] ) 2>/dev/null
     status="$?"
     if [[ "${status}" -eq 2 ]]; then
       return 1

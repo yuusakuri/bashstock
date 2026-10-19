@@ -31,7 +31,7 @@ prompt::pause() {
 # @example
 #   time::sleep-hours 2 && make release
 time::sleep-hours() {
-  if [[ "$#" -ne 1 || ! "$1" =~ ^(0|[1-9][0-9]*)$ ]]; then return 64; fi
+  if ( [[ "$#" -ne 1 || ! "$1" =~ ^(0|[1-9][0-9]*)$ ]] ); then return 64; fi
   command -v sleep >/dev/null 2>&1 || return 69
   sleep "$((10#$1 * 3600))"
 }
@@ -69,7 +69,7 @@ storage::usage() {
 storage::largest-entries() {
   [[ "$#" -le 2 ]] || return 64
   local directory="${1:-.}" max="${2:-10}"
-  [[ -d "${directory}" && "${max}" =~ ^[1-9][0-9]*$ ]] || return 64
+  ( [[ -d "${directory}" && "${max}" =~ ^[1-9][0-9]*$ ]] ) || return 64
   command::require du || return "$?"
   command::require sort || return "$?"
   du -h -a -d 1 -- "${directory}" 2>/dev/null | sort -hr | head -n "${max}"
@@ -260,7 +260,7 @@ file::find-by-content() {
   if [[ -z "${processes}" ]]; then
     processes="$(getconf _NPROCESSORS_ONLN 2>/dev/null)" || processes=1
   fi
-  [[ "${processes}" =~ ^[1-9][0-9]*$ ]] || return 64
+  ( [[ "${processes}" =~ ^[1-9][0-9]*$ ]] ) || return 64
   grep -E -e "${expression}" </dev/null >/dev/null 2>&1 || status="$?"
   [[ "${status}" -ne 2 ]] || return 64
   output="$(mktemp -d "${TMPDIR:-/tmp}/bashstock-find.XXXXXX")" || return 74
@@ -310,7 +310,7 @@ file::latest-by-name() {
   local expression="$1" directory="${2:-.}" path='' newest='' newest_time=0 current_time='' LC_ALL=C
   [[ -d "${directory}" ]] || return 66
   while IFS= read -r -d '' path; do
-    [[ "${path##*/}" =~ ${expression} ]] || continue
+    ( [[ "${path##*/}" =~ ${expression} ]] ) || continue
     current_time="$(file::modified-time-unix-seconds "${path}" 2>/dev/null)" || continue
     if [[ -z "${newest}" ]] || ((current_time > newest_time)) ||
       { ((current_time == newest_time)) && [[ "${path}" < "${newest}" ]]; }; then
@@ -538,7 +538,7 @@ net::dns::test() {
 # @example
 #   user::add-to-group dialout
 user::add-to-group() {
-  if [[ "$#" -lt 1 || "$#" -gt 2 || ! "$1" =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]]; then return 64; fi
+  if ( [[ "$#" -lt 1 || "$#" -gt 2 || ! "$1" =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]] ); then return 64; fi
   local user="${2:-}"
   [[ -n "${user}" ]] || user="$(user::name)" || return "$?"
   case "$(system::operating-system)" in
@@ -671,10 +671,10 @@ time::posix-timezone() {
     printf 'UTC0\n'
     return 0
   fi
-  [[ "$1" =~ ^([+-])([0-9]{2}):([0-9]{2})$ ]] || return 64
-  sign="${BASH_REMATCH[1]}"
-  hours=$((10#${BASH_REMATCH[2]}))
-  minutes=$((10#${BASH_REMATCH[3]}))
+  ( [[ "$1" =~ ^[+-][0-9]{2}:[0-9]{2}$ ]] ) || return 64
+  sign="${1:0:1}"
+  hours=$((10#${1:1:2}))
+  minutes=$((10#${1:4:2}))
   ((hours <= 23 && minutes <= 59)) || return 64
   if ((hours == 0 && minutes == 0)); then
     printf 'UTC0\n'
@@ -695,15 +695,32 @@ time::posix-timezone() {
 # @arg $1 string SOURCE Directory to empty and remove.
 # @arg $2 string DESTINATION Directory to receive the entries; created when missing.
 # @exitcode 0 SOURCE was merged into DESTINATION and removed.
-# @exitcode 64 SOURCE is not a directory, or DESTINATION is a symbolic link or a file.
+# @exitcode 64 SOURCE is not a directory, DESTINATION is a symbolic link or a file, DESTINATION is SOURCE or inside it, or SOURCE holds an entry that would replace SOURCE itself.
 # @exitcode 74 An entry could not be moved, or SOURCE could not be removed.
 # @example
 #   directory::merge "${HOME}/デスクトップ" "${HOME}/Desktop"
 directory::merge() {
   [[ "$#" -eq 2 && -d "$1" && ! -L "$1" && -n "$2" ]] || return 64
   local source="$1" destination="$2" entry='' name='' target=''
+  local source_path='' destination_path='' created=0
   if [[ -L "${destination}" || (-e "${destination}" && ! -d "${destination}") ]]; then return 64; fi
+  [[ -e "${destination}" ]] || created=1
   mkdir -p -- "${destination}" || return 74
+  source_path="$(cd -P -- "${source}" && pwd -P)" || return 74
+  destination_path="$(cd -P -- "${destination}" && pwd -P)" || return 74
+  # Merging a directory into itself or into its own subdirectory would delete
+  # the entries being moved, and so would an entry named like SOURCE when
+  # DESTINATION is its parent.
+  case "${destination_path%/}/" in
+    "${source_path%/}/"*)
+      [[ "${created}" -eq 0 ]] || rmdir -- "${destination}" 2>/dev/null
+      return 64
+      ;;
+  esac
+  if [[ "${destination_path%/}/${source_path##*/}" == "${source_path}" &&
+    ( -e "${source}/${source_path##*/}" || -L "${source}/${source_path##*/}" ) ]]; then
+    return 64
+  fi
   while IFS= read -r -d '' entry; do
     name="${entry##*/}"
     target="${destination}/${name}"
@@ -842,7 +859,7 @@ file::edit() {
 file::release() {
   [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64
   local timeout="${2:-2}" start='' pid=''
-  [[ "${timeout}" =~ ^[0-9]+$ ]] || return 64
+  ( [[ "${timeout}" =~ ^[0-9]+$ ]] ) || return 64
   command -v lsof >/dev/null 2>&1 || return 69
   start="$(date +%s)" || return 74
   while read -r pid; do
@@ -1275,6 +1292,15 @@ diff::directories() { [[ "$#" -eq 2 && -d "$1" && -d "$2" ]] || return 64; comma
 # @internal
 git::_run-in-directory() { [[ "$#" -ge 2 && -d "$1" ]] || return 64; local directory="$1"; shift; command git -C "$directory" "$@"; }
 
+# @description Require operands that Git cannot read as options: not empty and not starting with -.
+# @internal
+git::_require-operands() {
+  local operand=''
+  for operand in "$@"; do
+    [[ -n "${operand}" && "${operand}" != -* ]] || return 64
+  done
+}
+
 # @description Clone a repository with depth one.
 #
 # @arg $1 string Repository URL.
@@ -1357,15 +1383,21 @@ git::branch::current() { [[ "$#" -le 1 ]] || return 64; local branch=''; branch=
 
 # @description Create a branch at a starting revision.
 #
-# @arg $1 string New branch name.
+# @arg $1 string New branch name that git check-ref-format --branch accepts.
 # @arg $2 string Optional starting revision. Defaults to HEAD.
 # @arg $3 string Optional repository directory. Defaults to the current directory.
 # @exitcode 0 The branch was created.
-# @exitcode 64 The argument count is not one to three.
+# @exitcode 64 The argument count is not one to three, the name is invalid, or a value starts with -.
 # @exitcode other The status of git branch.
 # @example
 #   git::branch::create release/1.2 v1.2.0
-git::branch::create() { [[ "$#" -ge 1 && "$#" -le 3 ]] || return 64; git::_run-in-directory "${3:-.}" branch "$1" "${2:-HEAD}"; }
+git::branch::create() {
+  [[ "$#" -ge 1 && "$#" -le 3 ]] || return 64
+  # A name such as -D would make git branch delete a branch instead.
+  git::_require-operands "$1" "${2:-HEAD}" || return 64
+  command git check-ref-format --branch "$1" >/dev/null 2>&1 || return 64
+  git::_run-in-directory "${3:-.}" branch "$1" "${2:-HEAD}"
+}
 
 # @description List local and remote-tracking branches.
 #
@@ -1488,6 +1520,7 @@ git::commit::patch() {
 git::_require-commit() {
   [[ "$#" -eq 3 ]] || return 64
   local revision="$1" remote="$2" directory="$3"
+  git::_require-operands "${revision}" "${remote}" || return 64
   git::_run-in-directory "${directory}" cat-file -e "${revision}^{commit}" 2>/dev/null && return 0
   git::_run-in-directory "${directory}" fetch "${remote}" "${revision}" || return 69
   if ! git::_run-in-directory "${directory}" cat-file -e "${revision}^{commit}" 2>/dev/null; then
@@ -1549,6 +1582,7 @@ git::fetch-unshallow() {
     [[ -n "${remotes}" ]] || return 66
   fi
   while IFS= read -r remote; do
+    git::_require-operands "${remote}" || return 64
     # Only the first fetch can unshallow; later remotes complete normally.
     if [[ "$(git::_run-in-directory "${directory}" rev-parse --is-shallow-repository)" == true ]]; then
       git::_run-in-directory "${directory}" fetch --unshallow "${remote}" || return "$?"
@@ -1618,7 +1652,7 @@ git::stash::drop() { [[ "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:
 # @exitcode other The status of git reset.
 # @example
 #   git::fetch origin && git::reset origin/main
-git::reset() { [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64; git::_run-in-directory "${2:-.}" reset --hard "$1"; }
+git::reset() { [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64; git::_require-operands "$1" || return 64; git::_run-in-directory "${2:-.}" reset --hard "$1" --; }
 
 # @description Update a branch from a remote with rebase.
 #
@@ -1635,6 +1669,7 @@ git::pull-rebase() {
   [[ "$#" -le 3 ]] || return 64
   local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
   [[ -n "${branch}" ]] || branch="$(git::branch::current "${directory}")" || return "$?"
+  git::_require-operands "${remote}" "${branch}" || return 64
   git::_run-in-directory "${directory}" pull --rebase "${remote}" "${branch}"
 }
 
@@ -1738,6 +1773,7 @@ gerrit::push-review() {
   [[ "$#" -le 3 ]] || return 64
   local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
   [[ -n "${branch}" ]] || branch="$(git::branch::current "${directory}")" || return "$?"
+  git::_require-operands "${remote}" "${branch}" || return 64
   git::_run-in-directory "${directory}" push "${remote}" "HEAD:refs/for/${branch}"
 }
 
@@ -1756,6 +1792,7 @@ gerrit::push-review-wip() {
   [[ "$#" -le 3 ]] || return 64
   local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
   [[ -n "${branch}" ]] || branch="$(git::branch::current "${directory}")" || return "$?"
+  git::_require-operands "${remote}" "${branch}" || return 64
   git::_run-in-directory "${directory}" push "${remote}" "HEAD:refs/for/${branch}%wip"
 }
 
@@ -1774,6 +1811,7 @@ git::remote::delete-branch() {
   [[ "$#" -le 3 ]] || return 64
   local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
   [[ -n "${branch}" ]] || branch="$(git::branch::current "${directory}")" || return "$?"
+  git::_require-operands "${remote}" "${branch}" || return 64
   git::_run-in-directory "${directory}" push "${remote}" --delete "${branch}"
 }
 
@@ -1819,8 +1857,9 @@ git::reset-remote() {
   [[ "$#" -le 2 ]] || return 64
   local remote="${1:-origin}" directory="${2:-.}" branch=''
   branch="$(git::branch::current "${directory}")" || return "$?"
+  git::_require-operands "${remote}" || return 64
   git::_run-in-directory "${directory}" fetch "${remote}" || return "$?"
-  git::_run-in-directory "${directory}" reset --hard "${remote}/${branch}"
+  git::_run-in-directory "${directory}" reset --hard "${remote}/${branch}" --
 }
 
 # @description Pull the configured base branch with fast-forward-only semantics.
@@ -1880,9 +1919,10 @@ env::dotenv::_export-commands() {
 # blank and lose surrounding blanks. Single-quoted values are literal.
 # Double-quoted values accept the escapes \n, \t, \r, \", \\, and \$. The
 # whole file is validated before anything is written; a malformed line
-# returns 65 and writes nothing.
+# returns 65 and writes nothing. The body runs in a subshell, so its regex
+# captures do not reach the caller's BASH_REMATCH.
 # @internal
-env::dotenv::_entries() {
+env::dotenv::_entries() (
   [[ "$#" -eq 1 && -f "$1" && ! -L "$1" ]] || return 64
   local line='' key='' rest='' value='' character='' quote='' index=0 length=0 number=0
   local entry_keys=() entry_values=()
@@ -1937,7 +1977,7 @@ env::dotenv::_entries() {
   for index in "${!entry_keys[@]}"; do
     printf '%s\0%s\0' "${entry_keys[index]}" "${entry_values[index]}"
   done
-}
+)
 
 # @description Set an environment variable for the current shell.
 #
@@ -1953,9 +1993,9 @@ env::dotenv::_entries() {
 # @example
 #   env::set-variable EDITOR vim bash
 env::set-variable() {
-  [[ "$#" -ge 2 && "$#" -le 3 && "$1" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] || return 64
+  ( [[ "$#" -ge 2 && "$#" -le 3 && "$1" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] ) || return 64
   local name="$1" value="$2" shells="${3:-bash,zsh}" shell='' rc='' quoted=''
-  [[ "$shells" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] || return 64
+  ( [[ "$shells" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] ) || return 64
   printf -v quoted '%q' "$value"
   local _util_shells=()
   IFS=',' read -r -a _util_shells <<<"$shells"
@@ -1982,7 +2022,7 @@ env::set-variable() {
 env::add-path() {
   [[ "$#" -ge 1 && "$#" -le 2 && -d "$1" ]] || return 64
   local path="$1" shells="${2:-bash,zsh}" shell='' rc='' quoted='' line=''
-  [[ "$shells" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] || return 64
+  ( [[ "$shells" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] ) || return 64
   printf -v quoted '%q' "$path"
   line="__bashstock_path=${quoted}; case \":\$PATH:\" in *\":\$__bashstock_path:\"*) ;; *) if [ -n \"\$PATH\" ]; then PATH=\"\$PATH:\$__bashstock_path\"; else PATH=\"\$__bashstock_path\"; fi; export PATH ;; esac; unset __bashstock_path"
   local _util_shells=()
@@ -2013,7 +2053,7 @@ env::add-path() {
 env::dotenv::register() {
   [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" && ! -L "$1" ]] || return 64
   local file="$1" shells="${2:-bash,zsh}" shell='' rc='' line='' library='' quoted_file=''
-  [[ "${shells}" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] || return 64
+  ( [[ "${shells}" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] ) || return 64
   [[ "${file}" == /* ]] || file="${PWD}/${file}"
   file="$(path::normalize "${file}")" || return "$?"
   printf -v quoted_file '%q' "${file}"
@@ -2155,7 +2195,7 @@ ssh::config::_write-block() {
 # @example
 #   ssh::config::update "${HOME}/.ssh/config" github.com IdentityFile '~/.ssh/github'
 ssh::config::update() {
-  [[ "$#" -eq 4 && -n "$1" && -n "$2" && "$3" =~ ^[A-Za-z][A-Za-z0-9]*$ && -n "$4" ]] || return 64
+  ( [[ "$#" -eq 4 && -n "$1" && -n "$2" && "$3" =~ ^[A-Za-z][A-Za-z0-9]*$ && -n "$4" ]] ) || return 64
   [[ "$4" != *$'\n'* && "$4" != *$'\r'* ]] || return 64
   ssh::config::_write-block "$1" "$2" "  $3 $4"
 }
@@ -2320,7 +2360,7 @@ ssh::key::add-all-private-keys() { ssh::key::add-all "$@"; }
 net::ping() {
   [[ "$#" -le 3 ]] || return 64
   local host="${1:-google.com}" attempts="${2:-3}" timeout="${3:-5}"
-  [[ -n "${host}" && "${attempts}" =~ ^[1-9][0-9]*$ && "${timeout}" =~ ^[1-9][0-9]*$ ]] || return 64
+  ( [[ -n "${host}" && "${attempts}" =~ ^[1-9][0-9]*$ && "${timeout}" =~ ^[1-9][0-9]*$ ]] ) || return 64
   command::require ping || return "$?"
   case "$(system::operating-system)" in
     # BSD ping takes the reply timeout in milliseconds.
@@ -2335,8 +2375,8 @@ net::ping() {
 net::_is-ip-address() {
   [[ "$#" -eq 1 ]] || return 64
   local octet='(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])'
-  [[ "$1" =~ ^${octet}\.${octet}\.${octet}\.${octet}$ ]] && return 0
-  [[ "$1" =~ ^[0-9A-Fa-f:.]+$ && "$1" == *:*:* && "$1" != *:::* ]]
+  ( [[ "$1" =~ ^${octet}\.${octet}\.${octet}\.${octet}$ ]] ) && return 0
+  ( [[ "$1" =~ ^[0-9A-Fa-f:.]+$ && "$1" == *:*:* && "$1" != *:::* ]] )
 }
 
 # @description Disable every active swap area through administrator execution.
@@ -2400,7 +2440,7 @@ swap::remove-all-files() {
 swap::create() {
   [[ "$#" -le 2 ]] || return 64
   local size="${1:-8589934592}" path="${2:-/swapfile}"
-  [[ "${size}" =~ ^[1-9][0-9]*$ && "${path}" == /* ]] || return 64
+  ( [[ "${size}" =~ ^[1-9][0-9]*$ && "${path}" == /* ]] ) || return 64
   # /etc/fstab separates fields with blanks and escapes with backslashes.
   [[ "${path}" != *[[:space:]\\]* ]] || return 64
   [[ "$(system::operating-system)" == linux ]] || return 69
@@ -2452,12 +2492,12 @@ path::find() {
   [[ -d "${directory}" ]] || return 66
   # [[ =~ ]] returns 2 for an invalid expression.
   # shellcheck disable=SC2319
-  [[ '' =~ ${expression} ]] || status="$?"
+  ( [[ '' =~ ${expression} ]] ) || status="$?"
   [[ "${status}" -ne 2 ]] || return 64
   (
     shopt -s nocasematch
     while IFS= read -r -d '' path; do
-      if [[ "${path}" =~ ${expression} ]]; then
+      if ( [[ "${path}" =~ ${expression} ]] ); then
         printf '%s\0' "${path}"
         found=0
       fi
@@ -2486,7 +2526,7 @@ file::tree-with-contents() {
   [[ "$#" -le 3 ]] || return 64
   local path="${1:-.}" minimum="${2:-1}" maximum="${3:-}" entry=''
   [[ -e "${path}" ]] || return 66
-  [[ "${minimum}" =~ ^[0-9]+$ && ( -z "${maximum}" || "${maximum}" =~ ^[0-9]+$ ) ]] || return 64
+  ( [[ "${minimum}" =~ ^[0-9]+$ && ( -z "${maximum}" || "${maximum}" =~ ^[0-9]+$ ) ]] ) || return 64
   command::require file || return "$?"
   local arguments=("${path}" -mindepth "${minimum}")
   [[ -z "${maximum}" ]] || arguments+=(-maxdepth "${maximum}")
@@ -2524,9 +2564,9 @@ file::_print-text() {
 #   net::tcp::test github.com 22 5 && git::fetch
 # shellcheck disable=SC2329
 net::tcp::test() {
-  [[ "$#" -ge 2 && "$#" -le 3 && -n "$1" && "$2" =~ ^[0-9]+$ ]] || return 64
+  ( [[ "$#" -ge 2 && "$#" -le 3 && -n "$1" && "$2" =~ ^[0-9]+$ ]] ) || return 64
   local timeout="${3:-10}"
-  [[ "${timeout}" =~ ^[1-9][0-9]*$ ]] || return 64
+  ( [[ "${timeout}" =~ ^[1-9][0-9]*$ ]] ) || return 64
   command::require nc || return "$?"
   nc -z -w "${timeout}" "$1" "$2" >/dev/null 2>&1
 }
@@ -2576,7 +2616,7 @@ serial::write-command() {
     *) return 64 ;;
   esac
   # Every argument is validated before the device receives anything.
-  [[ "$wait" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 64
+  ( [[ "$wait" =~ ^[0-9]+([.][0-9]+)?$ ]] ) || return 64
   printf '%s%s' "$data" "$suffix" >"$device" || return 74
   [[ "$wait" == 0 ]] || sleep "$wait"
 }
@@ -2596,7 +2636,7 @@ serial::write-command() {
 screen::open-serial() {
   [[ "$#" -ge 1 && "$#" -le 3 && -e "$1" ]] || return 64
   local device="$1" baud="${2:-115200}" log="${3:-}" stamp=''
-  [[ "${baud}" =~ ^[1-9][0-9]*$ ]] || return 64
+  ( [[ "${baud}" =~ ^[1-9][0-9]*$ ]] ) || return 64
   command::require screen || return "$?"
   if [[ -z "${log}" ]]; then
     stamp="$(time::local-date-time-seconds-basic)" || return "$?"
@@ -2722,7 +2762,7 @@ repo::init() {
 repo::sync() {
   [[ "$#" -ge 1 && "$#" -le 3 && -n "$1" ]] || return 64
   local jobs="${2:-4}" directory="${3:-.}"
-  [[ "${jobs}" =~ ^[1-9][0-9]*$ ]] || return 64
+  ( [[ "${jobs}" =~ ^[1-9][0-9]*$ ]] ) || return 64
   command::require repo || return "$?"
   (cd -- "${directory}" && repo sync --force-sync -j "${jobs}" "$1")
 }
@@ -3168,7 +3208,7 @@ adb::device::reboot() {
   local timeout=60 serial='' start='' state='' disconnected=0
   local serial_args=()
   if [[ "$#" -ge 1 && "$1" != '--serial' ]]; then timeout="$1"; shift; fi
-  [[ "$timeout" =~ ^[1-9][0-9]*$ ]] || return 64
+  ( [[ "$timeout" =~ ^[1-9][0-9]*$ ]] ) || return 64
   if [[ "$#" -gt 0 ]]; then
     [[ "$#" -eq 2 && "$1" == '--serial' && -n "$2" ]] || return 64
     serial="$2"
@@ -3241,7 +3281,7 @@ adb::device::wait-for-path() {
   local serial_args=()
   shift
   if [[ "$#" -gt 0 && "$1" != '--serial' ]]; then timeout="$1"; shift; fi
-  [[ "$timeout" =~ ^[1-9][0-9]*$ ]] || return 64
+  ( [[ "$timeout" =~ ^[1-9][0-9]*$ ]] ) || return 64
   if [[ "$#" -gt 0 ]]; then
     [[ "$#" -eq 2 && "$1" == '--serial' && -n "$2" ]] || return 64
     serial_args=(--serial "$2")
@@ -3393,7 +3433,7 @@ adb::_fastboot-listed() {
 adb::_wait-device() {
   [[ "$#" -eq 1 || ( "$#" -eq 3 && "$2" == '--serial' && -n "$3" ) ]] || return 64
   local timeout="$1" start='' state=''
-  [[ "$timeout" =~ ^[1-9][0-9]*$ ]] || return 64
+  ( [[ "$timeout" =~ ^[1-9][0-9]*$ ]] ) || return 64
   shift
   start="$(date +%s)" || return 74
   while (( $(date +%s) - start < timeout )); do
@@ -3512,8 +3552,8 @@ adb::device::screen::capture-continuous() {
   if [[ "$#" -gt 0 && "$1" != '--serial' ]]; then directory="$1"; shift; fi
   if [[ "$#" -gt 0 && "$1" != '--serial' ]]; then interval="$1"; shift; fi
   if [[ "$#" -gt 0 && "$1" != '--serial' ]]; then max="$1"; shift; fi
-  [[ "$interval" =~ ^[0-9]+([.][0-9]+)?$ && "$interval" =~ [1-9] ]] || return 64
-  [[ "$max" =~ ^[0-9]+$ ]] || return 64
+  ( [[ "$interval" =~ ^[0-9]+([.][0-9]+)?$ && "$interval" =~ [1-9] ]] ) || return 64
+  ( [[ "$max" =~ ^[0-9]+$ ]] ) || return 64
   if [[ "$#" -gt 0 ]]; then
     [[ "$#" -eq 2 && "$1" == '--serial' && -n "$2" ]] || return 64
     serial_args=(--serial "$2")
@@ -3541,7 +3581,7 @@ adb::device::screen::capture-continuous() {
 adb::device::partition::sha256() {
   [[ "$#" -eq 1 || "$#" -eq 3 ]] || return 64
   local path="$1"
-  [[ "$path" =~ ^/dev/block/[A-Za-z0-9._/-]+$ && "$path" != *'..'* ]] || return 64
+  ( [[ "$path" =~ ^/dev/block/[A-Za-z0-9._/-]+$ && "$path" != *'..'* ]] ) || return 64
   shift
   if [[ "$#" -gt 0 ]]; then
     [[ "$1" == '--serial' && -n "$2" ]] || return 64
@@ -3575,7 +3615,7 @@ adb::wake::lock() {
   [[ "$#" -le 3 ]] || return 64
   local tag=debug
   if [[ "$#" -gt 0 && "$1" != '--serial' ]]; then tag="$1"; shift; fi
-  [[ "$tag" =~ ^[A-Za-z0-9_.-]+$ ]] || return 64
+  ( [[ "$tag" =~ ^[A-Za-z0-9_.-]+$ ]] ) || return 64
   [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
   adb::wake::_require-root "$@" || return "$?"
   adb::_run shell "test -w /sys/power/wake_lock" "$@" || return 69
@@ -3598,7 +3638,7 @@ adb::wake::unlock() {
   [[ "$#" -le 3 ]] || return 64
   local tag=debug
   if [[ "$#" -gt 0 && "$1" != '--serial' ]]; then tag="$1"; shift; fi
-  [[ "$tag" =~ ^[A-Za-z0-9_.-]+$ ]] || return 64
+  ( [[ "$tag" =~ ^[A-Za-z0-9_.-]+$ ]] ) || return 64
   [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
   adb::wake::_require-root "$@" || return "$?"
   adb::_run shell "test -w /sys/power/wake_unlock" "$@" || return 69
@@ -3659,7 +3699,7 @@ process::ids-by-name-regex() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; util::_
 # @example
 #   process::threads-by-pid "$$"
 process::threads-by-pid() {
-  [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] ) || return 64
   command::require ps || return "$?"
   case "$(system::operating-system)" in
     darwin) ps -M -p "$1" ;;
@@ -3701,7 +3741,7 @@ process::threads-by-name() {
 # tracing only of descendants.
 # @internal
 process::_trace-needs-root() {
-  [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] ) || return 64
   local owner='' scope=0
   [[ "${EUID}" -eq 0 ]] && return 1
   owner="$(ps -o uid= -p "$1" 2>/dev/null | tr -d ' ')"
@@ -3724,7 +3764,7 @@ process::_trace-needs-root() {
 # @example
 #   syscall::trace-by-pid "$(pgrep -x nginx | head -n 1)"
 syscall::trace-by-pid() {
-  [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] ) || return 64
   [[ "$(system::operating-system)" == linux ]] || return 69
   command::require strace || return "$?"
   if process::_trace-needs-root "$1"; then
@@ -3748,7 +3788,7 @@ syscall::trace-by-pid() {
 # @example
 #   lib::trace-by-pid 4242
 lib::trace-by-pid() {
-  [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] ) || return 64
   [[ "$(system::operating-system)" == linux ]] || return 69
   command::require ltrace || return "$?"
   if process::_trace-needs-root "$1"; then
@@ -3769,7 +3809,7 @@ lib::trace-by-pid() {
 # @example
 #   gdb::attach-pid 4242 > backtrace.txt
 gdb::attach-pid() {
-  [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] ) || return 64
   command::require gdb || return "$?"
   gdb -q -batch -p "$1" -ex 'thread apply all bt'
 }
@@ -3785,7 +3825,7 @@ gdb::attach-pid() {
 # @exitcode other The status of gdbserver.
 # @example
 #   gdb::server::start 2345 ./build/app --verbose
-gdb::server::start() { [[ "$#" -ge 2 && "$1" =~ ^[0-9]+$ && -n "$2" ]] || return 64; util::_run-command gdbserver ":$1" "${@:2}"; }
+gdb::server::start() { ( [[ "$#" -ge 2 && "$1" =~ ^[0-9]+$ && -n "$2" ]] ) || return 64; util::_run-command gdbserver ":$1" "${@:2}"; }
 
 # @description Load ELF in GDB and connect to the GDB server at HOST and PORT.
 #
@@ -3798,7 +3838,7 @@ gdb::server::start() { [[ "$#" -ge 2 && "$1" =~ ^[0-9]+$ && -n "$2" ]] || return
 # @exitcode other The status of gdb.
 # @example
 #   gdb::connect ./build/app 192.168.1.50 2345
-gdb::connect() { [[ "$#" -eq 3 && -f "$1" && "$3" =~ ^[0-9]+$ ]] || return 64; util::_run-command gdb "$1" -ex "target remote $2:$3"; }
+gdb::connect() { ( [[ "$#" -eq 3 && -f "$1" && "$3" =~ ^[0-9]+$ ]] ) || return 64; util::_run-command gdb "$1" -ex "target remote $2:$3"; }
 
 # @description Run ELF in GDB with optional program arguments and stop at SYMBOL.
 #
@@ -3858,7 +3898,7 @@ i2c::bus::list() { [[ "$#" -eq 0 ]] || return 64; util::_run-command i2cdetect -
 # @exitcode other The status of i2cdetect.
 # @example
 #   i2c::device::list 1
-i2c::device::list() { [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64; util::_run-command i2cdetect -y "$1"; }
+i2c::device::list() { ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] ) || return 64; util::_run-command i2cdetect -y "$1"; }
 
 # @description Write the GPIO chips with gpiodetect.
 #
@@ -4003,7 +4043,7 @@ systemd::file() {
 # @description Require Linux with systemctl and a valid unit name.
 # @internal
 systemd::_require-unit() {
-  [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9@._:\\-]+$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9@._:\\-]+$ ]] ) || return 64
   [[ "$(system::operating-system)" == linux ]] || return 69
   command::require systemctl
 }
@@ -4397,7 +4437,7 @@ ruby::version::list() {
   while IFS= read -r version; do
     version="${version#"${version%%[![:space:]]*}"}"
     # if keeps a non-version last line from becoming the loop's status under pipefail.
-    if [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then printf '%s\n' "${version}"; fi
+    if ( [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ); then printf '%s\n' "${version}"; fi
   done <<<"${versions}" | package::_sort-versions
 }
 
@@ -4630,7 +4670,7 @@ sudo::passwordless::_user() {
   if [[ -z "${user}" ]]; then
     user="$(user::name)" || return "$?"
   fi
-  [[ "${user}" =~ ^[A-Za-z_][A-Za-z0-9._-]*$ ]] || return 64
+  ( [[ "${user}" =~ ^[A-Za-z_][A-Za-z0-9._-]*$ ]] ) || return 64
   printf '%s\n' "${user}"
 }
 
@@ -4774,14 +4814,24 @@ usb::partition::select() {
 usb::_unmount() {
   [[ "$#" -eq 1 && -b "$1" ]] || return 64
   command::require findmnt || return "$?"
-  local mount_point='' mount_points=''
+  local mount_point='' mount_points='' status=0
   # lsblk's MOUNTPOINT column holds only one location, and MOUNTPOINTS is
   # missing before util-linux 2.37, so findmnt lists every mount of the device.
-  mount_points="$(findmnt -n -l -o TARGET --source "$1")" || mount_points=''
+  # Status 1 means no mount; any other failure stops before the file system is used.
+  mount_points="$(findmnt -n -l -o TARGET --source "$1")" || status="$?"
+  case "${status}" in
+    0) ;;
+    1) mount_points='' ;;
+    *) return 74 ;;
+  esac
   while IFS= read -r mount_point; do
     [[ -n "${mount_point}" ]] || continue
     command::run-as-root umount -- "${mount_point}" || return 74
   done <<<"${mount_points}"
+  # A second query confirms that nothing is left mounted.
+  status=0
+  findmnt -n -l -o TARGET --source "$1" >/dev/null || status="$?"
+  [[ "${status}" -eq 1 ]] || return 74
 }
 
 # @description Write the USB block devices that can be selected: partitions, or disks without partitions.
@@ -4863,6 +4913,7 @@ usb::filesystem::format-fat32() {
 git::rebase-base-branch() {
   [[ "$#" -le 3 ]] || return 64
   local branch="${1:-main}" remote="${2:-upstream}" directory="${3:-.}"
+  git::_require-operands "${branch}" "${remote}" || return 64
   git::_run-in-directory "${directory}" fetch "${remote}" || return "$?"
   git::_run-in-directory "${directory}" checkout "${branch}" -- || return "$?"
   git::_run-in-directory "${directory}" rebase "${remote}/${branch}"
@@ -4998,7 +5049,7 @@ plist::set() {
 #   textproto::set-scalar config.textproto timeout_seconds 30
 #   textproto::set-scalar config.textproto name '"production"'
 textproto::set-scalar() {
-  [[ "$#" -eq 3 && -f "$1" && ! -L "$1" && "$2" =~ ^[A-Za-z_][A-Za-z0-9_]*$ && -n "$3" ]] || return 64
+  ( [[ "$#" -eq 3 && -f "$1" && ! -L "$1" && "$2" =~ ^[A-Za-z_][A-Za-z0-9_]*$ && -n "$3" ]] ) || return 64
   string::_require-one-line "$3" || return "$?"
   command::require perl || return "$?"
   local content=''
@@ -5070,7 +5121,7 @@ textproto::set-scalar() {
 shell::completion::enable-ignore-case() {
   [[ "$#" -le 1 ]] || return 64
   local shells="${1:-bash,zsh}" shell='' line=''
-  [[ "${shells}" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] || return 64
+  ( [[ "${shells}" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] ) || return 64
   local _util_shells=()
   IFS=',' read -r -a _util_shells <<<"${shells}"
   for shell in "${_util_shells[@]}"; do
@@ -5216,7 +5267,7 @@ git::config::set-username() {
 git::config::set-http-buffer() {
   [[ "$#" -le 1 ]] || return 64
   local size="${1:-524288000}"
-  [[ "${size}" =~ ^(0|[1-9][0-9]*)$ ]] || return 64
+  ( [[ "${size}" =~ ^(0|[1-9][0-9]*)$ ]] ) || return 64
   git config --global http.postBuffer "${size}"
 }
 
@@ -5375,7 +5426,7 @@ ssh::key::_generate() {
       *) arg::unknown "$1" || return "$?" ;;
     esac
   done
-  [[ -z "${passphrase_fd}" || "${passphrase_fd}" =~ ^[0-9]+$ ]] || return 64
+  ( [[ -z "${passphrase_fd}" || "${passphrase_fd}" =~ ^[0-9]+$ ]] ) || return 64
   command::require ssh-keygen || return "$?"
   output="${output:-${HOME}/.ssh/${default_name}}"
   mkdir -p -- "$(path::directory-name "${output}")" || return 74
@@ -5606,7 +5657,7 @@ git-credential-manager::_install-icu() {
 git-credential-manager::install() {
   [[ "$#" -le 1 ]] || return 64
   local version="${1:-}" platform='' architecture='' candidates='' candidate='' status=69
-  [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
+  ( [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ) || return 64
   platform="$(package::_platform)" || return "$?"
   case "${platform}" in
     darwin) platform='osx' ;;
@@ -5997,11 +6048,11 @@ chrome::profile::find-by-email() {
 # @example
 #   swap::ensure-total-size 8589934592
 swap::ensure-total-size() {
-  [[ "$#" -ge 1 && "$#" -le 3 && "$1" =~ ^[1-9][0-9]*$ ]] || return 64
+  ( [[ "$#" -ge 1 && "$#" -le 3 && "$1" =~ ^[1-9][0-9]*$ ]] ) || return 64
   local target="$1" max='' path='' current='' add=''
   if [[ "$#" -ge 2 ]]; then max="$2"; else max="$target"; fi
   if [[ "$#" -ge 3 ]]; then path="$3"; else path='/swapfile'; fi
-  [[ "$max" =~ ^[0-9]+$ ]] || return 64
+  ( [[ "$max" =~ ^[0-9]+$ ]] ) || return 64
   current="$(mem::swap-total-bytes)" || return "$?"
   (( current >= target )) && return 0
   add=$((target - current))
@@ -6043,7 +6094,7 @@ vscode::remove-user-data() {
 # @example
 #   adb::device::set-default "$(adb::device::first)"
 adb::device::set-default() {
-  [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9._:-]+$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9._:-]+$ ]] ) || return 64
   export ANDROID_SERIAL="$1"
 }
 
@@ -6169,10 +6220,10 @@ gpg::key::generate() {
         ;;
     esac
   done
-  [[ "${usage}" =~ ^(sign|cert|auth)(,(sign|cert|auth))*$ ]] || return 64
+  ( [[ "${usage}" =~ ^(sign|cert|auth)(,(sign|cert|auth))*$ ]] ) || return 64
   arg::one-of --algorithm "${algorithm}" ed25519 rsa3072 rsa4096 || return "$?"
-  [[ "${expires}" =~ ^(0|[1-9][0-9]*[dwmy]?)$ ]] || return 64
-  [[ -z "${passphrase_fd}" || "${passphrase_fd}" =~ ^[0-9]+$ ]] || return 64
+  ( [[ "${expires}" =~ ^(0|[1-9][0-9]*[dwmy]?)$ ]] ) || return 64
+  ( [[ -z "${passphrase_fd}" || "${passphrase_fd}" =~ ^[0-9]+$ ]] ) || return 64
   [[ "${pinentry}" == 'false' || -z "${passphrase_fd}" ]] || return 64
   command::require gpg || return "$?"
   if [[ -z "${user_id}" ]]; then
@@ -6182,9 +6233,14 @@ gpg::key::generate() {
     [[ -n "${name}" && -n "${email}" ]] || return 64
     user_id="${name} <${email}>"
   fi
+  # A control character such as a newline would add a directive, for example
+  # %no-protection, to the GnuPG parameter file.
+  [[ "${user_id}" != *[[:cntrl:]]* ]] || return 64
   local user_id_pattern='^([^<>]+) <([^<>@[:space:]]+@[^<>[:space:]]+)>$'
-  [[ "${user_id}" =~ ${user_id_pattern} ]] || return 64
-  local real_name="${BASH_REMATCH[1]}" email_address="${BASH_REMATCH[2]}" parameters='' directory='' status=0
+  ( [[ "${user_id}" =~ ${user_id_pattern} ]] ) || return 64
+  # The name and the address hold no < or >, so the first " <" separates them.
+  local real_name="${user_id%% <*}" email_address="${user_id#* <}" parameters='' directory='' status=0
+  email_address="${email_address%>}"
   case "${algorithm}" in
     ed25519)
       parameters="Key-Type: eddsa"$'\n'"Key-Curve: ed25519"$'\n'
@@ -6232,7 +6288,7 @@ net::dns::manager() { [[ "$#" -eq 0 ]] || return 64; net::dns::_manager; }
 # @description Write one setting from the effective NetworkManager configuration.
 # @internal
 net::dns::_network-manager-setting() {
-  [[ "$#" -eq 1 && "$1" =~ ^[a-z-]+$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[a-z-]+$ ]] ) || return 64
   command -v NetworkManager >/dev/null 2>&1 || return 1
   NetworkManager --print-config 2>/dev/null |
     awk -F= -v key="$1" '/^\[/ {section=$0} section == "[main]" && $1 == key {print $2; exit}'

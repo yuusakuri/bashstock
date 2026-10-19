@@ -77,7 +77,7 @@ android::_cli-command() {
 android::cli::install() {
   [[ "$#" -le 1 ]] || return 64
   local version="${1:-}" artifact='' temporary='' actual='' path=''
-  [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
+  ( [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ) || return 64
   artifact="$(android::_cli-artifact)" || return "$?"
   temporary="$(package::_temporary-directory)" || return "$?"
   if [[ -n "${version}" ]]; then path="${version}"; else path='latest'; fi
@@ -126,7 +126,7 @@ android::sdk::install() {
 android::_sdk-install() {
   [[ "$#" -eq 2 && -n "$1" ]] || return 64
   local package="$1" revision="$2" command='' directory='' specification=''
-  [[ -z "${revision}" || "${revision}" =~ ^[0-9]+(\.[0-9]+)*$ ]] || return 64
+  ( [[ -z "${revision}" || "${revision}" =~ ^[0-9]+(\.[0-9]+)*$ ]] ) || return 64
   android::_cli-artifact >/dev/null || return "$?"
   directory="$(android::sdk::directory)" || return "$?"
   [[ "${directory}" == /* ]] || return 64
@@ -177,7 +177,7 @@ android::platform-tools::install() {
 # @example
 #   android::sdk-platform::install 35
 android::sdk-platform::install() {
-  [[ "$#" -ge 1 && "$#" -le 2 && "$1" =~ ^[0-9]+$ ]] || return 64
+  ( [[ "$#" -ge 1 && "$#" -le 2 && "$1" =~ ^[0-9]+$ ]] ) || return 64
   android::_sdk-install "platforms/android-$1" "${2:-}" || return "$?"
   local directory=''
   directory="$(android::sdk::directory)" || return "$?"
@@ -198,7 +198,7 @@ android::sdk-platform::install() {
 android::build-tools::install() {
   [[ "$#" -le 2 ]] || return 64
   local version="${1:-}" directory=''
-  [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
+  ( [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ) || return 64
   [[ -n "${version}" ]] || version="$(android::build-tools::latest-version)" || return "$?"
   android::_sdk-install "build-tools/${version}" "${2:-}" || return "$?"
   directory="$(android::sdk::directory)" || return "$?"

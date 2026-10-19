@@ -57,9 +57,9 @@ android::avd::profiles() {
 android::system-images::versions() {
   [[ "$#" -le 3 ]] || return 64
   local api="${1:-}" tag="${2:-}" abi="${3:-}" directory='' command='' listing=''
-  [[ -z "${api}" || "${api}" =~ ^[0-9]+$ ]] || return 64
-  [[ -z "${tag}" || "${tag}" =~ ^[a-z0-9_]+$ ]] || return 64
-  [[ -z "${abi}" || "${abi}" =~ ^[A-Za-z0-9_-]+$ ]] || return 64
+  ( [[ -z "${api}" || "${api}" =~ ^[0-9]+$ ]] ) || return 64
+  ( [[ -z "${tag}" || "${tag}" =~ ^[a-z0-9_]+$ ]] ) || return 64
+  ( [[ -z "${abi}" || "${abi}" =~ ^[A-Za-z0-9_-]+$ ]] ) || return 64
   directory="$(android::sdk::directory)" || return "$?"
   command="$(android::_cli-command)" || return "$?"
   listing="$("${command}" --no-metrics "--sdk=${directory}" sdk list 'system-images/*' \
@@ -104,8 +104,8 @@ android::avd::_directory() {
 android::avd::_same-revision() {
   [[ "$#" -eq 2 ]] || return 64
   local first="$1" second="$2"
-  [[ "${first}" =~ ^[0-9]+(\.[0-9]+)*$ &&
-    "${second}" =~ ^[0-9]+(\.[0-9]+)*$ ]] || return 64
+  ( [[ "${first}" =~ ^[0-9]+(\.[0-9]+)*$ &&
+    "${second}" =~ ^[0-9]+(\.[0-9]+)*$ ]] ) || return 64
   while [[ "${first}" == *.0 ]]; do first="${first%.0}"; done
   while [[ "${second}" == *.0 ]]; do second="${second%.0}"; done
   [[ "${first}" == "${second}" ]]
@@ -141,16 +141,16 @@ android::avd::create() {
     count=$(($#-1))
     set -- "${@:1:count}"
   fi
-  [[ "$#" -le 6 && "$1" =~ ^[A-Za-z0-9._-]+$ ]] || return 64
+  ( [[ "$#" -le 6 && "$1" =~ ^[A-Za-z0-9._-]+$ ]] ) || return 64
   local name="$1" api="${2:-}" profile="${3:-medium_phone}" tag="${4:-google_apis}"
   local abi="${5:-}" revision="${6:-}" directory='' root=''
   local candidates='' selected='' package='' installed='' command='' backup='' status=0
-  [[ -z "${api}" || "${api}" =~ ^[0-9]+$ ]] || return 64
-  [[ "${profile}" =~ ^[A-Za-z0-9._-]+$ && "${tag}" =~ ^[a-z0-9_]+$ ]] || return 64
-  [[ -z "${revision}" || "${revision}" =~ ^[0-9]+(\.[0-9]+)*$ ]] || return 64
+  ( [[ -z "${api}" || "${api}" =~ ^[0-9]+$ ]] ) || return 64
+  ( [[ "${profile}" =~ ^[A-Za-z0-9._-]+$ && "${tag}" =~ ^[a-z0-9_]+$ ]] ) || return 64
+  ( [[ -z "${revision}" || "${revision}" =~ ^[0-9]+(\.[0-9]+)*$ ]] ) || return 64
   [[ -z "${replace}" || "${replace}" == --replace ]] || return 64
   [[ -n "${abi}" ]] || abi="$(android::avd::_abi)" || return "$?"
-  [[ "${abi}" =~ ^[A-Za-z0-9_-]+$ ]] || return 64
+  ( [[ "${abi}" =~ ^[A-Za-z0-9_-]+$ ]] ) || return 64
   directory="$(android::sdk::directory)" || return "$?"
   root="$(android::avd::_directory)" || return "$?"
   [[ -x "${directory}/cmdline-tools/latest/bin/avdmanager" &&
@@ -229,7 +229,7 @@ android::avd::create() {
 # @example
 #   android::avd::port::available 5556 && android::avd::start pixel_api35 5556
 android::avd::port::available() {
-  [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] ) || return 64
   local port="$1" occupied=''
   (( port >= 5554 && port <= 5682 && port % 2 == 0 )) || return 64
   if command -v lsof >/dev/null 2>&1; then
@@ -291,7 +291,7 @@ android::avd::start() {
   local name="${1:-}" port="${2:-}" timeout="${3:-180}" headless="${4:-}"
   local directory='' avds='' serial=''
   local started='' process_id='' state='' completed='' log=''
-  [[ "${timeout}" =~ ^[1-9][0-9]*$ ]] || return 64
+  ( [[ "${timeout}" =~ ^[1-9][0-9]*$ ]] ) || return 64
   [[ -z "${headless}" || "${headless}" == --headless ]] || return 64
   directory="$(android::sdk::directory)" || return "$?"
   [[ -x "${directory}/emulator/emulator" && -x "${directory}/platform-tools/adb" ]] || return 69
@@ -350,14 +350,14 @@ android::avd::start() {
 # @example
 #   android::avd::stop pixel_api35
 android::avd::stop() {
-  [[ "$#" -le 1 && ( "$#" -eq 0 || "$1" =~ ^[A-Za-z0-9._-]+$ ) ]] || return 64
+  ( [[ "$#" -le 1 && ( "$#" -eq 0 || "$1" =~ ^[A-Za-z0-9._-]+$ ) ]] ) || return 64
   local directory='' name="${1:-}" serial='' state='' identity='' listing='' selected=''
   local started='' response=''
   directory="$(android::sdk::directory)" || return "$?"
   [[ -x "${directory}/platform-tools/adb" ]] || return 69
   listing="$("${directory}/platform-tools/adb" devices)" || return "$?"
   while read -r serial state; do
-    [[ "${serial}" =~ ^emulator-[0-9]+$ && "${state}" == device ]] || continue
+    ( [[ "${serial}" =~ ^emulator-[0-9]+$ && "${state}" == device ]] ) || continue
     identity="$("${directory}/platform-tools/adb" -s "${serial}" emu avd name)" || return "$?"
     identity="${identity%%$'\n'*}"
     identity="${identity%$'\r'}"
@@ -388,7 +388,7 @@ android::avd::stop() {
 # @example
 #   android::avd::delete pixel_api35
 android::avd::delete() {
-  [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9._-]+$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9._-]+$ ]] ) || return 64
   local directory='' avds=''
   directory="$(android::sdk::directory)" || return "$?"
   [[ -x "${directory}/cmdline-tools/latest/bin/avdmanager" ]] || return 69

@@ -34,7 +34,7 @@ git submodule update --init --recursive
 | --- | --- |
 | `just build` | `src/`の実装と`LICENSE`から単一の配布ファイル`dist/bashstock.sh`を生成し、構文を検査します。 |
 | `just docs` | `src/`のDocコメントから`docs/reference/functions.md`と`docs/reference/modules/`を生成します。 |
-| `just lint` | ソースと配布ファイルのBash構文、ShellCheck、Docコメント、生成済みリファレンスとの差分、名前付き引数とTab補完の対応、差分の空白エラーを検査します。 |
+| `just lint` | ソースと配布ファイルのBash構文、ShellCheck、Docコメント、生成済みリファレンスとの差分、名前付き引数とTab補完の対応、正規表現の判定のサブシェル化、差分の空白エラーを検査します。 |
 | `just test` | 配布物を生成してからBatsテストを実行します。 |
 | `just verify` | 静的検査、配布物の生成、全テストを順に実行します。 |
 
@@ -52,6 +52,7 @@ git submodule update --init --recursive
 - ファイルパスの列挙にはヌル文字区切りを使用します。
 - 利用者の入力を`eval`へ渡しません。
 - 外部コマンドを使わずに実装できる処理は、Bashの組み込み機能を使用します。
+- 正規表現の判定は`( [[ ... =~ ... ]] )`のようにサブシェルで行い、呼び出し元の`BASH_REMATCH`を変えません。
 - ライブラリの読み込みと公開関数の実行では、呼び出し元のシェルオプション、`IFS`、カレントディレクトリを保持します。
 - 新しい動作には正常系と異常系のテストを用意します。
 - 関数にはライブラリ仕様のDocコメントの規則に従ってshdoc形式のコメントと実行例を付け、変更後は`just docs`で`docs/reference/`を再生成します。

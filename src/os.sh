@@ -45,7 +45,7 @@ platform::_identifier() {
 # @description Write one value from /etc/os-release without evaluating the file.
 # @internal
 platform::_os-release-value() {
-  [[ "$#" -eq 1 && "$1" =~ ^[A-Z_]+$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[A-Z_]+$ ]] ) || return 64
   [[ -r /etc/os-release ]] || return 66
   local key='' value=''
   while IFS='=' read -r key value; do

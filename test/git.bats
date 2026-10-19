@@ -319,3 +319,27 @@ git_test::create-remote-and-clone() {
   [ "$(git -C "${shallow}" rev-list --count HEAD)" -eq 3 ]
   git -C "${shallow}" rev-parse --verify --quiet refs/remotes/mirror/main
 }
+
+@test "Git wrappers refuse operands that Git would read as options" {
+  local repository="${BATS_TEST_TMPDIR}/repository"
+  git_test::create-repository "${repository}"
+  git_test::commit "${repository}" first first >/dev/null
+  git -C "${repository}" branch topic
+
+  run git::branch::create -D topic "${repository}"
+  [ "${status}" -eq 64 ]
+  git -C "${repository}" show-ref --verify --quiet refs/heads/topic
+  run git::branch::create 'bad..name' HEAD "${repository}"
+  [ "${status}" -eq 64 ]
+  run git::branch::create created HEAD "${repository}"
+  [ "${status}" -eq 0 ]
+
+  run git::reset --merge "${repository}"
+  [ "${status}" -eq 64 ]
+  run git::remote::delete-branch -x origin "${repository}"
+  [ "${status}" -eq 64 ]
+  run git::pull-rebase main --all "${repository}"
+  [ "${status}" -eq 64 ]
+  run git::commit::patch HEAD --upload-pack=evil "${repository}"
+  [ "${status}" -eq 64 ]
+}

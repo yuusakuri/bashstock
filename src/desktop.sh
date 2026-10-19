@@ -147,7 +147,7 @@ gsettings::_string-value() {
 # @example
 #   gnome::keybinding::set-custom custom100 Terminal gnome-terminal '<Super>Return'
 gnome::keybinding::set-custom() {
-  [[ "$#" -eq 4 && "$1" =~ ^[A-Za-z0-9_-]+$ && -n "$2" && -n "$3" && -n "$4" ]] || return 64
+  ( [[ "$#" -eq 4 && "$1" =~ ^[A-Za-z0-9_-]+$ && -n "$2" && -n "$3" && -n "$4" ]] ) || return 64
   local schema='org.gnome.settings-daemon.plugins.media-keys'
   local item_schema="${schema}.custom-keybinding"
   local base='/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/'
@@ -179,7 +179,7 @@ gnome::keybinding::set-custom() {
 # @description Require a keyboard layout name accepted by XKB.
 # @internal
 keyboard::_require-layout() {
-  [[ "$#" -eq 1 && "$1" =~ ^[a-z][a-z0-9_]*(\+[A-Za-z0-9_-]+)?$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[a-z][a-z0-9_]*(\+[A-Za-z0-9_-]+)?$ ]] ) || return 64
 }
 
 # @description Set GNOME input sources to Mozc followed by one XKB layout.
@@ -319,8 +319,8 @@ gnome::input-source::_first-layout() {
   command::require gsettings || return "$?"
   local sources='' pattern="\('xkb', '([^']+)'\)"
   sources="$(gsettings get org.gnome.desktop.input-sources sources)" || return 74
-  [[ "${sources}" =~ ${pattern} ]] || return 1
-  printf '%s\n' "${BASH_REMATCH[1]}"
+  # The capture is read in a subshell so that the caller's BASH_REMATCH is kept.
+  ( [[ "${sources}" =~ ${pattern} ]] && printf '%s\n' "${BASH_REMATCH[1]}" )
 }
 
 # @description Put Mozc first in GNOME input sources while keeping the current XKB layout.
@@ -353,7 +353,7 @@ gnome::input-source::set-mozc-first() {
 gnome::window::set-button-layout() {
   [[ "$#" -le 1 ]] || return 64
   local layout="${1:-appmenu:minimize,maximize,close}"
-  [[ "${layout}" =~ ^[a-z,:]*$ ]] || return 64
+  ( [[ "${layout}" =~ ^[a-z,:]*$ ]] ) || return 64
   command::require gsettings || return "$?"
   gsettings set org.gnome.desktop.wm.preferences button-layout "${layout}"
 }
@@ -400,7 +400,7 @@ keyboard::setup-ime-keys() {
   [[ "$#" -eq 0 || "$#" -eq 2 ]] || return 64
   local match='evdev:input:b0003v*p*' content=''
   if [[ "$#" -eq 2 ]]; then
-    [[ "$1" =~ ^[0-9A-Fa-f]{4}$ && "$2" =~ ^[0-9A-Fa-f]{4}$ ]] || return 64
+    ( [[ "$1" =~ ^[0-9A-Fa-f]{4}$ && "$2" =~ ^[0-9A-Fa-f]{4}$ ]] ) || return 64
     match="evdev:input:b0003v$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')p$(printf '%s' "$2" | tr '[:lower:]' '[:upper:]')*"
   fi
   [[ "$(system::operating-system)" == 'linux' ]] || return 69
@@ -654,7 +654,7 @@ mac::keyboard::use-function-keys() {
 mac::keyboard::set-repeat() {
   [[ "$#" -le 2 ]] || return 64
   local initial="${1:-30}" repeat="${2:-1}"
-  [[ "${initial}" =~ ^[0-9]+$ && "${repeat}" =~ ^[0-9]+$ ]] || return 64
+  ( [[ "${initial}" =~ ^[0-9]+$ && "${repeat}" =~ ^[0-9]+$ ]] ) || return 64
   package::_require-platform darwin || return "$?"
   defaults write NSGlobalDomain InitialKeyRepeat -int "${initial}" || return "$?"
   defaults write NSGlobalDomain KeyRepeat -int "${repeat}"

@@ -65,7 +65,7 @@ deb::install-from-url() {
 #   apt::package::candidates gcc-
 #   # gcc-12	12.3.0-1ubuntu1~22.04
 apt::package::candidates() {
-  [[ "$#" -eq 1 && "$1" =~ ^[a-z0-9][a-z0-9.+-]*$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[a-z0-9][a-z0-9.+-]*$ ]] ) || return 64
   package::_require-platform ubuntu || return "$?"
   command::require apt-cache || return "$?"
   command::require perl || return "$?"
@@ -318,7 +318,7 @@ node::versions() {
 node::install() {
   [[ "$#" -le 2 ]] || return 64
   local version="${1:-}" source="${2:-os}" platform='' available='' raw='' selected=''
-  [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
+  ( [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ) || return 64
   [[ "${source}" == os || "${source}" == official ]] || return 64
   platform="$(package::_platform)" || return "$?"
   available="$(node::versions "${source}")" || return "$?"
@@ -356,7 +356,7 @@ node::install() {
   else
     available="$(package::_versions nodejs)" || return "$?"
     while IFS= read -r raw; do
-      if [[ "${raw}" =~ (^|[^0-9])${version}([^0-9]|$) ]]; then selected="${raw}"; fi
+      if ( [[ "${raw}" =~ (^|[^0-9])${version}([^0-9]|$) ]] ); then selected="${raw}"; fi
     done <<<"${available}"
     [[ -n "${selected}" ]] || return 69
     if [[ "${platform}" == ubuntu ]]; then
@@ -391,7 +391,7 @@ node::_enable-corepack() {
 # @description Install an official Node.js archive after confirming that its executables start.
 # @internal
 node::_install-official() {
-  [[ "$#" -eq 1 && "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ) || return 64
   local version="$1" artifact='' temporary='' destination=''
   artifact="$(node::_official-platform)" || return "$?"
   destination="${HOME}/.local/lib/node/${version}"
@@ -409,6 +409,11 @@ node::_install-official() {
     PATH="${temporary}/unpacked/bin:${PATH}" "${temporary}/unpacked/bin/npm" --version >/dev/null ||
       { rm -rf -- "${temporary}"; return 69; }
     mkdir -p -- "${HOME}/.local/lib/node" || { rm -rf -- "${temporary}"; return 74; }
+    # A directory left by an interrupted installation has no working node; it
+    # is replaced, because mv would otherwise move the new tree inside it.
+    if [[ -e "${destination}" || -L "${destination}" ]]; then
+      rm -rf -- "${destination}" || { rm -rf -- "${temporary}"; return 74; }
+    fi
     mv -- "${temporary}/unpacked" "${destination}" ||
       { rm -rf -- "${temporary}"; return 74; }
     rm -rf -- "${temporary}"
@@ -478,7 +483,9 @@ docker::_ubuntu-codename() {
 #
 # On macOS, Colima or Rancher Desktop must already be installed and running.
 # On Ubuntu and Fedora, the official Docker repository is registered and the
-# docker service is enabled and started.
+# docker service is enabled and started. Conflicting packages such as
+# docker.io are removed only after the repository is ready, and are installed
+# again when Docker cannot be installed.
 #
 # @arg $1 string Optional version from docker::versions. Defaults to the newest stable version.
 # @stderr A message on macOS when no container runtime is running.
@@ -540,15 +547,29 @@ docker::_install-ubuntu() {
     console::_write-error "The Docker repository does not provide Ubuntu ${codename}."
     return 69
   fi
-  for package in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
-    command::run-as-root env DEBIAN_FRONTEND=noninteractive apt-get remove -y "${package}" >/dev/null 2>&1 || true
-  done
   package::_refresh || return "$?"
   package::_install ca-certificates curl || return "$?"
   package::_apt-register-repository docker https://download.docker.com/linux/ubuntu/gpg \
     https://download.docker.com/linux/ubuntu "${codename}" stable "${architecture}" || return "$?"
+  if [[ -n "${version}" ]] && ! apt-cache show "docker-ce=${version}" >/dev/null 2>&1; then
+    console::_write-error "The Docker repository does not provide docker-ce ${version}."
+    return 69
+  fi
+  # Conflicting runtimes are removed only once the replacement is available,
+  # and they are installed again when the replacement fails.
+  local status=0 removed=()
+  for package in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
+    dpkg-query -W -f='${Status}' "${package}" 2>/dev/null | grep -q 'install ok installed' || continue
+    if command::run-as-root env DEBIAN_FRONTEND=noninteractive apt-get remove -y "${package}" >/dev/null 2>&1; then
+      removed+=("${package}")
+    fi
+  done
   package::_install "docker-ce${version:+=${version}}" "docker-ce-cli${version:+=${version}}" \
-    containerd.io docker-buildx-plugin docker-compose-plugin || return "$?"
+    containerd.io docker-buildx-plugin docker-compose-plugin || status="$?"
+  if [[ "${status}" -ne 0 ]]; then
+    [[ "${#removed[@]}" -eq 0 ]] || package::_install "${removed[@]}" || true
+    return "${status}"
+  fi
   package::_enable-service docker || return "$?"
   package::_add-current-user-to-group docker
 }
@@ -558,20 +579,29 @@ docker::_install-ubuntu() {
 docker::_install-fedora() {
   [[ "$#" -eq 1 ]] || return 64
   local version="$1" cli_version="${1#*:}" repository='' buildx_package='docker-buildx-plugin' package=''
-  # dnf remove also matches what docker-ce provides, so only packages installed
-  # under these exact names are removed; otherwise a second run removes Docker.
-  for package in docker docker-client docker-client-latest docker-common docker-latest \
-    docker-latest-logrotate docker-logrotate docker-selinux docker-engine-selinux docker-engine; do
-    rpm -q "${package}" >/dev/null 2>&1 || continue
-    command::run-as-root dnf remove -y "${package}" >/dev/null 2>&1 || true
-  done
   repository="$(package::_fetch https://download.docker.com/linux/fedora/docker-ce.repo)" || return "$?"
   package::_dnf-register-repository docker-ce "${repository}"$'\n' || return "$?"
   if ! dnf list --available docker-buildx-plugin >/dev/null 2>&1; then
     buildx_package=''
   fi
+  # dnf remove also matches what docker-ce provides, so only packages installed
+  # under these exact names are removed; otherwise a second run removes Docker.
+  # They are removed only after the repository is ready, and installed again
+  # when the replacement fails.
+  local status=0 removed=()
+  for package in docker docker-client docker-client-latest docker-common docker-latest \
+    docker-latest-logrotate docker-logrotate docker-selinux docker-engine-selinux docker-engine; do
+    rpm -q "${package}" >/dev/null 2>&1 || continue
+    if command::run-as-root dnf remove -y "${package}" >/dev/null 2>&1; then
+      removed+=("${package}")
+    fi
+  done
   package::_install "docker-ce${version:+=${version}}" "docker-ce-cli${cli_version:+=${cli_version}}" \
-    containerd.io ${buildx_package:+"${buildx_package}"} docker-compose-plugin || return "$?"
+    containerd.io ${buildx_package:+"${buildx_package}"} docker-compose-plugin || status="$?"
+  if [[ "${status}" -ne 0 ]]; then
+    [[ "${#removed[@]}" -eq 0 ]] || package::_install "${removed[@]}" || true
+    return "${status}"
+  fi
   if [[ -z "${version}" ]]; then
     command::run-as-root dnf upgrade -y docker-ce docker-ce-cli containerd.io \
       ${buildx_package:+"${buildx_package}"} docker-compose-plugin || return "$?"
@@ -740,7 +770,7 @@ ruby::_configure-shell() {
 ruby::install() {
   [[ "$#" -le 1 ]] || return 64
   local version="${1:-}" rbenv='' platform=''
-  [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
+  ( [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ) || return 64
   platform="$(package::_platform)" || return "$?"
   case "${platform}" in
     ubuntu)
@@ -835,7 +865,7 @@ jdk::version::latest() {
 jdk::install() {
   [[ "$#" -le 1 ]] || return 64
   local version="${1:-}" platform='' home=''
-  [[ -z "${version}" || "${version}" =~ ^[0-9]+$ ]] || return 64
+  ( [[ -z "${version}" || "${version}" =~ ^[0-9]+$ ]] ) || return 64
   platform="$(package::_platform)" || return "$?"
   if [[ -z "${version}" ]]; then
     version="$(jdk::version::latest)" || return "$?"
@@ -912,7 +942,7 @@ pipx::_python-version() {
 # @description Write pipx releases on PyPI whose Requires-Python accepts PYTHON_VERSION.
 # @internal
 pipx::_official-versions() {
-  [[ "$#" -eq 1 && "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ) || return 64
   command::require perl || return "$?"
   local json='' versions=''
   json="$(package::_fetch https://pypi.org/pypi/pipx/json)" || return "$?"
@@ -1237,7 +1267,7 @@ ubuntu::_server-iso-architecture() {
 # @description Write the directory URL that publishes Ubuntu Server ISOs of one LTS series.
 # @internal
 ubuntu::_server-iso-directory() {
-  [[ "$#" -eq 2 && "$1" =~ ^[0-9]+\.[0-9]+$ ]] || return 64
+  ( [[ "$#" -eq 2 && "$1" =~ ^[0-9]+\.[0-9]+$ ]] ) || return 64
   case "$2" in
     amd64) printf 'https://releases.ubuntu.com/%s/\n' "$1" ;;
     arm64) printf 'https://cdimage.ubuntu.com/releases/%s/release/\n' "$1" ;;
@@ -1310,7 +1340,7 @@ ubuntu::download-server-iso() {
   series="$(printf '%s' "${version}" | cut -d . -f 1-2)"
   name="ubuntu-${version}-live-server-${architecture}.iso"
   checksum="$(ubuntu::_server-iso-checksums "${series}" "${architecture}" | awk -F '\t' -v name="${name}" '$2 == name {print $1}')"
-  [[ "${checksum}" =~ ^[0-9a-f]{64}$ ]] || return 74
+  ( [[ "${checksum}" =~ ^[0-9a-f]{64}$ ]] ) || return 74
   directory="$(ubuntu::_server-iso-directory "${series}" "${architecture}")" || return "$?"
   [[ -n "${output}" ]] || output="./${name}"
   temporary="$(mktemp "${output}.XXXXXX")" || return 74
@@ -1625,7 +1655,7 @@ flutter::dependencies::install() {
 flutter::install() {
   [[ "$#" -le 2 ]] || return 64
   local version="${1:-}" directory="${2:-${HOME}/.local/flutter}"
-  [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 64
+  ( [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ) || return 64
   flutter::dependencies::install || return "$?"
   if [[ -z "${version}" ]]; then
     version="$(flutter::versions | package::_latest-stable-version)" || return "$?"

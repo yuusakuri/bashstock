@@ -45,3 +45,18 @@ load test_helper
   [ "$(shopt -p)" = "${shell_options_before}" ]
   [ "${BASH_REMATCH[0]}" = 'caller-value' ]
 }
+
+@test "validators and parsers keep the caller's BASH_REMATCH" {
+  local dotenv="${BATS_TEST_TMPDIR}/.env"
+  printf 'export BASHSTOCK_STATE_VALUE=1 # comment\n' >"${dotenv}"
+  [[ 'caller-value' =~ (caller)-(value) ]]
+
+  time::posix-timezone +09:30 >/dev/null
+  number::is-integer 12
+  env::dotenv::import "${dotenv}"
+  git::branch::create -D topic . 2>/dev/null || true
+  ssh::config::update "${BATS_TEST_TMPDIR}/missing" host User x 2>/dev/null || true
+
+  [ "${BASH_REMATCH[0]}" = 'caller-value' ]
+  [ "${BASH_REMATCH[2]}" = 'value' ]
+}

@@ -144,6 +144,7 @@ use_fake_curl() {
   use_fake_root
   use_fake_curl
   dpkg() { [[ "$1" == '--print-architecture' ]] && printf 'arm64\n'; }
+  apt-cache() { :; }
   run docker::install '5:29.8.1-1~ubuntu.24.04~noble'
   [ "${status}" -eq 0 ]
   [ "$(<"${FAKE_ROOT}/etc/apt/sources.list.d/docker.sources")" = "$(printf '%s\n' \
@@ -157,6 +158,35 @@ use_fake_curl() {
   grep -Eq '^install -m 0644 .*/docker\.asc /etc/apt/keyrings/docker\.asc$' "${ROOT_LOG}"
   grep -Fqx 'systemctl enable --now docker' "${ROOT_LOG}"
   grep -Fqx "usermod -a -G docker $(id -un)" "${ROOT_LOG}"
+}
+
+@test "Docker on Ubuntu keeps docker.io until the replacement can be installed" {
+  use_platform ubuntu 24.04 noble
+  record_root_commands
+  apt-get() { :; }
+  use_fake_root
+  use_fake_curl
+  dpkg() { [[ "$1" == '--print-architecture' ]] && printf 'arm64\n'; }
+  dpkg-query() { [[ "${*: -1}" == docker.io ]] && printf 'install ok installed'; }
+
+  # The requested version is missing, so nothing is removed.
+  apt-cache() { return 100; }
+  run --separate-stderr docker::install '5:1.0.0-1~ubuntu.24.04~noble'
+  [ "${status}" -eq 69 ]
+  ! grep -q 'apt-get remove' "${ROOT_LOG}"
+
+  # The installation fails after docker.io was removed, so docker.io returns.
+  apt-cache() { :; }
+  : >"${ROOT_LOG}"
+  command::run-as-root() {
+    printf '%s\n' "$*" >>"${ROOT_LOG}"
+    [[ "$*" != *'install -y'*docker-ce* ]]
+  }
+  run docker::install
+  [ "${status}" -ne 0 ]
+  grep -Fqx 'env DEBIAN_FRONTEND=noninteractive apt-get remove -y docker.io' "${ROOT_LOG}"
+  [ "$(tail -n 1 "${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io' ]
+  ! grep -q 'systemctl enable' "${ROOT_LOG}"
 }
 
 @test "Docker on Ubuntu changes nothing when the repository lacks the release" {
@@ -840,6 +870,11 @@ gsettings_value() {
   [ "${status}" -eq 64 ]
   run gpg::key::generate --user-id 'no email'
   [ "${status}" -eq 64 ]
+  # A newline would add a directive such as %no-protection to the parameters.
+  rm -f "${PARAMETERS}"
+  run gpg::key::generate --user-id $'Test\n%no-protection <test@example.invalid>' --passphrase-fd 3
+  [ "${status}" -eq 64 ]
+  [ ! -e "${PARAMETERS}" ]
 }
 
 @test "Mozc starts in Hiragana mode by updating the IBus textproto setting" {
@@ -1601,4 +1636,23 @@ use_fake_sudoers() {
   [ "${status}" -eq 0 ]
   [ "$(<"${applications}/UTM.app/Contents/version")" = new ]
   [ -z "$(find "${applications}" -mindepth 1 -maxdepth 1 -name '.*')" ]
+}
+
+@test "official Node.js replaces a version directory left without a working node" {
+  export HOME="${BATS_TEST_TMPDIR}/home"
+  local destination="${HOME}/.local/lib/node/1.2.3"
+  mkdir -p "${destination}/lib" "${BATS_TEST_TMPDIR}/archive/node/bin"
+  printf '#!/bin/sh\nprintf "v1.2.3\\n"\n' >"${BATS_TEST_TMPDIR}/archive/node/bin/node"
+  printf '#!/bin/sh\nprintf "10.0.0\\n"\n' >"${BATS_TEST_TMPDIR}/archive/node/bin/npm"
+  chmod +x "${BATS_TEST_TMPDIR}/archive/node/bin/node" "${BATS_TEST_TMPDIR}/archive/node/bin/npm"
+  tar -czf "${BATS_TEST_TMPDIR}/node.tar.gz" -C "${BATS_TEST_TMPDIR}/archive" node
+  node::_official-platform() { printf 'linux-x64\n'; }
+  package::_download() { cp -- "${BATS_TEST_TMPDIR}/node.tar.gz" "$2"; }
+
+  run node::_install-official 1.2.3
+  [ "${status}" -eq 0 ]
+  [ -x "${destination}/bin/node" ]
+  [ ! -e "${destination}/unpacked" ]
+  [ ! -e "${destination}/lib" ]
+  [ "$(readlink "${HOME}/.local/lib/node/current")" = "${destination}" ]
 }

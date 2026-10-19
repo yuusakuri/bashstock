@@ -970,7 +970,7 @@ directory::merge "${HOME}/デスクトップ" "${HOME}/Desktop"
 #### Exit codes
 
 * **0**: SOURCE was merged into DESTINATION and removed.
-* **64**: SOURCE is not a directory, or DESTINATION is a symbolic link or a file.
+* **64**: SOURCE is not a directory, DESTINATION is a symbolic link or a file, DESTINATION is SOURCE or inside it, or SOURCE holds an entry that would replace SOURCE itself.
 * **74**: An entry could not be moved, or SOURCE could not be removed.
 
 ### directory::create-with-date-time
@@ -1443,14 +1443,14 @@ git::branch::create release/1.2 v1.2.0
 
 #### Arguments
 
-* **$1** (string): New branch name.
+* **$1** (string): New branch name that git check-ref-format --branch accepts.
 * **$2** (string): Optional starting revision. Defaults to HEAD.
 * **$3** (string): Optional repository directory. Defaults to the current directory.
 
 #### Exit codes
 
 * **0**: The branch was created.
-* **64**: The argument count is not one to three.
+* **64**: The argument count is not one to three, the name is invalid, or a value starts with -.
 * other The status of git branch.
 
 ### git::branch::list

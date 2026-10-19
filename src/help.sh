@@ -20,7 +20,7 @@ help::_location() {
 # @description Write the shdoc comment block directly above a line of a file.
 # @internal
 help::_comment-block() {
-  [[ "$#" -eq 2 && "$1" =~ ^[0-9]+$ && -f "$2" ]] || return 64
+  ( [[ "$#" -eq 2 && "$1" =~ ^[0-9]+$ && -f "$2" ]] ) || return 64
   awk -v target="$1" '
     FNR >= target { exit }
     /^[[:space:]]*#/ { block[++count] = $0; next }

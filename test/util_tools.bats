@@ -80,10 +80,27 @@ record_root_commands() {
   [[ -n "${device}" ]] || skip 'no block device is available'
   local log="${BATS_TEST_TMPDIR}/root.log"
   command::run-as-root() { printf '%s\n' "$*" >>"${log}"; }
-  findmnt() { [[ "$*" == "-n -l -o TARGET --source ${device}" ]] && printf '/media/usb\n/mnt/backup copy\n'; }
+  # The first query lists the mounts; after the umount calls none is left.
+  findmnt() {
+    [[ "$*" == "-n -l -o TARGET --source ${device}" ]] || return 2
+    [[ ! -s "${log}" ]] || return 1
+    printf '/media/usb\n/mnt/backup copy\n'
+  }
   run usb::_unmount "${device}"
   [ "$status" -eq 0 ]
   [ "$(<"${log}")" = $'umount -- /media/usb\numount -- /mnt/backup copy' ]
+
+  # A failed query stops before anything is unmounted.
+  : >"${log}"
+  findmnt() { return 2; }
+  run usb::_unmount "${device}"
+  [ "$status" -eq 74 ]
+  [ ! -s "${log}" ]
+
+  # A mount that is still listed after umount is reported.
+  findmnt() { printf '/media/usb\n'; }
+  run usb::_unmount "${device}"
+  [ "$status" -eq 74 ]
 }
 
 @test "Go versions come from the versioned Ubuntu packages" {

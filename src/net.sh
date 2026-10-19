@@ -6,7 +6,7 @@
 # @description Return success when a value is an IPv4 address.
 # @internal
 net::_is-ipv4() {
-  if [[ "$#" -ne 1 || ! "$1" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+  if ( [[ "$#" -ne 1 || ! "$1" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] ); then
     return 1
   fi
 
@@ -15,7 +15,7 @@ net::_is-ipv4() {
   IFS='.' read -r -a parts <<<"$1"
   [[ "${#parts[@]}" -eq 4 ]] || return 1
   for part in "${parts[@]}"; do
-    [[ "${part}" =~ ^(0|[1-9][0-9]{0,2})$ ]] || return 1
+    ( [[ "${part}" =~ ^(0|[1-9][0-9]{0,2})$ ]] ) || return 1
     ((10#${part} <= 255)) || return 1
   done
 }
@@ -51,9 +51,9 @@ net::_render-static-ipv4() {
   local renderer="$6"
   local dns_yaml=''
 
-  if [[ ! "${interface}" =~ ^[A-Za-z0-9_.-]{1,15}$ ]] ||
+  if ( [[ ! "${interface}" =~ ^[A-Za-z0-9_.-]{1,15}$ ]] ) ||
     ! net::_is-ipv4 "${address}" ||
-    [[ ! "${prefix_length}" =~ ^([0-9]|[12][0-9]|3[0-2])$ ]] ||
+    ( [[ ! "${prefix_length}" =~ ^([0-9]|[12][0-9]|3[0-2])$ ]] ) ||
     ! net::_is-ipv4 "${gateway}" ||
     ! net::_is-ipv4-list "${dns_servers}" ||
     [[ -n "${renderer}" &&
@@ -291,7 +291,7 @@ net::ip::set-static() {
     [[ -n "${address}" ]] || address="${cidr%/*}"
     [[ -n "${prefix_length}" ]] || prefix_length="${cidr##*/}"
   fi
-  if [[ ! "${host_name}" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]]; then
+  if ( [[ ! "${host_name}" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]] ); then
     return 64
   fi
 

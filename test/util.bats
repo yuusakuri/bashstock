@@ -644,3 +644,23 @@ TABLE
   run --separate-stderr archive::extract "${missing}"
   [ "${status}" -eq 66 ]
 }
+
+@test "directory merge refuses a destination that is the source or inside it" {
+  local source="${BATS_TEST_TMPDIR}/source"
+  mkdir -p "${source}/keep"
+  printf 'data\n' >"${source}/file"
+  run directory::merge "${source}" "${source}"
+  [ "${status}" -eq 64 ]
+  run directory::merge "${source}" "${source}/."
+  [ "${status}" -eq 64 ]
+  run directory::merge "${source}" "${source}/keep/inner"
+  [ "${status}" -eq 64 ]
+  [ ! -e "${source}/keep/inner" ]
+  [ "$(<"${source}/file")" = data ]
+
+  # An entry named like SOURCE would replace SOURCE in its parent.
+  mkdir -p "${source}/source"
+  run directory::merge "${source}" "${BATS_TEST_TMPDIR}"
+  [ "${status}" -eq 64 ]
+  [ "$(<"${source}/file")" = data ]
+}

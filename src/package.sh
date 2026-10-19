@@ -38,11 +38,11 @@ package::_require-platform() {
 # @description Require an Ubuntu or Fedora release of at least a major version, naming the product in the message.
 # @internal
 package::_require-release() {
-  [[ "$#" -eq 3 && "$1" =~ ^(ubuntu|fedora)$ && "$2" =~ ^[0-9]+$ && -n "$3" ]] || return 64
+  ( [[ "$#" -eq 3 && "$1" =~ ^(ubuntu|fedora)$ && "$2" =~ ^[0-9]+$ && -n "$3" ]] ) || return 64
   local version='' major=''
   version="$(platform::_os-release-value VERSION_ID)" || return 69
   major="${version%%.*}"
-  if [[ ! "${major}" =~ ^[0-9]+$ ]] || ((10#${major} < $2)); then
+  if ( [[ ! "${major}" =~ ^[0-9]+$ ]] ) || ((10#${major} < $2)); then
     case "$1" in
       ubuntu) console::_write-error "$3 requires Ubuntu $2.04 or later." ;;
       fedora) console::_write-error "$3 requires Fedora $2 or later." ;;
@@ -57,7 +57,7 @@ package::_is-stable-version() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local lower=''
   lower="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
-  [[ ! "${lower}" =~ (alpha|beta|preview|nightly|canary|snapshot|dev|[0-9.]rc|-rc|~rc) ]]
+  ( [[ ! "${lower}" =~ (alpha|beta|preview|nightly|canary|snapshot|dev|[0-9.]rc|-rc|~rc) ]] )
 }
 
 # @description Read versions from standard input and write unique values in ascending version order.
@@ -329,8 +329,8 @@ package::_install() {
     name="${specification%%=*}"
     version=''
     [[ "${specification}" == *=* ]] && version="${specification#*=}"
-    [[ "${name}" =~ ^[A-Za-z0-9][A-Za-z0-9._+/@-]*$ ]] || return 64
-    [[ -z "${version}" || "${version}" =~ ^[A-Za-z0-9][A-Za-z0-9.:~+_-]*$ ]] || return 64
+    ( [[ "${name}" =~ ^[A-Za-z0-9][A-Za-z0-9._+/@-]*$ ]] ) || return 64
+    ( [[ -z "${version}" || "${version}" =~ ^[A-Za-z0-9][A-Za-z0-9.:~+_-]*$ ]] ) || return 64
     case "${platform}" in
       darwin)
         if [[ -n "${version}" ]]; then
@@ -376,7 +376,7 @@ package::_install-version() {
 # @description Install a Homebrew cask, accepting only its current version when one is given.
 # @internal
 package::_install-cask() {
-  [[ "$#" -ge 1 && "$#" -le 2 && "$1" =~ ^[A-Za-z0-9][A-Za-z0-9._/@-]*$ ]] || return 64
+  ( [[ "$#" -ge 1 && "$#" -le 2 && "$1" =~ ^[A-Za-z0-9][A-Za-z0-9._/@-]*$ ]] ) || return 64
   package::_require-platform darwin || return "$?"
   command::require brew || return "$?"
   if [[ -n "${2:-}" ]]; then
@@ -401,7 +401,7 @@ package::_cask-versions() {
 # @description Write stable release versions of a GitHub repository without a leading v.
 # @internal
 package::_github-release-versions() {
-  [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] ) || return 64
   command::require perl || return "$?"
   local json='' versions=''
   json="$(package::_fetch "https://api.github.com/repos/$1/releases?per_page=100")" || return "$?"
@@ -422,7 +422,7 @@ package::_github-release-versions() {
 # @description Write the download URL of a GitHub release asset whose name matches a Perl expression.
 # @internal
 package::_github-release-asset-url() {
-  [[ "$#" -eq 3 && "$1" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ && -n "$2" && -n "$3" ]] || return 64
+  ( [[ "$#" -eq 3 && "$1" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ && -n "$2" && -n "$3" ]] ) || return 64
   command::require perl || return "$?"
   local json=''
   json="$(package::_fetch "https://api.github.com/repos/$1/releases?per_page=100")" || return "$?"
@@ -553,7 +553,7 @@ package::_rpm-repository-versions() {
 # The key is inspected in a separate GPG home, so the user's keyring does not change.
 # @internal
 package::_download-signing-key() {
-  [[ "$#" -eq 3 && "$1" == https://* && "$2" =~ ^[0-9A-F]{40}$ && -n "$3" ]] || return 64
+  ( [[ "$#" -eq 3 && "$1" == https://* && "$2" =~ ^[0-9A-F]{40}$ && -n "$3" ]] ) || return 64
   local url="$1" fingerprint="$2" output="$3" directory='' fingerprints='' status=0
   command::require gpg || return "$?"
   package::_download "${url}" "${output}" || return "$?"
@@ -580,7 +580,7 @@ package::_download-signing-key() {
 # @arg $5 string COMPONENTS Space-separated components, or an empty value for a flat repository.
 # @arg $6 string ARCHITECTURE Optional architecture restriction.
 package::_apt-register-repository() {
-  [[ "$#" -ge 5 && "$#" -le 6 && "$1" =~ ^[a-z0-9][a-z0-9.-]*$ && "$2" == https://* && "$3" == https://* && -n "$4" ]] || return 64
+  ( [[ "$#" -ge 5 && "$#" -le 6 && "$1" =~ ^[a-z0-9][a-z0-9.-]*$ && "$2" == https://* && "$3" == https://* && -n "$4" ]] ) || return 64
   package::_require-platform ubuntu || return "$?"
   local name="$1" key_url="$2" uri="$3" suite="$4" components="$5" architecture="${6:-}"
   local directory='' content='' status=0
@@ -606,7 +606,7 @@ package::_apt-register-repository() {
 # @description Register a DNF repository by writing one repository file.
 # @internal
 package::_dnf-register-repository() {
-  [[ "$#" -eq 2 && "$1" =~ ^[a-z0-9][a-z0-9.-]*$ && -n "$2" ]] || return 64
+  ( [[ "$#" -eq 2 && "$1" =~ ^[a-z0-9][a-z0-9.-]*$ && -n "$2" ]] ) || return 64
   package::_require-platform fedora || return "$?"
   file::write-text "/etc/yum.repos.d/$1.repo" "$2" || return "$?"
   package::_refresh
@@ -615,7 +615,7 @@ package::_dnf-register-repository() {
 # @description Enable and start one systemd service.
 # @internal
 package::_enable-service() {
-  [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9@._-]+$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9@._-]+$ ]] ) || return 64
   command::require systemctl || return "$?"
   command::run-as-root systemctl enable --now "$1"
 }
@@ -623,7 +623,7 @@ package::_enable-service() {
 # @description Add the current user to a group through administrator execution.
 # @internal
 package::_add-current-user-to-group() {
-  [[ "$#" -eq 1 && "$1" =~ ^[a-z_][a-z0-9_-]*$ ]] || return 64
+  ( [[ "$#" -eq 1 && "$1" =~ ^[a-z_][a-z0-9_-]*$ ]] ) || return 64
   local user=''
   user="$(user::name)" || return "$?"
   case "$(system::operating-system)" in

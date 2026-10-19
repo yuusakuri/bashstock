@@ -1,2 +1,4 @@
 external-sources=true
 disable=SC1090
+# Regex tests run in ( [[ ... =~ ... ]] ) so that the caller keeps BASH_REMATCH.
+disable=SC2233,SC2234

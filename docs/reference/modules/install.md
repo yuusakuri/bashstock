@@ -337,7 +337,9 @@ Install the Docker CLI, and Docker Engine on Linux.
 
 On macOS, Colima or Rancher Desktop must already be installed and running.
 On Ubuntu and Fedora, the official Docker repository is registered and the
-docker service is enabled and started.
+docker service is enabled and started. Conflicting packages such as
+docker.io are removed only after the repository is ready, and are installed
+again when Docker cannot be installed.
 
 #### Example
 
