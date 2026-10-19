@@ -58,8 +58,8 @@
 | J03 | OSのGoを導入・再実行し、小さなGoプログラムを動かす | 両方成功し、実行結果が期待値になる | 同上 |
 | R01 | 公式 Rust ツールチェーンを導入・再実行し、小さなプログラムをコンパイルして動かす | rustc と cargo が起動し、プログラムが期待値を返す。起動設定を読んだ新しい Bash でも cargo が使える | `scripts/test-rust-container` |
 | R02 | Ruby 3.4.5 を導入・再実行し、小さなプログラムを動かす | 指定版の Ruby と gem が起動し、プログラムが期待値を返す。起動設定を読んだ新しい Bash でも Ruby が使える | `scripts/test-ruby-container` |
-| P01 | Ubuntu 18.04 以外で OS のパッケージから pipx を導入・再実行する | 両方成功し、起動設定を読んだ新しい Bash の `pipx --version` が最新の提供版と一致し、`pipx list` が動く。pipx で導入したアプリケーションが起動設定の PATH から起動する | `scripts/test-pipx-container` |
-| P02 | Ubuntu 18.04 で配布元を省略して導入し、続けて `official` を指定して二度導入する | 省略時は終了状態 69 を返す。`official` では Python 3.6 で動く最新の pipx が入り、`pipx list` が動く | 同上 |
+| X01 | Ubuntu 18.04 以外で OS のパッケージから pipx を導入・再実行する | 両方成功し、起動設定を読んだ新しい Bash の `pipx --version` が最新の提供版と一致し、`pipx list` が動く。pipx で導入したアプリケーションが起動設定の PATH から起動する | `scripts/test-pipx-container` |
+| X02 | Ubuntu 18.04 で配布元を省略して導入し、続けて `official` を指定して二度導入する | 省略時は終了状態 69 を返す。`official` では Python 3.6 で動く最新の pipx が入り、`pipx list` が動く | 同上 |
 | V01 | 各 OS で版を省略して VS Code を導入し、`vscode::versions` の最新版を指定して再実行する | 導入済みの版が一覧の最新版と一致し、`code --version` が同じ版を表示する。Ubuntu 18.04 では glibc 2.27 で動く 1.85 系が選ばれる | `scripts/test-vscode-container` |
 | B01 | 仮想ディスプレイで VS Code を起動する | VS Code のウィンドウが表示される | `scripts/test-browsers-container` |
 | B02 | Google Chrome を導入し、ヘッドレスで HTML を描画してから仮想ディスプレイで起動する | 描画結果に元の要素が含まれ、ウィンドウが表示される | 同上 |
@@ -95,6 +95,6 @@
 | A04 | AVD を起動し、停止して削除する | Android の起動完了を確認でき、削除後に一覧から消える | `scripts/test-android-linux`、`scripts/test-android-container`、Apple silicon の macOS 上の`scripts/test-android-macos`。Intel の実行環境ではゲストに 1 CPU しか割り当てられず、API 35 が 15 分以内に起動しないため、作成と削除までを確認する |
 | A05 | 起動したAVDへ空白を含む名前のファイルを送受信し、画面を保存して再起動する | 内容が一致し、画像が保存され、再起動後に端末が再接続する | `scripts/test-android-linux` |
 | A06 | arm64 の Linux で `android::sdk::install` を呼ぶ | 終了状態 69 を返し、Android CLI と SDK ディレクトリを作らない | `scripts/test-android-container` |
-| N01 | 不正な引数、未対応 CPU、異なる SDK パスを渡す | 対応するエラーを返し、既存の導入先を変更しない | `test/android-install.bats` など |
+| A07 | 不正な引数、未対応 CPU、異なる SDK パスを渡す | 対応するエラーを返し、既存の導入先を変更しない | `test/android-install.bats` など |
 
 GitHub Actions の各ジョブは一つでも期待結果と異なれば失敗します。ジョブのログには選択した Docker の版と導入コマンドの結果が残ります。OS ごとの結果は `Installer integration` のジョブ名で区別します。
