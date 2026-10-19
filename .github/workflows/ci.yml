@@ -45,7 +45,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --yes bzip2 gawk libtime-hires-perl p7zip-full perl shellcheck xz-utils zstd
+          sudo apt-get install --yes bzip2 gawk libtime-hires-perl openssh-client p7zip-full perl shellcheck xz-utils zstd
 
       - name: Verify the time provider
         run: perl -MTime::HiRes -MPOSIX -e 1
@@ -97,7 +97,7 @@ jobs:
 
     steps:
       - name: Install dependencies
-        run: dnf install --assumeyes 7zip bzip2 gawk git glibc-langpack-en perl perl-JSON-PP perl-POSIX perl-Time-HiRes ShellCheck xz zstd
+        run: dnf install --assumeyes 7zip bzip2 gawk git glibc-langpack-en openssh-clients perl perl-JSON-PP perl-POSIX perl-Time-HiRes ShellCheck xz zstd
 
       - name: Check out the repository
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v7.0.1
