@@ -145,6 +145,7 @@ use_fake_curl() {
   use_fake_curl
   dpkg() { [[ "$1" == '--print-architecture' ]] && printf 'arm64\n'; }
   apt-cache() { :; }
+  dpkg-query() { return 1; }
   run docker::install '5:29.8.1-1~ubuntu.24.04~noble'
   [ "${status}" -eq 0 ]
   [ "$(<"${FAKE_ROOT}/etc/apt/sources.list.d/docker.sources")" = "$(printf '%s\n' \
@@ -505,6 +506,8 @@ chmod +x "${HOME}/.local/bin/codex"'
   systemctl() { :; }
   usermod() { :; }
   dpkg() { printf 'arm64\n'; }
+  apt-cache() { :; }
+  dpkg-query() { return 1; }
   run docker::install
   [ "${status}" -eq 0 ]
   grep -Fqx 'env DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin' "${ROOT_LOG}"
