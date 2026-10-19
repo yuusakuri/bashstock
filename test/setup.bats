@@ -1664,3 +1664,28 @@ use_fake_sudoers() {
   [ ! -e "${destination}/lib" ]
   [ "$(readlink "${HOME}/.local/lib/node/current")" = "${destination}" ]
 }
+
+@test "Thunderbird uses the Homebrew cask on macOS and the system package on Linux" {
+  use_platform darwin
+  BREW_LOG="${BATS_TEST_TMPDIR}/brew.log"
+  brew() { printf '%s\n' "$*" >>"${BREW_LOG}"; }
+  run thunderbird::install
+  [ "${status}" -eq 0 ]
+  [ "$(<"${BREW_LOG}")" = 'install --cask thunderbird' ]
+  run thunderbird::install current extra
+  [ "${status}" -eq 64 ]
+
+  use_platform ubuntu 24.04 noble
+  record_root_commands
+  apt-get() { :; }
+  run thunderbird::install
+  [ "${status}" -eq 0 ]
+  grep -Eq 'apt-get install -y .*thunderbird$' "${ROOT_LOG}"
+
+  : >"${ROOT_LOG}"
+  use_platform fedora 44
+  dnf() { :; }
+  run thunderbird::install 1:140.0-1.fc44
+  [ "${status}" -eq 0 ]
+  grep -Fq 'thunderbird-1:140.0-1.fc44' "${ROOT_LOG}"
+}
