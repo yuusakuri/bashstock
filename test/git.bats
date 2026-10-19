@@ -180,6 +180,9 @@ git_test::edit-via-rebase-in-directory() {
   merge="$(git -C "${repository}" rev-parse HEAD)"
   run git::commit::edit-via-rebase "${merge}" "${repository}"
   [ "${status}" -eq 65 ]
+  run git::commit::edit-via-rebase "${main}" "${repository}"
+  [ "${status}" -eq 65 ]
+  [ "$(git -C "${repository}" rev-parse HEAD)" = "${merge}" ]
   [ "$(git -C "${repository}" rev-parse "${root}^{commit}")" = "${root}" ]
   [ "$(git -C "${repository}" rev-parse "${main}^{commit}")" = "${main}" ]
   [ ! -d "${repository}/.git/rebase-merge" ]
@@ -239,6 +242,19 @@ git_test::create-remote-and-clone() {
   [ "$(<"${clone}/value")" = second ]
   run git::cherry-pick 0123456789abcdef0123456789abcdef01234567 origin "${clone}"
   [ "${status}" -ne 0 ]
+}
+
+@test "commit patches at a shallow boundary compare with the real parent" {
+  local remote="${BATS_TEST_TMPDIR}/remote.git" clone="${BATS_TEST_TMPDIR}/clone" shallow="${BATS_TEST_TMPDIR}/shallow"
+  git_test::create-remote-and-clone "${remote}" "${clone}"
+  git_test::commit "${clone}" second second >/dev/null
+  git -C "${clone}" push --quiet origin HEAD
+  git clone --quiet --depth 1 "file://${remote}" "${shallow}"
+  [ "$(git -C "${shallow}" rev-parse --is-shallow-repository)" = true ]
+
+  run git::commit::patch HEAD origin "${shallow}"
+  [ "${status}" -eq 0 ]
+  [[ "${output}" == *'-first'*'+second'* ]]
 }
 
 @test "pull, reset, delete, and Gerrit pushes default to the current branch and origin" {

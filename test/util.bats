@@ -103,6 +103,7 @@ bats_require_minimum_version 1.5.0
 }
 
 @test "managed SSH configuration preserves unrelated directives" {
+  command -v ssh >/dev/null 2>&1 || skip 'the OpenSSH client is not installed'
   local config="${BATS_TEST_TMPDIR}/ssh-config" include="${BATS_TEST_TMPDIR}/included-config"
   : >"$include"
   chmod 600 "$include"
@@ -128,7 +129,40 @@ bats_require_minimum_version 1.5.0
   [ "${status}" -eq 0 ]
 }
 
+@test "managed SSH configuration keeps global directives global" {
+  command -v ssh >/dev/null 2>&1 || skip 'the OpenSSH client is not installed'
+  local config="${BATS_TEST_TMPDIR}/ssh-config"
+  printf 'User alice\nPort 2222\n' >"$config"
+
+  run ssh::config::set "$config" managed.example User bob
+  [ "${status}" -eq 0 ]
+  [ "$(ssh -G -F "$config" other.example | grep '^user ')" = 'user alice' ]
+  [ "$(ssh -G -F "$config" other.example | grep '^port ')" = 'port 2222' ]
+  [ "$(ssh -G -F "$config" managed.example | grep '^user ')" = 'user bob' ]
+  [ "$(ssh -G -F "$config" managed.example | grep '^port ')" = 'port 2222' ]
+
+  run ssh::config::set "$config" second.example User carol
+  [ "${status}" -eq 0 ]
+  run ssh::config::set "$config" managed.example Port 22
+  [ "${status}" -eq 0 ]
+  [ "$(ssh -G -F "$config" other.example | grep '^user ')" = 'user alice' ]
+  [ "$(ssh -G -F "$config" managed.example | grep '^port ')" = 'port 22' ]
+  [ "$(ssh -G -F "$config" second.example | grep '^user ')" = 'user carol' ]
+}
+
+@test "managed SSH configuration replaces option names case-insensitively" {
+  command -v ssh >/dev/null 2>&1 || skip 'the OpenSSH client is not installed'
+  local config="${BATS_TEST_TMPDIR}/ssh-config"
+  printf '# bashstock: begin managed.example\nHost managed.example\n  user alice\n# bashstock: end\n' >"$config"
+
+  run ssh::config::set "$config" managed.example User bob
+  [ "${status}" -eq 0 ]
+  [ "$(ssh -G -F "$config" managed.example | grep '^user ')" = 'user bob' ]
+  ! grep -Fq 'user alice' "$config"
+}
+
 @test "SSH private-key listing delegates key detection to ssh-keygen" {
+  command -v ssh-keygen >/dev/null 2>&1 || skip 'the OpenSSH client is not installed'
   local directory="${BATS_TEST_TMPDIR}/keys" key="${BATS_TEST_TMPDIR}/keys/id_ed25519"
   mkdir -p "$directory"
   ssh-keygen -q -t ed25519 -N '' -f "$key"
@@ -477,6 +511,8 @@ TABLE
   ln -s "$(command -v find)" "$limited/find"
   ln -s "$(command -v tar)" "$limited/tar"
   ln -s "$(command -v gzip)" "$limited/gzip"
+  ln -s "$(command -v mktemp)" "$limited/mktemp"
+  ln -s "$(command -v rm)" "$limited/rm"
   status=0
   (PATH="$limited" && archive::remove-broken "$work") 2>"$work.err" || status="$?"
   [ "$status" -eq 0 ]
@@ -509,6 +545,13 @@ TABLE
   [ "$(file::find-by-content 'needle' "$root" 1 include | tr '\0' '\n' | wc -l | tr -d ' ')" -eq 2 ]
   run file::find-by-content 'absent' "$root"
   [ "$status" -eq 1 ]
+  # A grep that cannot read a file reports status 2; the search must not pass as complete.
+  mkdir -p "${BATS_TEST_TMPDIR}/bin"
+  printf '#!/bin/sh\ncase "$*" in *other.txt*) exit 2 ;; esac\nexec %s "$@"\n' "$(command -v grep)" >"${BATS_TEST_TMPDIR}/bin/grep"
+  chmod +x "${BATS_TEST_TMPDIR}/bin/grep"
+  PATH="${BATS_TEST_TMPDIR}/bin:${PATH}" run file::find-by-content 'needle' "$root" 1
+  [ "$status" -eq 74 ]
+  rm "${BATS_TEST_TMPDIR}/bin/grep"
   run file::find-by-content 'needle' "$root" 1 maybe
   [ "$status" -eq 64 ]
 }
@@ -561,4 +604,37 @@ TABLE
   run file::tree-with-contents "$root" 1 1
   [[ "$output" != *'deep text'* ]]
   [[ "$output" == *'top text'* ]]
+}
+
+@test "file editing runs a multiword EDITOR as a command with arguments" {
+  local file="${BATS_TEST_TMPDIR}/note.txt"
+  fake-editor() {
+    printf '%s\n' "$@" >"${BATS_TEST_TMPDIR}/editor.args"
+  }
+  EDITOR='fake-editor --wait --new-window' run file::edit "${file}"
+  [ "${status}" -eq 0 ]
+  [ "$(cat "${BATS_TEST_TMPDIR}/editor.args")" = $'--wait\n--new-window\n'"${file}" ]
+
+  run file::edit "${BATS_TEST_TMPDIR}"
+  [ "${status}" -eq 66 ]
+}
+
+@test "startup file updates keep the shell-list array local" {
+  export HOME="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "${HOME}/bin"
+  _util_shells=(keep me)
+  env::set-variable BASHSTOCK_TEST_VALUE yes bash
+  env::add-path "${HOME}/bin" bash
+  [ "${_util_shells[*]}" = 'keep me' ]
+}
+
+@test "archive functions report a path that cannot be searched" {
+  local missing="${BATS_TEST_TMPDIR}/missing"
+  run --separate-stderr archive::verify "${missing}"
+  [ "${status}" -eq 66 ]
+  [[ "${stderr}" == *'cannot be searched for archives'* ]]
+  run --separate-stderr archive::remove-broken "${missing}"
+  [ "${status}" -eq 66 ]
+  run --separate-stderr archive::extract "${missing}"
+  [ "${status}" -eq 66 ]
 }

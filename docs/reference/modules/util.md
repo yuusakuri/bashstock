@@ -1056,6 +1056,9 @@ _Function has no arguments._
 
 Open an editor for a file, using sudoedit only when required.
 
+EDITOR is split on whitespace into a command and its arguments, such as
+code --wait. It defaults to vi.
+
 #### Example
 
 ```bash
@@ -1091,12 +1094,12 @@ file::release "${HOME}/.local/share/app/database.lock" 5
 #### Arguments
 
 * **$1** (string): File to release.
-* **$2** (integer): Optional seconds to wait after SIGTERM. Defaults to 2.
+* **$2** (integer): Optional seconds to wait after SIGTERM: a non-negative integer. Defaults to 2.
 
 #### Exit codes
 
 * **0**: No process holds the file.
-* **64**: The arguments are invalid or the file does not exist.
+* **64**: The arguments are invalid, the timeout is not a non-negative integer, or the file does not exist.
 * **69**: lsof is unavailable.
 * **74**: The clock could not be read.
 * **75**: The file is still open after SIGKILL.
@@ -1149,6 +1152,8 @@ archive::verify "${HOME}/Downloads"
 * **0**: Every archive is valid.
 * **1**: At least one archive is broken.
 * **64**: More than one argument was given.
+* **66**: The path does not exist or cannot be searched.
+* **74**: The temporary list could not be created.
 
 #### Output on stderr
 
@@ -1176,7 +1181,8 @@ archive::remove-broken "${HOME}/Downloads"
 * **0**: No archive was broken.
 * **1**: At least one broken archive was removed.
 * **64**: More than one argument was given.
-* **74**: A broken archive could not be removed.
+* **66**: The path does not exist or cannot be searched.
+* **74**: A broken archive or the temporary list could not be removed or created.
 
 #### Output on stderr
 
@@ -1625,6 +1631,7 @@ Write the unified diff that one commit introduced.
 
 The commit is fetched from REMOTE only when the repository lacks it, and it
 is compared with its first parent, or with the empty tree for a root commit.
+In a shallow clone, a parent beyond the shallow boundary is fetched as well.
 
 #### Example
 
@@ -3059,7 +3066,9 @@ docker::container::push web ./nginx.conf /etc/nginx/nginx.conf
 
 Run an interactive shell or a command in a container.
 
-Without COMMAND, Bash is used when the container has it and sh otherwise.
+Without COMMAND, Bash is used when the container has it and sh otherwise,
+with a terminal attached. A COMMAND receives standard input without a
+terminal, so it also works from scripts and CI.
 
 #### Example
 
@@ -5098,6 +5107,8 @@ archive::extract "${HOME}/Downloads"
 
 * **0**: Every archive was extracted.
 * **64**: More than one argument was given.
+* **66**: The directory does not exist or cannot be searched.
+* **74**: The temporary list could not be created.
 * other The status of archive::extract-file for the first archive that failed.
 
 ### syscall::trace-by-name
@@ -5846,7 +5857,8 @@ gpg::setup --user-id 'Alex Example <developer@example.com>' --passphrase-fd 3 3<
 Generate a 4096-bit RSA SSH key and write its public key.
 
 An existing key is replaced only after confirmation on the controlling
-terminal; without a terminal it is kept and 73 is returned.
+terminal; without a terminal it is kept and 73 is returned. The old key
+stays in place until the new key has been generated.
 
 #### Example
 
@@ -5875,7 +5887,7 @@ ssh::key::generate-rsa4096 --comment 'build server' --output "${HOME}/.ssh/build
 * **66**: The passphrase could not be read.
 * **69**: ssh-keygen is unavailable.
 * **73**: The key exists and was kept.
-* **74**: The directory could not be created or the old key removed.
+* **74**: The directory or the temporary key could not be created, or the new key could not replace the old one.
 * other The status of ssh-keygen.
 
 #### Output on stdout
@@ -5887,7 +5899,8 @@ ssh::key::generate-rsa4096 --comment 'build server' --output "${HOME}/.ssh/build
 Generate an Ed25519 SSH key and write its public key.
 
 An existing key is replaced only after confirmation on the controlling
-terminal; without a terminal it is kept and 73 is returned.
+terminal; without a terminal it is kept and 73 is returned. The old key
+stays in place until the new key has been generated.
 
 #### Example
 
@@ -5916,7 +5929,7 @@ ssh::key::generate-ed25519 --comment "$(id -un)@$(hostname)" --passphrase-fd 3 3
 * **66**: The passphrase could not be read.
 * **69**: ssh-keygen is unavailable.
 * **73**: The key exists and was kept.
-* **74**: The directory could not be created or the old key removed.
+* **74**: The directory or the temporary key could not be created, or the new key could not replace the old one.
 * other The status of ssh-keygen.
 
 #### Output on stdout
@@ -6143,7 +6156,7 @@ flutter::use-version 3.24.3
 * **0**: The SDK is at the version.
 * **64**: More than two arguments were given.
 * **66**: The directory is not a Git checkout.
-* other The status of the git command that failed.
+* other The status of the git command that failed. A failed stash leaves the checkout unchanged.
 
 ### jfrog::config::clear
 

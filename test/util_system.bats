@@ -121,3 +121,46 @@ record_root_commands() {
   run process::threads-by-name missing
   [ "$status" -eq 1 ]
 }
+
+@test "default route helpers read macOS and Linux routing tables" {
+  system::operating-system() { printf 'darwin\n'; }
+  route() {
+    printf '   route to: default\n    gateway: 192.0.2.1\n  interface: en0\n'
+  }
+  run net::interface::default
+  [ "${status}" -eq 0 ]
+  [ "${output}" = 'en0' ]
+  run net::gateway::default
+  [ "${status}" -eq 0 ]
+  [ "${output}" = '192.0.2.1' ]
+
+  system::operating-system() { printf 'ubuntu\n'; }
+  ip() {
+    printf 'default via 198.51.100.1 dev eth1 proto dhcp metric 100\n'
+  }
+  run net::interface::default
+  [ "${output}" = 'eth1' ]
+  run net::gateway::default
+  [ "${output}" = '198.51.100.1' ]
+
+  ip() { :; }
+  run net::interface::default
+  [ "${status}" -eq 69 ]
+  [ -z "${output}" ]
+}
+
+@test "swap size reads the macOS value after the equals sign" {
+  system::operating-system() { printf 'darwin\n'; }
+  sysctl() {
+    printf 'total = 2048.00M  used = 1201.25M  free = 846.75M  (encrypted)\n'
+  }
+  run mem::swap-total-bytes
+  [ "${status}" -eq 0 ]
+  [ "${output}" = '2147483648' ]
+
+  sysctl() {
+    printf 'total = 0.00M  used = 0.00M  free = 0.00M  (encrypted)\n'
+  }
+  run mem::swap-total-bytes
+  [ "${output}" = '0' ]
+}

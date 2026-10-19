@@ -80,18 +80,38 @@ net::_render-static-ipv4() {
   printf '        addresses: [%s]\n' "${dns_yaml}"
 }
 
+# @description Write one field of the first default route.
+#
+# macOS reads route -n get default, and other systems read ip route.
+# The status is 69 when the routing tool is missing or there is no default route.
+#
+# @internal
+net::_default-route-field() {
+  [[ "$#" -eq 2 ]] || return 64
+  local value=''
+  if [[ "$(system::operating-system)" == darwin ]]; then
+    command -v route >/dev/null 2>&1 || return 69
+    value="$(route -n get default 2>/dev/null |
+      awk -v key="$1:" '$1 == key { print $2; exit }')"
+  else
+    command -v ip >/dev/null 2>&1 || return 69
+    value="$(ip -o route show to default 2>/dev/null |
+      awk -v key="$2" 'NR == 1 { for (i = 1; i <= NF; i++) if ($i == key) { print $(i + 1); exit } }')"
+  fi
+  [[ -n "${value}" ]] || return 69
+  printf '%s\n' "${value}"
+}
+
 # @description Write the first default-route interface.
 # @internal
 net::_default-interface() {
-  ip -o route show to default 2>/dev/null |
-    awk 'NR == 1 { for (i = 1; i <= NF; i++) if ($i == "dev") { print $(i + 1); exit } }'
+  net::_default-route-field interface dev
 }
 
 # @description Write the first default-route gateway.
 # @internal
 net::_default-gateway() {
-  ip -o route show to default 2>/dev/null |
-    awk 'NR == 1 { for (i = 1; i <= NF; i++) if ($i == "via") { print $(i + 1); exit } }'
+  net::_default-route-field gateway via
 }
 
 # @description Write the primary global IPv4 address and prefix length for an interface.
@@ -138,6 +158,9 @@ net::_require-netplan-file() {
 }
 
 # @description Install one validated Netplan file, apply it, and set the host name.
+#
+# The previous file is restored and applied again when Netplan rejects the new one.
+#
 # @internal
 net::_install-static-ipv4() {
   if [[ "$#" -ne 3 ]]; then
@@ -147,22 +170,31 @@ net::_install-static-ipv4() {
   local candidate="$1"
   local destination="$2"
   local host_name="$3"
-  local destination_directory=''
-  destination_directory="$(dirname -- "${destination}")" || return 74
+  local backup="${candidate}.previous"
+  local write_status=74
+  local status=0
+  local runner=()
 
-  if [[ -w "${destination}" ||
-    ( ! -e "${destination}" && -w "${destination_directory}" ) ]]; then
-    install -m 600 -- "${candidate}" "${destination}" || return 74
-    netplan generate || return 65
-    netplan apply || return 75
-    hostnamectl set-hostname "${host_name}" || return 75
-  else
+  if [[ ! -w "${destination}" ]]; then
     command -v sudo >/dev/null 2>&1 || return 77
-    sudo install -m 600 -- "${candidate}" "${destination}" || return 77
-    sudo netplan generate || return 65
-    sudo netplan apply || return 75
-    sudo hostnamectl set-hostname "${host_name}" || return 75
+    runner=(sudo)
+    write_status=77
   fi
+  ${runner[@]+"${runner[@]}"} cp -p -- "${destination}" "${backup}" ||
+    return "${write_status}"
+  ${runner[@]+"${runner[@]}"} install -m 600 -- "${candidate}" "${destination}" ||
+    return "${write_status}"
+  ${runner[@]+"${runner[@]}"} netplan generate || status=65
+  if [[ "${status}" -eq 0 ]]; then
+    ${runner[@]+"${runner[@]}"} netplan apply || status=75
+  fi
+  if [[ "${status}" -ne 0 ]]; then
+    ${runner[@]+"${runner[@]}"} cp -p -- "${backup}" "${destination}" &&
+      ${runner[@]+"${runner[@]}"} netplan generate &&
+      ${runner[@]+"${runner[@]}"} netplan apply
+    return "${status}"
+  fi
+  ${runner[@]+"${runner[@]}"} hostnamectl set-hostname "${host_name}" || return 75
 }
 
 # @description List the named arguments and value candidates for net::ip::set-static.
@@ -184,7 +216,8 @@ net::ip::_set-static-args() {
 #
 # Values that are not given come from the current configuration. The new file
 # is generated and checked in a temporary root before it replaces the old one,
-# and the host name is set as well.
+# and the host name is set as well. When Netplan rejects or cannot apply the new
+# file, the previous file is restored and applied again.
 #
 # @option --interface <INTERFACE> Network interface. Defaults to the first default route.
 # @option --address <ADDRESS> IPv4 address. Defaults to the interface's primary address.
@@ -198,8 +231,9 @@ net::ip::_set-static-args() {
 # @exitcode 64 An option or value is invalid.
 # @exitcode 65 Netplan rejected the generated configuration.
 # @exitcode 69 The system is not Ubuntu, a required command is missing, or a default cannot be found.
-# @exitcode 74 A temporary file could not be written.
-# @exitcode other The status of netplan or hostnamectl.
+# @exitcode 74 A temporary file or the Netplan file could not be written.
+# @exitcode 75 Netplan could not apply the configuration, so the previous file was restored, or the host name could not be set.
+# @exitcode 77 sudo is unavailable or refused the credentials.
 # @example
 #   net::ip::set-static --interface eth0 --address 192.168.1.20 --prefix-length 24 \
 #     --gateway 192.168.1.1 --dns 192.168.1.1,1.1.1.1
@@ -241,7 +275,7 @@ net::ip::set-static() {
 
   [[ "$(platform::_identifier)" == 'ubuntu' ]] || return 69
   local required_command=''
-  for required_command in ip awk netplan hostname hostnamectl mktemp mkdir install dirname basename rm; do
+  for required_command in ip awk netplan hostname hostnamectl mktemp mkdir install cp dirname basename rm; do
     command::require "${required_command}" || return "$?"
   done
 

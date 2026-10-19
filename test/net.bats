@@ -112,3 +112,22 @@ EOF
   run net::ip::set-static --address
   [ "${status}" -eq 64 ]
 }
+
+@test "static IPv4 installation restores the previous file when apply fails" {
+  local destination="${BATS_TEST_TMPDIR}/50-bashstock.yaml"
+  local candidate="${BATS_TEST_TMPDIR}/candidate.yaml"
+  printf 'previous\n' >"${destination}"
+  printf 'new\n' >"${candidate}"
+  netplan() {
+    printf '%s %s\n' "$1" "$(cat "${destination}")" >>"${BATS_TEST_TMPDIR}/netplan.log"
+    [ "$1" = 'generate' ] || [ "$(cat "${destination}")" = 'previous' ]
+  }
+  hostnamectl() {
+    return 1
+  }
+
+  run net::_install-static-ipv4 "${candidate}" "${destination}" server-1
+  [ "${status}" -eq 75 ]
+  [ "$(cat "${destination}")" = 'previous' ]
+  [ "$(cat "${BATS_TEST_TMPDIR}/netplan.log")" = $'generate new\napply new\ngenerate previous\napply previous' ]
+}

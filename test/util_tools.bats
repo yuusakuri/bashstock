@@ -74,6 +74,18 @@ record_root_commands() {
   [ "$status" -eq 1 ]
 }
 
+@test "USB unmount releases every mount point of the device" {
+  local device=''
+  device="$(find /dev -maxdepth 1 -type b 2>/dev/null | head -n 1)"
+  [[ -n "${device}" ]] || skip 'no block device is available'
+  local log="${BATS_TEST_TMPDIR}/root.log"
+  command::run-as-root() { printf '%s\n' "$*" >>"${log}"; }
+  findmnt() { [[ "$*" == "-n -l -o TARGET --source ${device}" ]] && printf '/media/usb\n/mnt/backup copy\n'; }
+  run usb::_unmount "${device}"
+  [ "$status" -eq 0 ]
+  [ "$(<"${log}")" = $'umount -- /media/usb\numount -- /mnt/backup copy' ]
+}
+
 @test "Go versions come from the versioned Ubuntu packages" {
   package::_platform() { printf 'ubuntu\n'; }
   apt-cache() { printf 'golang-1.22\ngolang-1.21-go\ngolang-1.18\ngolang-go\ngolang-1.24\n'; }
@@ -120,6 +132,18 @@ record_root_commands() {
   [ "$status" -eq 64 ]
 }
 
+@test "SSH key generation leaves nothing behind when ssh-keygen fails" {
+  local directory="${BATS_TEST_TMPDIR}/keys"
+  ssh-keygen() {
+    while [ "$#" -gt 0 ] && [ "$1" != -f ]; do shift; done
+    printf 'partial\n' >"$2"
+    return 3
+  }
+  run ssh::key::generate-ed25519 --output "${directory}/id_test"
+  [ "${status}" -eq 3 ]
+  [ -z "$(ls -A "${directory}")" ]
+}
+
 @test "repo, SELinux, and VS Code helpers apply their documented defaults" {
   local work="${BATS_TEST_TMPDIR}/work"
   mkdir -p "$work/Code/User"
@@ -161,4 +185,48 @@ record_root_commands() {
   printf 'open {\n' >"$file"
   run textproto::set-scalar "$file" mode C
   [ "$status" -eq 65 ]
+}
+
+@test "file release validates the timeout before signaling holders" {
+  local file="${BATS_TEST_TMPDIR}/held"
+  : >"${file}"
+  lsof() {
+    printf 'lsof\n' >>"${BATS_TEST_TMPDIR}/lsof.log"
+    return 1
+  }
+  run file::release "${file}" abc
+  [ "${status}" -eq 64 ]
+  [ ! -e "${BATS_TEST_TMPDIR}/lsof.log" ]
+
+  run file::release "${file}" 0
+  [ "${status}" -eq 0 ]
+}
+
+@test "container shell attaches a terminal only for the interactive shell" {
+  local log="${BATS_TEST_TMPDIR}/docker.log"
+  mkdir -p "${BATS_TEST_TMPDIR}/bin"
+  printf '#!/bin/sh\nprintf "%%s\\n" "$*" >>"%s"\n' "${log}" >"${BATS_TEST_TMPDIR}/bin/docker"
+  chmod +x "${BATS_TEST_TMPDIR}/bin/docker"
+  PATH="${BATS_TEST_TMPDIR}/bin:${PATH}"
+  run docker::container::shell web nginx -t
+  [ "${status}" -eq 0 ]
+  run docker::container::shell web
+  [ "${status}" -eq 0 ]
+  [ "$(sed -n 1p "${log}")" = 'exec -i web nginx -t' ]
+  [[ "$(sed -n 2p "${log}")" == 'exec -it web sh -c '* ]]
+}
+
+@test "serial command writing validates every argument before writing" {
+  local device="${BATS_TEST_TMPDIR}/tty"
+  : >"${device}"
+  run serial::write-command "${device}" RESET cr nope
+  [ "${status}" -eq 64 ]
+  [ ! -s "${device}" ]
+  run serial::write-command "${device}" RESET unknown
+  [ "${status}" -eq 64 ]
+  [ ! -s "${device}" ]
+
+  run serial::write-command "${device}" AT crlf 0
+  [ "${status}" -eq 0 ]
+  [ "$(od -An -c "${device}" | tr -d ' ')" = 'AT\r\n' ]
 }

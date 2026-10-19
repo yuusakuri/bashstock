@@ -123,7 +123,24 @@ mem::physical-total-gibibytes() {
 mem::swap-total-bytes() {
   [[ "$#" -eq 0 ]] || return 64
   case "$(system::operating-system)" in
-    darwin) command -v sysctl >/dev/null 2>&1 || return 69; sysctl -n vm.swapusage 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="total") {gsub("M","",$(i+1)); print $(i+1)*1048576; exit}}' ;;
+    darwin)
+      # sysctl writes "total = 2048.00M  used = ...", so the size follows "=".
+      command -v sysctl >/dev/null 2>&1 || return 69
+      local usage=''
+      usage="$(sysctl -n vm.swapusage 2>/dev/null)" || return 74
+      awk '{
+        for (i = 1; i < NF; i++) {
+          if ($i != "total") continue
+          value = ($(i + 1) == "=") ? $(i + 2) : $(i + 1)
+          sub(/^=/, "", value)
+          unit = substr(value, length(value), 1)
+          scale = (unit == "K") ? 1024 : (unit == "M") ? 1048576 : (unit == "G") ? 1073741824 : 1
+          printf "%.0f\n", value * scale
+          exit
+        }
+        exit 1
+      }' <<<"${usage}" || return 74
+      ;;
     linux) awk '/^SwapTotal:/ {print $2 * 1024; exit}' /proc/meminfo 2>/dev/null || return 74 ;;
     *) return 69 ;;
   esac
@@ -246,24 +263,27 @@ file::find-by-content() {
   [[ "${processes}" =~ ^[1-9][0-9]*$ ]] || return 64
   grep -E -e "${expression}" </dev/null >/dev/null 2>&1 || status="$?"
   [[ "${status}" -ne 2 ]] || return 64
-  output="$(mktemp "${TMPDIR:-/tmp}/bashstock-find.XXXXXX")" || return 74
+  output="$(mktemp -d "${TMPDIR:-/tmp}/bashstock-find.XXXXXX")" || return 74
   status=0
+  # xargs reports one status for every grep, so a grep that could not read a
+  # file leaves a marker instead; its own status 1 only means no match.
+  # shellcheck disable=SC2016 # The worker script expands its own arguments.
   find "${directory}" -type f -print0 |
-    xargs -0 -P "${processes}" -n 64 grep -E -l --null "${binary_option}" -e "${expression}" -- >"${output}" 2>/dev/null ||
+    BASHSTOCK_FIND_ERROR="${output}/error" xargs -0 -P "${processes}" -n 64 sh -c '
+      grep "$@"
+      [ "$?" -le 1 ] || : >"${BASHSTOCK_FIND_ERROR}"
+    ' sh -E -l --null "${binary_option}" -e "${expression}" -- >"${output}/matches" 2>/dev/null ||
     status="$?"
-  # GNU xargs reports 123 and BSD xargs 1 when a grep found nothing in its
-  # batch or could not read a file.
-  case "${status}" in
-    0 | 1 | 123) ;;
-    127) rm -f -- "${output}"; return 69 ;;
-    *) rm -f -- "${output}"; return 74 ;;
-  esac
-  if [[ ! -s "${output}" ]]; then
-    rm -f -- "${output}"
+  if [[ "${status}" -ne 0 || -e "${output}/error" ]]; then
+    rm -rf -- "${output}"
+    return 74
+  fi
+  if [[ ! -s "${output}/matches" ]]; then
+    rm -rf -- "${output}"
     return 1
   fi
-  cat -- "${output}"
-  rm -f -- "${output}"
+  cat -- "${output}/matches"
+  rm -rf -- "${output}"
 }
 
 # @description Write the most recently modified regular file whose base name matches a Bash ERE.
@@ -386,13 +406,8 @@ net::ip::private-v4() {
   [[ "$#" -le 1 ]] || return 64
   local interface="${1:-}" address='' candidate='' cidr=''
   if [[ -z "${interface}" ]]; then
-    if [[ "$(system::operating-system)" == darwin ]]; then
-      interface="$(route -n get default 2>/dev/null | awk '/interface:/ {print $2; exit}')"
-    else
-      interface="$(net::_default-interface)"
-    fi
+    interface="$(net::_default-interface)" || return "$?"
   fi
-  [[ -n "${interface}" ]] || return 69
   while IFS= read -r candidate; do
     case "${candidate}" in
       10.* | 192.168.* | 172.1[6-9].* | 172.2[0-9].* | 172.3[01].*)
@@ -430,8 +445,9 @@ net::ip::private-v6() {
   [[ "$#" -le 2 ]] || return 64
   local interface="${1:-}" excluded="${2-fe80,fda6}" candidate='' prefix='' skip='' lower=''
   local prefixes=()
-  [[ -n "${interface}" ]] || interface="$(net::_default-interface)"
-  [[ -n "${interface}" ]] || return 69
+  if [[ -z "${interface}" ]]; then
+    interface="$(net::_default-interface)" || return "$?"
+  fi
   IFS=',' read -r -a prefixes <<<"${excluded}"
   while IFS= read -r candidate; do
     candidate="${candidate%%%*}"
@@ -775,6 +791,9 @@ time::status-continuous() {
 
 # @description Open an editor for a file, using sudoedit only when required.
 #
+# EDITOR is split on whitespace into a command and its arguments, such as
+# code --wait. It defaults to vi.
+#
 # @arg $1 string File to edit. A missing file is created by the editor.
 # @exitcode 0 The editor exited successfully.
 # @exitcode 64 The argument count is not one or the path is empty.
@@ -783,7 +802,22 @@ time::status-continuous() {
 # @exitcode other The status of the editor.
 # @example
 #   EDITOR=nano file::edit /etc/hosts
-file::edit() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; if [[ -e "$1" && ! -f "$1" ]]; then return 66; fi; if [[ -w "$1" || (! -e "$1" && -w "$(path::directory-name "$1")") ]]; then "${EDITOR:-vi}" "$1"; else command -v sudoedit >/dev/null 2>&1 || return 69; sudoedit "$1"; fi; }
+file::edit() {
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  if [[ -e "$1" && ! -f "$1" ]]; then
+    return 66
+  fi
+  if [[ -w "$1" || ( ! -e "$1" && -w "$(path::directory-name "$1")" ) ]]; then
+    local IFS=$' \t\n'
+    local editor_command=()
+    read -r -a editor_command <<<"${EDITOR:-vi}"
+    [[ "${#editor_command[@]}" -gt 0 ]] || editor_command=(vi)
+    "${editor_command[@]}" "$1"
+  else
+    command -v sudoedit >/dev/null 2>&1 || return 69
+    sudoedit "$1"
+  fi
+}
 
 # @description Release a file held by other processes.
 #
@@ -792,9 +826,9 @@ file::edit() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; if [[ -e "$1" && ! -f "
 # administrator execution.
 #
 # @arg $1 string File to release.
-# @arg $2 integer Optional seconds to wait after SIGTERM. Defaults to 2.
+# @arg $2 integer Optional seconds to wait after SIGTERM: a non-negative integer. Defaults to 2.
 # @exitcode 0 No process holds the file.
-# @exitcode 64 The arguments are invalid or the file does not exist.
+# @exitcode 64 The arguments are invalid, the timeout is not a non-negative integer, or the file does not exist.
 # @exitcode 69 lsof is unavailable.
 # @exitcode 74 The clock could not be read.
 # @exitcode 75 The file is still open after SIGKILL.
@@ -802,8 +836,9 @@ file::edit() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; if [[ -e "$1" && ! -f "
 #   file::release "${HOME}/.local/share/app/database.lock" 5
 file::release() {
   [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64
-  command -v lsof >/dev/null 2>&1 || return 69
   local timeout="${2:-2}" start='' pid=''
+  [[ "${timeout}" =~ ^[0-9]+$ ]] || return 64
+  command -v lsof >/dev/null 2>&1 || return 69
   start="$(date +%s)" || return 74
   while read -r pid; do
     [[ -n "$pid" ]] || continue
@@ -816,7 +851,9 @@ file::release() {
   while read -r pid; do
     kill -KILL "$pid" 2>/dev/null || command::run-as-root kill -KILL "$pid" 2>/dev/null || true
   done < <(lsof -t -- "$1" 2>/dev/null)
-  lsof -t -- "$1" >/dev/null 2>&1 && return 75
+  if lsof -t -- "$1" >/dev/null 2>&1; then
+    return 75
+  fi
 }
 
 # @description Open a GNU Screen session.
@@ -1006,17 +1043,21 @@ archive::_verify-file() {
 # @exitcode 0 Every archive is valid.
 # @exitcode 1 At least one archive is broken.
 # @exitcode 64 More than one argument was given.
+# @exitcode 66 The path does not exist or cannot be searched.
+# @exitcode 74 The temporary list could not be created.
 # @example
 #   archive::verify "${HOME}/Downloads"
 archive::verify() {
   [[ "$#" -le 1 ]] || return 64
-  local file='' result=0 broken=0
+  local file='' list='' result=0 broken=0
+  list="$(archive::_found-list "${1:-.}")" || return "$?"
   while IFS= read -r -d '' file; do
     result=0
     archive::_verify-file "${file}" || result="$?"
     # Other statuses mean the archive could not be verified; the reason is already reported.
     [[ "${result}" -ne 1 ]] || { printf '%s\n' "${file}" >&2; broken=1; }
-  done < <(archive::_find "${1:-.}")
+  done <"${list}"
+  rm -f -- "${list}"
   [[ "${broken}" -eq 0 ]] || return 1
 }
 
@@ -1030,21 +1071,25 @@ archive::verify() {
 # @exitcode 0 No archive was broken.
 # @exitcode 1 At least one broken archive was removed.
 # @exitcode 64 More than one argument was given.
-# @exitcode 74 A broken archive could not be removed.
+# @exitcode 66 The path does not exist or cannot be searched.
+# @exitcode 74 A broken archive or the temporary list could not be removed or created.
 # @example
 #   archive::remove-broken "${HOME}/Downloads"
 archive::remove-broken() {
   [[ "$#" -le 1 ]] || return 64
-  local file='' result=0 removed=0
+  local file='' list='' result=0 removed=0 status=0
+  list="$(archive::_found-list "${1:-.}")" || return "$?"
   while IFS= read -r -d '' file; do
     result=0
     archive::_verify-file "${file}" || result="$?"
     # Other statuses mean the archive could not be verified; it is kept.
     [[ "${result}" -eq 1 ]] || continue
-    rm -f -- "${file}" || return 74
+    rm -f -- "${file}" || { status=74; break; }
     printf '%s\n' "${file}" >&2
     removed=1
-  done < <(archive::_find "${1:-.}")
+  done <"${list}"
+  rm -f -- "${list}"
+  [[ "${status}" -eq 0 ]] || return "${status}"
   [[ "${removed}" -eq 0 ]] || return 1
 }
 
@@ -1055,6 +1100,23 @@ archive::_find() {
   find "${1:-.}" -type f \( -name '*.tar' -o -name '*.tgz' -o -name '*.gz' -o -name '*.txz' -o -name '*.xz' \
     -o -name '*.tbz2' -o -name '*.tbz' -o -name '*.bz2' -o -name '*.tzst' -o -name '*.zst' \
     -o -name '*.zip' -o -name '*.7z' \) -print0
+}
+
+# @description Write the recognized archives below a path to a new temporary file and write that file's path.
+#
+# The list is collected before the archives are read, so a path that does
+# not exist or cannot be searched returns 66 instead of an empty result.
+# @internal
+archive::_found-list() {
+  [[ "$#" -eq 1 ]] || return 64
+  local list=''
+  list="$(mktemp "${TMPDIR:-/tmp}/bashstock-archives.XXXXXX")" || return 74
+  if ! archive::_find "$1" >"${list}"; then
+    rm -f -- "${list}"
+    console::_write-error "$1 cannot be searched for archives."
+    return 66
+  fi
+  printf '%s\n' "${list}"
 }
 
 # @description Decompress one single compressed file, such as notes.txt.gz.
@@ -1385,6 +1447,7 @@ git::diff::latest-files() { [[ "$#" -le 1 ]] || return 64; git::_run-in-director
 #
 # The commit is fetched from REMOTE only when the repository lacks it, and it
 # is compared with its first parent, or with the empty tree for a root commit.
+# In a shallow clone, a parent beyond the shallow boundary is fetched as well.
 #
 # @arg $1 string Commit to show.
 # @arg $2 string Optional remote to fetch a missing commit from. Defaults to origin.
@@ -1398,10 +1461,15 @@ git::diff::latest-files() { [[ "$#" -le 1 ]] || return 64; git::_run-in-director
 #   git::commit::patch 3ce3b61 > fix.patch
 git::commit::patch() {
   [[ "$#" -ge 1 && "$#" -le 3 && -n "$1" ]] || return 64
-  local revision="$1" remote="${2:-origin}" directory="${3:-.}" parent='' empty_tree=''
+  local revision="$1" remote="${2:-origin}" directory="${3:-.}" parent='' empty_tree='' object=''
   git::_require-commit "${revision}" "${remote}" "${directory}" || return "$?"
-  parent="$(git::_run-in-directory "${directory}" rev-parse --verify --quiet "${revision}^1")" || parent=''
-  if [[ -z "${parent}" ]]; then
+  # The commit object names its parents even at a shallow boundary, where
+  # rev-parse would report none.
+  object="$(git::_run-in-directory "${directory}" cat-file commit "${revision}")" || return "$?"
+  parent="$(awk '/^$/ { exit } $1 == "parent" { print $2; exit }' <<<"${object}")"
+  if [[ -n "${parent}" ]]; then
+    git::_require-commit "${parent}" "${remote}" "${directory}" || return "$?"
+  else
     empty_tree="$(git::_run-in-directory "${directory}" hash-object -t tree /dev/null)" || return 74
     parent="${empty_tree}"
   fi
@@ -1884,6 +1952,7 @@ env::set-variable() {
   local name="$1" value="$2" shells="${3:-bash,zsh}" shell='' rc='' quoted=''
   [[ "$shells" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] || return 64
   printf -v quoted '%q' "$value"
+  local _util_shells=()
   IFS=',' read -r -a _util_shells <<<"$shells"
   for shell in "${_util_shells[@]}"; do
     case "$shell" in bash) rc="$HOME/.bashrc" ;; zsh) rc="$HOME/.zshrc" ;; esac
@@ -1911,6 +1980,7 @@ env::add-path() {
   [[ "$shells" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] || return 64
   printf -v quoted '%q' "$path"
   line="__bashstock_path=${quoted}; case \":\$PATH:\" in *\":\$__bashstock_path:\"*) ;; *) if [ -n \"\$PATH\" ]; then PATH=\"\$PATH:\$__bashstock_path\"; else PATH=\"\$__bashstock_path\"; fi; export PATH ;; esac; unset __bashstock_path"
+  local _util_shells=()
   IFS=',' read -r -a _util_shells <<<"$shells"
   for shell in "${_util_shells[@]}"; do
     case "$shell" in bash) rc="$HOME/.bashrc" ;; zsh) rc="$HOME/.zshrc" ;; esac
@@ -2008,6 +2078,11 @@ ssh::setup-directory() {
 }
 
 # @description Replace one marker-managed SSH Host block and validate the resulting configuration.
+#
+# The block is placed first so that its options take precedence, and it ends
+# with Host * so that directives after it still apply to every host. Option
+# names are compared case-insensitively, as SSH does.
+#
 # @internal
 ssh::config::_write-block() {
   [[ "$#" -eq 3 && -n "$1" && -n "$2" && -n "$3" ]] || return 64
@@ -2020,7 +2095,7 @@ ssh::config::_write-block() {
   while IFS= read -r option || [[ -n "$option" ]]; do
     [[ "$option" == '  '* ]] || continue
     key="${option#  }"
-    key="${key%% *}"
+    key="$(string::lower "${key%% *}")"
     keys+="|$key|"
   done <<<"$options"
   begin="# bashstock: begin $pattern"
@@ -2035,7 +2110,7 @@ ssh::config::_write-block() {
       [[ "$line" == "$end" ]] && in_block=0
       if ((in_block)) && [[ "$line" == '  '* ]]; then
         key="${line#  }"
-        key="${key%% *}"
+        key="$(string::lower "${key%% *}")"
         [[ "$keys" == *"|$key|"* ]] && continue
         preserved+="$line"$'\n'
       fi
@@ -2045,7 +2120,8 @@ ssh::config::_write-block() {
   done <"$file"
   local block=''
   block="$begin"$'\n'"Host $pattern"$'\n'
-  block+="$preserved$options"$'\n'"$end"$'\n'
+  # Host * ends the managed context so later global directives apply to every host.
+  block+="$preserved$options"$'\n'"Host *"$'\n'"$end"$'\n'
   file::write-text "$file" "$block$content" || return "$?"
   local pattern_parts=()
   read -r -a pattern_parts <<<"$pattern"
@@ -2200,13 +2276,16 @@ ssh::key::add() {
 #   ssh::key::add-all
 ssh::key::add-all() {
   [[ "$#" -le 1 ]] || return 64
-  local directory='' path='' status=0
+  local directory='' path='' key_list='' status=0
   if [[ "$#" -ge 1 ]]; then directory="$1"; else directory="$HOME/.ssh"; fi
   [[ -d "$directory" && ! -L "$directory" ]] || return 66
   command -v ssh-add >/dev/null 2>&1 || return 69
+  # The list is read first, so a failure to detect keys is not reported as success.
+  key_list="$(ssh::key::private-files "$directory")" || return "$?"
   while IFS= read -r path; do
+    [[ -n "$path" ]] || continue
     ssh::key::add "$path" || status="$?"
-  done < <(ssh::key::private-files "$directory") || return "$?"
+  done <<<"$key_list"
   return "$status"
 }
 
@@ -2479,7 +2558,21 @@ serial::write() { [[ "$#" -eq 2 && -e "$1" ]] || return 64; printf '%s' "$2" >"$
 # @exitcode 74 The device could not be written.
 # @example
 #   serial::write-command /dev/ttyUSB0 'AT+GMR' crlf 0.5
-serial::write-command() { [[ "$#" -ge 2 && "$#" -le 4 && -e "$1" ]] || return 64; local device="$1" data="$2" terminator="${3:-cr}" wait="${4:-0}" suffix=''; case "$terminator" in none) suffix='' ;; cr) suffix=$'\r' ;; lf) suffix=$'\n' ;; crlf) suffix=$'\r\n' ;; *) return 64 ;; esac; printf '%s%s' "$data" "$suffix" >"$device" || return 74; [[ "$wait" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 64; [[ "$wait" == 0 ]] || sleep "$wait"; }
+serial::write-command() {
+  [[ "$#" -ge 2 && "$#" -le 4 && -e "$1" ]] || return 64
+  local device="$1" data="$2" terminator="${3:-cr}" wait="${4:-0}" suffix=''
+  case "$terminator" in
+    none) suffix='' ;;
+    cr) suffix=$'\r' ;;
+    lf) suffix=$'\n' ;;
+    crlf) suffix=$'\r\n' ;;
+    *) return 64 ;;
+  esac
+  # Every argument is validated before the device receives anything.
+  [[ "$wait" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 64
+  printf '%s%s' "$data" "$suffix" >"$device" || return 74
+  [[ "$wait" == 0 ]] || sleep "$wait"
+}
 
 # @description Open a serial device in GNU Screen through administrator execution and log the session.
 #
@@ -2716,7 +2809,9 @@ docker::container::push() {
 
 # @description Run an interactive shell or a command in a container.
 #
-# Without COMMAND, Bash is used when the container has it and sh otherwise.
+# Without COMMAND, Bash is used when the container has it and sh otherwise,
+# with a terminal attached. A COMMAND receives standard input without a
+# terminal, so it also works from scripts and CI.
 #
 # @arg $1 string Container name or ID.
 # @arg $@ string Optional command and its arguments.
@@ -2734,7 +2829,7 @@ docker::container::shell() {
   if [[ "$#" -eq 0 ]]; then
     util::_run-command docker exec -it "${container}" sh -c 'if command -v bash >/dev/null 2>&1; then exec bash; fi; exec sh'
   else
-    util::_run-command docker exec -it "${container}" "$@"
+    util::_run-command docker exec -i "${container}" "$@"
   fi
 }
 
@@ -4392,10 +4487,25 @@ mozc::config::open() {
 # @arg $1 string Optional archive file or directory to search. Defaults to the current directory.
 # @exitcode 0 Every archive was extracted.
 # @exitcode 64 More than one argument was given.
+# @exitcode 66 The directory does not exist or cannot be searched.
+# @exitcode 74 The temporary list could not be created.
 # @exitcode other The status of archive::extract-file for the first archive that failed.
 # @example
 #   archive::extract "${HOME}/Downloads"
-archive::extract() { [[ "$#" -le 1 ]] || return 64; local path="${1:-.}" file; if [[ -f "$path" ]]; then archive::extract-file "$path"; else while IFS= read -r -d '' file; do archive::extract-file "$file" || return "$?"; done < <(archive::_find "$path"); fi; }
+archive::extract() {
+  [[ "$#" -le 1 ]] || return 64
+  local path="${1:-.}" file='' list='' status=0
+  if [[ -f "${path}" ]]; then
+    archive::extract-file "${path}"
+    return
+  fi
+  list="$(archive::_found-list "${path}")" || return "$?"
+  while IFS= read -r -d '' file; do
+    archive::extract-file "${file}" || { status="$?"; break; }
+  done <"${list}"
+  rm -f -- "${list}"
+  return "${status}"
+}
 
 # @description Attach strace to the first process whose executable name is NAME.
 #
@@ -4634,11 +4744,15 @@ usb::partition::select() {
 # @internal
 usb::_unmount() {
   [[ "$#" -eq 1 && -b "$1" ]] || return 64
-  local mount_point=''
+  command::require findmnt || return "$?"
+  local mount_point='' mount_points=''
+  # lsblk's MOUNTPOINT column holds only one location, and MOUNTPOINTS is
+  # missing before util-linux 2.37, so findmnt lists every mount of the device.
+  mount_points="$(findmnt -n -l -o TARGET --source "$1")" || mount_points=''
   while IFS= read -r mount_point; do
     [[ -n "${mount_point}" ]] || continue
     command::run-as-root umount -- "${mount_point}" || return 74
-  done < <(lsblk -nro MOUNTPOINT "$1")
+  done <<<"${mount_points}"
 }
 
 # @description Write the USB block devices that can be selected: partitions, or disks without partitions.
@@ -5186,7 +5300,8 @@ gpg::setup() {
 # @description Generate a 4096-bit RSA SSH key and write its public key.
 #
 # An existing key is replaced only after confirmation on the controlling
-# terminal; without a terminal it is kept and 73 is returned.
+# terminal; without a terminal it is kept and 73 is returned. The old key
+# stays in place until the new key has been generated.
 #
 # @option --comment <COMMENT> Key comment. Defaults to an empty comment.
 # @option --output <FILE> Private key path. Defaults to $HOME/.ssh/id_rsa.
@@ -5197,7 +5312,7 @@ gpg::setup() {
 # @exitcode 66 The passphrase could not be read.
 # @exitcode 69 ssh-keygen is unavailable.
 # @exitcode 73 The key exists and was kept.
-# @exitcode 74 The directory could not be created or the old key removed.
+# @exitcode 74 The directory or the temporary key could not be created, or the new key could not replace the old one.
 # @exitcode other The status of ssh-keygen.
 # @example
 #   ssh::key::generate-rsa4096 --comment 'build server' --output "${HOME}/.ssh/build_rsa"
@@ -5241,7 +5356,6 @@ ssh::key::_generate() {
       return 73
     fi
     [[ "$(prompt::confirm "Overwrite ${output}?" no </dev/tty)" == yes ]] || return 73
-    rm -f -- "${output}" "${output}.pub" || return 74
   fi
   case "${type}" in
     rsa) arguments=(-t rsa -b 4096) ;;
@@ -5249,20 +5363,33 @@ ssh::key::_generate() {
   esac
   if [[ -n "${passphrase_fd}" ]]; then
     IFS= read -r -u "${passphrase_fd}" passphrase || [[ -n "${passphrase}" ]] || return 66
+  fi
+  # The pair is generated beside the destination and replaces an existing pair
+  # only after ssh-keygen succeeds.
+  local temporary='' status=0
+  temporary="$(mktemp -d "$(path::directory-name "${output}")/.bashstock-key.XXXXXX")" || return 74
+  if [[ -n "${passphrase_fd}" ]]; then
     # ssh-keygen reads the passphrase and its confirmation from a standard input that is not a terminal.
     printf '%s\n%s\n' "${passphrase}" "${passphrase}" |
-      ssh-keygen "${arguments[@]}" -C "${comment}" -f "${output}" -q || return "$?"
+      ssh-keygen "${arguments[@]}" -C "${comment}" -f "${temporary}/key" -q || status="$?"
     passphrase=''
   else
-    ssh-keygen "${arguments[@]}" -C "${comment}" -f "${output}" -N '' -q </dev/null || return "$?"
+    ssh-keygen "${arguments[@]}" -C "${comment}" -f "${temporary}/key" -N '' -q </dev/null || status="$?"
   fi
+  if [[ "${status}" -eq 0 ]]; then
+    mv -f -- "${temporary}/key" "${output}" &&
+      mv -f -- "${temporary}/key.pub" "${output}.pub" || status=74
+  fi
+  rm -rf -- "${temporary}"
+  [[ "${status}" -eq 0 ]] || return "${status}"
   cat -- "${output}.pub"
 }
 
 # @description Generate an Ed25519 SSH key and write its public key.
 #
 # An existing key is replaced only after confirmation on the controlling
-# terminal; without a terminal it is kept and 73 is returned.
+# terminal; without a terminal it is kept and 73 is returned. The old key
+# stays in place until the new key has been generated.
 #
 # @option --comment <COMMENT> Key comment. Defaults to an empty comment.
 # @option --output <FILE> Private key path. Defaults to $HOME/.ssh/id_ed25519.
@@ -5273,7 +5400,7 @@ ssh::key::_generate() {
 # @exitcode 66 The passphrase could not be read.
 # @exitcode 69 ssh-keygen is unavailable.
 # @exitcode 73 The key exists and was kept.
-# @exitcode 74 The directory could not be created or the old key removed.
+# @exitcode 74 The directory or the temporary key could not be created, or the new key could not replace the old one.
 # @exitcode other The status of ssh-keygen.
 # @example
 #   ssh::key::generate-ed25519 --comment "$(id -un)@$(hostname)" --passphrase-fd 3 3<passphrase.txt
@@ -5576,7 +5703,7 @@ rust::versions() {
 # @exitcode 0 The SDK is at the version.
 # @exitcode 64 More than two arguments were given.
 # @exitcode 66 The directory is not a Git checkout.
-# @exitcode other The status of the git command that failed.
+# @exitcode other The status of the git command that failed. A failed stash leaves the checkout unchanged.
 # @example
 #   flutter::use-version 3.24.3
 flutter::use-version() {
@@ -5587,10 +5714,8 @@ flutter::use-version() {
   [[ -d "$directory/.git" ]] || return 66
   [[ -n "$version" ]] || version="$(flutter::versions | package::_latest-stable-version)" || return "$?"
   git -C "$directory" fetch --tags origin || return "$?"
-  if ! git -C "$directory" stash push --include-untracked; then
-    git -C "$directory" reset --hard HEAD || return "$?"
-    git -C "$directory" clean -fd || return "$?"
-  fi
+  # A failed stash returns before checkout so that no change is discarded.
+  git -C "$directory" stash push --include-untracked || return "$?"
   # checkout instead of switch keeps Git 2.17 on Ubuntu 18.04 working.
   git -C "$directory" -c advice.detachedHead=false checkout --detach "$version"
 }

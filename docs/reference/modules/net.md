@@ -16,7 +16,8 @@ Replace one Ubuntu Netplan file with a static IPv4 configuration.
 
 Values that are not given come from the current configuration. The new file
 is generated and checked in a temporary root before it replaces the old one,
-and the host name is set as well.
+and the host name is set as well. When Netplan rejects or cannot apply the new
+file, the previous file is restored and applied again.
 
 #### Example
 
@@ -65,6 +66,7 @@ net::ip::set-static --interface eth0 --address 192.168.1.20 --prefix-length 24 \
 * **64**: An option or value is invalid.
 * **65**: Netplan rejected the generated configuration.
 * **69**: The system is not Ubuntu, a required command is missing, or a default cannot be found.
-* **74**: A temporary file could not be written.
-* other The status of netplan or hostnamectl.
+* **74**: A temporary file or the Netplan file could not be written.
+* **75**: Netplan could not apply the configuration, so the previous file was restored, or the host name could not be set.
+* **77**: sudo is unavailable or refused the credentials.
 

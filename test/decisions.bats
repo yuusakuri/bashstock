@@ -116,6 +116,31 @@ SCRIPT
     grep -Fxq extra
 }
 
+@test "Flutter version switching keeps changes when the stash fails" {
+  local sdk="$BATS_TEST_TMPDIR/flutter"
+  git init -q "$sdk"
+  git -C "$sdk" config user.name test
+  git -C "$sdk" config user.email test@example.invalid
+  printf 'one\n' >"$sdk/version"
+  git -C "$sdk" add .
+  git -C "$sdk" commit -qm first
+  git -C "$sdk" tag 1.0.0
+  printf 'local\n' >"$sdk/version"
+  printf 'extra\n' >"$sdk/extra"
+  git() {
+    case "$3" in
+      fetch) return 0 ;;
+      stash) return 1 ;;
+    esac
+    command git "$@"
+  }
+
+  run flutter::use-version 1.0.0 "$sdk"
+  [ "$status" -eq 1 ]
+  [ "$(cat "$sdk/version")" = local ]
+  [ "$(cat "$sdk/extra")" = extra ]
+}
+
 @test "normal push rejects stale history and force-with-lease requires a fresh fetch" {
   local remote="$BATS_TEST_TMPDIR/remote.git" first="$BATS_TEST_TMPDIR/first" second="$BATS_TEST_TMPDIR/second"
   git init -q --bare -b main "$remote"
