@@ -1266,7 +1266,7 @@ archive::extract-file() {
 # @exitcode other The status of tar.
 # @example
 #   archive::compress-tar-gzip --output backup.tar.gz Documents Pictures
-archive::compress-tar-gzip() { [[ "$#" -ge 1 ]] || return 64; local output='' paths=() path=''; while [[ "$#" -gt 0 ]]; do if [[ "$1" == '--output' ]]; then [[ "$#" -ge 2 ]] || return 64; output="$2"; shift 2; else paths+=("$1"); shift; fi; done; [[ "${#paths[@]}" -gt 0 ]] || return 64; [[ -n "$output" ]] || output="${paths[0]}.tar.gz"; command -v tar >/dev/null 2>&1 || return 69; tar -czf "$output" "${paths[@]}"; }
+archive::compress-tar-gzip() { [[ "$#" -ge 1 ]] || return 64; local output='' paths=() path=''; while [[ "$#" -gt 0 ]]; do if [[ "$1" == '--output' ]]; then [[ "$#" -ge 2 ]] || return 64; output="$2"; shift 2; else paths+=("$1"); shift; fi; done; [[ "${#paths[@]}" -gt 0 ]] || return 64; [[ -n "$output" ]] || output="${paths[0]}.tar.gz"; command -v tar >/dev/null 2>&1 || return 69; tar -czf "$output" -- "${paths[@]}"; }
 
 # @description List the named arguments of archive::compress-tar-gzip.
 # @internal
@@ -1886,7 +1886,8 @@ git::pull-base-branch() { [[ "$#" -le 2 ]] || return 64; local base="${1:-main}"
 # @set Each variable of the file is set and exported.
 # @exitcode 0 The variables were imported.
 # @exitcode 64 The argument is not one regular file.
-# @exitcode 65 A line is not valid dotenv syntax; no variable changes.
+# @exitcode 65 A line is not valid dotenv syntax, or a variable is readonly; no variable changes.
+# @exitcode 74 A variable could not be set or exported.
 # @exitcode other The status of the parser.
 # @example
 #   env::dotenv::import .env && printf '%s\n' "${DATABASE_URL}"
@@ -1894,9 +1895,17 @@ env::dotenv::import() {
   [[ "$#" -eq 1 && -f "$1" && ! -L "$1" ]] || return 64
   env::dotenv::_entries "$1" >/dev/null || return "$?"
   local __bashstock_dotenv_key='' __bashstock_dotenv_value=''
+  # A readonly variable such as UID cannot be assigned, so the whole file is
+  # refused before any variable changes. unset in a subshell fails only then.
   while IFS= read -r -d '' __bashstock_dotenv_key && IFS= read -r -d '' __bashstock_dotenv_value; do
-    printf -v "${__bashstock_dotenv_key}" '%s' "${__bashstock_dotenv_value}"
-    export "${__bashstock_dotenv_key?}"
+    if ! ( unset -v "${__bashstock_dotenv_key}" ) 2>/dev/null; then
+      console::_write-error "${__bashstock_dotenv_key} in $1 is readonly; no variable was imported."
+      return 65
+    fi
+  done < <(env::dotenv::_entries "$1")
+  while IFS= read -r -d '' __bashstock_dotenv_key && IFS= read -r -d '' __bashstock_dotenv_value; do
+    printf -v "${__bashstock_dotenv_key}" '%s' "${__bashstock_dotenv_value}" 2>/dev/null || return 74
+    export "${__bashstock_dotenv_key?}" || return 74
   done < <(env::dotenv::_entries "$1")
 }
 
@@ -2163,6 +2172,11 @@ ssh::config::_write-block() {
     fi
     content+="$line"$'\n'
   done <"$file"
+  # Without the end marker every later line would look like part of the block.
+  if ((in_block)); then
+    console::_write-error "$file has '$begin' without '$end'; it is not changed."
+    return 65
+  fi
   local block=''
   block="$begin"$'\n'"Host $pattern"$'\n'
   # Host * ends the managed context so later global directives apply to every host.
@@ -2191,6 +2205,7 @@ ssh::config::_write-block() {
 # @arg $4 string Value on one line.
 # @exitcode 0 The key was written.
 # @exitcode 64 The arguments are invalid.
+# @exitcode 65 The file has a begin marker without an end marker, or ssh rejected the result; the file is unchanged.
 # @exitcode other The status of the file update.
 # @example
 #   ssh::config::update "${HOME}/.ssh/config" github.com IdentityFile '~/.ssh/github'
@@ -2424,7 +2439,8 @@ swap::remove-all-files() {
 
 # @description Create a swap file, enable it, and register it in /etc/fstab.
 #
-# The file is created and enabled through administrator execution.
+# The file is created and enabled through administrator execution. When a step
+# fails, the swap file is disabled and removed again.
 #
 # @arg $1 integer Optional size in bytes. Defaults to 8589934592 (8 GiB).
 # @arg $2 string Optional absolute swap file path without blanks or backslashes. Defaults to /swapfile.
@@ -2456,11 +2472,23 @@ swap::create() {
       return 74
     }
   fi
-  command::run-as-root chmod 600 "${path}" || return 74
-  command::run-as-root mkswap "${path}" >/dev/null || return 74
-  command::run-as-root swapon "${path}" || return 74
-  if ! awk -v path="${path}" '$1 == path && $3 == "swap" {found = 1} END {exit !found}' /etc/fstab 2>/dev/null; then
-    file::append-text /etc/fstab "${path} none swap sw 0 0"$'\n' || return "$?"
+  # A failed step undoes the earlier ones, so a retry does not find the path taken.
+  local status=0 enabled=0
+  command::run-as-root chmod 600 "${path}" || status=74
+  if [[ "${status}" -eq 0 ]]; then
+    command::run-as-root mkswap "${path}" >/dev/null || status=74
+  fi
+  if [[ "${status}" -eq 0 ]]; then
+    if command::run-as-root swapon "${path}"; then enabled=1; else status=74; fi
+  fi
+  if [[ "${status}" -eq 0 ]] &&
+    ! awk -v path="${path}" '$1 == path && $3 == "swap" {found = 1} END {exit !found}' /etc/fstab 2>/dev/null; then
+    file::append-text /etc/fstab "${path} none swap sw 0 0"$'\n' || status="$?"
+  fi
+  if [[ "${status}" -ne 0 ]]; then
+    [[ "${enabled}" -eq 0 ]] || command::run-as-root swapoff "${path}" || true
+    command::run-as-root rm -f -- "${path}" || true
+    return "${status}"
   fi
 }
 
@@ -5610,6 +5638,11 @@ git-credential-manager::_install-version() {
   [[ "${actual_version}" == "${version}" || "${actual_version}" == "${version}"+* ]] ||
     { rm -rf -- "${temporary}"; return 69; }
   mkdir -p -- "${HOME}/.local/lib/git-credential-manager" || { rm -rf -- "${temporary}"; return 74; }
+  # A directory left by an interrupted installation is replaced, because mv
+  # would otherwise move the new tree inside it.
+  if [[ -e "${destination}" || -L "${destination}" ]]; then
+    rm -rf -- "${destination}" || { rm -rf -- "${temporary}"; return 74; }
+  fi
   mv -- "${temporary}/unpacked" "${destination}" || { rm -rf -- "${temporary}"; return 74; }
   rm -rf -- "${temporary}"
 }

@@ -2779,8 +2779,10 @@ gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 xcode::command-line-tools::_latest-label() {
   [[ "$#" -eq 0 ]] || return 64
   command::require softwareupdate || return "$?"
-  local labels=''
-  labels="$(softwareupdate --list 2>&1 |
+  local listing='' labels=''
+  # The listing is read on its own so that its failure is not taken for "no update".
+  listing="$(softwareupdate --list 2>&1)" || return 74
+  labels="$(printf '%s\n' "${listing}" |
     sed -n 's/^[[:space:]]*\*[[:space:]]*Label:[[:space:]]*\(Command Line Tools.*\)$/\1/p')" || return 74
   [[ -n "${labels}" ]] || return 1
   printf '%s\n' "${labels}" | awk '{print $NF "\t" $0}' | package::_sort-by-first-field | tail -n 1

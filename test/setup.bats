@@ -944,6 +944,11 @@ gsettings_value() {
   run --separate-stderr xcode::command-line-tools::upgrade
   [ "${status}" -eq 0 ]
   [ ! -s "${ROOT_LOG}" ]
+  # A catalog that cannot be read is an error, not "no update".
+  softwareupdate() { printf 'Cannot reach the catalog.\n'; return 1; }
+  run --separate-stderr xcode::command-line-tools::upgrade
+  [ "${status}" -eq 74 ]
+  [ ! -s "${ROOT_LOG}" ]
 }
 
 @test "Ubuntu setup stops at the first failed step" {

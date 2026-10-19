@@ -168,3 +168,24 @@ record_root_commands() {
   run mem::swap-total-bytes
   [ "${output}" = '0' ]
 }
+
+@test "swap creation removes the file again when a later step fails" {
+  system::operating-system() { printf 'linux\n'; }
+  record_root_commands
+  mkswap() { :; }
+  file::append-text() { return 74; }
+  run swap::create 1048576 "${BATS_TEST_TMPDIR}/swapfile"
+  [ "$status" -eq 74 ]
+  grep -Fqx "swapoff ${BATS_TEST_TMPDIR}/swapfile" "${ROOT_LOG}"
+  grep -Fqx "rm -f -- ${BATS_TEST_TMPDIR}/swapfile" "${ROOT_LOG}"
+
+  : >"${ROOT_LOG}"
+  command::run-as-root() {
+    printf '%s\n' "$*" >>"${ROOT_LOG}"
+    [[ "$1" != mkswap ]]
+  }
+  run swap::create 1048576 "${BATS_TEST_TMPDIR}/swapfile"
+  [ "$status" -eq 74 ]
+  ! grep -q '^swapon\|^swapoff' "${ROOT_LOG}"
+  grep -Fqx "rm -f -- ${BATS_TEST_TMPDIR}/swapfile" "${ROOT_LOG}"
+}

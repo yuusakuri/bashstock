@@ -2166,7 +2166,8 @@ env::dotenv::import .env && printf '%s\n' "${DATABASE_URL}"
 
 * **0**: The variables were imported.
 * **64**: The argument is not one regular file.
-* **65**: A line is not valid dotenv syntax; no variable changes.
+* **65**: A line is not valid dotenv syntax, or a variable is readonly; no variable changes.
+* **74**: A variable could not be set or exported.
 * other The status of the parser.
 
 ### env::set-variable
@@ -2320,6 +2321,7 @@ ssh::config::update "${HOME}/.ssh/config" github.com IdentityFile '~/.ssh/github
 
 * **0**: The key was written.
 * **64**: The arguments are invalid.
+* **65**: The file has a begin marker without an end marker, or ssh rejected the result; the file is unchanged.
 * other The status of the file update.
 
 ### ssh::config::set
@@ -2557,7 +2559,8 @@ _Function has no arguments._
 
 Create a swap file, enable it, and register it in /etc/fstab.
 
-The file is created and enabled through administrator execution.
+The file is created and enabled through administrator execution. When a step
+fails, the swap file is disabled and removed again.
 
 #### Example
 

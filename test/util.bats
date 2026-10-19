@@ -161,6 +161,16 @@ bats_require_minimum_version 1.5.0
   ! grep -Fq 'user alice' "$config"
 }
 
+@test "managed SSH configuration refuses a block without an end marker" {
+  command -v ssh >/dev/null 2>&1 || skip 'the OpenSSH client is not installed'
+  local config="${BATS_TEST_TMPDIR}/ssh-config" before=''
+  printf '# bashstock: begin managed.example\nHost managed.example\n  User alice\nHost other.example\n  Port 2222\n' >"$config"
+  before="$(<"$config")"
+  run --separate-stderr ssh::config::set "$config" managed.example User bob
+  [ "${status}" -eq 65 ]
+  [ "$(<"$config")" = "${before}" ]
+}
+
 @test "SSH private-key listing delegates key detection to ssh-keygen" {
   command -v ssh-keygen >/dev/null 2>&1 || skip 'the OpenSSH client is not installed'
   local directory="${BATS_TEST_TMPDIR}/keys" key="${BATS_TEST_TMPDIR}/keys/id_ed25519"
@@ -663,4 +673,26 @@ TABLE
   run directory::merge "${source}" "${BATS_TEST_TMPDIR}"
   [ "${status}" -eq 64 ]
   [ "$(<"${source}/file")" = data ]
+}
+
+@test "tar.gz compression treats option-like paths as files" {
+  local work="${BATS_TEST_TMPDIR}/compress"
+  mkdir -p "${work}"
+  cd "${work}"
+  printf 'data\n' >./--checkpoint=1
+  printf 'plain\n' >plain.txt
+  run archive::compress-tar-gzip --output archive.tar.gz --checkpoint=1 plain.txt
+  [ "${status}" -eq 0 ]
+  [ "$(tar -tzf archive.tar.gz | sort | tr '\n' ' ')" = '--checkpoint=1 plain.txt ' ]
+}
+
+@test "dotenv import refuses readonly variables before changing any" {
+  local dotenv="${BATS_TEST_TMPDIR}/readonly.env"
+  printf 'BASHSTOCK_FIRST=1\nUID=0\n' >"${dotenv}"
+  unset BASHSTOCK_FIRST
+  run --separate-stderr env::dotenv::import "${dotenv}"
+  [ "${status}" -eq 65 ]
+  [[ "${stderr}" == *'UID'*'readonly'* ]]
+  env::dotenv::import "${dotenv}" 2>/dev/null || true
+  [ -z "${BASHSTOCK_FIRST+set}" ]
 }
