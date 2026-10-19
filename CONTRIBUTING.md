@@ -55,7 +55,6 @@ git submodule update --init --recursive
 - ライブラリの読み込みと公開関数の実行では、呼び出し元のシェルオプション、`IFS`、カレントディレクトリを保持します。
 - 新しい動作には正常系と異常系のテストを用意します。
 - 関数にはライブラリ仕様のDocコメントの規則に従ってshdoc形式のコメントと実行例を付け、変更後は`just docs`で`docs/reference/`を再生成します。
-- 利用者に見える変更は、[CHANGELOG.md](CHANGELOG.md)の`Unreleased`へ追記します。
 
 ## PRの作成
 

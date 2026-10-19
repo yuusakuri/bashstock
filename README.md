@@ -82,7 +82,6 @@ help::show string::trim
 | [リリース手順](docs/how-to/release.md) | GitHub Releaseへ配布物を公開する手順です。 |
 
 関数の選定根拠は、[bash-commons](docs/explanation/function-selection/bash-commons.md)、[Lobash](docs/explanation/function-selection/lobash.md)、[Pure Bash Bible](docs/explanation/function-selection/pure-bash-bible.md)、[util-scripts](docs/explanation/function-selection/util-scripts.md)、[PSWinUtil](docs/explanation/function-selection/pswinutil.md)ごとに整理しています。
-変更履歴は[CHANGELOG.md](CHANGELOG.md)に記録します。
 
 ## 貢献方法
 
