@@ -200,7 +200,8 @@ gnome::input-source::set-layout() {
 
 # @description Set the system keyboard layout.
 #
-# Ubuntu updates XKBLAYOUT in /etc/default/keyboard. Other systems use localectl.
+# Ubuntu replaces or appends XKBLAYOUT in /etc/default/keyboard. Other systems
+# use localectl.
 #
 # @arg $1 string XKB layout, such as us or jp.
 # @exitcode 0 The layout was set.
@@ -213,7 +214,7 @@ keyboard::system-layout::set() {
   [[ "$#" -eq 1 ]] || return 64
   keyboard::_require-layout "$1" || return "$?"
   if [[ -f /etc/default/keyboard ]]; then
-    file::replace-text /etc/default/keyboard 'XKBLAYOUT="[^"]*"' "XKBLAYOUT=\"$1\""
+    file::replace-text-or-append /etc/default/keyboard '^XKBLAYOUT=.*$' "XKBLAYOUT=\"$1\""
     return
   fi
   command::require localectl || return "$?"
@@ -544,7 +545,8 @@ ubuntu::setup-desktop-22() {
 # @description Install Homebrew with the official installer when it is missing.
 #
 # The new Zsh sessions read brew shellenv from .zshrc, and the current
-# process finds brew on PATH afterwards.
+# process finds brew on PATH afterwards. The prefix is /opt/homebrew on Apple
+# silicon and /usr/local on Intel Macs.
 #
 # @noargs
 # @exitcode 0 Homebrew is installed.
@@ -566,10 +568,12 @@ homebrew::install() {
   [[ "${status}" -ne 0 ]] || /bin/bash "${directory}/install.sh" || status="$?"
   rm -rf -- "${directory}"
   [[ "${status}" -eq 0 ]] || return "${status}"
+  local prefix=/opt/homebrew
+  [[ -x "${prefix}/bin/brew" ]] || prefix=/usr/local
   setup::_ensure-file "${HOME}/.zshrc" || return "$?"
-  # shellcheck disable=SC2016 # The startup file evaluates brew shellenv later.
-  file::replace-text-or-append "${HOME}/.zshrc" '^.*brew shellenv.*$' 'eval "$(/opt/homebrew/bin/brew shellenv)"' || return "$?"
-  PATH="/opt/homebrew/bin:/opt/homebrew/sbin:${PATH}"
+  file::replace-text-or-append "${HOME}/.zshrc" '^.*brew shellenv.*$' \
+    "eval \"\$(${prefix}/bin/brew shellenv)\"" || return "$?"
+  PATH="${prefix}/bin:${prefix}/sbin:${PATH}"
   export PATH
 }
 

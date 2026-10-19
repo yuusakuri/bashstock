@@ -135,7 +135,8 @@ gnome::input-source::set-layout us
 
 Set the system keyboard layout.
 
-Ubuntu updates XKBLAYOUT in /etc/default/keyboard. Other systems use localectl.
+Ubuntu replaces or appends XKBLAYOUT in /etc/default/keyboard. Other systems
+use localectl.
 
 #### Example
 
@@ -430,7 +431,8 @@ _Function has no arguments._
 Install Homebrew with the official installer when it is missing.
 
 The new Zsh sessions read brew shellenv from .zshrc, and the current
-process finds brew on PATH afterwards.
+process finds brew on PATH afterwards. The prefix is /opt/homebrew on Apple
+silicon and /usr/local on Intel Macs.
 
 #### Example
 
