@@ -800,6 +800,125 @@ mac::quarantine::remove-applications() {
   command::run-as-root xattr -r -d com.apple.quarantine /Applications 2>/dev/null || true
 }
 
+# @description Write the programs that Full Disk Access must list for a command, a path, or an application.
+#
+# Symbolic links are resolved, and a file inside an application bundle is
+# written as the bundle, because System Settings lists bundles. A Python
+# framework build re-executes as Python.app, so that bundle is written too.
+# A name that is neither a path nor a command is looked up as an application
+# in /Applications, /System/Applications, their Utilities folders, and
+# ~/Applications.
+#
+# @arg $1 string A command name, a path, or an application name such as Terminal.
+# @stdout The absolute paths to add to Full Disk Access, one per line.
+# @exitcode 0 The paths were written.
+# @exitcode 1 No command or application has the name.
+# @exitcode 64 The argument count is not one or the argument is empty.
+# @exitcode 66 The path does not exist.
+# @exitcode 69 readlink is unavailable.
+# @example
+#   mac::full-disk-access::target-paths python3.12
+#   mac::full-disk-access::target-paths Terminal
+mac::full-disk-access::target-paths() {
+  [[ "$#" -eq 1 && -n "$1" && "$1" != *$'\n'* ]] || return 64
+  local target='' directory='' bundle=''
+  if [[ "$1" == */* ]]; then
+    target="$1"
+  elif ! target="$(type -P -- "$1")"; then
+    target=''
+    for directory in /Applications /Applications/Utilities /System/Applications \
+      /System/Applications/Utilities "${HOME}/Applications"; do
+      if [[ -d "${directory}/${1%.app}.app" ]]; then
+        target="${directory}/${1%.app}.app"
+        break
+      fi
+    done
+    [[ -n "${target}" ]] || return 1
+  fi
+  [[ -e "${target}" ]] || return 66
+  command::require readlink || return "$?"
+  target="$(readlink -f -- "${target}")" || return 66
+
+  case "${target}" in
+    *.app/*)
+      target="${target%%.app/*}.app"
+      ;;
+    */Python.framework/Versions/*/bin/*)
+      bundle="${target%/bin/*}/Resources/Python.app"
+      [[ -d "${bundle}" ]] || bundle=''
+      ;;
+  esac
+  printf '%s\n' "${target}"
+  [[ -z "${bundle}" ]] || printf '%s\n' "${bundle}"
+}
+
+# @description Test whether a program has an ad hoc code signature.
+# @internal
+mac::full-disk-access::_is-ad-hoc-signed() {
+  [[ "$#" -eq 1 ]] || return 64
+  command -v codesign >/dev/null 2>&1 || return 1
+  local details=''
+  details="$(codesign -dv "$1" 2>&1)" || return 1
+  [[ $'\n'"${details}" == *$'\nSignature=adhoc'* ]]
+}
+
+# @description Open Full Disk Access in System Settings and show the programs to add in Finder.
+#
+# macOS grants Full Disk Access only through System Settings, so the function
+# opens the list and reveals each program for dragging into it. A program with
+# an ad hoc signature, such as a Homebrew build, loses the access when an
+# update replaces it, which the function reports.
+#
+# @arg $@ string Optional command names, paths, or application names.
+# @stderr Each program to add and a note for each ad hoc signed program.
+# @exitcode 0 System Settings opened.
+# @exitcode 1 No command or application has one of the names.
+# @exitcode 64 An argument is empty.
+# @exitcode 66 A path does not exist.
+# @exitcode 69 The system is not macOS.
+# @exitcode other The status of open.
+# @example
+#   mac::full-disk-access::open python3.12 Terminal
+mac::full-disk-access::open() {
+  package::_require-platform darwin || return "$?"
+  local name='' output='' path=''
+  local paths=()
+  for name in "$@"; do
+    output="$(mac::full-disk-access::target-paths "${name}")" || return "$?"
+    while IFS= read -r path; do
+      paths+=("${path}")
+    done <<<"${output}"
+  done
+
+  open 'x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles' || return "$?"
+  for path in ${paths[@]+"${paths[@]}"}; do
+    console::_write-error "Add to Full Disk Access: ${path}"
+    if mac::full-disk-access::_is-ad-hoc-signed "${path}"; then
+      console::_write-error "Ad hoc signed, so an update removes the access: ${path}"
+    fi
+    open -R "${path}" || return "$?"
+  done
+}
+
+# @description Test whether the application that runs the current shell has Full Disk Access.
+#
+# macOS usually checks the application that started the shell, such as
+# Terminal, so the result also applies to the programs the shell starts. The
+# test opens the user's privacy database, which only Full Disk Access permits.
+#
+# @noargs
+# @exitcode 0 Full Disk Access is granted.
+# @exitcode 1 Full Disk Access is not granted.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS.
+# @example
+#   mac::full-disk-access::is-granted || mac::full-disk-access::open Terminal
+mac::full-disk-access::is-granted() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  { : <"${HOME}/Library/Application Support/com.apple.TCC/TCC.db"; } 2>/dev/null
+}
+
 # @description Ask macOS to allow applications from anywhere and open Privacy & Security.
 #
 # Recent macOS releases apply spctl --master-disable only after the user
