@@ -580,7 +580,12 @@ chmod +x "${HOME}/.local/bin/codex"'
   [ "$(<"${BREW_LOG}")" = 'install --cask rancher' ]
   # open runs in the background, so wait briefly for its record.
   for _ in $(seq 50); do [ -s "${OPEN_LOG}" ] && break; sleep 0.1; done
-  [ "$(<"${OPEN_LOG}")" = '-a Rancher Desktop' ]
+  # An installed application is opened by its path, otherwise by its name.
+  if [[ -d '/Applications/Rancher Desktop.app' ]]; then
+    [ "$(<"${OPEN_LOG}")" = '/Applications/Rancher Desktop.app' ]
+  else
+    [ "$(<"${OPEN_LOG}")" = '-a Rancher Desktop' ]
+  fi
 
   # An open that waits for a first-launch confirmation does not block the install.
   open() { sleep 30; }
