@@ -598,6 +598,10 @@ string::length() {
     return 64
   fi
   string::_require-utf8-locale || return "$?"
+  # Bash 3.2 applies a locale given before the function name only when it is assigned again.
+  [[ -z "${LANG+set}" ]] || local LANG="${LANG}"
+  [[ -z "${LC_CTYPE+set}" ]] || local LC_CTYPE="${LC_CTYPE}"
+  [[ -z "${LC_ALL+set}" ]] || local LC_ALL="${LC_ALL}"
   printf '%s\n' "${#1}"
 }
 
@@ -788,6 +792,10 @@ string::slice() {
     return 64
   fi
   string::_require-utf8-locale || return "$?"
+  # Bash 3.2 applies a locale given before the function name only when it is assigned again.
+  [[ -z "${LANG+set}" ]] || local LANG="${LANG}"
+  [[ -z "${LC_CTYPE+set}" ]] || local LC_CTYPE="${LC_CTYPE}"
+  [[ -z "${LC_ALL+set}" ]] || local LC_ALL="${LC_ALL}"
 
   local value="$1"
   local start="$2"
