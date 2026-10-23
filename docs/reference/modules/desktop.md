@@ -37,6 +37,9 @@ GNOME settings use gsettings and macOS settings use defaults.
 * [mac::dock::set-position](#macdockset-position)
 * [mac::applications::remove-bundled](#macapplicationsremove-bundled)
 * [mac::quarantine::remove-applications](#macquarantineremove-applications)
+* [mac::full-disk-access::target-paths](#macfull-disk-accesstarget-paths)
+* [mac::full-disk-access::open](#macfull-disk-accessopen)
+* [mac::full-disk-access::is-granted](#macfull-disk-accessis-granted)
 * [mac::gatekeeper::disable](#macgatekeeperdisable)
 * [mac::setup](#macsetup)
 
@@ -694,6 +697,95 @@ _Function has no arguments._
 #### Exit codes
 
 * **0**: The attributes were removed.
+* **64**: An argument was given.
+* **69**: The system is not macOS.
+
+### mac::full-disk-access::target-paths
+
+Write the programs that Full Disk Access must list for a command, a path, or an application.
+
+Symbolic links are resolved, and a file inside an application bundle is
+written as the bundle, because System Settings lists bundles. A Python
+framework build re-executes as Python.app, so that bundle is written too.
+A name that is neither a path nor a command is looked up as an application
+in /Applications, /System/Applications, their Utilities folders, and
+~/Applications.
+
+#### Example
+
+```bash
+mac::full-disk-access::target-paths python3.12
+mac::full-disk-access::target-paths Terminal
+```
+
+#### Arguments
+
+* **$1** (string): A command name, a path, or an application name such as Terminal.
+
+#### Exit codes
+
+* **0**: The paths were written.
+* **1**: No command or application has the name.
+* **64**: The argument count is not one or the argument is empty.
+* **66**: The path does not exist.
+* **69**: readlink is unavailable.
+
+#### Output on stdout
+
+* The absolute paths to add to Full Disk Access, one per line.
+
+### mac::full-disk-access::open
+
+Open Full Disk Access in System Settings and show the programs to add in Finder.
+
+macOS grants Full Disk Access only through System Settings, so the function
+opens the list and reveals each program for dragging into it. A program with
+an ad hoc signature, such as a Homebrew build, loses the access when an
+update replaces it, which the function reports.
+
+#### Example
+
+```bash
+mac::full-disk-access::open python3.12 Terminal
+```
+
+#### Arguments
+
+* **...** (string): Optional command names, paths, or application names.
+
+#### Exit codes
+
+* **0**: System Settings opened.
+* **1**: No command or application has one of the names.
+* **64**: An argument is empty.
+* **66**: A path does not exist.
+* **69**: The system is not macOS.
+* other The status of open.
+
+#### Output on stderr
+
+* Each program to add and a note for each ad hoc signed program.
+
+### mac::full-disk-access::is-granted
+
+Test whether the application that runs the current shell has Full Disk Access.
+
+macOS usually checks the application that started the shell, such as
+Terminal, so the result also applies to the programs the shell starts. The
+test opens the user's privacy database, which only Full Disk Access permits.
+
+#### Example
+
+```bash
+mac::full-disk-access::is-granted || mac::full-disk-access::open Terminal
+```
+
+_Function has no arguments._
+
+#### Exit codes
+
+* **0**: Full Disk Access is granted.
+* **1**: Full Disk Access is not granted.
 * **64**: An argument was given.
 * **69**: The system is not macOS.
 

@@ -657,5 +657,8 @@ BashStockが公開する関数をモジュールごとに示します。
 | [`mac::dock::set-position`](modules/desktop.md#macdockset-position) | Place the Dock on one edge of the screen. |
 | [`mac::applications::remove-bundled`](modules/desktop.md#macapplicationsremove-bundled) | Remove the bundled iMovie, Pages, GarageBand, Keynote, and Numbers applications. |
 | [`mac::quarantine::remove-applications`](modules/desktop.md#macquarantineremove-applications) | Remove the quarantine attribute from everything below /Applications. |
+| [`mac::full-disk-access::target-paths`](modules/desktop.md#macfull-disk-accesstarget-paths) | Write the programs that Full Disk Access must list for a command, a path, or an application. |
+| [`mac::full-disk-access::open`](modules/desktop.md#macfull-disk-accessopen) | Open Full Disk Access in System Settings and show the programs to add in Finder. |
+| [`mac::full-disk-access::is-granted`](modules/desktop.md#macfull-disk-accessis-granted) | Test whether the application that runs the current shell has Full Disk Access. |
 | [`mac::gatekeeper::disable`](modules/desktop.md#macgatekeeperdisable) | Ask macOS to allow applications from anywhere and open Privacy & Security. |
 | [`mac::setup`](modules/desktop.md#macsetup) | Apply the complete macOS setup, continuing after failed steps. |

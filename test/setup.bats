@@ -1169,6 +1169,87 @@ write com.apple.dock orientation -string bottom" ]
   [ "$(<"${OPEN_LOG}")" = 'x-apple.systempreferences:com.apple.settings.PrivacySecurity' ]
 }
 
+@test "Full Disk Access targets resolve commands, bundles, and Python frameworks" {
+  local root=''
+  root="$(CDPATH='' cd -P -- "${BATS_TEST_TMPDIR}" && pwd -P)"
+  mkdir -p "${root}/bin" "${root}/Tool.app/Contents/MacOS" "${root}/home/Applications/BashstockSample.app" \
+    "${root}/Python.framework/Versions/3.12/bin" \
+    "${root}/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS"
+  printf '#!/bin/sh\n' >"${root}/Tool.app/Contents/MacOS/tool"
+  printf '#!/bin/sh\n' >"${root}/Python.framework/Versions/3.12/bin/python3.12"
+  chmod +x "${root}/Tool.app/Contents/MacOS/tool" "${root}/Python.framework/Versions/3.12/bin/python3.12"
+  ln -s ../Tool.app/Contents/MacOS/tool "${root}/bin/tool"
+  ln -s ../Python.framework/Versions/3.12/bin/python3.12 "${root}/bin/python3.12"
+  PATH="${root}/bin:${PATH}"
+  HOME="${root}/home"
+
+  run mac::full-disk-access::target-paths tool
+  [ "${status}" -eq 0 ]
+  [ "${output}" = "${root}/Tool.app" ]
+  run mac::full-disk-access::target-paths python3.12
+  [ "${status}" -eq 0 ]
+  [ "${output}" = "${root}/Python.framework/Versions/3.12/bin/python3.12
+${root}/Python.framework/Versions/3.12/Resources/Python.app" ]
+  run mac::full-disk-access::target-paths BashstockSample
+  [ "${status}" -eq 0 ]
+  [ "${output}" = "${root}/home/Applications/BashstockSample.app" ]
+
+  run mac::full-disk-access::target-paths bashstock-missing-application
+  [ "${status}" -eq 1 ]
+  run mac::full-disk-access::target-paths "${root}/missing"
+  [ "${status}" -eq 66 ]
+  run mac::full-disk-access::target-paths ''
+  [ "${status}" -eq 64 ]
+  run mac::full-disk-access::target-paths tool BashstockSample
+  [ "${status}" -eq 64 ]
+}
+
+@test "Full Disk Access opens System Settings and reveals ad hoc signed programs" {
+  use_platform darwin
+  local root=''
+  root="$(CDPATH='' cd -P -- "${BATS_TEST_TMPDIR}" && pwd -P)"
+  mkdir -p "${root}/Tool.app"
+  OPEN_LOG="${BATS_TEST_TMPDIR}/open.log"
+  open() { printf '%s\n' "$*" >>"${OPEN_LOG}"; }
+  codesign() { printf 'Identifier=tool\nSignature=adhoc\n' >&2; }
+
+  run --separate-stderr mac::full-disk-access::open "${root}/Tool.app"
+  [ "${status}" -eq 0 ]
+  [ "$(<"${OPEN_LOG}")" = "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles
+-R ${root}/Tool.app" ]
+  [[ "${stderr}" == *"Add to Full Disk Access: ${root}/Tool.app"* ]]
+  [[ "${stderr}" == *'Ad hoc signed'* ]]
+
+  # A name that cannot be resolved stops before System Settings opens.
+  : >"${OPEN_LOG}"
+  run mac::full-disk-access::open "${root}/missing"
+  [ "${status}" -eq 66 ]
+  [ ! -s "${OPEN_LOG}" ]
+
+  use_platform ubuntu 24.04 noble
+  run mac::full-disk-access::open
+  [ "${status}" -eq 69 ]
+}
+
+@test "Full Disk Access is reported by whether the privacy database opens" {
+  use_platform darwin
+  HOME="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "${HOME}/Library/Application Support/com.apple.TCC"
+
+  run mac::full-disk-access::is-granted
+  [ "${status}" -eq 1 ]
+  : >"${HOME}/Library/Application Support/com.apple.TCC/TCC.db"
+  run mac::full-disk-access::is-granted
+  [ "${status}" -eq 0 ]
+  [ -z "${output}" ]
+  run mac::full-disk-access::is-granted extra
+  [ "${status}" -eq 64 ]
+
+  use_platform ubuntu 24.04 noble
+  run mac::full-disk-access::is-granted
+  [ "${status}" -eq 69 ]
+}
+
 @test "shell startup helpers for Zsh and Homebrew casks write one line each" {
   HOME="${BATS_TEST_TMPDIR}/home"
   mkdir -p "${HOME}"
