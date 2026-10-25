@@ -585,6 +585,8 @@ BashStockが公開する関数をモジュールごとに示します。
 | [`claude-code::install`](modules/install.md#claude-codeinstall) | Install the newest Claude Code CLI. |
 | [`codex::install`](modules/install.md#codexinstall) | Install the newest OpenAI Codex CLI. |
 | [`chatgpt::install`](modules/install.md#chatgptinstall) | Install the newest ChatGPT desktop app, which also runs Codex. |
+| [`thunderbird::versions`](modules/install.md#thunderbirdversions) | Write Thunderbird versions available to the current platform. |
+| [`thunderbird::install`](modules/install.md#thunderbirdinstall) | Install the Thunderbird email client. |
 | [`gimp::versions`](modules/install.md#gimpversions) | Write GIMP versions available to the current platform. |
 | [`gimp::install`](modules/install.md#gimpinstall) | Install GIMP, and on Linux the G'MIC plugin from the selected source. |
 | [`gimp::gmic::versions`](modules/install.md#gimpgmicversions) | Write G'MIC GIMP plugin versions available from the selected source. |
