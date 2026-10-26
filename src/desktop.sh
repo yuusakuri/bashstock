@@ -624,6 +624,24 @@ mac::wake-on-lan::enable() {
   command::run-as-root pmset -a womp 1
 }
 
+# @description Keep macOS updates downloading but stop their automatic installation.
+#
+# Automatic downloads and system data and security update settings stay unchanged.
+# The automatic macOS installation preference is disabled for all users.
+#
+# @noargs
+# @exitcode 0 Automatic macOS installation is disabled.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS.
+# @exitcode other The status of defaults or the root command.
+# @example
+#   mac::software-update::disable-automatic-install-as-root
+mac::software-update::disable-automatic-install-as-root() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  bashstock::_run-as-root disable-macos-automatic-installation
+}
+
 # @description Make F1 to F12 act as function keys without the fn key.
 #
 # @noargs

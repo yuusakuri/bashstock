@@ -57,6 +57,22 @@ load test_helper
   [ "${output}" = '' ]
 }
 
+@test "the macOS automatic installation operation only changes the installation preference" {
+  platform::_identifier() { printf 'darwin\n'; }
+  defaults() { printf '<%s>' "$@"; }
+
+  run bashstock::_dispatch-root disable-macos-automatic-installation
+  [ "${status}" -eq 0 ]
+  [ "${output}" = '<write></Library/Preferences/com.apple.SoftwareUpdate><AutomaticallyInstallMacOSUpdates><-bool><false>' ]
+
+  run bashstock::_dispatch-root disable-macos-automatic-installation unexpected
+  [ "${status}" -eq 64 ]
+
+  platform::_identifier() { printf 'ubuntu\n'; }
+  run bashstock::_dispatch-root disable-macos-automatic-installation
+  [ "${status}" -eq 69 ]
+}
+
 @test "the operation dispatcher rejects unknown names and missing arguments" {
   run bashstock::_dispatch-root unknown-operation
   [ "${status}" -eq 64 ]
@@ -80,6 +96,10 @@ load test_helper
   run bash "${PROJECT_ROOT}/dist/bashstock.sh" --internal-root unknown-operation
   [ "${status}" -eq 64 ]
   [ ! -e "${BATS_TEST_TMPDIR}/file" ]
+
+  [[ "${EUID}" -ne 0 ]] || skip 'requires an unprivileged test process'
+  run bash "${PROJECT_ROOT}/dist/bashstock.sh" --internal-root disable-macos-automatic-installation
+  [ "${status}" -eq 77 ]
 }
 
 @test "direct execution enforces root privileges and ignores inherited loader state" {

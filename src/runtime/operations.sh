@@ -58,6 +58,12 @@ bashstock::_dispatch-root() {
       path::_validate-ownership "$@" || return "$?"
       platform::_change-owner-recursively "$@"
       ;;
+    disable-macos-automatic-installation)
+      [[ "$#" -eq 0 ]] || return 64
+      package::_require-platform darwin || return "$?"
+      defaults write /Library/Preferences/com.apple.SoftwareUpdate \
+        AutomaticallyInstallMacOSUpdates -bool false
+      ;;
     *)
       return 64
       ;;
@@ -78,7 +84,8 @@ bashstock::_main() {
   case "$2" in
     append-text | write-text | replace-text | replace-all-text | \
       replace-text-in-files | replace-all-text-in-files | replace-or-append-text | \
-      create-system-user | create-login-user | change-owner-recursively) ;;
+      create-system-user | create-login-user | change-owner-recursively | \
+      disable-macos-automatic-installation) ;;
     *) return 64 ;;
   esac
   if [[ "${EUID}" -ne 0 ]]; then

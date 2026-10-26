@@ -28,6 +28,7 @@ GNOME settings use gsettings and macOS settings use defaults.
 * [homebrew::cask::disable-quarantine](#homebrewcaskdisable-quarantine)
 * [shell::zsh::enable-interactive-comments](#shellzshenable-interactive-comments)
 * [mac::wake-on-lan::enable](#macwake-on-lanenable)
+* [mac::software-update::disable-automatic-install-as-root](#macsoftware-updatedisable-automatic-install-as-root)
 * [mac::keyboard::use-function-keys](#mackeyboarduse-function-keys)
 * [mac::keyboard::set-repeat](#mackeyboardset-repeat)
 * [mac::trackpad::disable-smart-zoom](#mactrackpaddisable-smart-zoom)
@@ -513,6 +514,28 @@ _Function has no arguments._
 * **64**: An argument was given.
 * **69**: The system is not macOS.
 * other The status of pmset.
+
+### mac::software-update::disable-automatic-install-as-root
+
+Keep macOS updates downloading but stop their automatic installation.
+
+Automatic downloads and system data and security update settings stay unchanged.
+The automatic macOS installation preference is disabled for all users.
+
+#### Example
+
+```bash
+mac::software-update::disable-automatic-install-as-root
+```
+
+_Function has no arguments._
+
+#### Exit codes
+
+* **0**: Automatic macOS installation is disabled.
+* **64**: An argument was given.
+* **69**: The system is not macOS.
+* other The status of defaults or the root command.
 
 ### mac::keyboard::use-function-keys
 
