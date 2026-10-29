@@ -1094,6 +1094,7 @@ gsettings_value() {
 @test "macOS preference functions write the expected defaults and restart the Dock" {
   use_platform darwin
   record_root_commands
+  command::require() { [ "$1" = 'pmset' ]; }
   DEFAULTS_LOG="${BATS_TEST_TMPDIR}/defaults.log"
   KILLALL_LOG="${BATS_TEST_TMPDIR}/killall.log"
   defaults() { printf '%s\n' "$*" >>"${DEFAULTS_LOG}"; }
@@ -1125,6 +1126,8 @@ gsettings_value() {
   [ "${status}" -eq 0 ]
   run mac::sleep::disable-automatic
   [ "${status}" -eq 0 ]
+  run mac::sleep::enable-automatic
+  [ "${status}" -eq 0 ]
 
   [ "$(<"${DEFAULTS_LOG}")" = "write NSGlobalDomain com.apple.keyboard.fnState -bool true
 write NSGlobalDomain InitialKeyRepeat -int 30
@@ -1141,12 +1144,15 @@ write com.apple.dock mineffect -string scale
 write com.apple.dock orientation -string bottom" ]
   [ "$(grep -c '^Dock$' "${KILLALL_LOG}")" -eq 4 ]
   [ "$(<"${ROOT_LOG}")" = 'pmset -a womp 1
-pmset -a sleep 0' ]
+pmset -a sleep 0
+pmset -a sleep 10' ]
 
   use_platform ubuntu 24.04 noble
   run mac::dock::set-position
   [ "${status}" -eq 69 ]
   run mac::sleep::disable-automatic
+  [ "${status}" -eq 69 ]
+  run mac::sleep::enable-automatic
   [ "${status}" -eq 69 ]
 }
 

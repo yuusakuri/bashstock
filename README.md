@@ -47,10 +47,16 @@ path::normalize './foo/../bar'
 regex::is-match 'v1.2.3' '^v[0-9]+' && printf 'version tag\n'
 ```
 
-macOSを常時稼働させ、画面だけを設定時間後に消す場合は、`mac::sleep::disable-automatic`を実行します。システムスリープを無効にし、電源接続時とバッテリー使用時のディスプレイ消灯時間は維持します。
+macOSを常時稼働させ、画面だけを設定時間後に消す場合は、`mac::sleep::disable-automatic`を実行します。システムスリープを無効にし、電源接続時とバッテリー使用時のディスプレイ消灯時間は維持します。自動スリープを再度有効にする`mac::sleep::enable-automatic`は、システムが10分間操作されないとスリープするように設定します。
 
 ```bash
 mac::sleep::disable-automatic
+```
+
+自動スリープを再び有効にする場合は、次の関数を実行します。システムが10分間操作されないとスリープします。
+
+```bash
+mac::sleep::enable-automatic
 ```
 
 複数の設定値を受け取る関数は、`--name VALUE`形式の名前付き引数を使います。
