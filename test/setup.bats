@@ -1123,6 +1123,8 @@ gsettings_value() {
   [ "${status}" -eq 64 ]
   run mac::wake-on-lan::enable
   [ "${status}" -eq 0 ]
+  run mac::sleep::disable-automatic
+  [ "${status}" -eq 0 ]
 
   [ "$(<"${DEFAULTS_LOG}")" = "write NSGlobalDomain com.apple.keyboard.fnState -bool true
 write NSGlobalDomain InitialKeyRepeat -int 30
@@ -1138,10 +1140,13 @@ write com.apple.dock show-recents -bool false
 write com.apple.dock mineffect -string scale
 write com.apple.dock orientation -string bottom" ]
   [ "$(grep -c '^Dock$' "${KILLALL_LOG}")" -eq 4 ]
-  [ "$(<"${ROOT_LOG}")" = 'pmset -a womp 1' ]
+  [ "$(<"${ROOT_LOG}")" = 'pmset -a womp 1
+pmset -a sleep 0' ]
 
   use_platform ubuntu 24.04 noble
   run mac::dock::set-position
+  [ "${status}" -eq 69 ]
+  run mac::sleep::disable-automatic
   [ "${status}" -eq 69 ]
 }
 

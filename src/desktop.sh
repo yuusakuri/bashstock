@@ -624,6 +624,23 @@ mac::wake-on-lan::enable() {
   command::run-as-root pmset -a womp 1
 }
 
+# @description Disable automatic system sleep while preserving display sleep timers.
+#
+# @noargs
+# @exitcode 0 Automatic system sleep is disabled.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS or pmset is unavailable.
+# @exitcode 77 sudo refused the credentials.
+# @exitcode other The status of pmset.
+# @example
+#   mac::sleep::disable-automatic
+mac::sleep::disable-automatic() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  command::require pmset || return "$?"
+  command::run-as-root pmset -a sleep 0
+}
+
 # @description Make F1 to F12 act as function keys without the fn key.
 #
 # @noargs

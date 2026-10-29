@@ -28,6 +28,7 @@ GNOME settings use gsettings and macOS settings use defaults.
 * [homebrew::cask::disable-quarantine](#homebrewcaskdisable-quarantine)
 * [shell::zsh::enable-interactive-comments](#shellzshenable-interactive-comments)
 * [mac::wake-on-lan::enable](#macwake-on-lanenable)
+* [mac::sleep::disable-automatic](#macsleepdisable-automatic)
 * [mac::keyboard::use-function-keys](#mackeyboarduse-function-keys)
 * [mac::keyboard::set-repeat](#mackeyboardset-repeat)
 * [mac::trackpad::disable-smart-zoom](#mactrackpaddisable-smart-zoom)
@@ -512,6 +513,26 @@ _Function has no arguments._
 * **0**: Wake on LAN is enabled.
 * **64**: An argument was given.
 * **69**: The system is not macOS.
+* other The status of pmset.
+
+### mac::sleep::disable-automatic
+
+Disable automatic system sleep while preserving display sleep timers.
+
+#### Example
+
+```bash
+mac::sleep::disable-automatic
+```
+
+_Function has no arguments._
+
+#### Exit codes
+
+* **0**: Automatic system sleep is disabled.
+* **64**: An argument was given.
+* **69**: The system is not macOS or pmset is unavailable.
+* **77**: sudo refused the credentials.
 * other The status of pmset.
 
 ### mac::keyboard::use-function-keys
