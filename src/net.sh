@@ -124,15 +124,16 @@ net::_interface-ipv4-cidr() {
     awk 'NR == 1 { print $4; exit }'
 }
 
-# @description Write the only Netplan file under /etc/netplan.
+# @description Write the only Netplan file in a directory such as /etc/netplan.
 #
 # NetworkManager on Ubuntu 23.10 and later writes its own 90-NM-*.yaml files
 # there, so a desktop often has several files and the caller must choose one.
 # @internal
-# @arg $1 string Optional directory to search instead of /etc/netplan.
+# @arg $1 string Directory to search.
 # @exitcode 69 The directory holds no Netplan file or several of them.
 net::_only-netplan-file() {
-  local directory="${1:-/etc/netplan}" path=''
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  local directory="$1" path=''
   local paths=()
   for path in "${directory}"/*.yaml; do
     [[ -f "${path}" ]] || continue
@@ -294,7 +295,7 @@ net::ip::set-static() {
   interface="${interface:-$(net::_default-interface)}" || return 69
   gateway="${gateway:-$(net::_default-gateway)}" || return 69
   host_name="${host_name:-$(hostname 2>/dev/null)}" || return 69
-  file="${file:-$(net::_only-netplan-file)}" || return "$?"
+  file="${file:-$(net::_only-netplan-file /etc/netplan)}" || return "$?"
   net::_require-netplan-file "${file}" || return "$?"
 
   if [[ -z "${address}" || -z "${prefix_length}" ]]; then
