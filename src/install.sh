@@ -1976,23 +1976,33 @@ vscode::install() {
   package::_install-version code "${version}"
 }
 
-# @description Register GitHub CLI's official Ubuntu APT repository after checking its key.
+# @description Register GitHub CLI's official APT or DNF repository after checking its key.
 # @internal
 gh::_register-repository() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform ubuntu || return "$?"
   command::require gpg || return "$?"
-  local directory='' status=0 fingerprints='' architecture=''
+  local platform='' key_url='' keyring='' directory='' status=0 fingerprints='' architecture=''
+  platform="$(package::_platform)" || return "$?"
+  case "${platform}" in
+    ubuntu)
+      key_url=https://cli.github.com/packages/githubcli-archive-keyring.gpg
+      keyring=/etc/apt/keyrings/githubcli-archive-keyring.gpg
+      ;;
+    fedora)
+      key_url=https://cli.github.com/packages/githubcli-archive-keyring.asc
+      keyring=/etc/pki/rpm-gpg/RPM-GPG-KEY-gh-cli
+      ;;
+    *) return 69 ;;
+  esac
   directory="$(package::_temporary-directory)" || return "$?"
-  package::_download https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-    "${directory}/githubcli-archive-keyring.gpg" || status="$?"
+  package::_download "${key_url}" "${directory}/key" || status="$?"
   if [[ "${status}" -eq 0 ]]; then
     mkdir -m 0700 -- "${directory}/gnupg" || status=74
   fi
   if [[ "${status}" -eq 0 ]]; then
     # GnuPG 2.2.4 on Ubuntu 18.04 predates --show-keys, so list the keys with show-only.
     GNUPGHOME="${directory}/gnupg" gpg --batch --with-colons --import-options show-only --import \
-      "${directory}/githubcli-archive-keyring.gpg" >"${directory}/key-info" 2>/dev/null || status=65
+      "${directory}/key" >"${directory}/key-info" 2>/dev/null || status=65
   fi
   if [[ "${status}" -eq 0 ]]; then
     fingerprints="$(awk -F: '$1 == "pub" { primary = 1; next } primary && $1 == "fpr" { print $10; primary = 0 }' \
@@ -2003,39 +2013,48 @@ gh::_register-repository() {
     status=65
   fi
   if [[ "${status}" -eq 0 ]]; then
-    command::run-as-root install -d -m 0755 /etc/apt/keyrings || status=74
+    command::run-as-root install -d -m 0755 "${keyring%/*}" || status=74
   fi
   if [[ "${status}" -eq 0 ]]; then
-    command::run-as-root install -m 0644 "${directory}/githubcli-archive-keyring.gpg" \
-      /etc/apt/keyrings/githubcli-archive-keyring.gpg || status=74
+    command::run-as-root install -m 0644 "${directory}/key" "${keyring}" || status=74
   fi
   rm -rf -- "${directory}"
   [[ "${status}" -eq 0 ]] || return "${status}"
-  architecture="$(package::_deb-architecture)" || return "$?"
-  file::write-text /etc/apt/sources.list.d/github-cli.sources \
-    $'Types: deb\nURIs: https://cli.github.com/packages\nSuites: stable\nComponents: main\nArchitectures: '"${architecture}"$'\nSigned-By: /etc/apt/keyrings/githubcli-archive-keyring.gpg\n' || return "$?"
-  package::_refresh
+  if [[ "${platform}" == ubuntu ]]; then
+    architecture="$(package::_deb-architecture)" || return "$?"
+    file::write-text /etc/apt/sources.list.d/github-cli.sources \
+      $'Types: deb\nURIs: https://cli.github.com/packages\nSuites: stable\nComponents: main\nArchitectures: '"${architecture}"$'\nSigned-By: '"${keyring}"$'\n' || return "$?"
+    package::_refresh
+  else
+    package::_dnf-register-repository gh-cli "[gh-cli]
+name=packages for the GitHub CLI
+baseurl=https://cli.github.com/packages/rpm
+enabled=1
+gpgcheck=1
+gpgkey=file://${keyring}
+"
+  fi
 }
 
-# @description Install GitHub CLI from its official Ubuntu APT repository.
+# @description Install GitHub CLI from its official Ubuntu APT or Fedora DNF repository.
 #
-# The downloaded keyring must contain both fingerprints published by GitHub.
-# The keyring is installed in /etc/apt/keyrings and referenced from a deb822
-# source file before APT indexes are refreshed and gh is installed.
+# The downloaded key must contain both fingerprints published by GitHub. It is
+# installed in /etc/apt/keyrings on Ubuntu or /etc/pki/rpm-gpg on Fedora and
+# referenced from the repository definition before gh is installed.
 #
 # @noargs
 # @exitcode 0 GitHub CLI is installed.
 # @exitcode 64 An argument was given.
 # @exitcode 65 The downloaded signing key does not match GitHub's fingerprints.
-# @exitcode 69 The system is not Ubuntu, or gpg is missing.
+# @exitcode 69 The system is not Ubuntu or Fedora, or gpg is missing.
 # @exitcode 74 The key download or repository configuration failed.
 # @exitcode 77 sudo refused the credentials.
-# @exitcode other The status of APT.
+# @exitcode other The status of the package manager.
 # @example
 #   gh::install
 gh::install() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform ubuntu || return "$?"
+  package::_require-platform ubuntu fedora || return "$?"
   gh::_register-repository || return "$?"
   package::_install gh
 }
