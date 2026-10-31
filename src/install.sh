@@ -2638,12 +2638,13 @@ gimp::gmic::_official-entries() {
   codename="$(platform::_os-release-value UBUNTU_CODENAME 2>/dev/null ||
     platform::_os-release-value VERSION_CODENAME)" || return 69
   architecture="$(package::_deb-architecture)" || return "$?"
-  listing="$(package::_fetch https://gmic.eu/files/linux/)" || return "$?"
+  # The project serves packages only through the download page's get_file.php links.
+  listing="$(package::_fetch https://gmic.eu/download.html)" || return "$?"
   # A release or CPU without a package leaves the list empty.
   { printf '%s\n' "${listing}" |
-    grep -oE "gmic_[0-9.]+_ubuntu${release//./-}_${codename}_${architecture}\.deb" || true; } |
+    grep -oE "get_file\.php\?file=linux/gmic_[0-9.]+_ubuntu${release//./-}_${codename}_${architecture}\.deb" || true; } |
     sort -u |
-    sed -E 's|^gmic_([0-9.]+)_.*$|\1\thttps://gmic.eu/files/linux/&|'
+    sed -E 's|^.*/gmic_([0-9.]+)_.*$|\1\thttps://gmic.eu/&|'
 }
 
 # @description Write G'MIC GIMP plugin versions available from the selected source.
