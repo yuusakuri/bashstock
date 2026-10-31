@@ -315,6 +315,22 @@ bats_require_minimum_version 1.5.0
   [ "$(mode "$HOME/.ssh/known_hosts")" = 644 ]
 }
 
+@test "Git Credential Manager replaces the helpers that its configure command added" {
+  export HOME="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "${HOME}"
+  unset GIT_CONFIG_GLOBAL
+  # git-credential-manager configure appends an empty helper and its own path.
+  git config --global --add credential.helper manager
+  git config --global --add credential.helper ''
+  git config --global --add credential.helper "${HOME}/.local/bin/git-credential-manager"
+  run git::config::use-credential-manager
+  [ "${status}" -eq 0 ]
+  [ "$(git config --global --get-all credential.helper)" = manager ]
+  run git::config::use-credential-manager
+  [ "${status}" -eq 0 ]
+  [ "$(git config --global --get-all credential.helper)" = manager ]
+}
+
 @test "Git identity comes from arguments, the environment, or the existing value" {
   HOME="${BATS_TEST_TMPDIR}/home"
   mkdir -p "$HOME"

@@ -5344,13 +5344,20 @@ git::config::use-gpg-credential-store() {
 
 # @description Use Git Credential Manager as the global credential helper.
 #
+# Every existing credential.helper value is replaced, because
+# git-credential-manager configure adds an empty value and its own path, and
+# git config refuses to overwrite several values with one.
+#
 # @noargs
 # @exitcode 0 The setting was written.
 # @exitcode 64 An argument was given.
 # @exitcode other The status of git config.
 # @example
 #   git-credential-manager::install && git::config::use-credential-manager
-git::config::use-credential-manager() { [[ "$#" -eq 0 ]] || return 64; git config --global credential.helper manager; }
+git::config::use-credential-manager() {
+  [[ "$#" -eq 0 ]] || return 64
+  git config --global --replace-all credential.helper manager
+}
 
 # @description Remove a pass store and everything in it.
 #
