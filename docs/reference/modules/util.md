@@ -511,7 +511,8 @@ _Function has no arguments._
 
 Write text to a regular file using an atomic replacement.
 
-New files use 0666 filtered by the caller's umask; existing metadata is preserved.
+New files get mode 0644 whatever the caller's umask is and whether or not
+root writes them; existing metadata is preserved.
 
 #### Example
 
@@ -5032,8 +5033,9 @@ _Function has no arguments._
 
 Write the configured IPv4 and IPv6 DNS servers, one per line.
 
-Linux uses the servers of systemd-resolved when resolvectl answers, and
-otherwise the nameserver lines of /etc/resolv.conf. macOS uses scutil --dns.
+Linux uses the servers of systemd-resolved when resolvectl (systemd-resolve on
+systemd 237) answers, and otherwise the nameserver lines of /etc/resolv.conf.
+macOS uses scutil --dns.
 
 #### Example
 

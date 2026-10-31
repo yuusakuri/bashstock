@@ -1014,6 +1014,54 @@ gsettings_value() {
   [ "$(tail -n 1 "${STEP_LOG}")" = 'gh::install' ]
 }
 
+@test "Fedora setup installs missing Perl modules and runs the shared steps with Fedora's GnuPG" {
+  use_platform fedora 34
+  HOME="${BATS_TEST_TMPDIR}/home"
+  STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
+  local installed='curl git perl'
+  mkdir -p "${HOME}"
+  command::exists() { [[ " ${installed} " == *" $1 "* ]]; }
+  # Fedora Workstation 34 has POSIX but neither JSON::PP nor Time::HiRes.
+  perl() { [[ "$1" == -MPOSIX ]]; }
+  setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+  gh::install() { printf 'gh::install\n' >>"${STEP_LOG}"; }
+
+  run fedora::setup
+  [ "${status}" -eq 0 ]
+  [ "$(sed -n '1p' "${STEP_LOG}")" = 'package::_install perl-JSON-PP perl-Time-HiRes' ]
+  grep -Fqx 'git::config::use-credential-manager' "${STEP_LOG}"
+  grep -Fqx 'package::_install gnupg2' "${STEP_LOG}"
+  [ "$(tail -n 1 "${STEP_LOG}")" = 'gh::install' ]
+  case "$(uname -s)" in
+    Darwin) [ "$(stat -f '%Lp' "${HOME}/.env")" = 600 ] ;;
+    *) [ "$(stat -c '%a' "${HOME}/.env")" = 600 ] ;;
+  esac
+
+  use_platform ubuntu 24.04 noble
+  run --separate-stderr fedora::setup
+  [ "${status}" -eq 69 ]
+  run --separate-stderr fedora::setup-external
+  [ "${status}" -eq 69 ]
+}
+
+@test "Ubuntu setup installs perl only when its modules are missing" {
+  use_platform ubuntu 24.04 noble
+  STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
+  command::exists() { :; }
+  setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+
+  perl() { :; }
+  run setup::_install-prerequisites
+  [ "${status}" -eq 0 ]
+  [ ! -e "${STEP_LOG}" ]
+
+  # perl-base alone, as in a minimal Ubuntu image, lacks JSON::PP and Time::HiRes.
+  perl() { return 2; }
+  run setup::_install-prerequisites
+  [ "${status}" -eq 0 ]
+  [ "$(<"${STEP_LOG}")" = 'package::_install perl' ]
+}
+
 @test "GitHub CLI repository setup checks both published key fingerprints" {
   use_platform ubuntu 24.04 noble
   record_root_commands
@@ -1044,6 +1092,30 @@ gsettings_value() {
   run gh::_register-repository
   [ "${status}" -eq 65 ]
   [ ! -s "${ROOT_LOG}" ]
+}
+
+@test "GitHub CLI on Fedora uses the official DNF repository with the checked key" {
+  use_platform fedora 44
+  record_root_commands
+  local write_log="${BATS_TEST_TMPDIR}/writes.log"
+  package::_download() { printf '%s\n' "$1" >>"${write_log}.urls"; printf 'key' >"$2"; }
+  package::_dnf-register-repository() { printf '%s\n%s' "$1" "$2" >"${write_log}.repo"; }
+  package::_install() { printf 'install %s\n' "$*" >>"${write_log}"; }
+  gpg() {
+    printf 'pub:u:4096:1:old::::::\nfpr:::::::::2C6106201985B60E6C7AC87323F3D4EA75716059:\n'
+    printf 'pub:u:4096:1:new::::::\nfpr:::::::::7F38BBB59D064DBCB3D84D725612B36462313325:\n'
+  }
+  command::require() { [[ "$1" == gpg || "$1" == mktemp ]]; }
+
+  run gh::install
+  [ "${status}" -eq 0 ]
+  [ "$(<"${write_log}.urls")" = https://cli.github.com/packages/githubcli-archive-keyring.asc ]
+  grep -Fqx 'install -d -m 0755 /etc/pki/rpm-gpg' "${ROOT_LOG}"
+  grep -Eq '^install -m 0644 .+ /etc/pki/rpm-gpg/RPM-GPG-KEY-gh-cli$' "${ROOT_LOG}"
+  [ "$(sed -n 1p "${write_log}.repo")" = gh-cli ]
+  grep -Fqx 'baseurl=https://cli.github.com/packages/rpm' "${write_log}.repo"
+  grep -Fqx 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-gh-cli' "${write_log}.repo"
+  [ "$(<"${write_log}")" = 'install gh' ]
 }
 
 @test "VS Code default app skips only extensions without a declared file type" {

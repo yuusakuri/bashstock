@@ -430,19 +430,80 @@ setup::_run-step() {
 # @arg $1 string File path.
 # @arg $2 string Optional octal mode of a new file. Defaults to 0644.
 setup::_ensure-file() {
-  [[ ( "$#" -eq 1 || "$#" -eq 2 ) && -n "$1" && "${2:-0644}" =~ ^0[0-7]{3}$ ]] || return 64
+  [[ ( "$#" -eq 1 || "$#" -eq 2 ) && -n "$1" ]] || return 64
+  ( [[ "${2:-0644}" =~ ^0[0-7]{3}$ ]] ) || return 64
   if [[ ! -e "$1" ]]; then
     (umask 077 && : >"$1") && chmod "${2:-0644}" "$1" || return 74
   fi
   [[ -f "$1" ]] || return 66
 }
 
+# @description Install curl, Git, and the Perl modules that bashstock uses when they are missing.
+#
+# Ubuntu's perl package carries JSON::PP and Time::HiRes, which a minimal
+# system with only perl-base lacks. Fedora packages each Perl module
+# separately, and Fedora Workstation lacks perl-JSON-PP, and on 34 also
+# perl-Time-HiRes.
+# @internal
+setup::_install-prerequisites() {
+  [[ "$#" -eq 0 ]] || return 64
+  local platform='' module=''
+  local packages=()
+  platform="$(package::_platform)" || return "$?"
+  command::exists curl || packages+=(curl)
+  command::exists git || packages+=(git)
+  case "${platform}" in
+    ubuntu)
+      perl -MJSON::PP -MTime::HiRes -MPOSIX -e 1 >/dev/null 2>&1 || packages+=(perl)
+      ;;
+    fedora)
+      command::exists perl || packages+=(perl-interpreter)
+      for module in JSON::PP Time::HiRes POSIX; do
+        perl -M"${module}" -e 1 >/dev/null 2>&1 || packages+=("perl-${module//::/-}")
+      done
+      ;;
+    *) return 69 ;;
+  esac
+  [[ "${#packages[@]}" -eq 0 ]] || setup::_run-step package::_install "${packages[@]}"
+}
+
+# @description Apply the user configuration that Ubuntu and Fedora share, stopping at the first failure.
+# @internal
+setup::_apply-linux-user-configuration() {
+  [[ "$#" -eq 0 ]] || return 64
+  setup::_install-prerequisites || return "$?"
+  # ~/.env holds secrets, so only the user may read a new one.
+  setup::_ensure-file "${HOME}/.env" 0600 || return "$?"
+  setup::_run-step env::dotenv::register "${HOME}/.env" || return "$?"
+  setup::_run-step shell::editor::set-default 'code --wait' || return "$?"
+  setup::_run-step shell::completion::enable-ignore-case || return "$?"
+  setup::_run-step user::directory::create-english-links || return "$?"
+  setup::_run-step user::add-to-group dialout || return "$?"
+  setup::_run-step git::config::setup || return "$?"
+  setup::_run-step git::config::use-credential-manager || return "$?"
+  setup::_run-step ssh::setup-directory
+}
+
+# @description Install GnuPG and GitHub CLI when they are not already available.
+# @internal
+# @arg $1 string GnuPG package name of the platform.
+setup::_install-external() {
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  if ! command::exists gpg; then
+    setup::_run-step package::_install "$1" || return "$?"
+  fi
+  if ! command::exists gh; then
+    setup::_run-step gh::install || return "$?"
+  fi
+}
+
 # @description Apply the common Ubuntu user configuration, stopping at the first failure.
 #
-# Missing curl and Git are installed first. The steps then register ~/.env, set
-# the editor to code --wait, ignore case in completion, link English names to
-# localized user directories, add the user to dialout, configure Git with Git
-# Credential Manager, fix ~/.ssh permissions, and install external tools.
+# Missing curl, Git, and Perl modules that bashstock uses are installed first.
+# The steps then register ~/.env, set the editor to code --wait, ignore case
+# in completion, link English names to localized user directories, add the
+# user to dialout, configure Git with Git Credential Manager, fix ~/.ssh
+# permissions, and install external tools.
 #
 # @noargs
 # @stderr The step that failed.
@@ -456,22 +517,7 @@ setup::_ensure-file() {
 ubuntu::setup() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform ubuntu || return "$?"
-  local missing_packages=()
-  command::exists curl || missing_packages+=(curl)
-  command::exists git || missing_packages+=(git)
-  if [[ "${#missing_packages[@]}" -gt 0 ]]; then
-    setup::_run-step package::_install "${missing_packages[@]}" || return "$?"
-  fi
-  # ~/.env holds secrets, so only the user may read a new one.
-  setup::_ensure-file "${HOME}/.env" 0600 || return "$?"
-  setup::_run-step env::dotenv::register "${HOME}/.env" || return "$?"
-  setup::_run-step shell::editor::set-default 'code --wait' || return "$?"
-  setup::_run-step shell::completion::enable-ignore-case || return "$?"
-  setup::_run-step user::directory::create-english-links || return "$?"
-  setup::_run-step user::add-to-group dialout || return "$?"
-  setup::_run-step git::config::setup || return "$?"
-  setup::_run-step git::config::use-credential-manager || return "$?"
-  setup::_run-step ssh::setup-directory || return "$?"
+  setup::_apply-linux-user-configuration || return "$?"
   ubuntu::setup-external
 }
 
@@ -491,12 +537,51 @@ ubuntu::setup() {
 ubuntu::setup-external() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform ubuntu || return "$?"
-  if ! command::exists gpg; then
-    setup::_run-step package::_install gnupg || return "$?"
-  fi
-  if ! command::exists gh; then
-    setup::_run-step gh::install || return "$?"
-  fi
+  setup::_install-external gnupg
+}
+
+# @description Apply the common Fedora user configuration, stopping at the first failure.
+#
+# The same steps as ubuntu::setup run on Fedora: missing curl, Git, and Perl
+# modules that bashstock uses are installed, ~/.env is registered, the editor
+# is set to code --wait, completion ignores case, English names are linked
+# to localized user directories, the user joins dialout, Git uses Git
+# Credential Manager, ~/.ssh permissions are fixed, and external tools are
+# installed.
+#
+# @noargs
+# @stderr The step that failed.
+# @exitcode 0 Every step succeeded.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not Fedora.
+# @exitcode 77 sudo refused the credentials.
+# @exitcode other The status of the first step that failed.
+# @example
+#   GIT_EMAIL=alice@example.com GIT_USERNAME='Alice Example' fedora::setup
+fedora::setup() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform fedora || return "$?"
+  setup::_apply-linux-user-configuration || return "$?"
+  fedora::setup-external
+}
+
+# @description Install GnuPG and GitHub CLI on Fedora when they are not already available.
+#
+# GitHub CLI is installed from its official DNF repository after checking the
+# repository key against GitHub's published fingerprints.
+#
+# @noargs
+# @exitcode 0 The missing tools were installed or were already available.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not Fedora, or a required command is missing.
+# @exitcode 77 sudo refused the credentials.
+# @exitcode other A package installation or repository setup failed.
+# @example
+#   fedora::setup-external
+fedora::setup-external() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform fedora || return "$?"
+  setup::_install-external gnupg2
 }
 
 # @description Apply the Ubuntu user configuration and desktop settings, stopping at the first failure.
