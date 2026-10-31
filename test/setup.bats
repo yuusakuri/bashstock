@@ -916,9 +916,13 @@ gsettings_value() {
   local file="${HOME}/.config/mozc/ibus_config.textproto"
   mkdir -p "$(dirname "${file}")"
   printf 'engines {\n  name : "mozc-jp"\n}\nactive_on_launch: False\nother: 1\n' >"${file}"
-  ibus-daemon() { :; }
+  IBUS_LOG="${BATS_TEST_TMPDIR}/ibus.log"
+  ibus-daemon() { printf 'ibus-daemon %s\n' "$*" >>"${IBUS_LOG}"; }
+  ibus() { printf 'ibus %s\n' "$*" >>"${IBUS_LOG}"; }
   run mozc::ibus::set-hiragana-as-default
   [ "${status}" -eq 0 ]
+  # IBus reads the engine list again only after its cache is rewritten.
+  [ "$(<"${IBUS_LOG}")" = $'ibus write-cache\nibus-daemon -rd' ]
   [ "$(<"${file}")" = $'engines {\n  name : "mozc-jp"\n}\nactive_on_launch: True\nother: 1' ]
 
   # Without an engines block IBus offers no Mozc engine, so a missing file and

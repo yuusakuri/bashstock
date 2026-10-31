@@ -398,7 +398,8 @@ active_on_launch: False
 #
 # active_on_launch is set to True in ~/.config/mozc/ibus_config.textproto. A
 # missing file, or one without Mozc's engine list, first gets Mozc's defaults,
-# because IBus offers no Mozc engine without that list.
+# because IBus offers no Mozc engine without that list. The IBus cache is then
+# rewritten so that IBus reads the engine list again.
 #
 # @noargs
 # @exitcode 0 Mozc starts in Hiragana mode from now on.
@@ -415,6 +416,11 @@ mozc::ibus::set-hiragana-as-default() {
   mozc::ibus::_ensure-engines "${file}" || return "$?"
   textproto::set-scalar "${file}" active_on_launch True || return "$?"
   command::require ibus-daemon || return "$?"
+  # IBus caches the engine list that Mozc reported, so a list read from an
+  # incomplete configuration stays until the cache is written again.
+  if command::exists ibus; then
+    ibus write-cache >/dev/null 2>&1 || return "$?"
+  fi
   ibus-daemon -rd
 }
 

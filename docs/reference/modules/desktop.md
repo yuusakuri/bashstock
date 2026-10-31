@@ -288,7 +288,8 @@ Start Mozc in Hiragana mode and restart IBus.
 
 active_on_launch is set to True in ~/.config/mozc/ibus_config.textproto. A
 missing file, or one without Mozc's engine list, first gets Mozc's defaults,
-because IBus offers no Mozc engine without that list.
+because IBus offers no Mozc engine without that list. The IBus cache is then
+rewritten so that IBus reads the engine list again.
 
 #### Example
 
