@@ -4504,10 +4504,38 @@ rosetta::install() {
   util::_run-command softwareupdate --install-rosetta --agree-to-license
 }
 
+# @description Write the DNS servers that systemd-resolved uses, one per line.
+#
+# systemd 239 renamed systemd-resolve to resolvectl, so Ubuntu 18.04 (systemd 237)
+# is read through systemd-resolve --status.
+# @internal
+# @exitcode 69 Neither resolvectl nor systemd-resolve is available.
+# @exitcode 74 The command failed.
+net::dns::_resolved-servers() {
+  [[ "$#" -eq 0 ]] || return 64
+  local status=''
+  if command -v resolvectl >/dev/null 2>&1; then
+    status="$(resolvectl dns 2>/dev/null)" || return 74
+    printf '%s\n' "${status}" |
+      awk '{sub(/^[^:]*: */, ""); for (i = 1; i <= NF; i++) {sub(/#.*/, "", $i); sub(/%.*/, "", $i); if ($i != "") print $i}}'
+  elif command -v systemd-resolve >/dev/null 2>&1; then
+    status="$(systemd-resolve --status 2>/dev/null)" || return 74
+    # The first server follows "DNS Servers:"; the others are alone on indented lines.
+    printf '%s\n' "${status}" |
+      awk '/^[[:space:]]*DNS Servers:/ {sub(/^[^:]*: */, ""); print; listing = 1; next}
+        listing && /^[[:space:]]+[^[:space:]]+$/ {print $1; next}
+        {listing = 0}'
+  else
+    console::_write-error 'Required command is unavailable: resolvectl'
+    return 69
+  fi
+}
+
 # @description Write the configured IPv4 and IPv6 DNS servers, one per line.
 #
-# Linux uses the servers of systemd-resolved when resolvectl answers, and
-# otherwise the nameserver lines of /etc/resolv.conf. macOS uses scutil --dns.
+# Linux uses the servers of systemd-resolved when resolvectl (systemd-resolve on
+# systemd 237) answers, and otherwise the nameserver lines of /etc/resolv.conf.
+# macOS uses scutil --dns.
 #
 # @noargs
 # @stdout One server address per line without duplicates.
@@ -4527,9 +4555,7 @@ net::dns::servers() {
       servers="$(scutil --dns | awk '$1 ~ /^nameserver\[/ {print $3}')" || return 74
       ;;
     linux)
-      if command -v resolvectl >/dev/null 2>&1 && servers="$(resolvectl dns 2>/dev/null)"; then
-        servers="$(printf '%s\n' "${servers}" | awk '{sub(/^[^:]*: */, ""); for (i = 1; i <= NF; i++) {sub(/#.*/, "", $i); sub(/%.*/, "", $i); if ($i != "") print $i}}')"
-      else
+      if ! servers="$(net::dns::_resolved-servers 2>/dev/null)"; then
         [[ -r /etc/resolv.conf ]] || return 66
         servers="$(awk '$1 == "nameserver" {print $2}' /etc/resolv.conf)"
       fi
@@ -6426,8 +6452,7 @@ net::dns::_verify() {
   case "${manager}" in
     systemd-resolved)
       [[ "$(readlink /etc/resolv.conf 2>/dev/null)" == */run/systemd/resolve/*resolv.conf ]] || return 75
-      command::require resolvectl || return "$?"
-      configured="$(resolvectl dns 2>/dev/null)"
+      configured="$(net::dns::_resolved-servers)" || return "$?"
       ;;
     network-manager)
       [[ "$(readlink /etc/resolv.conf 2>/dev/null)" == */run/NetworkManager/resolv.conf ]] || return 75
