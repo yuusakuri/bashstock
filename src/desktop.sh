@@ -484,7 +484,10 @@ setup::_apply-linux-user-configuration() {
   setup::_run-step ssh::setup-directory
 }
 
-# @description Install GnuPG and GitHub CLI when they are not already available.
+# @description Install GnuPG, GitHub CLI, and Git Credential Manager when they are not already available.
+#
+# The setup makes Git use Git Credential Manager, so it is installed here
+# instead of leaving Git with a helper that does not exist.
 # @internal
 # @arg $1 string GnuPG package name of the platform.
 setup::_install-external() {
@@ -494,6 +497,9 @@ setup::_install-external() {
   fi
   if ! command::exists gh; then
     setup::_run-step gh::install || return "$?"
+  fi
+  if ! command::exists git-credential-manager; then
+    setup::_run-step git-credential-manager::install || return "$?"
   fi
 }
 
@@ -521,7 +527,7 @@ ubuntu::setup() {
   ubuntu::setup-external
 }
 
-# @description Install GnuPG and GitHub CLI when they are not already available.
+# @description Install GnuPG, GitHub CLI, and Git Credential Manager when they are not already available.
 #
 # GitHub CLI is installed from its official Ubuntu APT repository after checking
 # the repository key against GitHub's published fingerprints.
@@ -565,7 +571,7 @@ fedora::setup() {
   fedora::setup-external
 }
 
-# @description Install GnuPG and GitHub CLI on Fedora when they are not already available.
+# @description Install GnuPG, GitHub CLI, and Git Credential Manager on Fedora when they are not already available.
 #
 # GitHub CLI is installed from its official DNF repository after checking the
 # repository key against GitHub's published fingerprints.

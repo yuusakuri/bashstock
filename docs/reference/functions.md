@@ -643,9 +643,9 @@ BashStockが公開する関数をモジュールごとに示します。
 | [`mozc::ibus::set-hiragana-as-default`](modules/desktop.md#mozcibusset-hiragana-as-default) | Start Mozc in Hiragana mode and restart IBus. |
 | [`keyboard::setup-ime-keys`](modules/desktop.md#keyboardsetup-ime-keys) | Map the Convert and Nonconvert keys of USB keyboards to henkan and muhenkan. |
 | [`ubuntu::setup`](modules/desktop.md#ubuntusetup) | Apply the common Ubuntu user configuration, stopping at the first failure. |
-| [`ubuntu::setup-external`](modules/desktop.md#ubuntusetup-external) | Install GnuPG and GitHub CLI when they are not already available. |
+| [`ubuntu::setup-external`](modules/desktop.md#ubuntusetup-external) | Install GnuPG, GitHub CLI, and Git Credential Manager when they are not already available. |
 | [`fedora::setup`](modules/desktop.md#fedorasetup) | Apply the common Fedora user configuration, stopping at the first failure. |
-| [`fedora::setup-external`](modules/desktop.md#fedorasetup-external) | Install GnuPG and GitHub CLI on Fedora when they are not already available. |
+| [`fedora::setup-external`](modules/desktop.md#fedorasetup-external) | Install GnuPG, GitHub CLI, and Git Credential Manager on Fedora when they are not already available. |
 | [`ubuntu::setup-desktop`](modules/desktop.md#ubuntusetup-desktop) | Apply the Ubuntu user configuration and desktop settings, stopping at the first failure. |
 | [`ubuntu::setup-desktop-22`](modules/desktop.md#ubuntusetup-desktop-22) | Install the newest Mozc for Ubuntu 22.04 and apply the desktop settings. |
 | [`homebrew::install`](modules/desktop.md#homebrewinstall) | Install Homebrew with the official installer when it is missing. |

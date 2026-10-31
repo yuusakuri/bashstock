@@ -364,7 +364,7 @@ _Function has no arguments._
 
 ### ubuntu::setup-external
 
-Install GnuPG and GitHub CLI when they are not already available.
+Install GnuPG, GitHub CLI, and Git Credential Manager when they are not already available.
 
 GitHub CLI is installed from its official Ubuntu APT repository after checking
 the repository key against GitHub's published fingerprints.
@@ -418,7 +418,7 @@ _Function has no arguments._
 
 ### fedora::setup-external
 
-Install GnuPG and GitHub CLI on Fedora when they are not already available.
+Install GnuPG, GitHub CLI, and Git Credential Manager on Fedora when they are not already available.
 
 GitHub CLI is installed from its official DNF repository after checking the
 repository key against GitHub's published fingerprints.

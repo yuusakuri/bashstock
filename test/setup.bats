@@ -1004,6 +1004,7 @@ gsettings_value() {
     printf 'gh::install\n' >>"${STEP_LOG}"
     installed+=' gh'
   }
+  git-credential-manager::install() { installed+=' git-credential-manager'; }
 
   run ubuntu::setup
   [ "${status}" -eq 0 ]
@@ -1011,7 +1012,8 @@ gsettings_value() {
   [ "$(sed -n '2p' "${STEP_LOG}")" = 'package::_install curl git' ]
   grep -Fqx 'package::_install gnupg' "${STEP_LOG}"
   grep -Fqx 'gh::install' "${STEP_LOG}"
-  [ "$(tail -n 1 "${STEP_LOG}")" = 'gh::install' ]
+  # Git is configured to use Git Credential Manager, so the setup installs it last.
+  [ "$(tail -n 1 "${STEP_LOG}")" = 'git-credential-manager::install' ]
 }
 
 @test "Fedora setup installs missing Perl modules and runs the shared steps with Fedora's GnuPG" {
@@ -1031,7 +1033,7 @@ gsettings_value() {
   [ "$(sed -n '1p' "${STEP_LOG}")" = 'package::_install perl-JSON-PP perl-Time-HiRes' ]
   grep -Fqx 'git::config::use-credential-manager' "${STEP_LOG}"
   grep -Fqx 'package::_install gnupg2' "${STEP_LOG}"
-  [ "$(tail -n 1 "${STEP_LOG}")" = 'gh::install' ]
+  [ "$(sed -n '$p' "${STEP_LOG}")" = 'git-credential-manager::install' ]
   case "$(uname -s)" in
     Darwin) [ "$(stat -f '%Lp' "${HOME}/.env")" = 600 ] ;;
     *) [ "$(stat -c '%a' "${HOME}/.env")" = 600 ] ;;
