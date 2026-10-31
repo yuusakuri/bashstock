@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
 load test_helper
+bats_require_minimum_version 1.5.0
 
 @test "IPv4 validation accepts canonical addresses and rejects malformed values" {
   run net::_is-ipv4 0.0.0.0
@@ -98,6 +99,27 @@ EOF
 
   run netplan generate --root-dir "${temporary_root}"
   [ "${status}" -eq 0 ]
+}
+
+@test "static IPv4 setup asks for --file unless exactly one Netplan file exists" {
+  local directory="${BATS_TEST_TMPDIR}/netplan"
+  mkdir -p "${directory}"
+
+  run --separate-stderr net::_only-netplan-file "${directory}"
+  [ "${status}" -eq 69 ]
+  [[ "${stderr}" == *'No Netplan file'* ]]
+
+  : >"${directory}/01-network-manager-all.yaml"
+  run net::_only-netplan-file "${directory}"
+  [ "${status}" -eq 0 ]
+  [ "${output}" = "${directory}/01-network-manager-all.yaml" ]
+
+  # NetworkManager on Ubuntu 23.10 and later adds its own file next to the installer's.
+  : >"${directory}/90-NM-eecf78b5-6103-3db4-827f-39fcb745991c.yaml"
+  run --separate-stderr net::_only-netplan-file "${directory}"
+  [ "${status}" -eq 69 ]
+  [ -z "${output}" ]
+  [[ "${stderr}" == *'Several Netplan files'*'--file'* ]]
 }
 
 @test "static IPv4 setup rejects unsupported systems and invalid options" {

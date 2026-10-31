@@ -125,15 +125,27 @@ net::_interface-ipv4-cidr() {
 }
 
 # @description Write the only Netplan file under /etc/netplan.
+#
+# NetworkManager on Ubuntu 23.10 and later writes its own 90-NM-*.yaml files
+# there, so a desktop often has several files and the caller must choose one.
 # @internal
+# @arg $1 string Optional directory to search instead of /etc/netplan.
+# @exitcode 69 The directory holds no Netplan file or several of them.
 net::_only-netplan-file() {
-  local path=''
+  local directory="${1:-/etc/netplan}" path=''
   local paths=()
-  for path in /etc/netplan/*.yaml; do
+  for path in "${directory}"/*.yaml; do
     [[ -f "${path}" ]] || continue
     paths+=("${path}")
   done
-  [[ "${#paths[@]}" -eq 1 ]] || return 65
+  if [[ "${#paths[@]}" -eq 0 ]]; then
+    console::_write-error "No Netplan file exists in ${directory}; pass --file."
+    return 69
+  fi
+  if [[ "${#paths[@]}" -gt 1 ]]; then
+    console::_write-error "Several Netplan files exist in ${directory}; pass --file with the one to replace."
+    return 69
+  fi
   printf '%s\n' "${paths[0]}"
 }
 
@@ -225,12 +237,12 @@ net::ip::_set-static-args() {
 # @option --gateway <GATEWAY> IPv4 gateway. Defaults to the first default route.
 # @option --dns <DNS_SERVERS> Comma-separated IPv4 DNS servers. Defaults to 1.1.1.1,8.8.8.8.
 # @option --host-name <HOST_NAME> Host name. Defaults to the current host name.
-# @option --file <FILE> Netplan file. Defaults to the only /etc/netplan YAML file.
+# @option --file <FILE> Netplan file. Defaults to the only /etc/netplan YAML file; pass it when NetworkManager has written its own files there.
 # @option --renderer <RENDERER> networkd or NetworkManager. Defaults to Netplan's selection.
 # @exitcode 0 The configuration was applied.
 # @exitcode 64 An option or value is invalid.
 # @exitcode 65 Netplan rejected the generated configuration.
-# @exitcode 69 The system is not Ubuntu, a required command is missing, or a default cannot be found.
+# @exitcode 69 The system is not Ubuntu, a required command is missing, or a default cannot be found, such as the Netplan file when /etc/netplan holds several.
 # @exitcode 74 A temporary file or the Netplan file could not be written.
 # @exitcode 75 Netplan could not apply the configuration, so the previous file was restored, or the host name could not be set.
 # @exitcode 77 sudo is unavailable or refused the credentials.
@@ -301,8 +313,9 @@ net::ip::set-static() {
     return 74
   }
   candidate="${temporary_root}/etc/netplan/$(basename -- "${file}")"
-  if ! net::_render-static-ipv4 "${interface}" "${address}" "${prefix_length}" \
-    "${gateway}" "${dns_servers}" "${renderer}" >"${candidate}"; then
+  # Netplan warns about a file that others can read, so the candidate is private like the installed file.
+  if ! (umask 077 && net::_render-static-ipv4 "${interface}" "${address}" "${prefix_length}" \
+    "${gateway}" "${dns_servers}" "${renderer}" >"${candidate}"); then
     rm -rf -- "${temporary_root}"
     return 64
   fi
