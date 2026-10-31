@@ -652,6 +652,8 @@ BashStockが公開する関数をモジュールごとに示します。
 | [`mac::wake-on-lan::enable`](modules/desktop.md#macwake-on-lanenable) | Let the Mac wake from sleep through the network (Wake on LAN). |
 | [`mac::sleep::disable-automatic`](modules/desktop.md#macsleepdisable-automatic) | Disable automatic system sleep while preserving display sleep timers. |
 | [`mac::sleep::enable-automatic`](modules/desktop.md#macsleepenable-automatic) | Enable automatic system sleep after ten minutes while preserving display sleep timers. |
+| [`mac::software-update::enable-automatic-install`](modules/desktop.md#macsoftware-updateenable-automatic-install) | Let macOS updates install automatically. |
+| [`mac::software-update::disable-automatic-install`](modules/desktop.md#macsoftware-updatedisable-automatic-install) | Keep macOS updates downloading but stop their automatic installation. |
 | [`mac::keyboard::use-function-keys`](modules/desktop.md#mackeyboarduse-function-keys) | Make F1 to F12 act as function keys without the fn key. |
 | [`mac::keyboard::set-repeat`](modules/desktop.md#mackeyboardset-repeat) | Set the delay before key repeat starts and the repeat interval. |
 | [`mac::trackpad::disable-smart-zoom`](modules/desktop.md#mactrackpaddisable-smart-zoom) | Turn off smart zoom, the two-finger double tap, on built-in and external trackpads. |
