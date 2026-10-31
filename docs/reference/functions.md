@@ -650,6 +650,8 @@ BashStockが公開する関数をモジュールごとに示します。
 | [`homebrew::cask::disable-quarantine`](modules/desktop.md#homebrewcaskdisable-quarantine) | Install Homebrew casks without the quarantine attribute from now on. |
 | [`shell::zsh::enable-interactive-comments`](modules/desktop.md#shellzshenable-interactive-comments) | Allow comments that start with # in interactive Zsh sessions. |
 | [`mac::wake-on-lan::enable`](modules/desktop.md#macwake-on-lanenable) | Let the Mac wake from sleep through the network (Wake on LAN). |
+| [`mac::sleep::disable-automatic`](modules/desktop.md#macsleepdisable-automatic) | Disable automatic system sleep while preserving display sleep timers. |
+| [`mac::sleep::enable-automatic`](modules/desktop.md#macsleepenable-automatic) | Enable automatic system sleep after ten minutes while preserving display sleep timers. |
 | [`mac::keyboard::use-function-keys`](modules/desktop.md#mackeyboarduse-function-keys) | Make F1 to F12 act as function keys without the fn key. |
 | [`mac::keyboard::set-repeat`](modules/desktop.md#mackeyboardset-repeat) | Set the delay before key repeat starts and the repeat interval. |
 | [`mac::trackpad::disable-smart-zoom`](modules/desktop.md#mactrackpaddisable-smart-zoom) | Turn off smart zoom, the two-finger double tap, on built-in and external trackpads. |
