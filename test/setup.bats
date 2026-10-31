@@ -1573,15 +1573,21 @@ use_fake_sudoers() {
   apt-cache() { :; }
   dpkg() { [[ "$1" == '--print-architecture' ]] && printf 'amd64\n'; }
   dpkg-deb() { printf 'amd64\n'; }
+  CURL_LOG="${BATS_TEST_TMPDIR}/curl.log"
   curl() {
     local output=''
     while [[ "$#" -gt 0 ]]; do
-      if [[ "$1" == -o ]]; then output="$2"; shift 2; else shift; fi
+      case "$1" in
+        -o) output="$2"; shift 2 ;;
+        https://*) printf '%s\n' "$1" >>"${CURL_LOG}"; shift ;;
+        *) shift ;;
+      esac
     done
     if [[ -n "${output}" ]]; then printf 'package' >"${output}"; return; fi
-    printf '<a href="gmic_4.0.4_ubuntu26-04_resolute_amd64.deb">'
-    printf '<a href="gmic_4.0.5_ubuntu26-04_resolute_amd64.deb">'
-    printf '<a href="gmic_4.0.5_ubuntu24-04_noble_amd64.deb">'
+    printf '<a href="get_file.php?file=linux/gmic_4.0.4_ubuntu26-04_resolute_amd64.deb">'
+    printf '<a href="get_file.php?file=linux/gmic_4.0.5_ubuntu26-04_resolute_amd64.deb">'
+    printf '<a href="get_file.php?file=linux/gmic_4.0.5_gimp3.0_ubuntu26-04_resolute_amd64.zip">'
+    printf '<a href="get_file.php?file=linux/gmic_4.0.5_ubuntu24-04_noble_amd64.deb">'
   }
 
   run --separate-stderr gimp::gmic::install
@@ -1595,13 +1601,14 @@ use_fake_sudoers() {
   run gimp::gmic::install '' official
   [ "${status}" -eq 0 ]
   grep -Eq '^env DEBIAN_FRONTEND=noninteractive apt-get install -y /.*/package\.deb$' "${ROOT_LOG}"
+  grep -qxF 'https://gmic.eu/get_file.php?file=linux/gmic_4.0.5_ubuntu26-04_resolute_amd64.deb' "${CURL_LOG}"
 }
 
 @test "G'MIC official source refuses a CPU without a published package" {
   use_platform ubuntu 26.04 resolute
   record_root_commands
   dpkg() { [[ "$1" == '--print-architecture' ]] && printf 'arm64\n'; }
-  curl() { printf '<a href="gmic_4.0.5_ubuntu26-04_resolute_amd64.deb">'; }
+  curl() { printf '<a href="get_file.php?file=linux/gmic_4.0.5_ubuntu26-04_resolute_amd64.deb">'; }
 
   run gimp::gmic::versions official
   [ "${status}" -eq 0 ]
