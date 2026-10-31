@@ -30,6 +30,8 @@ GNOME settings use gsettings and macOS settings use defaults.
 * [mac::wake-on-lan::enable](#macwake-on-lanenable)
 * [mac::sleep::disable-automatic](#macsleepdisable-automatic)
 * [mac::sleep::enable-automatic](#macsleepenable-automatic)
+* [mac::software-update::enable-automatic-install](#macsoftware-updateenable-automatic-install)
+* [mac::software-update::disable-automatic-install](#macsoftware-updatedisable-automatic-install)
 * [mac::keyboard::use-function-keys](#mackeyboarduse-function-keys)
 * [mac::keyboard::set-repeat](#mackeyboardset-repeat)
 * [mac::trackpad::disable-smart-zoom](#mactrackpaddisable-smart-zoom)
@@ -555,6 +557,50 @@ _Function has no arguments._
 * **69**: The system is not macOS or pmset is unavailable.
 * **77**: sudo refused the credentials.
 * other The status of pmset.
+
+### mac::software-update::enable-automatic-install
+
+Let macOS updates install automatically.
+
+Automatic downloads and system data and security update settings stay unchanged.
+The automatic macOS installation preference is enabled for all users.
+
+#### Example
+
+```bash
+mac::software-update::enable-automatic-install
+```
+
+_Function has no arguments._
+
+#### Exit codes
+
+* **0**: Automatic macOS installation is enabled.
+* **64**: An argument was given.
+* **69**: The system is not macOS.
+* other The status of defaults or the root command.
+
+### mac::software-update::disable-automatic-install
+
+Keep macOS updates downloading but stop their automatic installation.
+
+Automatic downloads and system data and security update settings stay unchanged.
+The automatic macOS installation preference is disabled for all users.
+
+#### Example
+
+```bash
+mac::software-update::disable-automatic-install
+```
+
+_Function has no arguments._
+
+#### Exit codes
+
+* **0**: Automatic macOS installation is disabled.
+* **64**: An argument was given.
+* **69**: The system is not macOS.
+* other The status of defaults or the root command.
 
 ### mac::keyboard::use-function-keys
 

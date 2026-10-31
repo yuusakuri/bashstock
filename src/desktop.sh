@@ -658,6 +658,44 @@ mac::sleep::enable-automatic() {
   command::run-as-root pmset -a sleep 10
 }
 
+# @description Let macOS updates install automatically.
+#
+# Automatic downloads and system data and security update settings stay unchanged.
+# The automatic macOS installation preference is enabled for all users.
+#
+# @noargs
+# @exitcode 0 Automatic macOS installation is enabled.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS.
+# @exitcode other The status of defaults or the root command.
+# @example
+#   mac::software-update::enable-automatic-install
+mac::software-update::enable-automatic-install() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  command::run-as-root defaults write /Library/Preferences/com.apple.SoftwareUpdate \
+    AutomaticallyInstallMacOSUpdates -bool true
+}
+
+# @description Keep macOS updates downloading but stop their automatic installation.
+#
+# Automatic downloads and system data and security update settings stay unchanged.
+# The automatic macOS installation preference is disabled for all users.
+#
+# @noargs
+# @exitcode 0 Automatic macOS installation is disabled.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS.
+# @exitcode other The status of defaults or the root command.
+# @example
+#   mac::software-update::disable-automatic-install
+mac::software-update::disable-automatic-install() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  command::run-as-root defaults write /Library/Preferences/com.apple.SoftwareUpdate \
+    AutomaticallyInstallMacOSUpdates -bool false
+}
+
 # @description Make F1 to F12 act as function keys without the fn key.
 #
 # @noargs

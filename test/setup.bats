@@ -1128,6 +1128,14 @@ gsettings_value() {
   [ "${status}" -eq 0 ]
   run mac::sleep::enable-automatic
   [ "${status}" -eq 0 ]
+  run mac::software-update::enable-automatic-install
+  [ "${status}" -eq 0 ]
+  run mac::software-update::enable-automatic-install unexpected
+  [ "${status}" -eq 64 ]
+  run mac::software-update::disable-automatic-install
+  [ "${status}" -eq 0 ]
+  run mac::software-update::disable-automatic-install unexpected
+  [ "${status}" -eq 64 ]
 
   [ "$(<"${DEFAULTS_LOG}")" = "write NSGlobalDomain com.apple.keyboard.fnState -bool true
 write NSGlobalDomain InitialKeyRepeat -int 30
@@ -1145,7 +1153,9 @@ write com.apple.dock orientation -string bottom" ]
   [ "$(grep -c '^Dock$' "${KILLALL_LOG}")" -eq 4 ]
   [ "$(<"${ROOT_LOG}")" = 'pmset -a womp 1
 pmset -a sleep 0
-pmset -a sleep 10' ]
+pmset -a sleep 10
+defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool true
+defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool false' ]
 
   use_platform ubuntu 24.04 noble
   run mac::dock::set-position
@@ -1153,6 +1163,10 @@ pmset -a sleep 10' ]
   run mac::sleep::disable-automatic
   [ "${status}" -eq 69 ]
   run mac::sleep::enable-automatic
+  [ "${status}" -eq 69 ]
+  run mac::software-update::enable-automatic-install
+  [ "${status}" -eq 69 ]
+  run mac::software-update::disable-automatic-install
   [ "${status}" -eq 69 ]
 }
 
