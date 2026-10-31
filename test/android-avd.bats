@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
 load test_helper
+bats_require_minimum_version 1.5.0
 
 @test "AVD port selection checks both ports and rejects odd numbers" {
   lsof() {
@@ -114,4 +115,49 @@ SCRIPT
   [ "$status" -eq 0 ]
   grep -Fqx -- '-s emulator-5556 emu kill' "$ANDROID_TEST_LOG"
   ! grep -Fqx -- '-s emulator-5554 emu kill' "$ANDROID_TEST_LOG"
+}
+
+@test "AVD start stops only the emulator it started when the boot times out or is stopped" {
+  export HOME="$BATS_TEST_TMPDIR/home"
+  export ANDROID_HOME="$HOME/sdk" ANDROID_AVD_HOME="$HOME/.android/avd"
+  unset ANDROID_SDK_ROOT
+  mkdir -p "$ANDROID_AVD_HOME/test_avd.avd" "$ANDROID_HOME/emulator" "$ANDROID_HOME/platform-tools"
+  : >"$ANDROID_AVD_HOME/test_avd.ini"
+  export EMULATOR_PID_FILE="$BATS_TEST_TMPDIR/emulator.pid"
+  # An emulator that never finishes booting.
+  cat >"$ANDROID_HOME/emulator/emulator" <<'SCRIPT'
+#!/usr/bin/env bash
+if [[ "$1" == -list-avds ]]; then
+  for file in "$ANDROID_AVD_HOME"/*.ini; do basename "$file" .ini; done
+  exit 0
+fi
+printf '%s\n' "$$" >"$EMULATOR_PID_FILE"
+exec sleep 300
+SCRIPT
+  printf '#!/usr/bin/env bash\nexit 1\n' >"$ANDROID_HOME/platform-tools/adb"
+  chmod +x "$ANDROID_HOME/emulator/emulator" "$ANDROID_HOME/platform-tools/adb"
+  # A process that the call did not start, such as another emulator, keeps running.
+  # Bats waits for processes that hold its descriptor 3, so the helpers close it.
+  sleep 300 3>&- &
+  local other="$!"
+
+  run --separate-stderr android::avd::start test_avd 5554 2
+  [ "$status" -eq 75 ]
+  ! kill -0 "$(<"$EMULATOR_PID_FILE")" 2>/dev/null
+  kill -0 "$other"
+
+  rm -f "$EMULATOR_PID_FILE"
+  # The caller ignores TERM like an interactive shell ignores Ctrl-C, and records the status.
+  setsid bash -c 'trap "" TERM; source "$1"; android::avd::start test_avd 5554 300; printf "%s\n" "$?" >"$2"' \
+    _ "$PROJECT_ROOT/dist/bashstock.sh" "$BATS_TEST_TMPDIR/status" >/dev/null 2>&1 3>&- &
+  local caller="$!" waited=0
+  until [[ -s "$EMULATOR_PID_FILE" ]] || (( waited >= 50 )); do sleep 0.2; waited=$((waited + 1)); done
+  sleep 1
+  # A shell started in the background ignores SIGINT, so TERM, which the same trap handles, stands in for Ctrl-C.
+  kill -TERM -- "-$caller"
+  wait "$caller"
+  [ "$(<"$BATS_TEST_TMPDIR/status")" -eq 130 ]
+  ! kill -0 "$(<"$EMULATOR_PID_FILE")" 2>/dev/null
+  kill -0 "$other"
+  kill "$other"
 }

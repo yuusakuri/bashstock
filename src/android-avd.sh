@@ -265,10 +265,56 @@ android::avd::port::first() {
   return 75
 }
 
+# @description Succeed while a process runs; a zombie that its parent has not reaped counts as ended.
+#
+# android::avd::start waits in a subshell, and its parent shell reaps the
+# emulator only after the subshell ends, so kill -0 alone would still find an
+# emulator that has already exited.
+# @internal
+# @arg $1 integer Process ID.
+android::avd::_process-running() {
+  [[ "$#" -eq 1 ]] || return 64
+  local state=''
+  state="$(ps -o stat= -p "$1" 2>/dev/null)" || return 1
+  state="${state//[[:space:]]/}"
+  [[ -n "${state}" && "${state}" != Z* ]]
+}
+
+# @description Stop an emulator that android::avd::start launched, leaving other emulators and the ADB server alone.
+#
+# The emulator is asked to stop through its console first, then sent TERM,
+# and finally KILL if it is still running.
+# @internal
+# @arg $1 integer Process ID of the emulator.
+# @arg $2 string adb command.
+# @arg $3 string ADB serial of the emulator.
+android::avd::_stop-started() {
+  [[ "$#" -eq 3 ]] || return 64
+  local process_id="$1" adb="$2" serial="$3" signal='' waited=0
+  local signals=(TERM KILL)
+  android::avd::_process-running "${process_id}" || return 0
+  # Waiting for the console's answer only makes sense when the console took the command.
+  if "${adb}" -s "${serial}" emu kill >/dev/null 2>&1; then
+    signals=('' TERM KILL)
+  fi
+  for signal in "${signals[@]}"; do
+    [[ -z "${signal}" ]] || kill "-${signal}" "${process_id}" 2>/dev/null || true
+    waited=0
+    while android::avd::_process-running "${process_id}" && (( waited < 10 )); do
+      sleep 1
+      waited=$((waited + 1))
+    done
+    android::avd::_process-running "${process_id}" || return 0
+  done
+  return 75
+}
+
 # @description Start one AVD and wait for Android to finish booting.
 #
 # The function returns when sys.boot_completed is 1. The emulator keeps
-# running in the background after the function returns.
+# running in the background after the function returns. When the boot times
+# out or the wait is interrupted, only the emulator that this call started is
+# stopped; the ADB server and other emulators keep running.
 #
 # @arg $1 string Optional AVD name. Defaults to the only AVD.
 # @arg $2 integer Optional console port. Defaults to the first free one.
@@ -283,6 +329,7 @@ android::avd::port::first() {
 # @exitcode 69 The emulator or Platform Tools are not installed.
 # @exitcode 74 A temporary log could not be created.
 # @exitcode 75 The emulator exited or Android did not boot before the timeout.
+# @exitcode 130 The wait was interrupted, and the started emulator was stopped.
 # @example
 #   serial="$(android::avd::start pixel_api35 '' 300 --headless)"
 #   adb -s "${serial}" install app.apk
@@ -311,28 +358,34 @@ android::avd::start() {
     "${emulator_options[@]}" \
     >"${log}" 2>&1 </dev/null &
   process_id="$!"
-  started="$(date +%s)" || { rm -f -- "${log}"; return 74; }
-  while (( $(date +%s) - started < timeout )); do
-    if ! kill -0 "${process_id}" 2>/dev/null; then
-      cat -- "${log}" >&2
-      rm -f -- "${log}"
-      return 75
-    fi
-    state="$("${directory}/platform-tools/adb" -s "${serial}" get-state 2>/dev/null)" || state=''
-    if [[ "${state}" == device ]]; then
-      completed="$("${directory}/platform-tools/adb" -s "${serial}" shell getprop \
-        sys.boot_completed 2>/dev/null)" || completed=''
-      if [[ "${completed}" == 1 ]]; then
-        rm -f -- "${log}"
-        printf '%s\n' "${serial}"
-        return 0
+  local adb="${directory}/platform-tools/adb" status=0
+  # The wait runs in a subshell so that its traps stop only this emulator and
+  # leave the caller's traps as they were.
+  (
+    trap 'android::avd::_stop-started "${process_id}" "${adb}" "${serial}"; exit 130' INT TERM HUP
+    started="$(date +%s)" || exit 74
+    while (( $(date +%s) - started < timeout )); do
+      android::avd::_process-running "${process_id}" || { cat -- "${log}" >&2; exit 75; }
+      state="$("${adb}" -s "${serial}" get-state 2>/dev/null)" || state=''
+      if [[ "${state}" == device ]]; then
+        completed="$("${adb}" -s "${serial}" shell getprop sys.boot_completed 2>/dev/null)" || completed=''
+        if [[ "${completed}" == 1 ]]; then
+          printf '%s\n' "${serial}"
+          exit 0
+        fi
       fi
-    fi
-    sleep 1 || return 74
-  done
-  cat -- "${log}" >&2
+      sleep 1 || exit 74
+    done
+    cat -- "${log}" >&2
+    android::avd::_stop-started "${process_id}" "${adb}" "${serial}"
+    exit 75
+  ) || status="$?"
   rm -f -- "${log}"
-  return 75
+  if [[ "${status}" -ne 0 ]]; then
+    # A timeout or an interruption before the subshell started its trap still stops this emulator.
+    android::avd::_stop-started "${process_id}" "${adb}" "${serial}" || true
+  fi
+  return "${status}"
 }
 
 # @description Stop the named AVD, or the only running AVD when no name is given.
