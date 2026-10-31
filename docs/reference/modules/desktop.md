@@ -337,10 +337,10 @@ keyboard::setup-ime-keys 4653 0001
 Apply the common Ubuntu user configuration, stopping at the first failure.
 
 Missing curl, Git, and Perl modules that bashstock uses are installed first.
-The steps then register ~/.env, set the editor to code --wait, ignore case
-in completion, link English names to localized user directories, add the
-user to dialout, configure Git with Git Credential Manager, fix ~/.ssh
-permissions, and install external tools.
+The steps then register ~/.env, set the editor of Bash and Zsh to
+code --wait, ignore case in completion, link English names to localized
+user directories, add the user to dialout, configure Git with Git Credential
+Manager, fix ~/.ssh permissions, and install external tools.
 
 #### Example
 
@@ -391,10 +391,10 @@ Apply the common Fedora user configuration, stopping at the first failure.
 
 The same steps as ubuntu::setup run on Fedora: missing curl, Git, and Perl
 modules that bashstock uses are installed, ~/.env is registered, the editor
-is set to code --wait, completion ignores case, English names are linked
-to localized user directories, the user joins dialout, Git uses Git
-Credential Manager, ~/.ssh permissions are fixed, and external tools are
-installed.
+of Bash and Zsh is set to code --wait, completion ignores case, English
+names are linked to localized user directories, the user joins dialout, Git
+uses Git Credential Manager, ~/.ssh permissions are fixed, and external
+tools are installed.
 
 #### Example
 

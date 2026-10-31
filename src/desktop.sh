@@ -475,7 +475,7 @@ setup::_apply-linux-user-configuration() {
   # ~/.env holds secrets, so only the user may read a new one.
   setup::_ensure-file "${HOME}/.env" 0600 || return "$?"
   setup::_run-step env::dotenv::register "${HOME}/.env" || return "$?"
-  setup::_run-step shell::editor::set-default 'code --wait' || return "$?"
+  setup::_run-step shell::editor::set-default 'code --wait' bash,zsh || return "$?"
   setup::_run-step shell::completion::enable-ignore-case || return "$?"
   setup::_run-step user::directory::create-english-links || return "$?"
   setup::_run-step user::add-to-group dialout || return "$?"
@@ -500,10 +500,10 @@ setup::_install-external() {
 # @description Apply the common Ubuntu user configuration, stopping at the first failure.
 #
 # Missing curl, Git, and Perl modules that bashstock uses are installed first.
-# The steps then register ~/.env, set the editor to code --wait, ignore case
-# in completion, link English names to localized user directories, add the
-# user to dialout, configure Git with Git Credential Manager, fix ~/.ssh
-# permissions, and install external tools.
+# The steps then register ~/.env, set the editor of Bash and Zsh to
+# code --wait, ignore case in completion, link English names to localized
+# user directories, add the user to dialout, configure Git with Git Credential
+# Manager, fix ~/.ssh permissions, and install external tools.
 #
 # @noargs
 # @stderr The step that failed.
@@ -544,10 +544,10 @@ ubuntu::setup-external() {
 #
 # The same steps as ubuntu::setup run on Fedora: missing curl, Git, and Perl
 # modules that bashstock uses are installed, ~/.env is registered, the editor
-# is set to code --wait, completion ignores case, English names are linked
-# to localized user directories, the user joins dialout, Git uses Git
-# Credential Manager, ~/.ssh permissions are fixed, and external tools are
-# installed.
+# of Bash and Zsh is set to code --wait, completion ignores case, English
+# names are linked to localized user directories, the user joins dialout, Git
+# uses Git Credential Manager, ~/.ssh permissions are fixed, and external
+# tools are installed.
 #
 # @noargs
 # @stderr The step that failed.
