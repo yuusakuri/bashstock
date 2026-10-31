@@ -939,6 +939,30 @@ gsettings_value() {
   done
 }
 
+@test "Mozc engine defaults come from Mozc only when its IBus component lists engines by a command" {
+  HOME="${BATS_TEST_TMPDIR}/home"
+  local file="${HOME}/.config/mozc/ibus_config.textproto" component="${BATS_TEST_TMPDIR}/mozc.xml"
+  local engine="${BATS_TEST_TMPDIR}/ibus-engine-mozc"
+  mkdir -p "$(dirname "${file}")"
+  printf '#!/bin/sh\nprintf "%%s\\n" "$*" >"%s.args"\nprintf "engines {\\n  name : \\"from-mozc\\"\\n}\\n" >"%s"\n' \
+    "${engine}" "${file}" >"${engine}"
+  chmod +x "${engine}"
+
+  printf '<component><engines exec="%s --xml" /></component>\n' "${engine}" >"${component}"
+  run mozc::ibus::_ensure-engines "${file}" "${component}"
+  [ "${status}" -eq 0 ]
+  [ "$(<"${engine}.args")" = --xml ]
+  grep -Fqx '  name : "from-mozc"' "${file}"
+
+  # Mozc 2.25 on Fedora 34 fixes its engines in the component and would wait if run with --xml.
+  rm -f "${file}" "${engine}.args"
+  printf '<component><engines><engine><name>mozc-jp</name></engine></engines></component>\n' >"${component}"
+  run mozc::ibus::_ensure-engines "${file}" "${component}"
+  [ "${status}" -eq 0 ]
+  [ ! -e "${engine}.args" ]
+  grep -Fqx '  name : "mozc-jp"' "${file}"
+}
+
 @test "AWS VPN Client log functions select and remove log files" {
   local directory="${BATS_TEST_TMPDIR}/logs"
   mkdir -p "${directory}/nested"
