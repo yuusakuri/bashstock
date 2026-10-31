@@ -423,7 +423,7 @@ file::verify-sha256() {
 # @description Append text without conversion, elevating only when permissions require it.
 #
 # The text is written exactly, so include a trailing newline when one is needed.
-# A missing file is created.
+# A missing file is created with mode 0644 whatever the caller's umask is.
 #
 # @arg $1 string File path; a symbolic link is refused.
 # @arg $2 string Text to append.
@@ -445,6 +445,9 @@ file::append-text() {
   if file::_requires-root-to-append "$1"; then
     bashstock::_run-as-root append-text "$1" "$2"
     return
+  fi
+  if [[ ! -e "$1" ]]; then
+    (umask 077 && : >"$1") 2>/dev/null && chmod 0644 "$1" || return 74
   fi
   printf '%s' "$2" >>"$1" 2>/dev/null || return 74
 }

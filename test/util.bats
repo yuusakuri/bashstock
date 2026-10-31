@@ -3,23 +3,21 @@
 load test_helper
 bats_require_minimum_version 1.5.0
 
-@test "write-text creates files with the caller's umask and preserves shell state" {
-  local mask='' expected='' file='' actual=''
-  for mask in 0022 0002 0077 0777; do
-    file="${BATS_TEST_TMPDIR}/mode-${mask}"
-    run bash -c 'source "$1"; umask "$2"; before="$(umask)"; file::write-text "$3" "literal text" && test "$(umask)" = "$before"' _ "${PROJECT_ROOT}/dist/bashstock.sh" "${mask}" "${file}"
-    [ "${status}" -eq 0 ]
-    case "$(uname -s)" in
-      Darwin) actual="$(stat -f '%Lp' "${file}")" ;;
-      *) actual="$(stat -c '%a' "${file}")" ;;
-    esac
-    case "${mask}" in
-      0022) expected=644 ;;
-      0002) expected=664 ;;
-      0077) expected=600 ;;
-      0777) expected=0 ;;
-    esac
-    [ "${actual}" = "${expected}" ]
+@test "write-text and append-text create files as 0644 whatever the umask, and preserve shell state" {
+  local mask='' function='' file='' actual=''
+  for function in file::write-text file::append-text; do
+    for mask in 0022 0002 0077 0777; do
+      file="${BATS_TEST_TMPDIR}/${function##*::}-${mask}"
+      run bash -c 'source "$1"; umask "$2"; before="$(umask)"; "$4" "$3" "literal text" && test "$(umask)" = "$before"' \
+        _ "${PROJECT_ROOT}/dist/bashstock.sh" "${mask}" "${file}" "${function}"
+      [ "${status}" -eq 0 ]
+      case "$(uname -s)" in
+        Darwin) actual="$(stat -f '%Lp' "${file}")" ;;
+        *) actual="$(stat -c '%a' "${file}")" ;;
+      esac
+      [ "${actual}" = 644 ]
+      [ "$(<"${file}")" = 'literal text' ]
+    done
   done
 }
 

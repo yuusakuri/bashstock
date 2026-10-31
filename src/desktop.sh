@@ -424,10 +424,16 @@ setup::_run-step() {
 }
 
 # @description Create an empty file when it does not exist.
+#
+# The new file gets the given mode whatever the caller's umask is.
 # @internal
+# @arg $1 string File path.
+# @arg $2 string Optional octal mode of a new file. Defaults to 0644.
 setup::_ensure-file() {
-  [[ "$#" -eq 1 && -n "$1" ]] || return 64
-  [[ -e "$1" ]] || : >"$1" || return 74
+  [[ ( "$#" -eq 1 || "$#" -eq 2 ) && -n "$1" && "${2:-0644}" =~ ^0[0-7]{3}$ ]] || return 64
+  if [[ ! -e "$1" ]]; then
+    (umask 077 && : >"$1") && chmod "${2:-0644}" "$1" || return 74
+  fi
   [[ -f "$1" ]] || return 66
 }
 
@@ -456,7 +462,8 @@ ubuntu::setup() {
   if [[ "${#missing_packages[@]}" -gt 0 ]]; then
     setup::_run-step package::_install "${missing_packages[@]}" || return "$?"
   fi
-  setup::_ensure-file "${HOME}/.env" || return "$?"
+  # ~/.env holds secrets, so only the user may read a new one.
+  setup::_ensure-file "${HOME}/.env" 0600 || return "$?"
   setup::_run-step env::dotenv::register "${HOME}/.env" || return "$?"
   setup::_run-step shell::editor::set-default 'code --wait' || return "$?"
   setup::_run-step shell::completion::enable-ignore-case || return "$?"
@@ -1045,7 +1052,7 @@ mac::setup() {
   )
 
   setup::_run-step sudo::passwordless::enable || status="${status/#0/$?}"
-  setup::_ensure-file "${HOME}/.env" || status="${status/#0/$?}"
+  setup::_ensure-file "${HOME}/.env" 0600 || status="${status/#0/$?}"
   setup::_run-step env::dotenv::register "${HOME}/.env" || status="${status/#0/$?}"
   # Zsh is the default macOS shell, so the editor also goes into .zshrc.
   setup::_run-step shell::editor::set-default 'code --wait' bash,zsh || status="${status/#0/$?}"

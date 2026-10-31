@@ -969,6 +969,11 @@ gsettings_value() {
   run --separate-stderr ubuntu::setup
   [ "${status}" -eq 74 ]
   [ -f "${HOME}/.env" ]
+  # ~/.env holds secrets, so a new one is private whatever the umask is.
+  case "$(uname -s)" in
+    Darwin) [ "$(stat -f '%Lp' "${HOME}/.env")" = 600 ] ;;
+    *) [ "$(stat -c '%a' "${HOME}/.env")" = 600 ] ;;
+  esac
   [ -z "${output}" ]
   [[ "${stderr}" == *'shell::editor::set-default'* ]]
 

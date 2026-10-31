@@ -194,7 +194,8 @@ mem::total-gibibytes() {
 
 # @description Write text to a regular file using an atomic replacement.
 #
-# New files use 0666 filtered by the caller's umask; existing metadata is preserved.
+# New files get mode 0644 whatever the caller's umask is and whether or not
+# root writes them; existing metadata is preserved.
 #
 # @arg $1 string File path; a symbolic link is refused.
 # @arg $2 string Text to write exactly; include a trailing newline when one is needed.
@@ -207,21 +208,20 @@ mem::total-gibibytes() {
 #   file::write-text /etc/udev/rules.d/90-device.rules $'SUBSYSTEM=="usb", MODE="0666"\n'
 file::write-text() {
   if [[ "$#" -ne 2 || -z "$1" || -L "$1" ]]; then return 64; fi
-  local file="$1" text="$2" temporary='' mode='' mask=''
+  local file="$1" text="$2" temporary='' new_file=0
   if [[ -e "$file" && ! -f "$file" ]]; then return 66; fi
-  mask="$(umask)"
   if file::_requires-root "$file"; then
-    bashstock::_run-as-root write-text "$@" "${mask}"
+    bashstock::_run-as-root write-text "$@"
     return
   fi
   temporary="$(umask 077 && file::_temporary-path "$file")" || return "$?"
   if [[ -e "$file" ]]; then
     file::_copy-metadata-and-content "$file" "$temporary" || { rm -f -- "$temporary"; return 74; }
   else
-    printf -v mode '%04o' "$((0666 & ~8#${mask}))"
+    new_file=1
   fi
   if ! printf '%s' "$text" >"$temporary"; then rm -f -- "$temporary"; return 74; fi
-  if [[ -n "${mode}" ]] && ! chmod "${mode}" "${temporary}"; then
+  if [[ "${new_file}" -eq 1 ]] && ! chmod 0644 "${temporary}"; then
     rm -f -- "${temporary}"
     return 74
   fi
