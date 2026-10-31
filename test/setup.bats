@@ -915,16 +915,24 @@ gsettings_value() {
   HOME="${BATS_TEST_TMPDIR}/home"
   local file="${HOME}/.config/mozc/ibus_config.textproto"
   mkdir -p "$(dirname "${file}")"
-  printf 'active_on_launch: False\nother: 1\n' >"${file}"
+  printf 'engines {\n  name : "mozc-jp"\n}\nactive_on_launch: False\nother: 1\n' >"${file}"
   ibus-daemon() { :; }
   run mozc::ibus::set-hiragana-as-default
   [ "${status}" -eq 0 ]
-  [ "$(<"${file}")" = $'active_on_launch: True\nother: 1' ]
+  [ "$(<"${file}")" = $'engines {\n  name : "mozc-jp"\n}\nactive_on_launch: True\nother: 1' ]
 
-  rm -f "${file}"
-  run mozc::ibus::set-hiragana-as-default
-  [ "${status}" -eq 0 ]
-  [ "$(<"${file}")" = 'active_on_launch: True' ]
+  # Without an engines block IBus offers no Mozc engine, so a missing file and
+  # one that an earlier version reduced to active_on_launch get Mozc's defaults.
+  local content=''
+  for content in '' 'active_on_launch: True'; do
+    rm -f "${file}"
+    [[ -z "${content}" ]] || printf '%s\n' "${content}" >"${file}"
+    run mozc::ibus::set-hiragana-as-default
+    [ "${status}" -eq 0 ]
+    grep -Fqx '  name : "mozc-jp"' "${file}"
+    [ "$(grep -c '^active_on_launch:' "${file}")" -eq 1 ]
+    grep -Fqx 'active_on_launch: True' "${file}"
+  done
 }
 
 @test "AWS VPN Client log functions select and remove log files" {

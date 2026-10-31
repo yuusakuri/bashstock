@@ -358,9 +358,47 @@ gnome::window::set-button-layout() {
   gsettings set org.gnome.desktop.wm.preferences button-layout "${layout}"
 }
 
+# @description Make sure the Mozc IBus configuration lists Mozc's engines.
+#
+# Mozc 2.26 and later read their IBus engines from ibus_config.textproto, and
+# a file without an engines block leaves IBus with no Mozc engine at all. Such
+# a file, or a missing one, is replaced with the defaults that Mozc writes when
+# the file does not exist, or with the same defaults when the engine is not found.
+# @internal
+# @arg $1 string Configuration file.
+mozc::ibus::_ensure-engines() {
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  local file="$1" engine=''
+  if [[ -f "${file}" ]] && grep -Eq '^[[:space:]]*engines[[:space:]]*\{' "${file}"; then
+    return 0
+  fi
+  rm -f -- "${file}" || return 74
+  for engine in /usr/lib/ibus-mozc/ibus-engine-mozc /usr/libexec/ibus-engine-mozc; do
+    if [[ -x "${engine}" ]]; then
+      "${engine}" --xml >/dev/null 2>&1 || true
+      break
+    fi
+  done
+  [[ -f "${file}" ]] && return 0
+  # shellcheck disable=SC2016 # Mozc's own comment quotes the commands literally.
+  file::write-text "${file}" '# `ibus write-cache; ibus restart` might be necessary to apply changes.
+engines {
+  name : "mozc-jp"
+  longname : "Mozc"
+  layout : "default"
+  layout_variant : ""
+  layout_option : ""
+  rank : 80
+}
+active_on_launch: False
+'
+}
+
 # @description Start Mozc in Hiragana mode and restart IBus.
 #
-# active_on_launch is set to True in ~/.config/mozc/ibus_config.textproto.
+# active_on_launch is set to True in ~/.config/mozc/ibus_config.textproto. A
+# missing file, or one without Mozc's engine list, first gets Mozc's defaults,
+# because IBus offers no Mozc engine without that list.
 #
 # @noargs
 # @exitcode 0 Mozc starts in Hiragana mode from now on.
@@ -374,7 +412,7 @@ mozc::ibus::set-hiragana-as-default() {
   [[ "$#" -eq 0 ]] || return 64
   local file="${HOME}/.config/mozc/ibus_config.textproto"
   mkdir -p -- "$(path::directory-name "${file}")" || return 74
-  [[ -e "${file}" ]] || : >"${file}" || return 74
+  mozc::ibus::_ensure-engines "${file}" || return "$?"
   textproto::set-scalar "${file}" active_on_launch True || return "$?"
   command::require ibus-daemon || return "$?"
   ibus-daemon -rd

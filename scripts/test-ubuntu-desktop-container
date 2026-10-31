@@ -47,4 +47,6 @@ grep -Fx 'KEYBOARD_KEY_7008b=muhenkan' <<<"$query"
 
 printf '== Mozc and VLC\n'
 grep -Fx 'active_on_launch: True' "$HOME/.config/mozc/ibus_config.textproto"
+# Without its engines block, Mozc offers IBus no engine at all.
+grep -Fx '  name : "mozc-jp"' "$HOME/.config/mozc/ibus_config.textproto"
 [[ "$(xdg-mime query default video/mp4)" == vlc.desktop ]]

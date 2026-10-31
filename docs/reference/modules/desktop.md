@@ -286,7 +286,9 @@ gnome::window::set-button-layout close,minimize,maximize:
 
 Start Mozc in Hiragana mode and restart IBus.
 
-active_on_launch is set to True in ~/.config/mozc/ibus_config.textproto.
+active_on_launch is set to True in ~/.config/mozc/ibus_config.textproto. A
+missing file, or one without Mozc's engine list, first gets Mozc's defaults,
+because IBus offers no Mozc engine without that list.
 
 #### Example
 
