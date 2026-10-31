@@ -194,7 +194,8 @@ mem::total-gibibytes() {
 
 # @description Write text to a regular file using an atomic replacement.
 #
-# New files use 0666 filtered by the caller's umask; existing metadata is preserved.
+# New files get mode 0644 whatever the caller's umask is and whether or not
+# root writes them; existing metadata is preserved.
 #
 # @arg $1 string File path; a symbolic link is refused.
 # @arg $2 string Text to write exactly; include a trailing newline when one is needed.
@@ -207,21 +208,20 @@ mem::total-gibibytes() {
 #   file::write-text /etc/udev/rules.d/90-device.rules $'SUBSYSTEM=="usb", MODE="0666"\n'
 file::write-text() {
   if [[ "$#" -ne 2 || -z "$1" || -L "$1" ]]; then return 64; fi
-  local file="$1" text="$2" temporary='' mode='' mask=''
+  local file="$1" text="$2" temporary='' new_file=0
   if [[ -e "$file" && ! -f "$file" ]]; then return 66; fi
-  mask="$(umask)"
   if file::_requires-root "$file"; then
-    bashstock::_run-as-root write-text "$@" "${mask}"
+    bashstock::_run-as-root write-text "$@"
     return
   fi
   temporary="$(umask 077 && file::_temporary-path "$file")" || return "$?"
   if [[ -e "$file" ]]; then
     file::_copy-metadata-and-content "$file" "$temporary" || { rm -f -- "$temporary"; return 74; }
   else
-    printf -v mode '%04o' "$((0666 & ~8#${mask}))"
+    new_file=1
   fi
   if ! printf '%s' "$text" >"$temporary"; then rm -f -- "$temporary"; return 74; fi
-  if [[ -n "${mode}" ]] && ! chmod "${mode}" "${temporary}"; then
+  if [[ "${new_file}" -eq 1 ]] && ! chmod 0644 "${temporary}"; then
     rm -f -- "${temporary}"
     return 74
   fi
@@ -4504,10 +4504,38 @@ rosetta::install() {
   util::_run-command softwareupdate --install-rosetta --agree-to-license
 }
 
+# @description Write the DNS servers that systemd-resolved uses, one per line.
+#
+# systemd 239 renamed systemd-resolve to resolvectl, so Ubuntu 18.04 (systemd 237)
+# is read through systemd-resolve --status.
+# @internal
+# @exitcode 69 Neither resolvectl nor systemd-resolve is available.
+# @exitcode 74 The command failed.
+net::dns::_resolved-servers() {
+  [[ "$#" -eq 0 ]] || return 64
+  local status=''
+  if command -v resolvectl >/dev/null 2>&1; then
+    status="$(resolvectl dns 2>/dev/null)" || return 74
+    printf '%s\n' "${status}" |
+      awk '{sub(/^[^:]*: */, ""); for (i = 1; i <= NF; i++) {sub(/#.*/, "", $i); sub(/%.*/, "", $i); if ($i != "") print $i}}'
+  elif command -v systemd-resolve >/dev/null 2>&1; then
+    status="$(systemd-resolve --status 2>/dev/null)" || return 74
+    # The first server follows "DNS Servers:"; the others are alone on indented lines.
+    printf '%s\n' "${status}" |
+      awk '/^[[:space:]]*DNS Servers:/ {sub(/^[^:]*: */, ""); print; listing = 1; next}
+        listing && /^[[:space:]]+[^[:space:]]+$/ {print $1; next}
+        {listing = 0}'
+  else
+    console::_write-error 'Required command is unavailable: resolvectl'
+    return 69
+  fi
+}
+
 # @description Write the configured IPv4 and IPv6 DNS servers, one per line.
 #
-# Linux uses the servers of systemd-resolved when resolvectl answers, and
-# otherwise the nameserver lines of /etc/resolv.conf. macOS uses scutil --dns.
+# Linux uses the servers of systemd-resolved when resolvectl (systemd-resolve on
+# systemd 237) answers, and otherwise the nameserver lines of /etc/resolv.conf.
+# macOS uses scutil --dns.
 #
 # @noargs
 # @stdout One server address per line without duplicates.
@@ -4527,9 +4555,7 @@ net::dns::servers() {
       servers="$(scutil --dns | awk '$1 ~ /^nameserver\[/ {print $3}')" || return 74
       ;;
     linux)
-      if command -v resolvectl >/dev/null 2>&1 && servers="$(resolvectl dns 2>/dev/null)"; then
-        servers="$(printf '%s\n' "${servers}" | awk '{sub(/^[^:]*: */, ""); for (i = 1; i <= NF; i++) {sub(/#.*/, "", $i); sub(/%.*/, "", $i); if ($i != "") print $i}}')"
-      else
+      if ! servers="$(net::dns::_resolved-servers 2>/dev/null)"; then
         [[ -r /etc/resolv.conf ]] || return 66
         servers="$(awk '$1 == "nameserver" {print $2}' /etc/resolv.conf)"
       fi
@@ -5318,13 +5344,20 @@ git::config::use-gpg-credential-store() {
 
 # @description Use Git Credential Manager as the global credential helper.
 #
+# Every existing credential.helper value is replaced, because
+# git-credential-manager configure adds an empty value and its own path, and
+# git config refuses to overwrite several values with one.
+#
 # @noargs
 # @exitcode 0 The setting was written.
 # @exitcode 64 An argument was given.
 # @exitcode other The status of git config.
 # @example
 #   git-credential-manager::install && git::config::use-credential-manager
-git::config::use-credential-manager() { [[ "$#" -eq 0 ]] || return 64; git config --global credential.helper manager; }
+git::config::use-credential-manager() {
+  [[ "$#" -eq 0 ]] || return 64
+  git config --global --replace-all credential.helper manager
+}
 
 # @description Remove a pass store and everything in it.
 #
@@ -5766,12 +5799,43 @@ go::repository::register() {
   esac
 }
 
+# @description Point /usr/local/bin/go and gofmt at an Ubuntu golang-VERSION package, or remove those links.
+#
+# Ubuntu installs golang-VERSION under /usr/lib/go-VERSION without putting it
+# on PATH, and /usr/local/bin comes before /usr/bin, where the golang package
+# links its default version. Only links that point into /usr/lib/go-* are removed.
+# @internal
+# @arg $1 string Optional version; an empty value removes the links.
+go::_select-ubuntu-version() {
+  [[ "$#" -eq 1 ]] || return 64
+  local tool=''
+  if [[ -n "$1" && ! -x "/usr/lib/go-$1/bin/go" ]]; then
+    console::_write-error "golang-$1 did not install /usr/lib/go-$1/bin/go."
+    return 69
+  fi
+  for tool in go gofmt; do
+    if [[ -n "$1" ]]; then
+      command::run-as-root ln -sfn "/usr/lib/go-$1/bin/${tool}" "/usr/local/bin/${tool}" || return 74
+    elif [[ "$(readlink "/usr/local/bin/${tool}" 2>/dev/null)" == /usr/lib/go-*/bin/"${tool}" ]]; then
+      command::run-as-root rm -f -- "/usr/local/bin/${tool}" || return 74
+    fi
+  done
+  hash -r
+}
+
 # @description Install Go from the platform package source.
+#
+# On Ubuntu a given version installs golang-VERSION and becomes the go and
+# gofmt of every user through links in /usr/local/bin; an omitted version
+# installs the golang package and removes those links, so its default version
+# answers again. On Fedora an omitted version installs the newest version,
+# which also replaces an older one installed earlier.
 #
 # @arg $1 string Optional version from go::version::list. Defaults to the package source default.
 # @exitcode 0 Go was installed.
 # @exitcode 64 More than one argument was given.
 # @exitcode 69 The platform is unsupported or the version is not offered.
+# @exitcode 74 The links in /usr/local/bin could not be changed.
 # @exitcode other The status of the package installation.
 # @example
 #   go::install "$(go::version::latest)"
@@ -5784,12 +5848,17 @@ go::install() {
     darwin) package::_install-version go "${version}" ;;
     ubuntu)
       if [[ -n "${version}" ]]; then
-        package::_install "golang-${version}"
+        package::_install "golang-${version}" || return "$?"
       else
-        package::_install golang
+        package::_install golang || return "$?"
       fi
+      go::_select-ubuntu-version "${version}"
       ;;
-    fedora) package::_install-version golang "${version}" ;;
+    fedora)
+      # dnf install keeps an installed older golang, so the newest version is named explicitly.
+      [[ -n "${version}" ]] || version="$(go::version::latest)" || return "$?"
+      package::_install-version golang "${version}"
+      ;;
   esac
 }
 
@@ -6426,8 +6495,7 @@ net::dns::_verify() {
   case "${manager}" in
     systemd-resolved)
       [[ "$(readlink /etc/resolv.conf 2>/dev/null)" == */run/systemd/resolve/*resolv.conf ]] || return 75
-      command::require resolvectl || return "$?"
-      configured="$(resolvectl dns 2>/dev/null)"
+      configured="$(net::dns::_resolved-servers)" || return "$?"
       ;;
     network-manager)
       [[ "$(readlink /etc/resolv.conf 2>/dev/null)" == */run/NetworkManager/resolv.conf ]] || return 75

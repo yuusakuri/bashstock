@@ -22,6 +22,8 @@ GNOME settings use gsettings and macOS settings use defaults.
 * [keyboard::setup-ime-keys](#keyboardsetup-ime-keys)
 * [ubuntu::setup](#ubuntusetup)
 * [ubuntu::setup-external](#ubuntusetup-external)
+* [fedora::setup](#fedorasetup)
+* [fedora::setup-external](#fedorasetup-external)
 * [ubuntu::setup-desktop](#ubuntusetup-desktop)
 * [ubuntu::setup-desktop-22](#ubuntusetup-desktop-22)
 * [homebrew::install](#homebrewinstall)
@@ -334,10 +336,11 @@ keyboard::setup-ime-keys 4653 0001
 
 Apply the common Ubuntu user configuration, stopping at the first failure.
 
-Missing curl and Git are installed first. The steps then register ~/.env, set
-the editor to code --wait, ignore case in completion, link English names to
-localized user directories, add the user to dialout, configure Git with Git
-Credential Manager, fix ~/.ssh permissions, and install external tools.
+Missing curl, Git, and Perl modules that bashstock uses are installed first.
+The steps then register ~/.env, set the editor of Bash and Zsh to
+code --wait, ignore case in completion, link English names to localized
+user directories, add the user to dialout, configure Git with Git Credential
+Manager, fix ~/.ssh permissions, and install external tools.
 
 #### Example
 
@@ -361,7 +364,7 @@ _Function has no arguments._
 
 ### ubuntu::setup-external
 
-Install GnuPG and GitHub CLI when they are not already available.
+Install GnuPG, GitHub CLI, and Git Credential Manager when they are not already available.
 
 GitHub CLI is installed from its official Ubuntu APT repository after checking
 the repository key against GitHub's published fingerprints.
@@ -382,12 +385,67 @@ _Function has no arguments._
 * **77**: sudo refused the credentials.
 * other A package installation or repository setup failed.
 
+### fedora::setup
+
+Apply the common Fedora user configuration, stopping at the first failure.
+
+The same steps as ubuntu::setup run on Fedora: missing curl, Git, and Perl
+modules that bashstock uses are installed, ~/.env is registered, the editor
+of Bash and Zsh is set to code --wait, completion ignores case, English
+names are linked to localized user directories, the user joins dialout, Git
+uses Git Credential Manager, ~/.ssh permissions are fixed, and external
+tools are installed.
+
+#### Example
+
+```bash
+GIT_EMAIL=alice@example.com GIT_USERNAME='Alice Example' fedora::setup
+```
+
+_Function has no arguments._
+
+#### Exit codes
+
+* **0**: Every step succeeded.
+* **64**: An argument was given.
+* **69**: The system is not Fedora.
+* **77**: sudo refused the credentials.
+* other The status of the first step that failed.
+
+#### Output on stderr
+
+* The step that failed.
+
+### fedora::setup-external
+
+Install GnuPG, GitHub CLI, and Git Credential Manager on Fedora when they are not already available.
+
+GitHub CLI is installed from its official DNF repository after checking the
+repository key against GitHub's published fingerprints.
+
+#### Example
+
+```bash
+fedora::setup-external
+```
+
+_Function has no arguments._
+
+#### Exit codes
+
+* **0**: The missing tools were installed or were already available.
+* **64**: An argument was given.
+* **69**: The system is not Fedora, or a required command is missing.
+* **77**: sudo refused the credentials.
+* other A package installation or repository setup failed.
+
 ### ubuntu::setup-desktop
 
 Apply the Ubuntu user configuration and desktop settings, stopping at the first failure.
 
-After ubuntu::setup, the IME keys, Mozc and US input sources, Hiragana
-start, and VLC as the video application are set.
+After ubuntu::setup, Mozc for IBus and VLC are installed when they are
+missing, and the IME keys, Mozc and US input sources, Hiragana start, and VLC
+as the video application are set.
 
 #### Example
 

@@ -620,13 +620,39 @@ chmod +x "${HOME}/.local/bin/codex"'
   [ "${output}" = '16.20.2' ]
 }
 
-@test "Go installs from the Fedora package source" {
+@test "Go installs from the Fedora package source and returns to the newest version" {
   use_platform fedora 44
   record_root_commands
   dnf() { :; }
+  package::_versions() { printf '1.26.1-1.fc44\n1.26.10-1.fc44\n'; }
+  run go::install 1.26.1
+  [ "${status}" -eq 0 ]
+  # dnf install keeps an installed older golang, so an omitted version names the newest.
   run go::install
   [ "${status}" -eq 0 ]
-  [ "$(<"${ROOT_LOG}")" = 'dnf install -y golang' ]
+  [ "$(<"${ROOT_LOG}")" = $'dnf install -y golang-1.26.1\ndnf install -y golang-1.26.10' ]
+}
+
+@test "Go on Ubuntu selects a versioned package through /usr/local/bin and removes only its own links" {
+  use_platform ubuntu 24.04 noble
+  record_root_commands
+  package::_install() { printf 'install %s\n' "$*" >>"${ROOT_LOG}"; }
+  readlink() { printf '/usr/lib/go-1.25/bin/%s\n' "${1##*/}"; }
+
+  run go::install 1.25
+  [ "${status}" -eq 69 ]
+  [[ "${output}" == *'golang-1.25 did not install /usr/lib/go-1.25/bin/go.'* ]]
+
+  : >"${ROOT_LOG}"
+  run go::install
+  [ "${status}" -eq 0 ]
+  [ "$(<"${ROOT_LOG}")" = $'install golang\nrm -f -- /usr/local/bin/go\nrm -f -- /usr/local/bin/gofmt' ]
+
+  : >"${ROOT_LOG}"
+  readlink() { printf '/opt/custom/bin/%s\n' "${1##*/}"; }
+  run go::install
+  [ "${status}" -eq 0 ]
+  [ "$(<"${ROOT_LOG}")" = 'install golang' ]
 }
 
 @test "Microsoft Edge on Ubuntu installs the newest package the C library can run" {
@@ -969,6 +995,11 @@ gsettings_value() {
   run --separate-stderr ubuntu::setup
   [ "${status}" -eq 74 ]
   [ -f "${HOME}/.env" ]
+  # ~/.env holds secrets, so a new one is private whatever the umask is.
+  case "$(uname -s)" in
+    Darwin) [ "$(stat -f '%Lp' "${HOME}/.env")" = 600 ] ;;
+    *) [ "$(stat -c '%a' "${HOME}/.env")" = 600 ] ;;
+  esac
   [ -z "${output}" ]
   [[ "${stderr}" == *'shell::editor::set-default'* ]]
 
@@ -999,6 +1030,7 @@ gsettings_value() {
     printf 'gh::install\n' >>"${STEP_LOG}"
     installed+=' gh'
   }
+  git-credential-manager::install() { installed+=' git-credential-manager'; }
 
   run ubuntu::setup
   [ "${status}" -eq 0 ]
@@ -1006,7 +1038,76 @@ gsettings_value() {
   [ "$(sed -n '2p' "${STEP_LOG}")" = 'package::_install curl git' ]
   grep -Fqx 'package::_install gnupg' "${STEP_LOG}"
   grep -Fqx 'gh::install' "${STEP_LOG}"
-  [ "$(tail -n 1 "${STEP_LOG}")" = 'gh::install' ]
+  # Git is configured to use Git Credential Manager, so the setup installs it last.
+  [ "$(tail -n 1 "${STEP_LOG}")" = 'git-credential-manager::install' ]
+}
+
+@test "Fedora setup installs missing Perl modules and runs the shared steps with Fedora's GnuPG" {
+  use_platform fedora 34
+  HOME="${BATS_TEST_TMPDIR}/home"
+  STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
+  local installed='curl git perl'
+  mkdir -p "${HOME}"
+  command::exists() { [[ " ${installed} " == *" $1 "* ]]; }
+  # Fedora Workstation 34 has POSIX but neither JSON::PP nor Time::HiRes.
+  perl() { [[ "$1" == -MPOSIX ]]; }
+  setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+  gh::install() { printf 'gh::install\n' >>"${STEP_LOG}"; }
+
+  run fedora::setup
+  [ "${status}" -eq 0 ]
+  [ "$(sed -n '1p' "${STEP_LOG}")" = 'package::_install perl-JSON-PP perl-Time-HiRes' ]
+  grep -Fqx 'git::config::use-credential-manager' "${STEP_LOG}"
+  grep -Fqx 'package::_install gnupg2' "${STEP_LOG}"
+  [ "$(sed -n '$p' "${STEP_LOG}")" = 'git-credential-manager::install' ]
+  case "$(uname -s)" in
+    Darwin) [ "$(stat -f '%Lp' "${HOME}/.env")" = 600 ] ;;
+    *) [ "$(stat -c '%a' "${HOME}/.env")" = 600 ] ;;
+  esac
+
+  use_platform ubuntu 24.04 noble
+  run --separate-stderr fedora::setup
+  [ "${status}" -eq 69 ]
+  run --separate-stderr fedora::setup-external
+  [ "${status}" -eq 69 ]
+}
+
+@test "Ubuntu desktop setup installs Mozc and VLC only when they are missing" {
+  use_platform ubuntu 24.04 noble
+  STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
+  setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+
+  dpkg-query() { return 1; }
+  run setup::_install-ubuntu-desktop-applications
+  [ "${status}" -eq 0 ]
+  grep -Fqx 'mozc::ibus::install' "${STEP_LOG}"
+  if [[ ! -f /usr/share/applications/vlc.desktop && ! -f /usr/share/applications/org.videolan.VLC.desktop ]]; then
+    grep -Fqx 'package::_install vlc' "${STEP_LOG}"
+  fi
+
+  : >"${STEP_LOG}"
+  dpkg-query() { printf 'install ok installed'; }
+  run setup::_install-ubuntu-desktop-applications
+  [ "${status}" -eq 0 ]
+  ! grep -Fqx 'mozc::ibus::install' "${STEP_LOG}"
+}
+
+@test "Ubuntu setup installs perl only when its modules are missing" {
+  use_platform ubuntu 24.04 noble
+  STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
+  command::exists() { :; }
+  setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+
+  perl() { :; }
+  run setup::_install-prerequisites
+  [ "${status}" -eq 0 ]
+  [ ! -e "${STEP_LOG}" ]
+
+  # perl-base alone, as in a minimal Ubuntu image, lacks JSON::PP and Time::HiRes.
+  perl() { return 2; }
+  run setup::_install-prerequisites
+  [ "${status}" -eq 0 ]
+  [ "$(<"${STEP_LOG}")" = 'package::_install perl' ]
 }
 
 @test "GitHub CLI repository setup checks both published key fingerprints" {
@@ -1039,6 +1140,30 @@ gsettings_value() {
   run gh::_register-repository
   [ "${status}" -eq 65 ]
   [ ! -s "${ROOT_LOG}" ]
+}
+
+@test "GitHub CLI on Fedora uses the official DNF repository with the checked key" {
+  use_platform fedora 44
+  record_root_commands
+  local write_log="${BATS_TEST_TMPDIR}/writes.log"
+  package::_download() { printf '%s\n' "$1" >>"${write_log}.urls"; printf 'key' >"$2"; }
+  package::_dnf-register-repository() { printf '%s\n%s' "$1" "$2" >"${write_log}.repo"; }
+  package::_install() { printf 'install %s\n' "$*" >>"${write_log}"; }
+  gpg() {
+    printf 'pub:u:4096:1:old::::::\nfpr:::::::::2C6106201985B60E6C7AC87323F3D4EA75716059:\n'
+    printf 'pub:u:4096:1:new::::::\nfpr:::::::::7F38BBB59D064DBCB3D84D725612B36462313325:\n'
+  }
+  command::require() { [[ "$1" == gpg || "$1" == mktemp ]]; }
+
+  run gh::install
+  [ "${status}" -eq 0 ]
+  [ "$(<"${write_log}.urls")" = https://cli.github.com/packages/githubcli-archive-keyring.asc ]
+  grep -Fqx 'install -d -m 0755 /etc/pki/rpm-gpg' "${ROOT_LOG}"
+  grep -Eq '^install -m 0644 .+ /etc/pki/rpm-gpg/RPM-GPG-KEY-gh-cli$' "${ROOT_LOG}"
+  [ "$(sed -n 1p "${write_log}.repo")" = gh-cli ]
+  grep -Fqx 'baseurl=https://cli.github.com/packages/rpm' "${write_log}.repo"
+  grep -Fqx 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-gh-cli' "${write_log}.repo"
+  [ "$(<"${write_log}")" = 'install gh' ]
 }
 
 @test "VS Code default app skips only extensions without a declared file type" {
@@ -1431,6 +1556,7 @@ use_fake_sudoers() {
   apt-cache() { :; }
   PIP_LOG="${BATS_TEST_TMPDIR}/pip.log"
   python3() {
+    if [[ "$1" == '-c' && "$2" == *EXTERNALLY-MANAGED* ]]; then return 1; fi
     if [[ "$1" == '-c' ]]; then printf '3.6.9\n'; return; fi
     printf '%s\n' "$*" >>"${PIP_LOG}"
     mkdir -p "${HOME}/.local/bin"
@@ -1476,6 +1602,40 @@ use_fake_sudoers() {
   run pipx::install
   [ "${status}" -eq 0 ]
   grep -Fqx 'env DEBIAN_FRONTEND=noninteractive apt-get install -y python3-venv' "${ROOT_LOG}"
+
+  # A version that the packages do not offer is refused before APT runs.
+  : >"${ROOT_LOG}"
+  run --separate-stderr pipx::install 0.0.1
+  [ "${status}" -eq 69 ]
+  [[ "${stderr}" == *'pipx 0.0.1 cannot be installed on this system.'* ]]
+  [ ! -s "${ROOT_LOG}" ]
+}
+
+@test "pipx from PyPI goes into its own environment where PEP 668 forbids pip install --user" {
+  export HOME="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "${HOME}"
+  use_platform ubuntu 24.04 noble
+  record_root_commands
+  apt-get() { :; }
+  apt-cache() { :; }
+  PIP_LOG="${BATS_TEST_TMPDIR}/pip.log"
+  python3() {
+    if [[ "$1" == '-c' && "$2" == *EXTERNALLY-MANAGED* ]]; then return 0; fi
+    if [[ "$1" == '-c' ]]; then printf '3.12.3\n'; return; fi
+    [[ "$*" == "-m venv --clear ${HOME}/.local/lib/pipx" ]] || return 1
+    mkdir -p "${HOME}/.local/lib/pipx/bin"
+    # The environment's Python records the pip call and installs a pipx that prints its version.
+    printf '#!/bin/sh\nprintf "%%s\\n" "$*" >>"%s"\nprintf "#!/bin/sh\\necho %%s\\n" "${4#pipx==}" >"%s"\nchmod +x "%s"\n' \
+      "${PIP_LOG}" "${HOME}/.local/lib/pipx/bin/pipx" "${HOME}/.local/lib/pipx/bin/pipx" >"${HOME}/.local/lib/pipx/bin/python"
+    chmod +x "${HOME}/.local/lib/pipx/bin/python"
+  }
+  curl() { printf '%s' '{"releases":{"1.7.1":[{"requires_python":">=3.8","yanked":false}]}}'; }
+
+  run pipx::install '' official
+  [ "${status}" -eq 0 ]
+  [ "$(<"${PIP_LOG}")" = '-m pip install pipx==1.7.1' ]
+  [ "$(readlink "${HOME}/.local/bin/pipx")" = "${HOME}/.local/lib/pipx/bin/pipx" ]
+  [ "$("${HOME}/.local/bin/pipx")" = 1.7.1 ]
 }
 
 @test "Ubuntu Server ISOs come from published checksums and never replace a file with a bad download" {

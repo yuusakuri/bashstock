@@ -3,23 +3,21 @@
 load test_helper
 bats_require_minimum_version 1.5.0
 
-@test "write-text creates files with the caller's umask and preserves shell state" {
-  local mask='' expected='' file='' actual=''
-  for mask in 0022 0002 0077 0777; do
-    file="${BATS_TEST_TMPDIR}/mode-${mask}"
-    run bash -c 'source "$1"; umask "$2"; before="$(umask)"; file::write-text "$3" "literal text" && test "$(umask)" = "$before"' _ "${PROJECT_ROOT}/dist/bashstock.sh" "${mask}" "${file}"
-    [ "${status}" -eq 0 ]
-    case "$(uname -s)" in
-      Darwin) actual="$(stat -f '%Lp' "${file}")" ;;
-      *) actual="$(stat -c '%a' "${file}")" ;;
-    esac
-    case "${mask}" in
-      0022) expected=644 ;;
-      0002) expected=664 ;;
-      0077) expected=600 ;;
-      0777) expected=0 ;;
-    esac
-    [ "${actual}" = "${expected}" ]
+@test "write-text and append-text create files as 0644 whatever the umask, and preserve shell state" {
+  local mask='' function='' file='' actual=''
+  for function in file::write-text file::append-text; do
+    for mask in 0022 0002 0077 0777; do
+      file="${BATS_TEST_TMPDIR}/${function##*::}-${mask}"
+      run bash -c 'source "$1"; umask "$2"; before="$(umask)"; "$4" "$3" "literal text" && test "$(umask)" = "$before"' \
+        _ "${PROJECT_ROOT}/dist/bashstock.sh" "${mask}" "${file}" "${function}"
+      [ "${status}" -eq 0 ]
+      case "$(uname -s)" in
+        Darwin) actual="$(stat -f '%Lp' "${file}")" ;;
+        *) actual="$(stat -c '%a' "${file}")" ;;
+      esac
+      [ "${actual}" = 644 ]
+      [ "$(<"${file}")" = 'literal text' ]
+    done
   done
 }
 
@@ -315,6 +313,22 @@ bats_require_minimum_version 1.5.0
   [ "$(mode "$HOME/.ssh/authorized_keys")" = 600 ]
   [ "$(mode "$HOME/.ssh/id_ed25519.pub")" = 644 ]
   [ "$(mode "$HOME/.ssh/known_hosts")" = 644 ]
+}
+
+@test "Git Credential Manager replaces the helpers that its configure command added" {
+  export HOME="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "${HOME}"
+  unset GIT_CONFIG_GLOBAL
+  # git-credential-manager configure appends an empty helper and its own path.
+  git config --global --add credential.helper manager
+  git config --global --add credential.helper ''
+  git config --global --add credential.helper "${HOME}/.local/bin/git-credential-manager"
+  run git::config::use-credential-manager
+  [ "${status}" -eq 0 ]
+  [ "$(git config --global --get-all credential.helper)" = manager ]
+  run git::config::use-credential-manager
+  [ "${status}" -eq 0 ]
+  [ "$(git config --global --get-all credential.helper)" = manager ]
 }
 
 @test "Git identity comes from arguments, the environment, or the existing value" {

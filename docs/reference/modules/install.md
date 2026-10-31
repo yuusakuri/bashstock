@@ -546,6 +546,9 @@ Install pipx and add the pipx application directory to PATH.
 The os source installs the package of the system package manager. The
 official source installs the release from PyPI for the current user with
 pip, as the pipx documentation describes for systems without a package.
+Where PEP 668 forbids pip install --user, as on Ubuntu 23.04 and later, the
+release goes into its own virtual environment in ~/.local/lib/pipx, linked
+from ~/.local/bin/pipx.
 A source that cannot provide pipx returns an error instead of switching to
 the other source. On Ubuntu, python3-venv is installed with either source,
 because pipx creates a virtual environment for every application.
@@ -1249,11 +1252,11 @@ code --version
 
 ### gh::install
 
-Install GitHub CLI from its official Ubuntu APT repository.
+Install GitHub CLI from its official Ubuntu APT or Fedora DNF repository.
 
-The downloaded keyring must contain both fingerprints published by GitHub.
-The keyring is installed in /etc/apt/keyrings and referenced from a deb822
-source file before APT indexes are refreshed and gh is installed.
+The downloaded key must contain both fingerprints published by GitHub. It is
+installed in /etc/apt/keyrings on Ubuntu or /etc/pki/rpm-gpg on Fedora and
+referenced from the repository definition before gh is installed.
 
 #### Example
 
@@ -1268,10 +1271,10 @@ _Function has no arguments._
 * **0**: GitHub CLI is installed.
 * **64**: An argument was given.
 * **65**: The downloaded signing key does not match GitHub's fingerprints.
-* **69**: The system is not Ubuntu, or gpg is missing.
+* **69**: The system is not Ubuntu or Fedora, or gpg is missing.
 * **74**: The key download or repository configuration failed.
 * **77**: sudo refused the credentials.
-* other The status of APT.
+* other The status of the package manager.
 
 ### brave::versions
 
