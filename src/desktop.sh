@@ -590,10 +590,26 @@ fedora::setup-external() {
   setup::_install-external gnupg2
 }
 
+# @description Install Mozc for IBus and VLC on Ubuntu when they are missing.
+#
+# The desktop setup selects Mozc as an input source and VLC as the video
+# application, and a desktop installed in another language has neither.
+# @internal
+setup::_install-ubuntu-desktop-applications() {
+  [[ "$#" -eq 0 ]] || return 64
+  if [[ "$(dpkg-query -W -f='${Status}' ibus-mozc 2>/dev/null)" != 'install ok installed' ]]; then
+    setup::_run-step mozc::ibus::install || return "$?"
+  fi
+  if [[ ! -f /usr/share/applications/vlc.desktop && ! -f /usr/share/applications/org.videolan.VLC.desktop ]]; then
+    setup::_run-step package::_install vlc || return "$?"
+  fi
+}
+
 # @description Apply the Ubuntu user configuration and desktop settings, stopping at the first failure.
 #
-# After ubuntu::setup, the IME keys, Mozc and US input sources, Hiragana
-# start, and VLC as the video application are set.
+# After ubuntu::setup, Mozc for IBus and VLC are installed when they are
+# missing, and the IME keys, Mozc and US input sources, Hiragana start, and VLC
+# as the video application are set.
 #
 # @noargs
 # @stderr The step that failed.
@@ -606,6 +622,7 @@ fedora::setup-external() {
 ubuntu::setup-desktop() {
   [[ "$#" -eq 0 ]] || return 64
   ubuntu::setup || return "$?"
+  setup::_install-ubuntu-desktop-applications || return "$?"
   setup::_run-step keyboard::setup-ime-keys || return "$?"
   setup::_run-step gnome::input-source::set-mozc-first || return "$?"
   setup::_run-step gnome::keyboard-layout::set-us || return "$?"

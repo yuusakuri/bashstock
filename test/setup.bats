@@ -1072,6 +1072,26 @@ gsettings_value() {
   [ "${status}" -eq 69 ]
 }
 
+@test "Ubuntu desktop setup installs Mozc and VLC only when they are missing" {
+  use_platform ubuntu 24.04 noble
+  STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
+  setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+
+  dpkg-query() { return 1; }
+  run setup::_install-ubuntu-desktop-applications
+  [ "${status}" -eq 0 ]
+  grep -Fqx 'mozc::ibus::install' "${STEP_LOG}"
+  if [[ ! -f /usr/share/applications/vlc.desktop && ! -f /usr/share/applications/org.videolan.VLC.desktop ]]; then
+    grep -Fqx 'package::_install vlc' "${STEP_LOG}"
+  fi
+
+  : >"${STEP_LOG}"
+  dpkg-query() { printf 'install ok installed'; }
+  run setup::_install-ubuntu-desktop-applications
+  [ "${status}" -eq 0 ]
+  ! grep -Fqx 'mozc::ibus::install' "${STEP_LOG}"
+}
+
 @test "Ubuntu setup installs perl only when its modules are missing" {
   use_platform ubuntu 24.04 noble
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"

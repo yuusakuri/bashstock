@@ -443,8 +443,9 @@ _Function has no arguments._
 
 Apply the Ubuntu user configuration and desktop settings, stopping at the first failure.
 
-After ubuntu::setup, the IME keys, Mozc and US input sources, Hiragana
-start, and VLC as the video application are set.
+After ubuntu::setup, Mozc for IBus and VLC are installed when they are
+missing, and the IME keys, Mozc and US input sources, Hiragana start, and VLC
+as the video application are set.
 
 #### Example
 
