@@ -1990,7 +1990,8 @@ gh::_register-repository() {
     mkdir -m 0700 -- "${directory}/gnupg" || status=74
   fi
   if [[ "${status}" -eq 0 ]]; then
-    GNUPGHOME="${directory}/gnupg" gpg --batch --with-colons --show-keys \
+    # GnuPG 2.2.4 on Ubuntu 18.04 predates --show-keys, so list the keys with show-only.
+    GNUPGHOME="${directory}/gnupg" gpg --batch --with-colons --import-options show-only --import \
       "${directory}/githubcli-archive-keyring.gpg" >"${directory}/key-info" 2>/dev/null || status=65
   fi
   if [[ "${status}" -eq 0 ]]; then

@@ -560,7 +560,9 @@ package::_download-signing-key() {
   directory="$(package::_temporary-directory)" || return "$?"
   mkdir -m 0700 -- "${directory}/gnupg" || status=74
   if [[ "${status}" -eq 0 ]]; then
-    fingerprints="$(GNUPGHOME="${directory}/gnupg" gpg --batch --with-colons --show-keys "${output}" 2>/dev/null |
+    # GnuPG 2.2.4 on Ubuntu 18.04 predates --show-keys, so list the keys with show-only.
+    fingerprints="$(GNUPGHOME="${directory}/gnupg" gpg --batch --with-colons --import-options show-only \
+      --import "${output}" 2>/dev/null |
       awk -F: '$1 == "pub" { primary = 1; next } primary && $1 == "fpr" { print $10; primary = 0 }')" || status=74
   fi
   rm -rf -- "${directory}"
