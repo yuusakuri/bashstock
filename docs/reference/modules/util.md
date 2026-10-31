@@ -6080,6 +6080,12 @@ _Function has no arguments._
 
 Install Go from the platform package source.
 
+On Ubuntu a given version installs golang-VERSION and becomes the go and
+gofmt of every user through links in /usr/local/bin; an omitted version
+installs the golang package and removes those links, so its default version
+answers again. On Fedora an omitted version installs the newest version,
+which also replaces an older one installed earlier.
+
 #### Example
 
 ```bash
@@ -6095,6 +6101,7 @@ go::install "$(go::version::latest)"
 * **0**: Go was installed.
 * **64**: More than one argument was given.
 * **69**: The platform is unsupported or the version is not offered.
+* **74**: The links in /usr/local/bin could not be changed.
 * other The status of the package installation.
 
 ### rust::install

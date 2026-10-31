@@ -620,13 +620,39 @@ chmod +x "${HOME}/.local/bin/codex"'
   [ "${output}" = '16.20.2' ]
 }
 
-@test "Go installs from the Fedora package source" {
+@test "Go installs from the Fedora package source and returns to the newest version" {
   use_platform fedora 44
   record_root_commands
   dnf() { :; }
+  package::_versions() { printf '1.26.1-1.fc44\n1.26.10-1.fc44\n'; }
+  run go::install 1.26.1
+  [ "${status}" -eq 0 ]
+  # dnf install keeps an installed older golang, so an omitted version names the newest.
   run go::install
   [ "${status}" -eq 0 ]
-  [ "$(<"${ROOT_LOG}")" = 'dnf install -y golang' ]
+  [ "$(<"${ROOT_LOG}")" = $'dnf install -y golang-1.26.1\ndnf install -y golang-1.26.10' ]
+}
+
+@test "Go on Ubuntu selects a versioned package through /usr/local/bin and removes only its own links" {
+  use_platform ubuntu 24.04 noble
+  record_root_commands
+  package::_install() { printf 'install %s\n' "$*" >>"${ROOT_LOG}"; }
+  readlink() { printf '/usr/lib/go-1.25/bin/%s\n' "${1##*/}"; }
+
+  run go::install 1.25
+  [ "${status}" -eq 69 ]
+  [[ "${output}" == *'golang-1.25 did not install /usr/lib/go-1.25/bin/go.'* ]]
+
+  : >"${ROOT_LOG}"
+  run go::install
+  [ "${status}" -eq 0 ]
+  [ "$(<"${ROOT_LOG}")" = $'install golang\nrm -f -- /usr/local/bin/go\nrm -f -- /usr/local/bin/gofmt' ]
+
+  : >"${ROOT_LOG}"
+  readlink() { printf '/opt/custom/bin/%s\n' "${1##*/}"; }
+  run go::install
+  [ "${status}" -eq 0 ]
+  [ "$(<"${ROOT_LOG}")" = 'install golang' ]
 }
 
 @test "Microsoft Edge on Ubuntu installs the newest package the C library can run" {

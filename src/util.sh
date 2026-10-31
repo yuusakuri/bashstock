@@ -5792,12 +5792,43 @@ go::repository::register() {
   esac
 }
 
+# @description Point /usr/local/bin/go and gofmt at an Ubuntu golang-VERSION package, or remove those links.
+#
+# Ubuntu installs golang-VERSION under /usr/lib/go-VERSION without putting it
+# on PATH, and /usr/local/bin comes before /usr/bin, where the golang package
+# links its default version. Only links that point into /usr/lib/go-* are removed.
+# @internal
+# @arg $1 string Optional version; an empty value removes the links.
+go::_select-ubuntu-version() {
+  [[ "$#" -eq 1 ]] || return 64
+  local tool=''
+  if [[ -n "$1" && ! -x "/usr/lib/go-$1/bin/go" ]]; then
+    console::_write-error "golang-$1 did not install /usr/lib/go-$1/bin/go."
+    return 69
+  fi
+  for tool in go gofmt; do
+    if [[ -n "$1" ]]; then
+      command::run-as-root ln -sfn "/usr/lib/go-$1/bin/${tool}" "/usr/local/bin/${tool}" || return 74
+    elif [[ "$(readlink "/usr/local/bin/${tool}" 2>/dev/null)" == /usr/lib/go-*/bin/"${tool}" ]]; then
+      command::run-as-root rm -f -- "/usr/local/bin/${tool}" || return 74
+    fi
+  done
+  hash -r
+}
+
 # @description Install Go from the platform package source.
+#
+# On Ubuntu a given version installs golang-VERSION and becomes the go and
+# gofmt of every user through links in /usr/local/bin; an omitted version
+# installs the golang package and removes those links, so its default version
+# answers again. On Fedora an omitted version installs the newest version,
+# which also replaces an older one installed earlier.
 #
 # @arg $1 string Optional version from go::version::list. Defaults to the package source default.
 # @exitcode 0 Go was installed.
 # @exitcode 64 More than one argument was given.
 # @exitcode 69 The platform is unsupported or the version is not offered.
+# @exitcode 74 The links in /usr/local/bin could not be changed.
 # @exitcode other The status of the package installation.
 # @example
 #   go::install "$(go::version::latest)"
@@ -5810,12 +5841,17 @@ go::install() {
     darwin) package::_install-version go "${version}" ;;
     ubuntu)
       if [[ -n "${version}" ]]; then
-        package::_install "golang-${version}"
+        package::_install "golang-${version}" || return "$?"
       else
-        package::_install golang
+        package::_install golang || return "$?"
       fi
+      go::_select-ubuntu-version "${version}"
       ;;
-    fedora) package::_install-version golang "${version}" ;;
+    fedora)
+      # dnf install keeps an installed older golang, so the newest version is named explicitly.
+      [[ -n "${version}" ]] || version="$(go::version::latest)" || return "$?"
+      package::_install-version golang "${version}"
+      ;;
   esac
 }
 
