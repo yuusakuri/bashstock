@@ -1536,6 +1536,7 @@ use_fake_sudoers() {
   apt-cache() { :; }
   PIP_LOG="${BATS_TEST_TMPDIR}/pip.log"
   python3() {
+    if [[ "$1" == '-c' && "$2" == *EXTERNALLY-MANAGED* ]]; then return 1; fi
     if [[ "$1" == '-c' ]]; then printf '3.6.9\n'; return; fi
     printf '%s\n' "$*" >>"${PIP_LOG}"
     mkdir -p "${HOME}/.local/bin"
@@ -1581,6 +1582,40 @@ use_fake_sudoers() {
   run pipx::install
   [ "${status}" -eq 0 ]
   grep -Fqx 'env DEBIAN_FRONTEND=noninteractive apt-get install -y python3-venv' "${ROOT_LOG}"
+
+  # A version that the packages do not offer is refused before APT runs.
+  : >"${ROOT_LOG}"
+  run --separate-stderr pipx::install 0.0.1
+  [ "${status}" -eq 69 ]
+  [[ "${stderr}" == *'pipx 0.0.1 cannot be installed on this system.'* ]]
+  [ ! -s "${ROOT_LOG}" ]
+}
+
+@test "pipx from PyPI goes into its own environment where PEP 668 forbids pip install --user" {
+  export HOME="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "${HOME}"
+  use_platform ubuntu 24.04 noble
+  record_root_commands
+  apt-get() { :; }
+  apt-cache() { :; }
+  PIP_LOG="${BATS_TEST_TMPDIR}/pip.log"
+  python3() {
+    if [[ "$1" == '-c' && "$2" == *EXTERNALLY-MANAGED* ]]; then return 0; fi
+    if [[ "$1" == '-c' ]]; then printf '3.12.3\n'; return; fi
+    [[ "$*" == "-m venv --clear ${HOME}/.local/lib/pipx" ]] || return 1
+    mkdir -p "${HOME}/.local/lib/pipx/bin"
+    # The environment's Python records the pip call and installs a pipx that prints its version.
+    printf '#!/bin/sh\nprintf "%%s\\n" "$*" >>"%s"\nprintf "#!/bin/sh\\necho %%s\\n" "${4#pipx==}" >"%s"\nchmod +x "%s"\n' \
+      "${PIP_LOG}" "${HOME}/.local/lib/pipx/bin/pipx" "${HOME}/.local/lib/pipx/bin/pipx" >"${HOME}/.local/lib/pipx/bin/python"
+    chmod +x "${HOME}/.local/lib/pipx/bin/python"
+  }
+  curl() { printf '%s' '{"releases":{"1.7.1":[{"requires_python":">=3.8","yanked":false}]}}'; }
+
+  run pipx::install '' official
+  [ "${status}" -eq 0 ]
+  [ "$(<"${PIP_LOG}")" = '-m pip install pipx==1.7.1' ]
+  [ "$(readlink "${HOME}/.local/bin/pipx")" = "${HOME}/.local/lib/pipx/bin/pipx" ]
+  [ "$("${HOME}/.local/bin/pipx")" = 1.7.1 ]
 }
 
 @test "Ubuntu Server ISOs come from published checksums and never replace a file with a bad download" {

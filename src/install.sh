@@ -1020,11 +1020,37 @@ pipx::versions() {
   pipx::_official-versions "${python_version}"
 }
 
+# @description Succeed when PEP 668 marks the Python 3 interpreter as managed by the system.
+#
+# Ubuntu 23.04 and later mark their Python this way, and pip then refuses
+# pip install --user.
+# @internal
+pipx::_python-is-externally-managed() {
+  [[ "$#" -eq 0 ]] || return 64
+  python3 -c 'import os, sys, sysconfig
+sys.exit(0 if os.path.isfile(os.path.join(sysconfig.get_path("stdlib"), "EXTERNALLY-MANAGED")) else 1)'
+}
+
+# @description Install a pipx release into its own virtual environment and link it from ~/.local/bin.
+# @internal
+# @arg $1 string pipx version.
+pipx::_install-official-venv() {
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  local venv="${HOME}/.local/lib/pipx"
+  mkdir -p -- "${HOME}/.local/lib" "${HOME}/.local/bin" || return 74
+  python3 -m venv --clear "${venv}" || return 74
+  "${venv}/bin/python" -m pip install "pipx==$1" || return "$?"
+  ln -sfn "${venv}/bin/pipx" "${HOME}/.local/bin/pipx" || return 74
+}
+
 # @description Install pipx and add the pipx application directory to PATH.
 #
 # The os source installs the package of the system package manager. The
 # official source installs the release from PyPI for the current user with
 # pip, as the pipx documentation describes for systems without a package.
+# Where PEP 668 forbids pip install --user, as on Ubuntu 23.04 and later, the
+# release goes into its own virtual environment in ~/.local/lib/pipx, linked
+# from ~/.local/bin/pipx.
 # A source that cannot provide pipx returns an error instead of switching to
 # the other source. On Ubuntu, python3-venv is installed with either source,
 # because pipx creates a virtual environment for every application.
@@ -1051,6 +1077,9 @@ pipx::install() {
       console::_write-error 'The system packages do not provide pipx; use the official source.'
       return 69
     fi
+    if [[ -n "${version}" ]]; then
+      version="$(package::_select-listed-version "${versions}" "${version}" pipx)" || return "$?"
+    fi
     package::_install-version pipx "${version}" || return "$?"
     if [[ "${platform}" == ubuntu ]]; then
       # Ubuntu ships venv separately, and the pipx package of 20.04 does not require it.
@@ -1067,7 +1096,11 @@ pipx::install() {
     esac
     versions="$(pipx::versions official)" || return "$?"
     version="$(package::_select-listed-version "${versions}" "${version}" pipx)" || return "$?"
-    python3 -m pip install --user "pipx==${version}" || return "$?"
+    if pipx::_python-is-externally-managed; then
+      pipx::_install-official-venv "${version}" || return "$?"
+    else
+      python3 -m pip install --user "pipx==${version}" || return "$?"
+    fi
     installed="$("${HOME}/.local/bin/pipx" --version)" || return 69
     if [[ "${installed}" != "${version}" ]]; then
       console::_write-error "pip installed pipx ${installed} instead of ${version}."
