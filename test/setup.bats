@@ -595,6 +595,40 @@ chmod +x "${HOME}/.local/bin/codex"'
   [ "${SECONDS}" -lt 10 ]
 }
 
+@test "Rancher Desktop refuses Ubuntu and Fedora releases that its packages do not support" {
+  use_platform ubuntu 20.04 focal
+  record_root_commands
+  run --separate-stderr rancher-desktop::install
+  [ "${status}" -eq 69 ]
+  [[ "${stderr}" == *'Rancher Desktop requires Ubuntu 22.04 or later.'* ]]
+  [ ! -s "${ROOT_LOG}" ]
+
+  # Its rdctl needs glibc 2.34, which Fedora 34 lacks.
+  use_platform fedora 34
+  run --separate-stderr rancher-desktop::install
+  [ "${status}" -eq 69 ]
+  [[ "${stderr}" == *'Rancher Desktop requires Fedora 35 or later.'* ]]
+  [ ! -s "${ROOT_LOG}" ]
+}
+
+@test "Rancher Desktop on Fedora uses the Fedora build and names the newest version" {
+  use_platform fedora 44
+  local write_log="${BATS_TEST_TMPDIR}/writes.log"
+  package::_dnf-register-repository() { printf '%s\n%s' "$1" "$2" >"${write_log}.repo"; }
+  package::_rpm-repository-versions() { printf '%s\n' "$1" >"${write_log}.query"; printf '1.23.1-3.1\n1.24.0-2.1\n'; }
+  package::_install-version() { printf '%s\n' "$*" >"${write_log}.install"; }
+  rancher-desktop::_start-linux() { :; }
+  [[ -w /dev/kvm ]] || package::_add-current-user-to-group() { :; }
+
+  run rancher-desktop::install
+  [ "${status}" -eq 0 ]
+  # The rpm repository is built for openSUSE and left Fedora with version 1.2.1.
+  grep -Fqx 'baseurl=https://download.opensuse.org/repositories/isv:/Rancher:/stable/fedora/' "${write_log}.repo"
+  [ "$(<"${write_log}.query")" = 'https://download.opensuse.org/repositories/isv:/Rancher:/stable/fedora/' ]
+  # dnf install keeps an installed older package, so the newest version is named.
+  [ "$(<"${write_log}.install")" = 'rancher-desktop 1.24.0-2.1' ]
+}
+
 @test "Node.js on Ubuntu lists complete OS versions and rejects unavailable versions" {
   use_platform ubuntu 24.04 noble
   record_root_commands
@@ -620,13 +654,40 @@ chmod +x "${HOME}/.local/bin/codex"'
   [ "${output}" = '16.20.2' ]
 }
 
-@test "Go installs from the Fedora package source" {
+@test "Go installs from the Fedora package source and returns to the newest version" {
   use_platform fedora 44
   record_root_commands
   dnf() { :; }
+  package::_versions() { printf '1.26.1-1.fc44\n1.26.10-1.fc44\n'; }
+  run go::install 1.26.1
+  [ "${status}" -eq 0 ]
+  # dnf install keeps an installed older golang, so an omitted version names the newest.
   run go::install
   [ "${status}" -eq 0 ]
-  [ "$(<"${ROOT_LOG}")" = 'dnf install -y golang' ]
+  [ "$(<"${ROOT_LOG}")" = $'dnf install -y golang-1.26.1\ndnf install -y golang-1.26.10' ]
+}
+
+@test "Go on Ubuntu selects a versioned package through /usr/local/bin and removes only its own links" {
+  use_platform ubuntu 24.04 noble
+  record_root_commands
+  go::repository::register() { :; }
+  package::_install() { printf 'install %s\n' "$*" >>"${ROOT_LOG}"; }
+  readlink() { printf '/usr/lib/go-1.25/bin/%s\n' "${1##*/}"; }
+
+  run go::install 1.25
+  [ "${status}" -eq 69 ]
+  [[ "${output}" == *'golang-1.25 did not install /usr/lib/go-1.25/bin/go.'* ]]
+
+  : >"${ROOT_LOG}"
+  run go::install
+  [ "${status}" -eq 0 ]
+  [ "$(<"${ROOT_LOG}")" = $'install golang\nrm -f -- /usr/local/bin/go\nrm -f -- /usr/local/bin/gofmt' ]
+
+  : >"${ROOT_LOG}"
+  readlink() { printf '/opt/custom/bin/%s\n' "${1##*/}"; }
+  run go::install
+  [ "${status}" -eq 0 ]
+  [ "$(<"${ROOT_LOG}")" = 'install golang' ]
 }
 
 @test "Microsoft Edge on Ubuntu installs the newest package the C library can run" {
@@ -889,16 +950,62 @@ gsettings_value() {
   HOME="${BATS_TEST_TMPDIR}/home"
   local file="${HOME}/.config/mozc/ibus_config.textproto"
   mkdir -p "$(dirname "${file}")"
-  printf 'active_on_launch: False\nother: 1\n' >"${file}"
-  ibus-daemon() { :; }
+  printf 'engines {\n  name : "mozc-jp"\n}\nactive_on_launch: False\nother: 1\n' >"${file}"
+  IBUS_LOG="${BATS_TEST_TMPDIR}/ibus.log"
+  ibus-daemon() { printf 'ibus-daemon %s\n' "$*" >>"${IBUS_LOG}"; }
+  ibus() { printf 'ibus %s\n' "$*" >>"${IBUS_LOG}"; }
   run mozc::ibus::set-hiragana-as-default
   [ "${status}" -eq 0 ]
-  [ "$(<"${file}")" = $'active_on_launch: True\nother: 1' ]
+  # IBus reads the engine list again only after its cache is rewritten.
+  [ "$(<"${IBUS_LOG}")" = $'ibus write-cache\nibus-daemon -rd' ]
+  [ "$(<"${file}")" = $'engines {\n  name : "mozc-jp"\n}\nactive_on_launch: True\nother: 1' ]
 
-  rm -f "${file}"
-  run mozc::ibus::set-hiragana-as-default
+  # The text format also writes the block as engines: { or engines < >, which is kept as written.
+  local form=''
+  for form in 'engines: {' 'engines <' 'engines: <'; do
+    printf '%s\n  layout : "custom"\n%s\nactive_on_launch: False\n' "${form}" "$([[ "${form}" == *'<' ]] && printf '>' || printf '}')" >"${file}"
+    run mozc::ibus::set-hiragana-as-default
+    [ "${status}" -eq 0 ]
+    grep -Fqx '  layout : "custom"' "${file}"
+    grep -Fqx 'active_on_launch: True' "${file}"
+  done
+
+  # Without an engines block IBus offers no Mozc engine, so a missing file and
+  # one that an earlier version reduced to active_on_launch get Mozc's defaults.
+  local content=''
+  for content in '' 'active_on_launch: True'; do
+    rm -f "${file}"
+    [[ -z "${content}" ]] || printf '%s\n' "${content}" >"${file}"
+    run mozc::ibus::set-hiragana-as-default
+    [ "${status}" -eq 0 ]
+    grep -Fqx '  name : "mozc-jp"' "${file}"
+    [ "$(grep -c '^active_on_launch:' "${file}")" -eq 1 ]
+    grep -Fqx 'active_on_launch: True' "${file}"
+  done
+}
+
+@test "Mozc engine defaults come from Mozc only when its IBus component lists engines by a command" {
+  HOME="${BATS_TEST_TMPDIR}/home"
+  local file="${HOME}/.config/mozc/ibus_config.textproto" component="${BATS_TEST_TMPDIR}/mozc.xml"
+  local engine="${BATS_TEST_TMPDIR}/ibus-engine-mozc"
+  mkdir -p "$(dirname "${file}")"
+  printf '#!/bin/sh\nprintf "%%s\\n" "$*" >"%s.args"\nprintf "engines {\\n  name : \\"from-mozc\\"\\n}\\n" >"%s"\n' \
+    "${engine}" "${file}" >"${engine}"
+  chmod +x "${engine}"
+
+  printf '<component><engines exec="%s --xml" /></component>\n' "${engine}" >"${component}"
+  run mozc::ibus::_ensure-engines "${file}" "${component}"
   [ "${status}" -eq 0 ]
-  [ "$(<"${file}")" = 'active_on_launch: True' ]
+  [ "$(<"${engine}.args")" = --xml ]
+  grep -Fqx '  name : "from-mozc"' "${file}"
+
+  # Mozc 2.25 on Fedora 34 fixes its engines in the component and would wait if run with --xml.
+  rm -f "${file}" "${engine}.args"
+  printf '<component><engines><engine><name>mozc-jp</name></engine></engines></component>\n' >"${component}"
+  run mozc::ibus::_ensure-engines "${file}" "${component}"
+  [ "${status}" -eq 0 ]
+  [ ! -e "${engine}.args" ]
+  grep -Fqx '  name : "mozc-jp"' "${file}"
 }
 
 @test "AWS VPN Client log functions select and remove log files" {
@@ -969,6 +1076,11 @@ gsettings_value() {
   run --separate-stderr ubuntu::setup
   [ "${status}" -eq 74 ]
   [ -f "${HOME}/.env" ]
+  # ~/.env holds secrets, so a new one is private whatever the umask is.
+  case "$(uname -s)" in
+    Darwin) [ "$(stat -f '%Lp' "${HOME}/.env")" = 600 ] ;;
+    *) [ "$(stat -c '%a' "${HOME}/.env")" = 600 ] ;;
+  esac
   [ -z "${output}" ]
   [[ "${stderr}" == *'shell::editor::set-default'* ]]
 
@@ -999,6 +1111,7 @@ gsettings_value() {
     printf 'gh::install\n' >>"${STEP_LOG}"
     installed+=' gh'
   }
+  git-credential-manager::install() { installed+=' git-credential-manager'; }
 
   run ubuntu::setup
   [ "${status}" -eq 0 ]
@@ -1006,7 +1119,76 @@ gsettings_value() {
   [ "$(sed -n '2p' "${STEP_LOG}")" = 'package::_install curl git' ]
   grep -Fqx 'package::_install gnupg' "${STEP_LOG}"
   grep -Fqx 'gh::install' "${STEP_LOG}"
-  [ "$(tail -n 1 "${STEP_LOG}")" = 'gh::install' ]
+  # Git is configured to use Git Credential Manager, so the setup installs it last.
+  [ "$(tail -n 1 "${STEP_LOG}")" = 'git-credential-manager::install' ]
+}
+
+@test "Fedora setup installs missing Perl modules and runs the shared steps with Fedora's GnuPG" {
+  use_platform fedora 34
+  HOME="${BATS_TEST_TMPDIR}/home"
+  STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
+  local installed='curl git perl'
+  mkdir -p "${HOME}"
+  command::exists() { [[ " ${installed} " == *" $1 "* ]]; }
+  # Fedora Workstation 34 has POSIX but neither JSON::PP nor Time::HiRes.
+  perl() { [[ "$1" == -MPOSIX ]]; }
+  setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+  gh::install() { printf 'gh::install\n' >>"${STEP_LOG}"; }
+
+  run fedora::setup
+  [ "${status}" -eq 0 ]
+  [ "$(sed -n '1p' "${STEP_LOG}")" = 'package::_install perl-JSON-PP perl-Time-HiRes' ]
+  grep -Fqx 'git::config::use-credential-manager' "${STEP_LOG}"
+  grep -Fqx 'package::_install gnupg2' "${STEP_LOG}"
+  [ "$(sed -n '$p' "${STEP_LOG}")" = 'git-credential-manager::install' ]
+  case "$(uname -s)" in
+    Darwin) [ "$(stat -f '%Lp' "${HOME}/.env")" = 600 ] ;;
+    *) [ "$(stat -c '%a' "${HOME}/.env")" = 600 ] ;;
+  esac
+
+  use_platform ubuntu 24.04 noble
+  run --separate-stderr fedora::setup
+  [ "${status}" -eq 69 ]
+  run --separate-stderr fedora::setup-external
+  [ "${status}" -eq 69 ]
+}
+
+@test "Ubuntu desktop setup installs Mozc and VLC only when they are missing" {
+  use_platform ubuntu 24.04 noble
+  STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
+  setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+
+  dpkg-query() { return 1; }
+  run setup::_install-ubuntu-desktop-applications
+  [ "${status}" -eq 0 ]
+  grep -Fqx 'mozc::ibus::install' "${STEP_LOG}"
+  if [[ ! -f /usr/share/applications/vlc.desktop && ! -f /usr/share/applications/org.videolan.VLC.desktop ]]; then
+    grep -Fqx 'package::_install vlc' "${STEP_LOG}"
+  fi
+
+  : >"${STEP_LOG}"
+  dpkg-query() { printf 'install ok installed'; }
+  run setup::_install-ubuntu-desktop-applications
+  [ "${status}" -eq 0 ]
+  ! grep -Fqx 'mozc::ibus::install' "${STEP_LOG}"
+}
+
+@test "Ubuntu setup installs perl only when its modules are missing" {
+  use_platform ubuntu 24.04 noble
+  STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
+  command::exists() { :; }
+  setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+
+  perl() { :; }
+  run setup::_install-prerequisites
+  [ "${status}" -eq 0 ]
+  [ ! -e "${STEP_LOG}" ]
+
+  # perl-base alone, as in a minimal Ubuntu image, lacks JSON::PP and Time::HiRes.
+  perl() { return 2; }
+  run setup::_install-prerequisites
+  [ "${status}" -eq 0 ]
+  [ "$(<"${STEP_LOG}")" = 'package::_install perl' ]
 }
 
 @test "GitHub CLI repository setup checks both published key fingerprints" {
@@ -1039,6 +1221,30 @@ gsettings_value() {
   run gh::_register-repository
   [ "${status}" -eq 65 ]
   [ ! -s "${ROOT_LOG}" ]
+}
+
+@test "GitHub CLI on Fedora uses the official DNF repository with the checked key" {
+  use_platform fedora 44
+  record_root_commands
+  local write_log="${BATS_TEST_TMPDIR}/writes.log"
+  package::_download() { printf '%s\n' "$1" >>"${write_log}.urls"; printf 'key' >"$2"; }
+  package::_dnf-register-repository() { printf '%s\n%s' "$1" "$2" >"${write_log}.repo"; }
+  package::_install() { printf 'install %s\n' "$*" >>"${write_log}"; }
+  gpg() {
+    printf 'pub:u:4096:1:old::::::\nfpr:::::::::2C6106201985B60E6C7AC87323F3D4EA75716059:\n'
+    printf 'pub:u:4096:1:new::::::\nfpr:::::::::7F38BBB59D064DBCB3D84D725612B36462313325:\n'
+  }
+  command::require() { [[ "$1" == gpg || "$1" == mktemp ]]; }
+
+  run gh::install
+  [ "${status}" -eq 0 ]
+  [ "$(<"${write_log}.urls")" = https://cli.github.com/packages/githubcli-archive-keyring.asc ]
+  grep -Fqx 'install -d -m 0755 /etc/pki/rpm-gpg' "${ROOT_LOG}"
+  grep -Eq '^install -m 0644 .+ /etc/pki/rpm-gpg/RPM-GPG-KEY-gh-cli$' "${ROOT_LOG}"
+  [ "$(sed -n 1p "${write_log}.repo")" = gh-cli ]
+  grep -Fqx 'baseurl=https://cli.github.com/packages/rpm' "${write_log}.repo"
+  grep -Fqx 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-gh-cli' "${write_log}.repo"
+  [ "$(<"${write_log}")" = 'install gh' ]
 }
 
 @test "VS Code default app skips only extensions without a declared file type" {
@@ -1431,6 +1637,7 @@ use_fake_sudoers() {
   apt-cache() { :; }
   PIP_LOG="${BATS_TEST_TMPDIR}/pip.log"
   python3() {
+    if [[ "$1" == '-c' && "$2" == *EXTERNALLY-MANAGED* ]]; then return 1; fi
     if [[ "$1" == '-c' ]]; then printf '3.6.9\n'; return; fi
     printf '%s\n' "$*" >>"${PIP_LOG}"
     mkdir -p "${HOME}/.local/bin"
@@ -1476,6 +1683,59 @@ use_fake_sudoers() {
   run pipx::install
   [ "${status}" -eq 0 ]
   grep -Fqx 'env DEBIAN_FRONTEND=noninteractive apt-get install -y python3-venv' "${ROOT_LOG}"
+
+  # A version that the packages do not offer is refused before APT runs.
+  : >"${ROOT_LOG}"
+  run --separate-stderr pipx::install 0.0.1
+  [ "${status}" -eq 69 ]
+  [[ "${stderr}" == *'pipx 0.0.1 cannot be installed on this system.'* ]]
+  [ ! -s "${ROOT_LOG}" ]
+}
+
+@test "pipx from PyPI goes into its own environment where PEP 668 forbids pip install --user" {
+  export HOME="${BATS_TEST_TMPDIR}/home"
+  mkdir -p "${HOME}"
+  use_platform ubuntu 24.04 noble
+  record_root_commands
+  apt-get() { :; }
+  apt-cache() { :; }
+  PIP_LOG="${BATS_TEST_TMPDIR}/pip.log"
+  PIP_STATUS=0
+  python3() {
+    if [[ "$1" == '-c' && "$2" == *EXTERNALLY-MANAGED* ]]; then return 0; fi
+    if [[ "$1" == '-c' ]]; then printf '3.12.3\n'; return; fi
+    [[ "$1 $2" == '-m venv' && "$3" == "${HOME}/.local/lib/pipx-official/"* ]] || return 1
+    mkdir -p "$3/bin"
+    # The environment's Python records the pip call and installs a pipx that prints its version.
+    printf '#!/bin/sh\nprintf "%%s\\n" "$*" >>"%s"\n[ %s -eq 0 ] || exit %s\nprintf "#!/bin/sh\\necho %%s\\n" "${4#pipx==}" >"%s"\nchmod +x "%s"\n' \
+      "${PIP_LOG}" "${PIP_STATUS}" "${PIP_STATUS}" "$3/bin/pipx" "$3/bin/pipx" >"$3/bin/python"
+    chmod +x "$3/bin/python"
+  }
+  curl() { printf '%s' '{"releases":{"1.7.1":[{"requires_python":">=3.8","yanked":false}]}}'; }
+
+  run pipx::install '' official
+  [ "${status}" -eq 0 ]
+  [ "$(<"${PIP_LOG}")" = '-m pip install pipx==1.7.1' ]
+  [[ "$(readlink "${HOME}/.local/bin/pipx")" == "${HOME}/.local/lib/pipx-official/1.7.1."*/bin/pipx ]]
+  [ "$("${HOME}/.local/bin/pipx")" = 1.7.1 ]
+  local working=''
+  working="$(readlink "${HOME}/.local/bin/pipx")"
+
+  # A failed update, such as one without PyPI, keeps the working pipx and removes the new environment.
+  PIP_STATUS=1
+  run pipx::install '' official
+  [ "${status}" -ne 0 ]
+  [ "$(readlink "${HOME}/.local/bin/pipx")" = "${working}" ]
+  [ "$("${HOME}/.local/bin/pipx")" = 1.7.1 ]
+  [ "$(find "${HOME}/.local/lib/pipx-official" -mindepth 1 -maxdepth 1 | wc -l)" -eq 1 ]
+
+  # A successful update moves the launcher and removes the environment it replaced.
+  PIP_STATUS=0
+  run pipx::install '' official
+  [ "${status}" -eq 0 ]
+  [ "$(readlink "${HOME}/.local/bin/pipx")" != "${working}" ]
+  [ ! -e "${working}" ]
+  [ "$(find "${HOME}/.local/lib/pipx-official" -mindepth 1 -maxdepth 1 | wc -l)" -eq 1 ]
 }
 
 @test "Ubuntu Server ISOs come from published checksums and never replace a file with a bad download" {

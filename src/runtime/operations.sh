@@ -28,8 +28,7 @@ bashstock::_dispatch-root() {
       file::append-text "$@"
       ;;
     write-text)
-      ( [[ "$#" -eq 3 && "$3" =~ ^0?[0-7]{3}$ ]] ) || return 64
-      (umask "$3" && file::write-text "$1" "$2")
+      file::write-text "$@"
       ;;
     replace-text)
       file::replace-text "$@"

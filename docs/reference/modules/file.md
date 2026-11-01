@@ -78,7 +78,7 @@ file::verify-sha256 node.tar.gz "${expected_sha256}" || rm -f node.tar.gz
 Append text without conversion, elevating only when permissions require it.
 
 The text is written exactly, so include a trailing newline when one is needed.
-A missing file is created.
+A missing file is created with mode 0644 whatever the caller's umask is.
 
 #### Example
 

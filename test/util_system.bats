@@ -81,6 +81,31 @@ record_root_commands() {
   [ "$output" = $'8.8.8.8\n2001:4860:4860::8888\n192.0.2.53\nfe80::1' ]
 }
 
+@test "DNS servers come from systemd-resolve --status where resolvectl is missing" {
+  system::operating-system() { printf 'linux\n'; }
+  # Ubuntu 18.04 has systemd 237, which names the command systemd-resolve.
+  systemd-resolve() {
+    [ "$1" = --status ]
+    printf 'Global\n'
+    printf '         DNS Servers: 8.8.8.8\n'
+    printf '                      2001:4860:4860::8888\n'
+    printf '          DNSSEC NTA: 10.in-addr.arpa\n'
+    printf '                      local\n'
+    printf '\nLink 2 (ens3)\n'
+    printf '      Current Scopes: DNS\n'
+    printf '         DNS Servers: 192.168.122.1\n'
+    printf '          DNS Domain: ~.\n'
+  }
+  local saved_path="${PATH}"
+  mkdir -p "${BATS_TEST_TMPDIR}/bin"
+  ln -s "$(command -v awk)" "${BATS_TEST_TMPDIR}/bin/awk"
+  PATH="${BATS_TEST_TMPDIR}/bin"
+  run net::dns::servers
+  PATH="${saved_path}"
+  [ "$status" -eq 0 ]
+  [ "$output" = $'8.8.8.8\n2001:4860:4860::8888\n192.168.122.1' ]
+}
+
 @test "swap creation registers the file once and refuses existing paths" {
   system::operating-system() { printf 'linux\n'; }
   record_root_commands

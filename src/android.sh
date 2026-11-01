@@ -246,11 +246,14 @@ android::emulator::install() {
 
 # @description Install SDK Command-line Tools and verify sdkmanager and avdmanager.
 #
+# sdkmanager and avdmanager run on Java, so a JDK is installed with jdk::install
+# when neither JAVA_HOME nor PATH provides java.
+#
 # @arg $1 string Optional package revision. Defaults to the latest stable one.
 # @exitcode 0 sdkmanager and avdmanager are installed and on PATH.
 # @exitcode 64 The revision is malformed.
 # @exitcode 69 The Android CLI is unavailable, or a tool is missing after installation.
-# @exitcode other The status of the Android CLI.
+# @exitcode other The status of the Android CLI or jdk::install.
 # @example
 #   android::command-line-tools::install
 #   avdmanager list device -c
@@ -261,5 +264,8 @@ android::command-line-tools::install() {
   directory="$(android::sdk::directory)" || return "$?"
   [[ -x "${directory}/cmdline-tools/latest/bin/sdkmanager" &&
     -x "${directory}/cmdline-tools/latest/bin/avdmanager" ]] || return 69
+  if [[ ! -x "${JAVA_HOME:-/nonexistent}/bin/java" ]] && ! command::exists java; then
+    jdk::install || return "$?"
+  fi
   env::add-path "${directory}/cmdline-tools/latest/bin"
 }

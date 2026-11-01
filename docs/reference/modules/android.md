@@ -196,6 +196,9 @@ android::emulator::install
 
 Install SDK Command-line Tools and verify sdkmanager and avdmanager.
 
+sdkmanager and avdmanager run on Java, so a JDK is installed with jdk::install
+when neither JAVA_HOME nor PATH provides java.
+
 #### Example
 
 ```bash
@@ -212,5 +215,5 @@ avdmanager list device -c
 * **0**: sdkmanager and avdmanager are installed and on PATH.
 * **64**: The revision is malformed.
 * **69**: The Android CLI is unavailable, or a tool is missing after installation.
-* other The status of the Android CLI.
+* other The status of the Android CLI or jdk::install.
 

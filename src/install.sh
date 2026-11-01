@@ -1020,11 +1020,53 @@ pipx::versions() {
   pipx::_official-versions "${python_version}"
 }
 
+# @description Succeed when PEP 668 marks the Python 3 interpreter as managed by the system.
+#
+# Ubuntu 23.04 and later mark their Python this way, and pip then refuses
+# pip install --user.
+# @internal
+pipx::_python-is-externally-managed() {
+  [[ "$#" -eq 0 ]] || return 64
+  python3 -c 'import os, sys, sysconfig
+sys.exit(0 if os.path.isfile(os.path.join(sysconfig.get_path("stdlib"), "EXTERNALLY-MANAGED")) else 1)'
+}
+
+# @description Install a pipx release into its own virtual environment and link it from ~/.local/bin.
+#
+# Each installation gets a new environment, and the launcher moves to it only
+# after pip succeeds, so a failed update leaves the working pipx in place.
+# Environments that the launcher no longer uses are removed afterwards.
+# @internal
+# @arg $1 string pipx version.
+pipx::_install-official-venv() {
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  local root="${HOME}/.local/lib/pipx-official" venv='' old='' status=0
+  mkdir -p -- "${root}" "${HOME}/.local/bin" || return 74
+  venv="$(mktemp -d "${root}/$1.XXXXXX")" || return 74
+  python3 -m venv "${venv}" || status=74
+  if [[ "${status}" -eq 0 ]]; then
+    "${venv}/bin/python" -m pip install "pipx==$1" || status="$?"
+  fi
+  if [[ "${status}" -eq 0 ]]; then
+    ln -sfn "${venv}/bin/pipx" "${HOME}/.local/bin/pipx" || status=74
+  fi
+  if [[ "${status}" -ne 0 ]]; then
+    rm -rf -- "${venv}"
+    return "${status}"
+  fi
+  for old in "${root}"/*; do
+    [[ "${old}" == "${venv}" ]] || rm -rf -- "${old}"
+  done
+}
+
 # @description Install pipx and add the pipx application directory to PATH.
 #
 # The os source installs the package of the system package manager. The
 # official source installs the release from PyPI for the current user with
 # pip, as the pipx documentation describes for systems without a package.
+# Where PEP 668 forbids pip install --user, as on Ubuntu 23.04 and later, the
+# release goes into its own virtual environment under ~/.local/lib/pipx-official,
+# linked from ~/.local/bin/pipx.
 # A source that cannot provide pipx returns an error instead of switching to
 # the other source. On Ubuntu, python3-venv is installed with either source,
 # because pipx creates a virtual environment for every application.
@@ -1051,6 +1093,9 @@ pipx::install() {
       console::_write-error 'The system packages do not provide pipx; use the official source.'
       return 69
     fi
+    if [[ -n "${version}" ]]; then
+      version="$(package::_select-listed-version "${versions}" "${version}" pipx)" || return "$?"
+    fi
     package::_install-version pipx "${version}" || return "$?"
     if [[ "${platform}" == ubuntu ]]; then
       # Ubuntu ships venv separately, and the pipx package of 20.04 does not require it.
@@ -1067,7 +1112,11 @@ pipx::install() {
     esac
     versions="$(pipx::versions official)" || return "$?"
     version="$(package::_select-listed-version "${versions}" "${version}" pipx)" || return "$?"
-    python3 -m pip install --user "pipx==${version}" || return "$?"
+    if pipx::_python-is-externally-managed; then
+      pipx::_install-official-venv "${version}" || return "$?"
+    else
+      python3 -m pip install --user "pipx==${version}" || return "$?"
+    fi
     installed="$("${HOME}/.local/bin/pipx" --version)" || return 69
     if [[ "${installed}" != "${version}" ]]; then
       console::_write-error "pip installed pipx ${installed} instead of ${version}."
@@ -1381,8 +1430,9 @@ rancher-desktop::versions() {
       printf '%s\n' "${index_entries}" | cut -f 1 | package::_sort-versions
       ;;
     fedora)
+      # The rpm repository is built for openSUSE; the fedora one is built for Fedora.
       package::_rpm-repository-versions \
-        https://download.opensuse.org/repositories/isv:/Rancher:/stable/rpm/ rancher-desktop
+        https://download.opensuse.org/repositories/isv:/Rancher:/stable/fedora/ rancher-desktop
       ;;
   esac
 }
@@ -1390,12 +1440,14 @@ rancher-desktop::versions() {
 # @description Install Rancher Desktop and start it.
 #
 # Rosetta and Colima are installed separately with rosetta::install and colima::install.
+# Ubuntu 22.04 or later and Fedora 35 or later install from Rancher's
+# repository; Fedora uses the packages that Rancher builds for Fedora.
 #
 # @arg $1 string Optional version from rancher-desktop::versions; on macOS only the current version.
 # @stderr On Linux, a reminder to log in again when the user was added to the kvm group.
 # @exitcode 0 Rancher Desktop is installed and was started.
 # @exitcode 64 The argument count is wrong.
-# @exitcode 69 The platform is unsupported, or the version is unavailable.
+# @exitcode 69 The platform is unsupported, Ubuntu is older than 22.04, Fedora is older than 35, or the version is unavailable.
 # @exitcode 74 The repository or its key could not be downloaded.
 # @exitcode other The status of the package manager.
 # @example
@@ -1421,20 +1473,32 @@ rancher-desktop::install() {
 rancher-desktop::_install-linux() {
   [[ "$#" -eq 2 ]] || return 64
   if [[ "$1" == 'ubuntu' ]]; then
+    # The packages depend on libgdk-pixbuf-2.0-0, which Ubuntu 20.04 and older name differently.
+    package::_require-release ubuntu 22 'Rancher Desktop' || return "$?"
     package::_apt-register-repository isv-rancher-stable \
       https://download.opensuse.org/repositories/isv:/Rancher:/stable/deb/Release.key \
       https://download.opensuse.org/repositories/isv:/Rancher:/stable/deb/ ./ '' || return "$?"
   else
+    # The bundled rdctl needs glibc 2.34, which Fedora 35 introduced.
+    package::_require-release fedora 35 'Rancher Desktop' || return "$?"
+    # Rancher builds the rpm repository for openSUSE, whose package names Fedora
+    # lacks, so dnf fell back to version 1.2.1; the fedora repository is built for Fedora.
     package::_dnf-register-repository isv-rancher-stable \
       "[isv-rancher-stable]
 name=Rancher Desktop
-baseurl=https://download.opensuse.org/repositories/isv:/Rancher:/stable/rpm/
+baseurl=https://download.opensuse.org/repositories/isv:/Rancher:/stable/fedora/
 enabled=1
 gpgcheck=1
-gpgkey=https://download.opensuse.org/repositories/isv:/Rancher:/stable/rpm/repodata/repomd.xml.key
+gpgkey=https://download.opensuse.org/repositories/isv:/Rancher:/stable/fedora/repodata/repomd.xml.key
 " || return "$?"
   fi
-  package::_install-version rancher-desktop "$2" || return "$?"
+  local version="$2" versions=''
+  if [[ "$1" == fedora && -z "${version}" ]]; then
+    # dnf install keeps an installed older package, so the newest version is named explicitly.
+    versions="$(rancher-desktop::versions)" || return "$?"
+    version="$(package::_select-listed-version "${versions}" '' 'Rancher Desktop')" || return "$?"
+  fi
+  package::_install-version rancher-desktop "${version}" || return "$?"
   if [[ ! -r /dev/kvm || ! -w /dev/kvm ]]; then
     package::_add-current-user-to-group kvm || return "$?"
     console::_write-error 'Log in again so that the kvm group membership takes effect.'
@@ -1976,23 +2040,33 @@ vscode::install() {
   package::_install-version code "${version}"
 }
 
-# @description Register GitHub CLI's official Ubuntu APT repository after checking its key.
+# @description Register GitHub CLI's official APT or DNF repository after checking its key.
 # @internal
 gh::_register-repository() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform ubuntu || return "$?"
   command::require gpg || return "$?"
-  local directory='' status=0 fingerprints='' architecture=''
+  local platform='' key_url='' keyring='' directory='' status=0 fingerprints='' architecture=''
+  platform="$(package::_platform)" || return "$?"
+  case "${platform}" in
+    ubuntu)
+      key_url=https://cli.github.com/packages/githubcli-archive-keyring.gpg
+      keyring=/etc/apt/keyrings/githubcli-archive-keyring.gpg
+      ;;
+    fedora)
+      key_url=https://cli.github.com/packages/githubcli-archive-keyring.asc
+      keyring=/etc/pki/rpm-gpg/RPM-GPG-KEY-gh-cli
+      ;;
+    *) return 69 ;;
+  esac
   directory="$(package::_temporary-directory)" || return "$?"
-  package::_download https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-    "${directory}/githubcli-archive-keyring.gpg" || status="$?"
+  package::_download "${key_url}" "${directory}/key" || status="$?"
   if [[ "${status}" -eq 0 ]]; then
     mkdir -m 0700 -- "${directory}/gnupg" || status=74
   fi
   if [[ "${status}" -eq 0 ]]; then
     # GnuPG 2.2.4 on Ubuntu 18.04 predates --show-keys, so list the keys with show-only.
     GNUPGHOME="${directory}/gnupg" gpg --batch --with-colons --import-options show-only --import \
-      "${directory}/githubcli-archive-keyring.gpg" >"${directory}/key-info" 2>/dev/null || status=65
+      "${directory}/key" >"${directory}/key-info" 2>/dev/null || status=65
   fi
   if [[ "${status}" -eq 0 ]]; then
     fingerprints="$(awk -F: '$1 == "pub" { primary = 1; next } primary && $1 == "fpr" { print $10; primary = 0 }' \
@@ -2003,39 +2077,48 @@ gh::_register-repository() {
     status=65
   fi
   if [[ "${status}" -eq 0 ]]; then
-    command::run-as-root install -d -m 0755 /etc/apt/keyrings || status=74
+    command::run-as-root install -d -m 0755 "${keyring%/*}" || status=74
   fi
   if [[ "${status}" -eq 0 ]]; then
-    command::run-as-root install -m 0644 "${directory}/githubcli-archive-keyring.gpg" \
-      /etc/apt/keyrings/githubcli-archive-keyring.gpg || status=74
+    command::run-as-root install -m 0644 "${directory}/key" "${keyring}" || status=74
   fi
   rm -rf -- "${directory}"
   [[ "${status}" -eq 0 ]] || return "${status}"
-  architecture="$(package::_deb-architecture)" || return "$?"
-  file::write-text /etc/apt/sources.list.d/github-cli.sources \
-    $'Types: deb\nURIs: https://cli.github.com/packages\nSuites: stable\nComponents: main\nArchitectures: '"${architecture}"$'\nSigned-By: /etc/apt/keyrings/githubcli-archive-keyring.gpg\n' || return "$?"
-  package::_refresh
+  if [[ "${platform}" == ubuntu ]]; then
+    architecture="$(package::_deb-architecture)" || return "$?"
+    file::write-text /etc/apt/sources.list.d/github-cli.sources \
+      $'Types: deb\nURIs: https://cli.github.com/packages\nSuites: stable\nComponents: main\nArchitectures: '"${architecture}"$'\nSigned-By: '"${keyring}"$'\n' || return "$?"
+    package::_refresh
+  else
+    package::_dnf-register-repository gh-cli "[gh-cli]
+name=packages for the GitHub CLI
+baseurl=https://cli.github.com/packages/rpm
+enabled=1
+gpgcheck=1
+gpgkey=file://${keyring}
+"
+  fi
 }
 
-# @description Install GitHub CLI from its official Ubuntu APT repository.
+# @description Install GitHub CLI from its official Ubuntu APT or Fedora DNF repository.
 #
-# The downloaded keyring must contain both fingerprints published by GitHub.
-# The keyring is installed in /etc/apt/keyrings and referenced from a deb822
-# source file before APT indexes are refreshed and gh is installed.
+# The downloaded key must contain both fingerprints published by GitHub. It is
+# installed in /etc/apt/keyrings on Ubuntu or /etc/pki/rpm-gpg on Fedora and
+# referenced from the repository definition before gh is installed.
 #
 # @noargs
 # @exitcode 0 GitHub CLI is installed.
 # @exitcode 64 An argument was given.
 # @exitcode 65 The downloaded signing key does not match GitHub's fingerprints.
-# @exitcode 69 The system is not Ubuntu, or gpg is missing.
+# @exitcode 69 The system is not Ubuntu or Fedora, or gpg is missing.
 # @exitcode 74 The key download or repository configuration failed.
 # @exitcode 77 sudo refused the credentials.
-# @exitcode other The status of APT.
+# @exitcode other The status of the package manager.
 # @example
 #   gh::install
 gh::install() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform ubuntu || return "$?"
+  package::_require-platform ubuntu fedora || return "$?"
   gh::_register-repository || return "$?"
   package::_install gh
 }
