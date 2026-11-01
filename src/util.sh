@@ -653,7 +653,7 @@ system::disable-auto-lock() {
       sysadminctl -screenLock off -password - || return 74
       # sysadminctl can exit 0 after a refused password, so the setting is read back.
       lock_status="$(sysadminctl -screenLock status 2>&1)" || return 74
-      [[ "${lock_status}" == *screenLock* && "${lock_status}" != *'screenLock delay'* ]] || return 74
+      [[ "${lock_status}" == *'screenLock is off'* ]] || return 74
       ;;
     *) return 69 ;;
   esac
