@@ -1,0 +1,406 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+# Prepare and publish a release. `bump` opens the release pull request from a
+# local main, and `publish` runs after that pull request is merged to tag the
+# merged commit and publish the GitHub Release. Both accept --dry-run, which
+# runs every check and reports the remaining steps without performing them.
+
+project_root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
+readonly project_root
+readonly remote='origin'
+readonly base_branch='main'
+readonly settings_path='src/settings.sh'
+readonly artifact_path='dist/bashstock.sh'
+
+dry_run='0'
+
+# @description Write a message to standard error and exit.
+# @arg $1 int Exit status.
+# @arg $2 string Message.
+release::fail() {
+  printf 'release: %s\n' "$2" >&2
+  exit "$1"
+}
+
+# @description Write one step and run it unless this is a dry run.
+# @arg $1 string Step description.
+# @arg $@ string Command and its arguments.
+release::step() {
+  local description="$1"
+  shift
+  if [[ "${dry_run}" == '1' ]]; then
+    printf 'release: would %s\n' "${description}"
+    return 0
+  fi
+  printf 'release: %s\n' "${description}"
+  "$@"
+}
+
+# @description Run git in the project root.
+# @arg $@ string Git arguments.
+release::git() {
+  git -C "${project_root}" "$@"
+}
+
+# @description Run the GitHub CLI in the project root.
+# @arg $@ string GitHub CLI arguments.
+release::gh() {
+  (cd "${project_root}" && gh "$@")
+}
+
+# @description Succeed when the argument is a release version.
+#
+# A version is MAJOR.MINOR.PATCH without leading zeros, optionally followed by
+# a prerelease label that starts with a letter and holds only ASCII letters and
+# digits, such as 2.0.0-preview1. Such a label is one alphanumeric semantic
+# versioning identifier, so labels compare in ASCII order.
+#
+# @arg $1 string Version.
+release::is-version() {
+  local pattern='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[A-Za-z][0-9A-Za-z]*)?$'
+  [[ "$1" =~ ${pattern} ]]
+}
+
+# @description Compare two versions by semantic versioning precedence.
+# @arg $1 string Left version.
+# @arg $2 string Right version.
+# @stdout -1, 0, or 1 when the left version is lower, equal, or higher.
+release::compare() {
+  local left="$1" right="$2"
+  local left_core="${left%%-*}" right_core="${right%%-*}"
+  local left_label='' right_label='' index=''
+  local -a left_parts right_parts
+
+  [[ "${left}" == *-* ]] && left_label="${left#*-}"
+  [[ "${right}" == *-* ]] && right_label="${right#*-}"
+  IFS='.' read -r -a left_parts <<<"${left_core}"
+  IFS='.' read -r -a right_parts <<<"${right_core}"
+
+  for index in 0 1 2; do
+    if ((left_parts[index] < right_parts[index])); then
+      printf '%s\n' -1
+      return 0
+    elif ((left_parts[index] > right_parts[index])); then
+      printf '%s\n' 1
+      return 0
+    fi
+  done
+
+  # A version without a prerelease label is higher than one with a label.
+  if [[ "${left_label}" == "${right_label}" ]]; then
+    printf '%s\n' 0
+  elif [[ -z "${left_label}" ]]; then
+    printf '%s\n' 1
+  elif [[ -z "${right_label}" ]]; then
+    printf '%s\n' -1
+  elif [[ "${left_label}" < "${right_label}" ]]; then
+    printf '%s\n' -1
+  else
+    printf '%s\n' 1
+  fi
+}
+
+# @description Write the version of every release tag on the remote, one per line.
+release::remote-versions() {
+  local line='' name=''
+  local refs=''
+  refs="$(release::git ls-remote --tags --refs "${remote}" 'v*')" ||
+    release::fail 69 "cannot read the tags of ${remote}."
+  while IFS= read -r line; do
+    [[ -n "${line}" ]] || continue
+    name="${line##*refs/tags/v}"
+    if release::is-version "${name}"; then
+      printf '%s\n' "${name}"
+    fi
+  done <<<"${refs}"
+}
+
+# @description Fail unless the version is higher than every release tag except its own.
+# @arg $1 string Version.
+release::require-newest() {
+  local version="$1" existing=''
+  local versions=''
+  versions="$(release::remote-versions)"
+  while IFS= read -r existing; do
+    [[ -n "${existing}" && "${existing}" != "${version}" ]] || continue
+    if [[ "$(release::compare "${version}" "${existing}")" != '1' ]]; then
+      release::fail 65 "${version} is not higher than the released v${existing}."
+    fi
+  done <<<"${versions}"
+}
+
+# @description Write the version that the settings module at a commit declares.
+# @arg $1 string Commit.
+release::source-version() {
+  local content='' line=''
+  local pattern="^readonly BASHSTOCK_VERSION='([^']*)'\$"
+  content="$(release::git show "$1:${settings_path}")" ||
+    release::fail 66 "cannot read ${settings_path} at $1."
+  while IFS= read -r line; do
+    if [[ "${line}" =~ ${pattern} ]]; then
+      printf '%s\n' "${BASH_REMATCH[1]}"
+      return 0
+    fi
+  done <<<"${content}"
+  release::fail 65 "${settings_path} at $1 does not declare BASHSTOCK_VERSION."
+}
+
+# @description Fail when tracked files or the index have uncommitted changes.
+release::require-clean-tracked() {
+  if ! release::git diff --quiet HEAD -- || ! release::git diff --cached --quiet --; then
+    release::fail 65 'the working tree has uncommitted changes.'
+  fi
+}
+
+# @description Write the version in the settings module of the working tree.
+# @arg $1 string Version.
+release::write-version() {
+  local file="${project_root}/${settings_path}"
+  local temporary="${file}.release"
+  local line="readonly BASHSTOCK_VERSION='$1'"
+  sed "s/^readonly BASHSTOCK_VERSION='[^']*'\$/${line}/" "${file}" >"${temporary}"
+  mv "${temporary}" "${file}"
+  grep -qxF -- "${line}" "${file}" ||
+    release::fail 65 "cannot write the version to ${settings_path}."
+}
+
+# @description Commit the version, push the release branch, and open its pull request.
+# @arg $1 string Version.
+# @arg $2 string Release branch.
+release::open-pull-request() {
+  local version="$1" branch="$2"
+  local title="chore(release): ${version}"
+  local body
+  body="$(
+    cat <<EOF
+- \`BASHSTOCK_VERSION\`を\`${version}\`にします。
+- マージすると、Releaseワークフローがマージコミットへ\`v${version}\`タグを作成し、\`bashstock.sh\`を添付したGitHub Releaseを公開します。
+EOF
+  )"
+
+  release::git switch --create "${branch}"
+  release::write-version "${version}"
+  release::git add -- "${settings_path}"
+  # The first release keeps the version already in the source, so the commit may be empty.
+  release::git commit --allow-empty --quiet --message "${title}"
+  release::git push --quiet --set-upstream "${remote}" "${branch}"
+  release::gh pr create --base "${base_branch}" --head "${branch}" --title "${title}" --body "${body}"
+}
+
+# @description Prepare a release pull request from an up-to-date main.
+# @arg $1 string Version.
+release::bump() {
+  local version="$1"
+  local branch="release/${version}"
+  local current=''
+
+  release::is-version "${version}" || release::fail 64 "invalid version: ${version}"
+  release::require-clean-tracked
+
+  current="$(release::git symbolic-ref --quiet --short HEAD)" || current=''
+  [[ "${current}" == "${base_branch}" ]] ||
+    release::fail 65 "switch to ${base_branch} before preparing a release."
+  release::git fetch --quiet "${remote}" "${base_branch}" ||
+    release::fail 69 "cannot fetch ${remote}/${base_branch}."
+  [[ "$(release::git rev-parse HEAD)" == "$(release::git rev-parse "${remote}/${base_branch}")" ]] ||
+    release::fail 65 "${base_branch} differs from ${remote}/${base_branch}; run git pull --ff-only."
+
+  if [[ -n "$(release::git ls-remote --tags --refs "${remote}" "refs/tags/v${version}")" ]]; then
+    release::fail 65 "v${version} is already tagged on ${remote}."
+  fi
+  if [[ -n "$(release::git ls-remote --heads "${remote}" "refs/heads/${branch}")" ]]; then
+    release::fail 65 "${branch} already exists on ${remote}."
+  fi
+  if release::git show-ref --verify --quiet "refs/heads/${branch}"; then
+    release::fail 65 "the local branch ${branch} already exists."
+  fi
+  release::require-newest "${version}"
+
+  release::step "open the release pull request from ${branch}" \
+    release::open-pull-request "${version}" "${branch}"
+}
+
+# @description Write the commit that a remote tag points to, or nothing when it is absent.
+# @arg $1 string Tag.
+release::remote-tag-commit() {
+  local refs='' line='' object='' peeled=''
+  refs="$(release::git ls-remote --tags "${remote}")" ||
+    release::fail 69 "cannot read the tags of ${remote}."
+  # An annotated tag also lists its peeled commit under the name with ^{}.
+  while IFS= read -r line; do
+    case "${line}" in
+      *$'\t'"refs/tags/$1") object="${line%%$'\t'*}" ;;
+      *$'\t'"refs/tags/$1^{}") peeled="${line%%$'\t'*}" ;;
+    esac
+  done <<<"${refs}"
+  printf '%s' "${peeled:-${object}}"
+}
+
+# @description Create the tag on the release commit unless it exists, and push it.
+# @arg $1 string Tag.
+# @arg $2 string Version.
+# @arg $3 string Commit.
+release::push-tag() {
+  local tag="$1" version="$2" commit="$3"
+  if release::git rev-parse --quiet --verify "refs/tags/${tag}" >/dev/null; then
+    [[ "$(release::git rev-parse "${tag}^{commit}")" == "${commit}" ]] ||
+      release::fail 65 "the local tag ${tag} does not point to ${commit}."
+  else
+    release::git tag --annotate "${tag}" --message "Release ${version}" "${commit}"
+  fi
+  release::git push --quiet "${remote}" "refs/tags/${tag}"
+}
+
+# @description Write the GitHub Release state of a tag.
+#
+# The state is missing, or draft or published followed by the names of its assets.
+#
+# @arg $1 string Tag.
+release::github-release-state() {
+  local output='' status=0
+  output="$(release::gh release view "$1" --json isDraft,assets --jq '(if .isDraft then "draft" else "published" end) + " " + ([.assets[].name] | join(" "))' 2>&1)" || status=$?
+  if ((status == 0)); then
+    printf '%s\n' "${output}"
+  elif [[ "${output}" == *'release not found'* ]]; then
+    printf '%s\n' missing
+  else
+    printf '%s\n' "${output}" >&2
+    release::fail 69 "cannot read the GitHub Release ${1}."
+  fi
+}
+
+# @description Replace the distribution of a draft GitHub Release and publish it.
+# @arg $1 string Tag.
+# @arg $2 int 1 for a prerelease, 0 otherwise.
+release::publish-draft() {
+  local prerelease='false'
+  [[ "$2" == '1' ]] && prerelease='true'
+  release::gh release upload "$1" "${artifact_path}" --clobber
+  release::gh release edit "$1" --draft=false --prerelease="${prerelease}" --verify-tag
+}
+
+# @description Publish a merged release pull request.
+# @arg $1 string Merge commit of the release pull request.
+# @arg $2 string Release branch.
+release::publish() {
+  local commit="$1" branch="$2"
+  local version="${branch#release/}"
+  local tag="v${version}"
+  local tagged='' state='' source_version=''
+  local -a prerelease=()
+
+  if [[ "${branch}" != release/* ]] || ! release::is-version "${version}"; then
+    release::fail 64 "invalid release branch: ${branch}"
+  fi
+  commit="$(release::git rev-parse --quiet --verify "${commit}^{commit}")" ||
+    release::fail 64 "unknown commit: $1"
+
+  [[ "$(release::git rev-parse HEAD)" == "${commit}" ]] ||
+    release::fail 65 "check out ${commit} before publishing it."
+  [[ -z "$(release::git status --porcelain)" ]] ||
+    release::fail 65 'the working tree has uncommitted or untracked files.'
+  release::git fetch --quiet "${remote}" "${base_branch}" ||
+    release::fail 69 "cannot fetch ${remote}/${base_branch}."
+  release::git merge-base --is-ancestor "${commit}" "${remote}/${base_branch}" ||
+    release::fail 65 "${commit} is not on ${remote}/${base_branch}."
+
+  source_version="$(release::source-version "${commit}")"
+  [[ "${source_version}" == "${version}" ]] ||
+    release::fail 65 "${settings_path} declares ${source_version}, not ${version}."
+  release::require-newest "${version}"
+  [[ -f "${project_root}/${artifact_path}" ]] ||
+    release::fail 66 "${artifact_path} is missing; run just verify first."
+
+  tagged="$(release::remote-tag-commit "${tag}")"
+  if [[ -n "${tagged}" && "${tagged}" != "${commit}" ]]; then
+    release::fail 65 "${tag} on ${remote} points to ${tagged}, not ${commit}."
+  fi
+  state="$(release::github-release-state "${tag}")"
+
+  if [[ -z "${tagged}" ]]; then
+    release::step "tag ${commit} as ${tag}" release::push-tag "${tag}" "${version}" "${commit}"
+  else
+    printf 'release: %s is already tagged\n' "${tag}"
+  fi
+
+  [[ "${version}" == *-* ]] && prerelease=(--prerelease)
+  if [[ "${state}" == 'missing' ]]; then
+    release::step "publish the GitHub Release ${tag}" \
+      release::gh release create "${tag}" "${artifact_path}" --title "${tag}" --generate-notes --verify-tag ${prerelease[@]+"${prerelease[@]}"}
+  elif [[ "${state}" == draft* ]]; then
+    # gh release create makes a draft, uploads the assets, and then publishes
+    # it, so an interrupted run leaves a draft on the verified tag.
+    release::step "attach ${artifact_path##*/} to the draft GitHub Release ${tag} and publish it" \
+      release::publish-draft "${tag}" "${#prerelease[@]}"
+  elif [[ " ${state} " != *" ${artifact_path##*/} "* ]]; then
+    release::step "attach ${artifact_path##*/} to the GitHub Release ${tag}" \
+      release::gh release upload "${tag}" "${artifact_path}"
+  else
+    printf 'release: the GitHub Release %s is already published\n' "${tag}"
+  fi
+}
+
+# @description Write the command usage.
+release::usage() {
+  cat <<'EOF'
+Usage:
+  scripts/release bump VERSION [--dry-run]
+  scripts/release publish COMMIT --branch release/VERSION [--dry-run]
+EOF
+}
+
+# @description Parse the command line and run a subcommand.
+# @arg $@ string Subcommand and its arguments.
+main() {
+  local command="${1:-}" branch=''
+  local -a positional=()
+  [[ $# -gt 0 ]] && shift
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --dry-run) dry_run='1' ;;
+      --branch)
+        [[ $# -ge 2 ]] || release::fail 64 '--branch needs a value.'
+        branch="$2"
+        shift
+        ;;
+      -h | --help)
+        release::usage
+        return 0
+        ;;
+      -*) release::fail 64 "unknown option: $1" ;;
+      *) positional+=("$1") ;;
+    esac
+    shift
+  done
+
+  case "${command}" in
+    bump)
+      [[ ${#positional[@]} -eq 1 && -z "${branch}" ]] || {
+        release::usage >&2
+        return 64
+      }
+      release::bump "${positional[0]}"
+      ;;
+    publish)
+      [[ ${#positional[@]} -eq 1 && -n "${branch}" ]] || {
+        release::usage >&2
+        return 64
+      }
+      release::publish "${positional[0]}" "${branch}"
+      ;;
+    -h | --help)
+      release::usage
+      ;;
+    *)
+      release::usage >&2
+      return 64
+      ;;
+  esac
+}
+
+main "$@"

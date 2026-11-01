@@ -79,7 +79,7 @@ help::show string::trim
 | [名前付き引数とTab補完の仕様](docs/specifications/named-arguments.md) | 引数の表記と補完関数の契約です。 |
 | [アーキテクチャ](docs/explanation/architecture.md) | ソース、配布物、モジュール、OS別実装の関係です。 |
 | [導入関数のテスト](docs/testing/installers.md) | 導入関数を検査する環境、条件、期待結果です。 |
-| [リリース手順](docs/how-to/release.md) | GitHub Releaseへ配布物を公開する手順です。 |
+| [リリース手順](docs/how-to/release.md) | リリース用のPRからGitHub Releaseへ配布物を公開する手順です。 |
 
 関数の選定根拠は、[bash-commons](docs/explanation/function-selection/bash-commons.md)、[Lobash](docs/explanation/function-selection/lobash.md)、[Pure Bash Bible](docs/explanation/function-selection/pure-bash-bible.md)、[util-scripts](docs/explanation/function-selection/util-scripts.md)、[PSWinUtil](docs/explanation/function-selection/pswinutil.md)ごとに整理しています。
 
