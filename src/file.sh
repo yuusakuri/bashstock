@@ -447,7 +447,8 @@ file::append-text() {
     return
   fi
   if [[ ! -e "$1" ]]; then
-    (umask 077 && : >"$1") 2>/dev/null && chmod 0644 "$1" || return 74
+    # >> never truncates text that a concurrent caller appended after the check.
+    (umask 077 && : >>"$1") 2>/dev/null && chmod 0644 "$1" || return 74
   fi
   printf '%s' "$2" >>"$1" 2>/dev/null || return 74
 }
