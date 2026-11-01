@@ -837,19 +837,82 @@ gsettings_value() {
   [ "${status}" -eq 0 ]
   [ "$(gsettings_value org.gnome.desktop.screensaver lock-enabled)" = 'false' ]
 
-  local defaults_log="${BATS_TEST_TMPDIR}/defaults.log"
-  defaults() { printf '%s\n' "$*" >>"${defaults_log}"; }
-  command::require() { [[ "$1" == gsettings || "$1" == defaults ]]; }
+  local sysadminctl_log="${BATS_TEST_TMPDIR}/sysadminctl.log" fake_lock_status=''
+  sysadminctl() {
+    printf '%s\n' "$*" >>"${sysadminctl_log}"
+    if [[ "$2" == status ]]; then
+      printf '2026-11-01 12:00:00.000 sysadminctl[1:1] %s\n' "${fake_lock_status}" >&2
+    fi
+  }
+  command::require() { [[ "$1" == gsettings || "$1" == sysadminctl ]]; }
   operating_system='darwin'
+  fake_lock_status='screenLock is off'
   run system::disable-auto-lock
   [ "${status}" -eq 0 ]
-  [ "$(<"${defaults_log}")" = 'write com.apple.screensaver askForPassword -bool false' ]
+  [ "$(<"${sysadminctl_log}")" = $'-screenLock off -password -\n-screenLock status' ]
+
+  # A refused password leaves the delay in place even when sysadminctl exits 0.
+  fake_lock_status=''
+  run system::disable-auto-lock
+  [ "${status}" -eq 74 ]
+  fake_lock_status='Error: unrecognized option'
+  run system::disable-auto-lock
+  [ "${status}" -eq 74 ]
 
   operating_system='fedora'
   run system::disable-auto-lock
   [ "${status}" -eq 69 ]
   run system::disable-auto-lock unexpected
   [ "${status}" -eq 64 ]
+}
+
+@test "automatic screen lock is enabled with a delay for Linux GNOME and macOS users" {
+  local operating_system='linux'
+  system::operating-system() { printf '%s\n' "${operating_system}"; }
+  use_fake_gsettings
+
+  run system::enable-auto-lock
+  [ "${status}" -eq 0 ]
+  [ "$(gsettings_value org.gnome.desktop.screensaver lock-enabled)" = 'true' ]
+  [ "$(gsettings_value org.gnome.desktop.screensaver lock-delay)" = '0' ]
+  run system::enable-auto-lock 060
+  [ "${status}" -eq 0 ]
+  [ "$(gsettings_value org.gnome.desktop.screensaver lock-delay)" = '60' ]
+
+  local sysadminctl_log="${BATS_TEST_TMPDIR}/sysadminctl.log" fake_lock_status=''
+  sysadminctl() {
+    printf '%s\n' "$*" >>"${sysadminctl_log}"
+    if [[ "$2" == status ]]; then
+      printf '2026-11-01 12:00:00.000 sysadminctl[1:1] %s\n' "${fake_lock_status}" >&2
+    fi
+  }
+  command::require() { [[ "$1" == gsettings || "$1" == sysadminctl ]]; }
+  operating_system='darwin'
+  fake_lock_status='screenLock delay is immediate'
+  run system::enable-auto-lock
+  [ "${status}" -eq 0 ]
+  fake_lock_status='screenLock delay is 300 seconds'
+  run system::enable-auto-lock 300
+  [ "${status}" -eq 0 ]
+  [ "$(<"${sysadminctl_log}")" = $'-screenLock immediate -password -\n-screenLock status\n-screenLock 300 -password -\n-screenLock status' ]
+
+  # A refused password leaves the previous setting even when sysadminctl exits 0.
+  fake_lock_status='screenLock is off'
+  run system::enable-auto-lock
+  [ "${status}" -eq 74 ]
+  fake_lock_status='screenLock delay is 300 seconds'
+  run system::enable-auto-lock 60
+  [ "${status}" -eq 74 ]
+
+  run system::enable-auto-lock -1
+  [ "${status}" -eq 64 ]
+  run system::enable-auto-lock 5s
+  [ "${status}" -eq 64 ]
+  run system::enable-auto-lock 1 2
+  [ "${status}" -eq 64 ]
+  operating_system='fedora'
+  run system::enable-auto-lock
+  [ "${status}" -eq 69 ]
 }
 
 @test "Flutter installation preserves existing SDK changes in a retrievable stash" {

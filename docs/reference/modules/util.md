@@ -35,6 +35,7 @@ Most functions wrap one external command with argument checks and documented exi
 * [system::enable-sleep](#systemenable-sleep)
 * [system::disable-sleep](#systemdisable-sleep)
 * [system::disable-auto-lock](#systemdisable-auto-lock)
+* [system::enable-auto-lock](#systemenable-auto-lock)
 * [time::posix-timezone](#timeposix-timezone)
 * [directory::merge](#directorymerge)
 * [directory::create-with-date-time](#directorycreate-with-date-time)
@@ -903,8 +904,10 @@ _Function has no arguments._
 
 Disable automatic screen locking for the current user.
 
-Linux changes GNOME's lock-enabled setting. macOS disables the password prompt
-after the screen saver or display turns off. Neither changes system sleep or
+Linux changes GNOME's lock-enabled setting. macOS turns off the password
+prompt after the screen saver or display turns off with sysadminctl, which
+asks for the current user's login password; macOS no longer reads
+com.apple.screensaver askForPassword. Neither changes system sleep or
 whether the screen saver starts.
 
 #### Example
@@ -920,7 +923,34 @@ _Function has no arguments._
 * **0**: Automatic screen locking is disabled.
 * **64**: An argument was given.
 * **69**: The operating system is unsupported, or a required command is missing.
-* **74**: The screen-lock setting could not be changed.
+* **74**: The screen-lock setting could not be changed, such as after a wrong password.
+
+### system::enable-auto-lock
+
+Enable automatic screen locking for the current user.
+
+Linux enables GNOME's lock-enabled setting and sets lock-delay. macOS asks
+for the password after the screen saver or display turns off, set with
+sysadminctl, which asks for the current user's login password. Neither
+changes system sleep or when the screen saver starts.
+
+#### Example
+
+```bash
+system::enable-auto-lock
+system::enable-auto-lock 300
+```
+
+#### Arguments
+
+* **$1** (integer): Optional seconds between the screen saver or display turning off and the lock. Defaults to 0, which locks immediately.
+
+#### Exit codes
+
+* **0**: Automatic screen locking is enabled.
+* **64**: The argument count is wrong, or the delay is not a non-negative integer.
+* **69**: The operating system is unsupported, or a required command is missing.
+* **74**: The screen-lock setting could not be changed, such as after a wrong password.
 
 ### time::posix-timezone
 
