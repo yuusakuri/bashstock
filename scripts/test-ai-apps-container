@@ -35,7 +35,8 @@ else
   /usr/bin/claude --version
   if [[ "${ID}" == fedora ]]; then
     [[ "$(stat -c %a /etc/pki/rpm-gpg/RPM-GPG-KEY-claude-code)" == 644 ]]
-    dnf repoquery --quiet --repo=claude-code claude-code | grep -q claude-code
+    # grep -q would close the pipe early and make dnf exit with SIGPIPE under pipefail.
+    [[ "$(dnf repoquery --quiet --repo=claude-code claude-code)" == *claude-code* ]]
   else
     [[ "$(stat -c %a /etc/apt/keyrings/claude-code.asc)" == 644 ]]
     apt-get update 2>&1 | tee /tmp/bashstock-apt-update.log
