@@ -1424,12 +1424,14 @@ rancher-desktop::versions() {
 # @description Install Rancher Desktop and start it.
 #
 # Rosetta and Colima are installed separately with rosetta::install and colima::install.
+# Ubuntu 22.04 or later and Fedora install from Rancher's repository; Fedora
+# uses the packages that Rancher builds for Fedora.
 #
 # @arg $1 string Optional version from rancher-desktop::versions; on macOS only the current version.
 # @stderr On Linux, a reminder to log in again when the user was added to the kvm group.
 # @exitcode 0 Rancher Desktop is installed and was started.
 # @exitcode 64 The argument count is wrong.
-# @exitcode 69 The platform is unsupported, or the version is unavailable.
+# @exitcode 69 The platform is unsupported, Ubuntu is older than 22.04, or the version is unavailable.
 # @exitcode 74 The repository or its key could not be downloaded.
 # @exitcode other The status of the package manager.
 # @example
@@ -1455,6 +1457,8 @@ rancher-desktop::install() {
 rancher-desktop::_install-linux() {
   [[ "$#" -eq 2 ]] || return 64
   if [[ "$1" == 'ubuntu' ]]; then
+    # The packages depend on libgdk-pixbuf-2.0-0, which Ubuntu 20.04 and older name differently.
+    package::_require-release ubuntu 22 'Rancher Desktop' || return "$?"
     package::_apt-register-repository isv-rancher-stable \
       https://download.opensuse.org/repositories/isv:/Rancher:/stable/deb/Release.key \
       https://download.opensuse.org/repositories/isv:/Rancher:/stable/deb/ ./ '' || return "$?"

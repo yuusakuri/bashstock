@@ -595,6 +595,15 @@ chmod +x "${HOME}/.local/bin/codex"'
   [ "${SECONDS}" -lt 10 ]
 }
 
+@test "Rancher Desktop refuses Ubuntu releases that its packages do not support" {
+  use_platform ubuntu 20.04 focal
+  record_root_commands
+  run --separate-stderr rancher-desktop::install
+  [ "${status}" -eq 69 ]
+  [[ "${stderr}" == *'Rancher Desktop requires Ubuntu 22.04 or later.'* ]]
+  [ ! -s "${ROOT_LOG}" ]
+}
+
 @test "Rancher Desktop on Fedora uses the Fedora build and names the newest version" {
   use_platform fedora 44
   local write_log="${BATS_TEST_TMPDIR}/writes.log"

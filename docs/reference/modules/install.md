@@ -754,6 +754,8 @@ _Function has no arguments._
 Install Rancher Desktop and start it.
 
 Rosetta and Colima are installed separately with rosetta::install and colima::install.
+Ubuntu 22.04 or later and Fedora install from Rancher's repository; Fedora
+uses the packages that Rancher builds for Fedora.
 
 #### Example
 
@@ -769,7 +771,7 @@ rancher-desktop::install
 
 * **0**: Rancher Desktop is installed and was started.
 * **64**: The argument count is wrong.
-* **69**: The platform is unsupported, or the version is unavailable.
+* **69**: The platform is unsupported, Ubuntu is older than 22.04, or the version is unavailable.
 * **74**: The repository or its key could not be downloaded.
 * other The status of the package manager.
 
