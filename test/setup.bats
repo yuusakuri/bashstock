@@ -960,6 +960,16 @@ gsettings_value() {
   [ "$(<"${IBUS_LOG}")" = $'ibus write-cache\nibus-daemon -rd' ]
   [ "$(<"${file}")" = $'engines {\n  name : "mozc-jp"\n}\nactive_on_launch: True\nother: 1' ]
 
+  # The text format also writes the block as engines: { or engines < >, which is kept as written.
+  local form=''
+  for form in 'engines: {' 'engines <' 'engines: <'; do
+    printf '%s\n  layout : "custom"\n%s\nactive_on_launch: False\n' "${form}" "$([[ "${form}" == *'<' ]] && printf '>' || printf '}')" >"${file}"
+    run mozc::ibus::set-hiragana-as-default
+    [ "${status}" -eq 0 ]
+    grep -Fqx '  layout : "custom"' "${file}"
+    grep -Fqx 'active_on_launch: True' "${file}"
+  done
+
   # Without an engines block IBus offers no Mozc engine, so a missing file and
   # one that an earlier version reduced to active_on_launch get Mozc's defaults.
   local content=''

@@ -373,7 +373,8 @@ mozc::ibus::_ensure-engines() {
   [[ ( "$#" -eq 1 || "$#" -eq 2 ) && -n "$1" ]] || return 64
   local file="$1" component="${2:-/usr/share/ibus/component/mozc.xml}" command=''
   local words=()
-  if [[ -f "${file}" ]] && grep -Eq '^[[:space:]]*engines[[:space:]]*\{' "${file}"; then
+  # Text format allows engines {, engines: {, engines <, and engines: <.
+  if [[ -f "${file}" ]] && grep -Eq '^[[:space:]]*engines[[:space:]]*:?[[:space:]]*[{<]' "${file}"; then
     return 0
   fi
   rm -f -- "${file}" || return 74
