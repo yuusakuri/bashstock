@@ -626,27 +626,34 @@ system::disable-sleep() {
 
 # @description Disable automatic screen locking for the current user.
 #
-# Linux changes GNOME's lock-enabled setting. macOS disables the password prompt
-# after the screen saver or display turns off. Neither changes system sleep or
+# Linux changes GNOME's lock-enabled setting. macOS turns off the password
+# prompt after the screen saver or display turns off with sysadminctl, which
+# asks for the current user's login password; macOS no longer reads
+# com.apple.screensaver askForPassword. Neither changes system sleep or
 # whether the screen saver starts.
 #
 # @noargs
 # @exitcode 0 Automatic screen locking is disabled.
 # @exitcode 64 An argument was given.
 # @exitcode 69 The operating system is unsupported, or a required command is missing.
-# @exitcode 74 The screen-lock setting could not be changed.
+# @exitcode 74 The screen-lock setting could not be changed, such as after a wrong password.
 # @example
 #   system::disable-auto-lock
 system::disable-auto-lock() {
   [[ "$#" -eq 0 ]] || return 64
+  local lock_status=''
   case "$(system::operating-system)" in
     linux)
       command::require gsettings || return "$?"
       gsettings set org.gnome.desktop.screensaver lock-enabled false || return 74
       ;;
     darwin)
-      command::require defaults || return "$?"
-      defaults write com.apple.screensaver askForPassword -bool false || return 74
+      command::require sysadminctl || return "$?"
+      # sysadminctl changes the setting of the user who runs it, so it must not run through sudo.
+      sysadminctl -screenLock off -password - || return 74
+      # sysadminctl can exit 0 after a refused password, so the setting is read back.
+      lock_status="$(sysadminctl -screenLock status 2>&1)" || return 74
+      [[ "${lock_status}" == *screenLock* && "${lock_status}" != *'screenLock delay'* ]] || return 74
       ;;
     *) return 69 ;;
   esac

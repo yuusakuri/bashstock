@@ -903,8 +903,10 @@ _Function has no arguments._
 
 Disable automatic screen locking for the current user.
 
-Linux changes GNOME's lock-enabled setting. macOS disables the password prompt
-after the screen saver or display turns off. Neither changes system sleep or
+Linux changes GNOME's lock-enabled setting. macOS turns off the password
+prompt after the screen saver or display turns off with sysadminctl, which
+asks for the current user's login password; macOS no longer reads
+com.apple.screensaver askForPassword. Neither changes system sleep or
 whether the screen saver starts.
 
 #### Example
@@ -920,7 +922,7 @@ _Function has no arguments._
 * **0**: Automatic screen locking is disabled.
 * **64**: An argument was given.
 * **69**: The operating system is unsupported, or a required command is missing.
-* **74**: The screen-lock setting could not be changed.
+* **74**: The screen-lock setting could not be changed, such as after a wrong password.
 
 ### time::posix-timezone
 
