@@ -64,3 +64,26 @@ SCRIPT
   grep -Fqx -- "--no-metrics --sdk=$ANDROID_HOME sdk install --force platforms/android-35@2" "$ANDROID_TEST_LOG"
   grep -Fqx -- "--no-metrics --sdk=$ANDROID_HOME sdk install build-tools/35.0.0" "$ANDROID_TEST_LOG"
 }
+
+@test "Android Command-line Tools install a JDK only when Java is missing" {
+  export HOME="$BATS_TEST_TMPDIR/home" ANDROID_HOME="$BATS_TEST_TMPDIR/sdk"
+  unset ANDROID_SDK_ROOT JAVA_HOME
+  mkdir -p "$HOME" "$ANDROID_HOME/cmdline-tools/latest/bin"
+  touch "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
+  chmod +x "$ANDROID_HOME/cmdline-tools/latest/bin/"*
+  JDK_LOG="$BATS_TEST_TMPDIR/jdk.log"
+  android::_sdk-install() { :; }
+  jdk::install() { printf 'jdk::install %s\n' "$*" >>"$JDK_LOG"; }
+
+  # sdkmanager and avdmanager stop with "JAVA_HOME is not set" without a JDK.
+  command::exists() { [[ "$1" != java ]] && command -v "$1" >/dev/null; }
+  run android::command-line-tools::install
+  [ "$status" -eq 0 ]
+  [ "$(<"$JDK_LOG")" = 'jdk::install ' ]
+
+  : >"$JDK_LOG"
+  command::exists() { [[ "$1" == java ]] || command -v "$1" >/dev/null; }
+  run android::command-line-tools::install
+  [ "$status" -eq 0 ]
+  [ ! -s "$JDK_LOG" ]
+}

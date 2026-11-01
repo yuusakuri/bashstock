@@ -99,6 +99,7 @@ BashStockが公開する関数を名前空間ごとに示します。
 | [`system::enable-sleep`](modules/system.md#systemenable-sleep) | Enable system sleep. |
 | [`system::disable-sleep`](modules/system.md#systemdisable-sleep) | Disable system sleep. |
 | [`system::disable-auto-lock`](modules/system.md#systemdisable-auto-lock) | Disable automatic screen locking for the current user. |
+| [`system::enable-auto-lock`](modules/system.md#systemenable-auto-lock) | Enable automatic screen locking for the current user. |
 
 ## [`command`](modules/command.md)
 
@@ -417,6 +418,13 @@ BashStockが公開する関数を名前空間ごとに示します。
 | [`env::add-path`](modules/env.md#envadd-path) | Add a directory to PATH without creating duplicates. |
 | [`env::dotenv::register`](modules/env.md#envdotenvregister) | Load a dotenv file in every new Bash and Zsh session. |
 
+## [`fedora`](modules/fedora.md)
+
+| 関数 | 説明 |
+|---|---|
+| [`fedora::setup`](modules/fedora.md#fedorasetup) | Apply the common Fedora user configuration, stopping at the first failure. |
+| [`fedora::setup-external`](modules/fedora.md#fedorasetup-external) | Install GnuPG, GitHub CLI, and Git Credential Manager on Fedora when they are not already available. |
+
 ## [`flutter`](modules/flutter.md)
 
 | 関数 | 説明 |
@@ -452,7 +460,7 @@ BashStockが公開する関数を名前空間ごとに示します。
 
 | 関数 | 説明 |
 |---|---|
-| [`gh::install`](modules/gh.md#ghinstall) | Install GitHub CLI from its official Ubuntu APT repository. |
+| [`gh::install`](modules/gh.md#ghinstall) | Install GitHub CLI from its official Ubuntu APT or Fedora DNF repository. |
 
 ## [`gimp`](modules/gimp.md)
 
@@ -641,6 +649,10 @@ BashStockが公開する関数を名前空間ごとに示します。
 | 関数 | 説明 |
 |---|---|
 | [`mac::wake-on-lan::enable`](modules/mac.md#macwake-on-lanenable) | Let the Mac wake from sleep through the network (Wake on LAN). |
+| [`mac::sleep::disable-automatic`](modules/mac.md#macsleepdisable-automatic) | Disable automatic system sleep while preserving display sleep timers. |
+| [`mac::sleep::enable-automatic`](modules/mac.md#macsleepenable-automatic) | Enable automatic system sleep after ten minutes while preserving display sleep timers. |
+| [`mac::software-update::enable-automatic-install`](modules/mac.md#macsoftware-updateenable-automatic-install) | Let macOS updates install automatically. |
+| [`mac::software-update::disable-automatic-install`](modules/mac.md#macsoftware-updatedisable-automatic-install) | Keep macOS updates downloading but stop their automatic installation. |
 | [`mac::keyboard::use-function-keys`](modules/mac.md#mackeyboarduse-function-keys) | Make F1 to F12 act as function keys without the fn key. |
 | [`mac::keyboard::set-repeat`](modules/mac.md#mackeyboardset-repeat) | Set the delay before key repeat starts and the repeat interval. |
 | [`mac::trackpad::disable-smart-zoom`](modules/mac.md#mactrackpaddisable-smart-zoom) | Turn off smart zoom, the two-finger double tap, on built-in and external trackpads. |
@@ -799,7 +811,7 @@ BashStockが公開する関数を名前空間ごとに示します。
 
 | 関数 | 説明 |
 |---|---|
-| [`rosetta::install`](modules/rosetta.md#rosettainstall) | Install Rosetta on Apple silicon when it is missing, accepting its license. |
+| [`rosetta::install`](modules/rosetta.md#rosettainstall) | Install Rosetta when it is missing, accepting its license. |
 
 ## [`ruby`](modules/ruby.md)
 
@@ -919,6 +931,13 @@ BashStockが公開する関数を名前空間ごとに示します。
 |---|---|
 | [`textproto::set-scalar`](modules/textproto.md#textprotoset-scalar) | Replace or append one top-level scalar field in a textproto file. |
 
+## [`thunderbird`](modules/thunderbird.md)
+
+| 関数 | 説明 |
+|---|---|
+| [`thunderbird::versions`](modules/thunderbird.md#thunderbirdversions) | Write Thunderbird versions available to the current platform. |
+| [`thunderbird::install`](modules/thunderbird.md#thunderbirdinstall) | Install the Thunderbird email client. |
+
 ## [`ubuntu`](modules/ubuntu.md)
 
 | 関数 | 説明 |
@@ -926,7 +945,7 @@ BashStockが公開する関数を名前空間ごとに示します。
 | [`ubuntu::server-iso-versions`](modules/ubuntu.md#ubuntuserver-iso-versions) | Write the Ubuntu Server LTS versions whose live server ISO is published for an architecture. |
 | [`ubuntu::download-server-iso`](modules/ubuntu.md#ubuntudownload-server-iso) | Download an Ubuntu Server live ISO and check it against the official SHA256SUMS. |
 | [`ubuntu::setup`](modules/ubuntu.md#ubuntusetup) | Apply the common Ubuntu user configuration, stopping at the first failure. |
-| [`ubuntu::setup-external`](modules/ubuntu.md#ubuntusetup-external) | Install GnuPG and GitHub CLI when they are not already available. |
+| [`ubuntu::setup-external`](modules/ubuntu.md#ubuntusetup-external) | Install GnuPG, GitHub CLI, and Git Credential Manager when they are not already available. |
 | [`ubuntu::setup-desktop`](modules/ubuntu.md#ubuntusetup-desktop) | Apply the Ubuntu user configuration and desktop settings, stopping at the first failure. |
 | [`ubuntu::setup-desktop-22`](modules/ubuntu.md#ubuntusetup-desktop-22) | Install the newest Mozc for Ubuntu 22.04 and apply the desktop settings. |
 

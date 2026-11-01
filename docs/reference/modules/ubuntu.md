@@ -75,10 +75,11 @@ ubuntu::download-server-iso 24.04.3 amd64 "${HOME}/iso/ubuntu.iso"
 
 Apply the common Ubuntu user configuration, stopping at the first failure.
 
-Missing curl and Git are installed first. The steps then register ~/.env, set
-the editor to code --wait, ignore case in completion, link English names to
-localized user directories, add the user to dialout, configure Git with Git
-Credential Manager, fix ~/.ssh permissions, and install external tools.
+Missing curl, Git, and Perl modules that bashstock uses are installed first.
+The steps then register ~/.env, set the editor of Bash and Zsh to
+code --wait, ignore case in completion, link English names to localized
+user directories, add the user to dialout, configure Git with Git Credential
+Manager, fix ~/.ssh permissions, and install external tools.
 
 #### Example
 
@@ -102,7 +103,7 @@ _Function has no arguments._
 
 ### ubuntu::setup-external
 
-Install GnuPG and GitHub CLI when they are not already available.
+Install GnuPG, GitHub CLI, and Git Credential Manager when they are not already available.
 
 GitHub CLI is installed from its official Ubuntu APT repository after checking
 the repository key against GitHub's published fingerprints.
@@ -127,8 +128,9 @@ _Function has no arguments._
 
 Apply the Ubuntu user configuration and desktop settings, stopping at the first failure.
 
-After ubuntu::setup, the IME keys, Mozc and US input sources, Hiragana
-start, and VLC as the video application are set.
+After ubuntu::setup, Mozc for IBus and VLC are installed when they are
+missing, and the IME keys, Mozc and US input sources, Hiragana start, and VLC
+as the video application are set.
 
 #### Example
 

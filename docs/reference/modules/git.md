@@ -1117,6 +1117,10 @@ _Function has no arguments._
 
 Use Git Credential Manager as the global credential helper.
 
+Every existing credential.helper value is replaced, because
+git-credential-manager configure adds an empty value and its own path, and
+git config refuses to overwrite several values with one.
+
 #### Example
 
 ```bash

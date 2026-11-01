@@ -16,8 +16,7 @@ Homebrew is installed with its official installer on macOS.
 Install Homebrew with the official installer when it is missing.
 
 The new Zsh sessions read brew shellenv from .zshrc, and the current
-process finds brew on PATH afterwards. The prefix is /opt/homebrew on Apple
-silicon and /usr/local on Intel Macs.
+process finds brew on PATH afterwards. Homebrew lives in /opt/homebrew.
 
 #### Example
 

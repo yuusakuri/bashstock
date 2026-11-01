@@ -20,6 +20,78 @@ mac::wake-on-lan::enable() {
   command::run-as-root pmset -a womp 1
 }
 
+# @description Disable automatic system sleep while preserving display sleep timers.
+#
+# @noargs
+# @exitcode 0 Automatic system sleep is disabled.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS or pmset is unavailable.
+# @exitcode 77 sudo refused the credentials.
+# @exitcode other The status of pmset.
+# @example
+#   mac::sleep::disable-automatic
+mac::sleep::disable-automatic() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  command::require pmset || return "$?"
+  command::run-as-root pmset -a sleep 0
+}
+
+# @description Enable automatic system sleep after ten minutes while preserving display sleep timers.
+#
+# @noargs
+# @exitcode 0 Automatic system sleep is enabled with a ten-minute timer.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS or pmset is unavailable.
+# @exitcode 77 sudo refused the credentials.
+# @exitcode other The status of pmset.
+# @example
+#   mac::sleep::enable-automatic
+mac::sleep::enable-automatic() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  command::require pmset || return "$?"
+  command::run-as-root pmset -a sleep 10
+}
+
+# @description Let macOS updates install automatically.
+#
+# Automatic downloads and system data and security update settings stay unchanged.
+# The automatic macOS installation preference is enabled for all users.
+#
+# @noargs
+# @exitcode 0 Automatic macOS installation is enabled.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS.
+# @exitcode other The status of defaults or the root command.
+# @example
+#   mac::software-update::enable-automatic-install
+mac::software-update::enable-automatic-install() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  command::run-as-root defaults write /Library/Preferences/com.apple.SoftwareUpdate \
+    AutomaticallyInstallMacOSUpdates -bool true
+}
+
+# @description Keep macOS updates downloading but stop their automatic installation.
+#
+# Automatic downloads and system data and security update settings stay unchanged.
+# The automatic macOS installation preference is disabled for all users.
+#
+# @noargs
+# @exitcode 0 Automatic macOS installation is disabled.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS.
+# @exitcode other The status of defaults or the root command.
+# @example
+#   mac::software-update::disable-automatic-install
+mac::software-update::disable-automatic-install() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  command::run-as-root defaults write /Library/Preferences/com.apple.SoftwareUpdate \
+    AutomaticallyInstallMacOSUpdates -bool false
+}
+
 # @description Make F1 to F12 act as function keys without the fn key.
 #
 # @noargs
@@ -369,7 +441,7 @@ mac::setup() {
   )
 
   setup::_run-step sudo::passwordless::enable || status="${status/#0/$?}"
-  setup::_ensure-file "${HOME}/.env" || status="${status/#0/$?}"
+  setup::_ensure-file "${HOME}/.env" 0600 || status="${status/#0/$?}"
   setup::_run-step env::dotenv::register "${HOME}/.env" || status="${status/#0/$?}"
   # Zsh is the default macOS shell, so the editor also goes into .zshrc.
   setup::_run-step shell::editor::set-default 'code --wait' bash,zsh || status="${status/#0/$?}"

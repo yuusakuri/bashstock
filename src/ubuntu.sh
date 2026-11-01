@@ -119,10 +119,11 @@ ubuntu::download-server-iso() {
 
 # @description Apply the common Ubuntu user configuration, stopping at the first failure.
 #
-# Missing curl and Git are installed first. The steps then register ~/.env, set
-# the editor to code --wait, ignore case in completion, link English names to
-# localized user directories, add the user to dialout, configure Git with Git
-# Credential Manager, fix ~/.ssh permissions, and install external tools.
+# Missing curl, Git, and Perl modules that bashstock uses are installed first.
+# The steps then register ~/.env, set the editor of Bash and Zsh to
+# code --wait, ignore case in completion, link English names to localized
+# user directories, add the user to dialout, configure Git with Git Credential
+# Manager, fix ~/.ssh permissions, and install external tools.
 #
 # @noargs
 # @stderr The step that failed.
@@ -136,25 +137,11 @@ ubuntu::download-server-iso() {
 ubuntu::setup() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform ubuntu || return "$?"
-  local missing_packages=()
-  command::exists curl || missing_packages+=(curl)
-  command::exists git || missing_packages+=(git)
-  if [[ "${#missing_packages[@]}" -gt 0 ]]; then
-    setup::_run-step package::_install "${missing_packages[@]}" || return "$?"
-  fi
-  setup::_ensure-file "${HOME}/.env" || return "$?"
-  setup::_run-step env::dotenv::register "${HOME}/.env" || return "$?"
-  setup::_run-step shell::editor::set-default 'code --wait' || return "$?"
-  setup::_run-step shell::completion::enable-ignore-case || return "$?"
-  setup::_run-step user::directory::create-english-links || return "$?"
-  setup::_run-step user::add-to-group dialout || return "$?"
-  setup::_run-step git::config::setup || return "$?"
-  setup::_run-step git::config::use-credential-manager || return "$?"
-  setup::_run-step ssh::setup-directory || return "$?"
+  setup::_apply-linux-user-configuration || return "$?"
   ubuntu::setup-external
 }
 
-# @description Install GnuPG and GitHub CLI when they are not already available.
+# @description Install GnuPG, GitHub CLI, and Git Credential Manager when they are not already available.
 #
 # GitHub CLI is installed from its official Ubuntu APT repository after checking
 # the repository key against GitHub's published fingerprints.
@@ -170,18 +157,14 @@ ubuntu::setup() {
 ubuntu::setup-external() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform ubuntu || return "$?"
-  if ! command::exists gpg; then
-    setup::_run-step package::_install gnupg || return "$?"
-  fi
-  if ! command::exists gh; then
-    setup::_run-step gh::install || return "$?"
-  fi
+  setup::_install-external gnupg
 }
 
 # @description Apply the Ubuntu user configuration and desktop settings, stopping at the first failure.
 #
-# After ubuntu::setup, the IME keys, Mozc and US input sources, Hiragana
-# start, and VLC as the video application are set.
+# After ubuntu::setup, Mozc for IBus and VLC are installed when they are
+# missing, and the IME keys, Mozc and US input sources, Hiragana start, and VLC
+# as the video application are set.
 #
 # @noargs
 # @stderr The step that failed.
@@ -194,6 +177,7 @@ ubuntu::setup-external() {
 ubuntu::setup-desktop() {
   [[ "$#" -eq 0 ]] || return 64
   ubuntu::setup || return "$?"
+  setup::_install-ubuntu-desktop-applications || return "$?"
   setup::_run-step keyboard::setup-ime-keys || return "$?"
   setup::_run-step gnome::input-source::set-mozc-first || return "$?"
   setup::_run-step gnome::keyboard-layout::set-us || return "$?"

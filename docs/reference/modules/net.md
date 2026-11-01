@@ -69,7 +69,7 @@ net::ip::set-static --interface eth0 --address 192.168.1.20 --prefix-length 24 \
 
 * **--file \<FILE\>**
 
-  Netplan file. Defaults to the only /etc/netplan YAML file.
+  Netplan file. Defaults to the only /etc/netplan YAML file; pass it when NetworkManager has written its own files there.
 
 * **--renderer \<RENDERER\>**
 
@@ -80,7 +80,7 @@ net::ip::set-static --interface eth0 --address 192.168.1.20 --prefix-length 24 \
 * **0**: The configuration was applied.
 * **64**: An option or value is invalid.
 * **65**: Netplan rejected the generated configuration.
-* **69**: The system is not Ubuntu, a required command is missing, or a default cannot be found.
+* **69**: The system is not Ubuntu, a required command is missing, or a default cannot be found, such as the Netplan file when /etc/netplan holds several.
 * **74**: A temporary file or the Netplan file could not be written.
 * **75**: Netplan could not apply the configuration, so the previous file was restored, or the host name could not be set.
 * **77**: sudo is unavailable or refused the credentials.
@@ -342,8 +342,9 @@ _Function has no arguments._
 
 Write the configured IPv4 and IPv6 DNS servers, one per line.
 
-Linux uses the servers of systemd-resolved when resolvectl answers, and
-otherwise the nameserver lines of /etc/resolv.conf. macOS uses scutil --dns.
+Linux uses the servers of systemd-resolved when resolvectl (systemd-resolve on
+systemd 237) answers, and otherwise the nameserver lines of /etc/resolv.conf.
+macOS uses scutil --dns.
 
 #### Example
 

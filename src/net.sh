@@ -126,16 +126,29 @@ net::_interface-ipv4-cidr() {
     awk 'NR == 1 { print $4; exit }'
 }
 
-# @description Write the only Netplan file under /etc/netplan.
+# @description Write the only Netplan file in a directory such as /etc/netplan.
+#
+# NetworkManager on Ubuntu 23.10 and later writes its own 90-NM-*.yaml files
+# there, so a desktop often has several files and the caller must choose one.
 # @internal
+# @arg $1 string Directory to search.
+# @exitcode 69 The directory holds no Netplan file or several of them.
 net::_only-netplan-file() {
-  local path=''
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  local directory="$1" path=''
   local paths=()
-  for path in /etc/netplan/*.yaml; do
+  for path in "${directory}"/*.yaml; do
     [[ -f "${path}" ]] || continue
     paths+=("${path}")
   done
-  [[ "${#paths[@]}" -eq 1 ]] || return 65
+  if [[ "${#paths[@]}" -eq 0 ]]; then
+    console::_write-error "No Netplan file exists in ${directory}; pass --file."
+    return 69
+  fi
+  if [[ "${#paths[@]}" -gt 1 ]]; then
+    console::_write-error "Several Netplan files exist in ${directory}; pass --file with the one to replace."
+    return 69
+  fi
   printf '%s\n' "${paths[0]}"
 }
 
@@ -227,12 +240,12 @@ net::ip::_set-static-args() {
 # @option --gateway <GATEWAY> IPv4 gateway. Defaults to the first default route.
 # @option --dns <DNS_SERVERS> Comma-separated IPv4 DNS servers. Defaults to 1.1.1.1,8.8.8.8.
 # @option --host-name <HOST_NAME> Host name. Defaults to the current host name.
-# @option --file <FILE> Netplan file. Defaults to the only /etc/netplan YAML file.
+# @option --file <FILE> Netplan file. Defaults to the only /etc/netplan YAML file; pass it when NetworkManager has written its own files there.
 # @option --renderer <RENDERER> networkd or NetworkManager. Defaults to Netplan's selection.
 # @exitcode 0 The configuration was applied.
 # @exitcode 64 An option or value is invalid.
 # @exitcode 65 Netplan rejected the generated configuration.
-# @exitcode 69 The system is not Ubuntu, a required command is missing, or a default cannot be found.
+# @exitcode 69 The system is not Ubuntu, a required command is missing, or a default cannot be found, such as the Netplan file when /etc/netplan holds several.
 # @exitcode 74 A temporary file or the Netplan file could not be written.
 # @exitcode 75 Netplan could not apply the configuration, so the previous file was restored, or the host name could not be set.
 # @exitcode 77 sudo is unavailable or refused the credentials.
@@ -284,7 +297,7 @@ net::ip::set-static() {
   interface="${interface:-$(net::_default-interface)}" || return 69
   gateway="${gateway:-$(net::_default-gateway)}" || return 69
   host_name="${host_name:-$(hostname 2>/dev/null)}" || return 69
-  file="${file:-$(net::_only-netplan-file)}" || return "$?"
+  file="${file:-$(net::_only-netplan-file /etc/netplan)}" || return "$?"
   net::_require-netplan-file "${file}" || return "$?"
 
   if [[ -z "${address}" || -z "${prefix_length}" ]]; then
@@ -303,8 +316,9 @@ net::ip::set-static() {
     return 74
   }
   candidate="${temporary_root}/etc/netplan/$(basename -- "${file}")"
-  if ! net::_render-static-ipv4 "${interface}" "${address}" "${prefix_length}" \
-    "${gateway}" "${dns_servers}" "${renderer}" >"${candidate}"; then
+  # Netplan warns about a file that others can read, so the candidate is private like the installed file.
+  if ! (umask 077 && net::_render-static-ipv4 "${interface}" "${address}" "${prefix_length}" \
+    "${gateway}" "${dns_servers}" "${renderer}" >"${candidate}"); then
     rm -rf -- "${temporary_root}"
     return 64
   fi
@@ -564,10 +578,38 @@ net::unused-port() {
   '
 }
 
+# @description Write the DNS servers that systemd-resolved uses, one per line.
+#
+# systemd 239 renamed systemd-resolve to resolvectl, so Ubuntu 18.04 (systemd 237)
+# is read through systemd-resolve --status.
+# @internal
+# @exitcode 69 Neither resolvectl nor systemd-resolve is available.
+# @exitcode 74 The command failed.
+net::dns::_resolved-servers() {
+  [[ "$#" -eq 0 ]] || return 64
+  local status=''
+  if command -v resolvectl >/dev/null 2>&1; then
+    status="$(resolvectl dns 2>/dev/null)" || return 74
+    printf '%s\n' "${status}" |
+      awk '{sub(/^[^:]*: */, ""); for (i = 1; i <= NF; i++) {sub(/#.*/, "", $i); sub(/%.*/, "", $i); if ($i != "") print $i}}'
+  elif command -v systemd-resolve >/dev/null 2>&1; then
+    status="$(systemd-resolve --status 2>/dev/null)" || return 74
+    # The first server follows "DNS Servers:"; the others are alone on indented lines.
+    printf '%s\n' "${status}" |
+      awk '/^[[:space:]]*DNS Servers:/ {sub(/^[^:]*: */, ""); print; listing = 1; next}
+        listing && /^[[:space:]]+[^[:space:]]+$/ {print $1; next}
+        {listing = 0}'
+  else
+    console::_write-error 'Required command is unavailable: resolvectl'
+    return 69
+  fi
+}
+
 # @description Write the configured IPv4 and IPv6 DNS servers, one per line.
 #
-# Linux uses the servers of systemd-resolved when resolvectl answers, and
-# otherwise the nameserver lines of /etc/resolv.conf. macOS uses scutil --dns.
+# Linux uses the servers of systemd-resolved when resolvectl (systemd-resolve on
+# systemd 237) answers, and otherwise the nameserver lines of /etc/resolv.conf.
+# macOS uses scutil --dns.
 #
 # @noargs
 # @stdout One server address per line without duplicates.
@@ -587,9 +629,7 @@ net::dns::servers() {
       servers="$(scutil --dns | awk '$1 ~ /^nameserver\[/ {print $3}')" || return 74
       ;;
     linux)
-      if command -v resolvectl >/dev/null 2>&1 && servers="$(resolvectl dns 2>/dev/null)"; then
-        servers="$(printf '%s\n' "${servers}" | awk '{sub(/^[^:]*: */, ""); for (i = 1; i <= NF; i++) {sub(/#.*/, "", $i); sub(/%.*/, "", $i); if ($i != "") print $i}}')"
-      else
+      if ! servers="$(net::dns::_resolved-servers 2>/dev/null)"; then
         [[ -r /etc/resolv.conf ]] || return 66
         servers="$(awk '$1 == "nameserver" {print $2}' /etc/resolv.conf)"
       fi
@@ -717,8 +757,7 @@ net::dns::_verify() {
   case "${manager}" in
     systemd-resolved)
       [[ "$(readlink /etc/resolv.conf 2>/dev/null)" == */run/systemd/resolve/*resolv.conf ]] || return 75
-      command::require resolvectl || return "$?"
-      configured="$(resolvectl dns 2>/dev/null)"
+      configured="$(net::dns::_resolved-servers)" || return "$?"
       ;;
     network-manager)
       [[ "$(readlink /etc/resolv.conf 2>/dev/null)" == */run/NetworkManager/resolv.conf ]] || return 75

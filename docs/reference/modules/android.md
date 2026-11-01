@@ -207,6 +207,9 @@ android::emulator::install
 
 Install SDK Command-line Tools and verify sdkmanager and avdmanager.
 
+sdkmanager and avdmanager run on Java, so a JDK is installed with jdk::install
+when neither JAVA_HOME nor PATH provides java.
+
 #### Example
 
 ```bash
@@ -223,7 +226,7 @@ avdmanager list device -c
 * **0**: sdkmanager and avdmanager are installed and on PATH.
 * **64**: The revision is malformed.
 * **69**: The Android CLI is unavailable, or a tool is missing after installation.
-* other The status of the Android CLI.
+* other The status of the Android CLI or jdk::install.
 
 ### android::avd::list
 
@@ -388,7 +391,9 @@ _Function has no arguments._
 Start one AVD and wait for Android to finish booting.
 
 The function returns when sys.boot_completed is 1. The emulator keeps
-running in the background after the function returns.
+running in the background after the function returns. When the boot times
+out or the wait is interrupted, only the emulator that this call started is
+stopped; the ADB server and other emulators keep running.
 
 #### Example
 
@@ -413,6 +418,7 @@ adb -s "${serial}" install app.apk
 * **69**: The emulator or Platform Tools are not installed.
 * **74**: A temporary log could not be created.
 * **75**: The emulator exited or Android did not boot before the timeout.
+* **130**: The wait was interrupted, and the started emulator was stopped.
 
 #### Output on stdout
 

@@ -155,9 +155,55 @@ mozc::tool::install() {
   package::_install-version "${package}" "${1:-}"
 }
 
+# @description Make sure the Mozc IBus configuration lists Mozc's engines.
+#
+# Mozc 2.26 and later read their IBus engines from ibus_config.textproto, and
+# a file without an engines block leaves IBus with no Mozc engine at all. Such
+# a file, or a missing one, is replaced with the defaults that Mozc writes when
+# its IBus component lists engines through a command, or with the same defaults
+# for older Mozc, whose engines are fixed in the component and which has no
+# such command.
+# @internal
+# @arg $1 string Configuration file.
+# @arg $2 string Optional IBus component file. Defaults to /usr/share/ibus/component/mozc.xml.
+mozc::ibus::_ensure-engines() {
+  [[ ( "$#" -eq 1 || "$#" -eq 2 ) && -n "$1" ]] || return 64
+  local file="$1" component="${2:-/usr/share/ibus/component/mozc.xml}" command=''
+  local words=()
+  # Text format allows engines {, engines: {, engines <, and engines: <.
+  if [[ -f "${file}" ]] && grep -Eq '^[[:space:]]*engines[[:space:]]*:?[[:space:]]*[{<]' "${file}"; then
+    return 0
+  fi
+  rm -f -- "${file}" || return 74
+  # Older Mozc would start as an engine and wait instead of answering --xml.
+  command="$(sed -n 's/.*<engines[[:space:]][[:space:]]*exec="\([^"]*\)".*/\1/p' "${component}" 2>/dev/null | head -n 1)"
+  if [[ -n "${command}" ]]; then
+    read -r -a words <<<"${command}"
+    if [[ -x "${words[0]}" ]]; then
+      "${words[@]}" >/dev/null 2>&1 || true
+    fi
+  fi
+  [[ -f "${file}" ]] && return 0
+  # shellcheck disable=SC2016 # Mozc's own comment quotes the commands literally.
+  file::write-text "${file}" '# `ibus write-cache; ibus restart` might be necessary to apply changes.
+engines {
+  name : "mozc-jp"
+  longname : "Mozc"
+  layout : "default"
+  layout_variant : ""
+  layout_option : ""
+  rank : 80
+}
+active_on_launch: False
+'
+}
+
 # @description Start Mozc in Hiragana mode and restart IBus.
 #
-# active_on_launch is set to True in ~/.config/mozc/ibus_config.textproto.
+# active_on_launch is set to True in ~/.config/mozc/ibus_config.textproto. A
+# missing file, or one without Mozc's engine list, first gets Mozc's defaults,
+# because IBus offers no Mozc engine without that list. The IBus cache is then
+# rewritten so that IBus reads the engine list again.
 #
 # @noargs
 # @exitcode 0 Mozc starts in Hiragana mode from now on.
@@ -171,8 +217,13 @@ mozc::ibus::set-hiragana-as-default() {
   [[ "$#" -eq 0 ]] || return 64
   local file="${HOME}/.config/mozc/ibus_config.textproto"
   mkdir -p -- "$(path::directory-name "${file}")" || return 74
-  [[ -e "${file}" ]] || : >"${file}" || return 74
+  mozc::ibus::_ensure-engines "${file}" || return "$?"
   textproto::set-scalar "${file}" active_on_launch True || return "$?"
   command::require ibus-daemon || return "$?"
+  # IBus caches the engine list that Mozc reported, so a list read from an
+  # incomplete configuration stays until the cache is written again.
+  if command::exists ibus; then
+    ibus write-cache >/dev/null 2>&1 || return "$?"
+  fi
   ibus-daemon -rd
 }

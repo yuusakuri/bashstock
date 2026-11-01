@@ -16,13 +16,13 @@
 | Ubuntu 18.04、20.04、22.04、24.04、26.04 の amd64・arm64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby、pipx、VS Code、Google Chrome、Microsoft Edge の導入・再実行・起動とAPTリポジトリ |
 | Ubuntu 20.04、22.04、24.04、26.04 の amd64・arm64 コンテナ | Claude Desktop の導入・更新とAnthropicのAPTリポジトリ |
 | Ubuntu 18.04〜26.04、Fedora 43・44 の amd64・arm64 コンテナ | Claude Code の導入・更新とAnthropicのAPT・DNFリポジトリ、Codex の版指定と更新、ChatGPT デスクトップアプリの導入 |
-| macOS の GitHub Actions 実行環境（Apple silicon） | Claude Desktop、Claude Code、Codex、ChatGPT の Homebrew cask による導入 |
+| macOS の GitHub Actions 実行環境 | Claude Desktop、Claude Code、Codex、ChatGPT の Homebrew cask による導入 |
 | Ubuntu 18.04〜26.04、Fedora 34・43・44 の amd64・arm64 コンテナ（別ジョブ） | Flutter SDK の導入・版の切替と Linux アプリのビルド・起動 |
 | Fedora 34、43、44 の amd64・arm64 コンテナ | Docker、公式 Node.js、JDK、Go、Rust、Ruby、pipx、VS Code、Google Chrome、Microsoft Edge の導入・再実行・起動とDNFリポジトリ |
 | Ubuntu 18.04〜26.04、Fedora 34・43・44 の amd64・arm64 で systemd を PID 1 にした特権コンテナ | Docker サービスの有効化・起動と一般ユーザーのコンテナ実行。Ubuntu では `ubuntu::setup` と再ログイン後の設定 |
 | Ubuntu 22.04、24.04 の amd64・arm64 GitHub Actions 実行環境 | Docker サービス、デーモン、コンテナ実行。DNS 管理方式の切替と Google Public DNS の設定 |
-| macOS の GitHub Actions 実行環境（Apple silicon） | `mac::setup` の二度の実行、設定・既定アプリ・導入アプリの確認、Xcode Command Line Tools と Rosetta |
-| macOS の GitHub Actions 実行環境（Apple silicon と Intel） | Android SDK 構成要素、AVD の作成・削除。Hypervisor.Frameworkが使える Apple silicon の実行環境では起動・停止も確認する |
+| macOS の GitHub Actions 実行環境 | `mac::setup` の二度の実行、設定・既定アプリ・導入アプリの確認、Xcode Command Line Tools と Rosetta |
+| macOS の GitHub Actions 実行環境 | Android SDK 構成要素、AVD の作成・削除。Hypervisor.Frameworkが使える実行環境では起動・停止も確認する |
 | Ubuntu 24.04 の GitHub Actions 実行環境 | Android SDK 構成要素、KVMを使うAVDの作成・起動・停止・削除 |
 | Ubuntu 18.04〜26.04、Fedora 34・43・44 の amd64 コンテナ（KVM を渡す） | 同上。Ubuntu 18.04 では Emulator 以外の構成要素の導入と、Emulator が glibc 不足で終了状態 69 を返すこと。Ubuntu 24.04 と Fedora 44 の arm64 コンテナでは Android CLI が非対応として終了状態 69 を返すこと |
 | macOS、Ubuntu、Fedora の Bats テスト | 引数境界、失敗時の状態、Git と Android の公開動作 |
@@ -48,10 +48,10 @@
 | S03 | GNOME の入力ソースが JP 配列だけの状態で、`ubuntu::setup-desktop`（22.04 では `ubuntu::setup-desktop-22`）を D-Bus セッション内で実行する | 新しいセッションで入力ソースが Mozc と US の順になり、`/etc/default/keyboard` が US 配列、hwdb で USB キーボードの変換・無変換キーが henkan・muhenkan になる。Mozc はひらがなで始まり、VLC が動画の既定アプリになる。22.04 ではボタン配置も変わり、ほかの版では `ubuntu::setup-desktop-22` が終了状態 69 を返す | `scripts/test-ubuntu-desktop-container` |
 | P01 | macOS 実行環境で、`mac::setup` が呼び出す設定関数（sudo の password 不要化、環境変数、起動ファイル、キー・Dock・trackpad、標準アプリの削除、quarantine、Gatekeeper、Git）を二度実行する | すべて成功し、二度目も設定が重複しない。sudo は password なしで通る | `CI` の `scripts/test-macos-preferences` |
 | P02 | P01 の後に defaults、`DefaultKeyBinding.dict`、起動ファイル、Git 設定を読む | 各値が設定どおりで、新しい Zsh と Bash のセッションで `.env` の値、`EDITOR`、`HOMEBREW_CASK_OPTS` が有効になる | 同上 |
-| M01 | 使い捨ての Apple silicon の macOS 実行環境で `mac::setup` を二度実行する。Homebrew は 2026 年 9 月に Intel Mac 向けのビルド済みパッケージの提供を終えたため、Intel では LLVM などのソースビルドで 3 時間の制限を超え、CI で確認しない | 失敗する手順があっても残りを続け、最初に失敗した手順の終了状態を返す。Hypervisor.framework がない実行環境で失敗してよいのは Colima の起動と、起動中のエンジンを要求する `docker::install` だけ | `scripts/test-macos-setup` |
+| M01 | 使い捨ての macOS 実行環境で `mac::setup` を二度実行する | 失敗する手順があっても残りを続け、最初に失敗した手順の終了状態を返す。Hypervisor.framework がない実行環境で失敗してよいのは Colima の起動と、起動中のエンジンを要求する `docker::install` だけ | `scripts/test-macos-setup` |
 | M02 | M01 の後に設定と起動ファイルを読む | キー・Dock・trackpad の defaults、`DefaultKeyBinding.dict` の Option+T、Git の設定が変わり、新しい Zsh と Bash のセッションで `.env` の値と `EDITOR` が有効になる。起動ファイルの各行は一つだけ | 同上 |
 | M03 | M01 の後に導入物と既定アプリを確認する | 各 formula と cask が導入済みで、標準アプリが削除され、アプリに quarantine 属性が残らない。既定アプリのなかった Markdown・JSON・シェルスクリプトは VS Code、MKV は IINA で開く設定になる（txt や mp4 のように既定アプリがある種類は、duti が成功しても確認する人がいない実行環境では変わらないため記録だけにする）。QMK Toolbox と IINA が起動する | 同上 |
-| M04 | QMK Toolbox を現在の版・古い版で指定し、Command Line Tools を更新し、Rosetta を導入する | 現在の版は成功し、古い版は終了状態 69。clang で C プログラムをビルドして実行でき、Apple silicon では x86_64 のコマンドが動く | 同上 |
+| M04 | QMK Toolbox を現在の版・古い版で指定し、Command Line Tools を更新し、Rosetta を導入する | 現在の版は成功し、古い版は終了状態 69。clang で C プログラムをビルドして実行でき、x86_64 のコマンドが動く | 同上 |
 | J01 | 公式配布物から Node.js 16.20.2 を導入し、同じ版で再実行する | 両方成功し、Node.js、npm、Corepack、pnpm が起動する | `scripts/test-node-container` |
 | J04 | J01 の Node.js で OpenCode を二度導入する | 両方成功し、`$HOME/.local/bin/opencode --version` が版番号を表示する | 同上 |
 | J02 | OSのJDK最新版を導入・再実行し、小さなJavaプログラムをコンパイルして動かす | 版とJAVA_HOMEが一致し、実行結果が期待値になる | `scripts/test-jdk-go-container` |
@@ -92,7 +92,7 @@
 | A01 | 専用のホームと SDK に Android CLI、Platform Tools、SDK Platform、Build Tools、Command-line Tools、Emulator を導入する | 各実行ファイルが起動し、`android.jar` が存在する | `scripts/test-android-macos`、`scripts/test-android-linux`、`scripts/test-android-container` |
 | A02 | Platform Tools と Build Tools の導入を繰り返す | 二度目も成功し、実行ファイルが使える | 同上 |
 | A03 | API 35 の AVD を作り、同名でもう一度作る | 初回は成功し、二度目は既存の AVD を保持して失敗する | 同上 |
-| A04 | AVD を起動し、停止して削除する | Android の起動完了を確認でき、削除後に一覧から消える | `scripts/test-android-linux`、`scripts/test-android-container`、Apple silicon の macOS 上の`scripts/test-android-macos`。Intel の実行環境ではゲストに 1 CPU しか割り当てられず、API 35 が 15 分以内に起動しないため、作成と削除までを確認する |
+| A04 | AVD を起動し、停止して削除する | Android の起動完了を確認でき、削除後に一覧から消える | `scripts/test-android-linux`、`scripts/test-android-container`、Hypervisor.framework が使える macOS 上の`scripts/test-android-macos` |
 | A05 | 起動したAVDへ空白を含む名前のファイルを送受信し、画面を保存して再起動する | 内容が一致し、画像が保存され、再起動後に端末が再接続する | `scripts/test-android-linux` |
 | A06 | arm64 の Linux で `android::sdk::install` を呼ぶ | 終了状態 69 を返し、Android CLI と SDK ディレクトリを作らない | `scripts/test-android-container` |
 | A07 | 不正な引数、未対応 CPU、異なる SDK パスを渡す | 対応するエラーを返し、既存の導入先を変更しない | `test/android-install.bats` など |
