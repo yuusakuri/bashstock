@@ -663,6 +663,7 @@ chmod +x "${HOME}/.local/bin/codex"'
 @test "Go on Ubuntu selects a versioned package through /usr/local/bin and removes only its own links" {
   use_platform ubuntu 24.04 noble
   record_root_commands
+  go::repository::register() { :; }
   package::_install() { printf 'install %s\n' "$*" >>"${ROOT_LOG}"; }
   readlink() { printf '/usr/lib/go-1.25/bin/%s\n' "${1##*/}"; }
 

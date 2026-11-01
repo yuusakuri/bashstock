@@ -273,10 +273,17 @@ android::avd::port::first() {
 # @internal
 # @arg $1 integer Process ID.
 android::avd::_process-running() {
-  [[ "$#" -eq 1 ]] || return 64
-  local state=''
-  state="$(ps -o stat= -p "$1" 2>/dev/null)" || return 1
-  state="${state//[[:space:]]/}"
+  ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] ) || return 64
+  local state='' stat=''
+  if [[ -d /proc/self ]]; then
+    # Linux reports the state after the command name, which may contain spaces.
+    stat="$(<"/proc/$1/stat")" 2>/dev/null || return 1
+    stat="${stat##*) }"
+    state="${stat%% *}"
+  else
+    state="$(ps -o stat= -p "$1" 2>/dev/null)" || return 1
+    state="${state//[[:space:]]/}"
+  fi
   [[ -n "${state}" && "${state}" != Z* ]]
 }
 
