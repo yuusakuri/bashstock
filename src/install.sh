@@ -1032,15 +1032,31 @@ sys.exit(0 if os.path.isfile(os.path.join(sysconfig.get_path("stdlib"), "EXTERNA
 }
 
 # @description Install a pipx release into its own virtual environment and link it from ~/.local/bin.
+#
+# Each installation gets a new environment, and the launcher moves to it only
+# after pip succeeds, so a failed update leaves the working pipx in place.
+# Environments that the launcher no longer uses are removed afterwards.
 # @internal
 # @arg $1 string pipx version.
 pipx::_install-official-venv() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
-  local venv="${HOME}/.local/lib/pipx"
-  mkdir -p -- "${HOME}/.local/lib" "${HOME}/.local/bin" || return 74
-  python3 -m venv --clear "${venv}" || return 74
-  "${venv}/bin/python" -m pip install "pipx==$1" || return "$?"
-  ln -sfn "${venv}/bin/pipx" "${HOME}/.local/bin/pipx" || return 74
+  local root="${HOME}/.local/lib/pipx-official" venv='' old='' status=0
+  mkdir -p -- "${root}" "${HOME}/.local/bin" || return 74
+  venv="$(mktemp -d "${root}/$1.XXXXXX")" || return 74
+  python3 -m venv "${venv}" || status=74
+  if [[ "${status}" -eq 0 ]]; then
+    "${venv}/bin/python" -m pip install "pipx==$1" || status="$?"
+  fi
+  if [[ "${status}" -eq 0 ]]; then
+    ln -sfn "${venv}/bin/pipx" "${HOME}/.local/bin/pipx" || status=74
+  fi
+  if [[ "${status}" -ne 0 ]]; then
+    rm -rf -- "${venv}"
+    return "${status}"
+  fi
+  for old in "${root}"/*; do
+    [[ "${old}" == "${venv}" ]] || rm -rf -- "${old}"
+  done
 }
 
 # @description Install pipx and add the pipx application directory to PATH.
@@ -1049,8 +1065,8 @@ pipx::_install-official-venv() {
 # official source installs the release from PyPI for the current user with
 # pip, as the pipx documentation describes for systems without a package.
 # Where PEP 668 forbids pip install --user, as on Ubuntu 23.04 and later, the
-# release goes into its own virtual environment in ~/.local/lib/pipx, linked
-# from ~/.local/bin/pipx.
+# release goes into its own virtual environment under ~/.local/lib/pipx-official,
+# linked from ~/.local/bin/pipx.
 # A source that cannot provide pipx returns an error instead of switching to
 # the other source. On Ubuntu, python3-venv is installed with either source,
 # because pipx creates a virtual environment for every application.

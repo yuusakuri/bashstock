@@ -1690,23 +1690,42 @@ use_fake_sudoers() {
   apt-get() { :; }
   apt-cache() { :; }
   PIP_LOG="${BATS_TEST_TMPDIR}/pip.log"
+  PIP_STATUS=0
   python3() {
     if [[ "$1" == '-c' && "$2" == *EXTERNALLY-MANAGED* ]]; then return 0; fi
     if [[ "$1" == '-c' ]]; then printf '3.12.3\n'; return; fi
-    [[ "$*" == "-m venv --clear ${HOME}/.local/lib/pipx" ]] || return 1
-    mkdir -p "${HOME}/.local/lib/pipx/bin"
+    [[ "$1 $2" == '-m venv' && "$3" == "${HOME}/.local/lib/pipx-official/"* ]] || return 1
+    mkdir -p "$3/bin"
     # The environment's Python records the pip call and installs a pipx that prints its version.
-    printf '#!/bin/sh\nprintf "%%s\\n" "$*" >>"%s"\nprintf "#!/bin/sh\\necho %%s\\n" "${4#pipx==}" >"%s"\nchmod +x "%s"\n' \
-      "${PIP_LOG}" "${HOME}/.local/lib/pipx/bin/pipx" "${HOME}/.local/lib/pipx/bin/pipx" >"${HOME}/.local/lib/pipx/bin/python"
-    chmod +x "${HOME}/.local/lib/pipx/bin/python"
+    printf '#!/bin/sh\nprintf "%%s\\n" "$*" >>"%s"\n[ %s -eq 0 ] || exit %s\nprintf "#!/bin/sh\\necho %%s\\n" "${4#pipx==}" >"%s"\nchmod +x "%s"\n' \
+      "${PIP_LOG}" "${PIP_STATUS}" "${PIP_STATUS}" "$3/bin/pipx" "$3/bin/pipx" >"$3/bin/python"
+    chmod +x "$3/bin/python"
   }
   curl() { printf '%s' '{"releases":{"1.7.1":[{"requires_python":">=3.8","yanked":false}]}}'; }
 
   run pipx::install '' official
   [ "${status}" -eq 0 ]
   [ "$(<"${PIP_LOG}")" = '-m pip install pipx==1.7.1' ]
-  [ "$(readlink "${HOME}/.local/bin/pipx")" = "${HOME}/.local/lib/pipx/bin/pipx" ]
+  [[ "$(readlink "${HOME}/.local/bin/pipx")" == "${HOME}/.local/lib/pipx-official/1.7.1."*/bin/pipx ]]
   [ "$("${HOME}/.local/bin/pipx")" = 1.7.1 ]
+  local working=''
+  working="$(readlink "${HOME}/.local/bin/pipx")"
+
+  # A failed update, such as one without PyPI, keeps the working pipx and removes the new environment.
+  PIP_STATUS=1
+  run pipx::install '' official
+  [ "${status}" -ne 0 ]
+  [ "$(readlink "${HOME}/.local/bin/pipx")" = "${working}" ]
+  [ "$("${HOME}/.local/bin/pipx")" = 1.7.1 ]
+  [ "$(find "${HOME}/.local/lib/pipx-official" -mindepth 1 -maxdepth 1 | wc -l)" -eq 1 ]
+
+  # A successful update moves the launcher and removes the environment it replaced.
+  PIP_STATUS=0
+  run pipx::install '' official
+  [ "${status}" -eq 0 ]
+  [ "$(readlink "${HOME}/.local/bin/pipx")" != "${working}" ]
+  [ ! -e "${working}" ]
+  [ "$(find "${HOME}/.local/lib/pipx-official" -mindepth 1 -maxdepth 1 | wc -l)" -eq 1 ]
 }
 
 @test "Ubuntu Server ISOs come from published checksums and never replace a file with a bad download" {
