@@ -37,6 +37,7 @@ git submodule update --init --recursive
 | `just lint` | ソースと配布ファイルのBash構文、ShellCheck、Docコメント、生成済みリファレンスとの差分、名前付き引数とTab補完の対応、正規表現の判定のサブシェル化、差分の空白エラーを検査します。 |
 | `just test` | 配布物を生成してからBatsテストを実行します。 |
 | `just verify` | 静的検査、配布物の生成、全テストを順に実行します。 |
+| `just bump VERSION` | リリース用のブランチとPRを作成します。手順は[リリース手順](docs/how-to/release.md)で説明します。 |
 
 開発では`src/`の名前空間別ファイルと`src/runtime/`の実行制御を編集します。
 公開関数は、最上位の名前空間と同じ名前のファイル（`git::commit::create`なら`src/git.sh`）へ置きます。

@@ -3,6 +3,9 @@ set shell := ["bash", "-uc"]
 default:
     @just --list
 
+bump version *flags:
+    ./scripts/release bump {{version}} {{flags}}
+
 build:
     ./scripts/build
 
