@@ -277,7 +277,8 @@ android::avd::_process-running() {
   local state='' stat=''
   if [[ -d /proc/self ]]; then
     # Linux reports the state after the command name, which may contain spaces.
-    stat="$(<"/proc/$1/stat")" 2>/dev/null || return 1
+    [[ -r "/proc/$1/stat" ]] || return 1
+    stat="$(<"/proc/$1/stat")" || return 1
     stat="${stat##*) }"
     state="${stat%% *}"
   else

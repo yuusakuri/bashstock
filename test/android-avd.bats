@@ -152,7 +152,8 @@ SCRIPT
   # The caller ignores TERM like an interactive shell ignores Ctrl-C, and records the status.
   # perl gives the caller its own process group, as setsid does on Linux only.
   perl -e 'setpgrp(0, 0); exec @ARGV' bash -c \
-    'trap "" TERM; source "$1"; android::avd::start test_avd 5554 300; printf "%s\n" "$?" >"$2"' \
+    'trap "" TERM; source "$1"; android::avd::port::available() { :; }
+      android::avd::start test_avd 5554 300; printf "%s\n" "$?" >"$2"' \
     _ "$PROJECT_ROOT/dist/bashstock.sh" "$BATS_TEST_TMPDIR/status" >/dev/null 2>&1 3>&- &
   local caller="$!" waited=0
   until [[ -s "$EMULATOR_PID_FILE" ]] || (( waited >= 50 )); do sleep 0.2; waited=$((waited + 1)); done
