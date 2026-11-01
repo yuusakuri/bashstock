@@ -1414,8 +1414,9 @@ rancher-desktop::versions() {
       printf '%s\n' "${index_entries}" | cut -f 1 | package::_sort-versions
       ;;
     fedora)
+      # The rpm repository is built for openSUSE; the fedora one is built for Fedora.
       package::_rpm-repository-versions \
-        https://download.opensuse.org/repositories/isv:/Rancher:/stable/rpm/ rancher-desktop
+        https://download.opensuse.org/repositories/isv:/Rancher:/stable/fedora/ rancher-desktop
       ;;
   esac
 }
@@ -1458,16 +1459,24 @@ rancher-desktop::_install-linux() {
       https://download.opensuse.org/repositories/isv:/Rancher:/stable/deb/Release.key \
       https://download.opensuse.org/repositories/isv:/Rancher:/stable/deb/ ./ '' || return "$?"
   else
+    # Rancher builds the rpm repository for openSUSE, whose package names Fedora
+    # lacks, so dnf fell back to version 1.2.1; the fedora repository is built for Fedora.
     package::_dnf-register-repository isv-rancher-stable \
       "[isv-rancher-stable]
 name=Rancher Desktop
-baseurl=https://download.opensuse.org/repositories/isv:/Rancher:/stable/rpm/
+baseurl=https://download.opensuse.org/repositories/isv:/Rancher:/stable/fedora/
 enabled=1
 gpgcheck=1
-gpgkey=https://download.opensuse.org/repositories/isv:/Rancher:/stable/rpm/repodata/repomd.xml.key
+gpgkey=https://download.opensuse.org/repositories/isv:/Rancher:/stable/fedora/repodata/repomd.xml.key
 " || return "$?"
   fi
-  package::_install-version rancher-desktop "$2" || return "$?"
+  local version="$2" versions=''
+  if [[ "$1" == fedora && -z "${version}" ]]; then
+    # dnf install keeps an installed older package, so the newest version is named explicitly.
+    versions="$(rancher-desktop::versions)" || return "$?"
+    version="$(package::_select-listed-version "${versions}" '' 'Rancher Desktop')" || return "$?"
+  fi
+  package::_install-version rancher-desktop "${version}" || return "$?"
   if [[ ! -r /dev/kvm || ! -w /dev/kvm ]]; then
     package::_add-current-user-to-group kvm || return "$?"
     console::_write-error 'Log in again so that the kvm group membership takes effect.'

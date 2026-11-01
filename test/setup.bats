@@ -595,6 +595,24 @@ chmod +x "${HOME}/.local/bin/codex"'
   [ "${SECONDS}" -lt 10 ]
 }
 
+@test "Rancher Desktop on Fedora uses the Fedora build and names the newest version" {
+  use_platform fedora 44
+  local write_log="${BATS_TEST_TMPDIR}/writes.log"
+  package::_dnf-register-repository() { printf '%s\n%s' "$1" "$2" >"${write_log}.repo"; }
+  package::_rpm-repository-versions() { printf '%s\n' "$1" >"${write_log}.query"; printf '1.23.1-3.1\n1.24.0-2.1\n'; }
+  package::_install-version() { printf '%s\n' "$*" >"${write_log}.install"; }
+  rancher-desktop::_start-linux() { :; }
+  [[ -w /dev/kvm ]] || package::_add-current-user-to-group() { :; }
+
+  run rancher-desktop::install
+  [ "${status}" -eq 0 ]
+  # The rpm repository is built for openSUSE and left Fedora with version 1.2.1.
+  grep -Fqx 'baseurl=https://download.opensuse.org/repositories/isv:/Rancher:/stable/fedora/' "${write_log}.repo"
+  [ "$(<"${write_log}.query")" = 'https://download.opensuse.org/repositories/isv:/Rancher:/stable/fedora/' ]
+  # dnf install keeps an installed older package, so the newest version is named.
+  [ "$(<"${write_log}.install")" = 'rancher-desktop 1.24.0-2.1' ]
+}
+
 @test "Node.js on Ubuntu lists complete OS versions and rejects unavailable versions" {
   use_platform ubuntu 24.04 noble
   record_root_commands
