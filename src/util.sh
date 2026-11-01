@@ -659,6 +659,49 @@ system::disable-auto-lock() {
   esac
 }
 
+# @description Enable automatic screen locking for the current user.
+#
+# Linux enables GNOME's lock-enabled setting and sets lock-delay. macOS asks
+# for the password after the screen saver or display turns off, set with
+# sysadminctl, which asks for the current user's login password. Neither
+# changes system sleep or when the screen saver starts.
+#
+# @arg $1 integer Optional seconds between the screen saver or display turning off and the lock. Defaults to 0, which locks immediately.
+# @exitcode 0 Automatic screen locking is enabled.
+# @exitcode 64 The argument count is wrong, or the delay is not a non-negative integer.
+# @exitcode 69 The operating system is unsupported, or a required command is missing.
+# @exitcode 74 The screen-lock setting could not be changed, such as after a wrong password.
+# @example
+#   system::enable-auto-lock
+#   system::enable-auto-lock 300
+system::enable-auto-lock() {
+  [[ "$#" -le 1 ]] || return 64
+  local delay="${1:-0}" lock_status='' expected=''
+  ( [[ "${delay}" =~ ^[0-9]+$ ]] ) || return 64
+  delay="$((10#${delay}))"
+  case "$(system::operating-system)" in
+    linux)
+      command::require gsettings || return "$?"
+      gsettings set org.gnome.desktop.screensaver lock-delay "${delay}" || return 74
+      gsettings set org.gnome.desktop.screensaver lock-enabled true || return 74
+      ;;
+    darwin)
+      command::require sysadminctl || return "$?"
+      if [[ "${delay}" -eq 0 ]]; then
+        expected='screenLock delay is immediate'
+        sysadminctl -screenLock immediate -password - || return 74
+      else
+        expected="screenLock delay is ${delay} seconds"
+        sysadminctl -screenLock "${delay}" -password - || return 74
+      fi
+      # sysadminctl can exit 0 after a refused password, so the setting is read back.
+      lock_status="$(sysadminctl -screenLock status 2>&1)" || return 74
+      [[ "${lock_status}" == *"${expected}"* ]] || return 74
+      ;;
+    *) return 69 ;;
+  esac
+}
+
 # @description Write the POSIX TZ string for a UTC offset.
 #
 # POSIX TZ offsets have the opposite sign of ISO 8601 offsets, so +09:30
