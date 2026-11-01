@@ -7,4 +7,4 @@
 # shellcheck disable=SC2034
 readonly BASHSTOCK_NAME='bashstock'
 # shellcheck disable=SC2034
-readonly BASHSTOCK_VERSION='1.0.0'
+readonly BASHSTOCK_VERSION='0.1.0'
