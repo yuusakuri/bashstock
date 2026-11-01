@@ -38,13 +38,12 @@ if android::avd::create "${name}" 35; then
   printf 'Existing AVD was overwritten without --replace.\n' >&2
   exit 1
 fi
-if [[ "$(sysctl -n kern.hv_support)" == 1 && "$(uname -m)" == arm64 ]]; then
+if [[ "$(sysctl -n kern.hv_support)" == 1 ]]; then
   serial="$(android::avd::start "${name}" '' 300 --headless)"
   test -n "${serial}"
   android::avd::stop "${name}"
 else
-  # Intel runners give the guest one CPU, and API 35 did not boot within 15 minutes.
-  printf 'This runner cannot boot the AVD in time; AVD boot is verified by the Linux CI job.\n'
+  printf 'This runner has no Hypervisor.framework; AVD boot is verified by the Linux CI job.\n'
 fi
 android::avd::delete "${name}"
 if android::avd::list | grep -Fqx -- "${name}"; then

@@ -44,7 +44,6 @@ android::_cli-artifact() {
   architecture="$(uname -m)" || return 74
   case "${platform}:${architecture}" in
     darwin:arm64 | darwin:aarch64) printf 'darwin_arm64\n' ;;
-    darwin:x86_64) printf 'darwin_x86_64\n' ;;
     ubuntu:x86_64 | fedora:x86_64) printf 'linux_x86_64\n' ;;
     *) console::_write-error "Android CLI does not provide ${platform}/${architecture}."; return 69 ;;
   esac
