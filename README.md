@@ -74,7 +74,7 @@ help::show string::trim
 
 | 文書 | 内容 |
 | --- | --- |
-| [関数リファレンス](docs/reference/functions.md) | 公開関数の一覧と、モジュールごとの引数、出力、終了状態、例です。 |
+| [関数リファレンス](docs/reference/functions.md) | 公開関数の一覧と、名前空間ごとの引数、出力、終了状態、例です。 |
 | [ライブラリ仕様](docs/specifications/library.md) | 読み込み、名前空間、Docコメント、入出力、終了状態、シェル状態の契約です。 |
 | [名前付き引数とTab補完の仕様](docs/specifications/named-arguments.md) | 引数の表記と補完関数の契約です。 |
 | [アーキテクチャ](docs/explanation/architecture.md) | ソース、配布物、モジュール、OS別実装の関係です。 |

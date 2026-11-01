@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # @file time
-# @brief Clocks, timestamps, and waiting.
+# @brief Clocks, timestamps, time zones, and waiting.
 # @description Formats follow ISO 8601. Functions that need a clock provider return 69 when it is unavailable.
 
-# shellcheck disable=SC2119,SC2120
+# shellcheck disable=SC2015,SC2034,SC2046,SC2119,SC2120,SC2155,SC2163,SC2317,SC2319,SC2329
 
 # @description Write milliseconds from the requested monotonic clock.
 # @internal
@@ -339,4 +339,73 @@ time::local-date-extended() {
 time::local-date-time-seconds-basic() {
   [[ "$#" -eq 0 ]] || return 64
   time::_date-time local-s-basic
+}
+
+# @description Sleep for a non-negative integer number of hours.
+#
+# @arg $1 integer Number of hours, 0 or more.
+# @exitcode 0 The time passed.
+# @exitcode 64 The value is not a non-negative integer.
+# @exitcode 69 sleep is unavailable.
+# @example
+#   time::sleep-hours 2 && make release
+time::sleep-hours() {
+  if ( [[ "$#" -ne 1 || ! "$1" =~ ^(0|[1-9][0-9]*)$ ]] ); then return 64; fi
+  command -v sleep >/dev/null 2>&1 || return 69
+  sleep "$((10#$1 * 3600))"
+}
+
+# @description Write the POSIX TZ string for a UTC offset.
+#
+# POSIX TZ offsets have the opposite sign of ISO 8601 offsets, so +09:30
+# becomes UTC-9:30 and -05:00 becomes UTC+5.
+#
+# @arg $1 string OFFSET Z or an offset in the form +HH:MM or -HH:MM, with HH up to 23 and MM up to 59.
+# @stdout The TZ value, such as UTC-9 or UTC+5:30.
+# @exitcode 0 The value was written.
+# @exitcode 64 The offset is malformed or out of range.
+# @example
+#   time::posix-timezone +09:00
+#   # UTC-9
+time::posix-timezone() {
+  [[ "$#" -eq 1 ]] || return 64
+  local sign='' hours=0 minutes=0 text=''
+  if [[ "$1" == Z ]]; then
+    printf 'UTC0\n'
+    return 0
+  fi
+  ( [[ "$1" =~ ^[+-][0-9]{2}:[0-9]{2}$ ]] ) || return 64
+  sign="${1:0:1}"
+  hours=$((10#${1:1:2}))
+  minutes=$((10#${1:4:2}))
+  ((hours <= 23 && minutes <= 59)) || return 64
+  if ((hours == 0 && minutes == 0)); then
+    printf 'UTC0\n'
+    return 0
+  fi
+  if [[ "${sign}" == + ]]; then sign='-'; else sign='+'; fi
+  text="UTC${sign}${hours}"
+  ((minutes == 0)) || text+="$(printf ':%02d' "${minutes}")"
+  printf '%s\n' "${text}"
+}
+
+# @description Write the elapsed time since boot and the local time every three seconds until stopped.
+#
+# @noargs
+# @stdout Two lines every three seconds: the seconds since boot and the local date and time.
+# @exitcode 64 An argument was given.
+# @exitcode 74 sleep failed.
+# @exitcode other The status of the clock function that failed.
+# @example
+#   time::status-continuous   # Stop with Ctrl-C.
+time::status-continuous() {
+  [[ "$#" -eq 0 ]] || return 64
+  local milliseconds='' now=''
+  while :; do
+    milliseconds="$(time::boot-time-milliseconds)" || return "$?"
+    now="$(time::local-date-time-seconds-extended)" || return "$?"
+    printf 'Seconds since boot: %d.%03d\nLocal date and time: %s\n' \
+      "$((milliseconds / 1000))" "$((milliseconds % 1000))" "${now}"
+    sleep 3 || return 74
+  done
 }

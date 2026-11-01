@@ -644,3 +644,27 @@ package::_add-current-user-to-group() {
       ;;
   esac
 }
+
+# @description Sort tab-separated lines by the version in their first field and drop that field.
+# @internal
+package::_sort-by-first-field() {
+  [[ "$#" -eq 0 ]] || return 64
+  command::require perl || return "$?"
+  perl -e '
+    sub compare_versions {
+      my @left = split /([0-9]+)/, $_[0];
+      my @right = split /([0-9]+)/, $_[1];
+      while (@left || @right) {
+        my $x = shift @left;
+        my $y = shift @right;
+        return -1 unless defined $x;
+        return 1 unless defined $y;
+        my $result = ($x =~ /^[0-9]+$/ && $y =~ /^[0-9]+$/) ? $x <=> $y : $x cmp $y;
+        return $result if $result;
+      }
+      return 0;
+    }
+    my @lines = map { chomp; [split /\t/, $_, 2] } grep { /\t/ } <STDIN>;
+    print "$_->[1]\n" for sort { compare_versions($a->[0], $b->[0]) } @lines;
+  '
+}

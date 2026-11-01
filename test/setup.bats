@@ -111,12 +111,12 @@ use_fake_curl() {
   dpkg-deb() { printf '%s\n' "${DEB_ARCHITECTURE}"; }
 
   DEB_ARCHITECTURE='arm64'
-  run --separate-stderr deb::install-from-url https://example.invalid/tool.deb
+  run --separate-stderr apt::deb::install-from-url https://example.invalid/tool.deb
   [ "${status}" -eq 65 ]
   [ ! -s "${ROOT_LOG}" ]
 
   DEB_ARCHITECTURE='amd64'
-  run deb::install-from-url https://example.invalid/tool.deb
+  run apt::deb::install-from-url https://example.invalid/tool.deb
   [ "${status}" -eq 0 ]
   [ "$(sed -n 1p "${ROOT_LOG}")" = 'apt-get update' ]
   local install='' package=''
@@ -127,11 +127,11 @@ use_fake_curl() {
 
   : >"${ROOT_LOG}"
   DEB_ARCHITECTURE='all'
-  run deb::install-from-url https://example.invalid/tool.deb
+  run apt::deb::install-from-url https://example.invalid/tool.deb
   [ "${status}" -eq 0 ]
 
   use_platform fedora 44
-  run --separate-stderr deb::install-from-url https://example.invalid/tool.deb
+  run --separate-stderr apt::deb::install-from-url https://example.invalid/tool.deb
   [ "${status}" -eq 69 ]
 }
 
@@ -646,7 +646,7 @@ chmod +x "${HOME}/.local/bin/codex"'
     esac
   }
   dpkg-query() { printf '2.39-0ubuntu8'; }
-  deb::install-from-url() { printf '%s\n' "$*"; }
+  apt::deb::install-from-url() { printf '%s\n' "$*"; }
   run microsoft-edge::versions
   [ "${output}" = $'153.0.1-1\n154.0.2-1' ]
   run microsoft-edge::install
@@ -907,13 +907,13 @@ gsettings_value() {
   : >"${directory}/aws_vpn_client_1.log"
   : >"${directory}/nested/aws_vpn_client_2.log"
   : >"${directory}/ovpn_aws_vpn_client_3.log"
-  aws-vpn-client::log::files "${directory}" >"${BATS_TEST_TMPDIR}/files"
+  aws::vpn-client::log::files "${directory}" >"${BATS_TEST_TMPDIR}/files"
   [ "$(tr '\0' '\n' <"${BATS_TEST_TMPDIR}/files" | sort)" = "$(printf '%s\n%s' "${directory}/aws_vpn_client_1.log" "${directory}/nested/aws_vpn_client_2.log")" ]
-  run aws-vpn-client::log::clear "${directory}"
+  run aws::vpn-client::log::clear "${directory}"
   [ "${status}" -eq 0 ]
   [ -d "${directory}/nested" ]
   [ -z "$(find "${directory}" -type f)" ]
-  run aws-vpn-client::log::files "${BATS_TEST_TMPDIR}/missing"
+  run aws::vpn-client::log::files "${BATS_TEST_TMPDIR}/missing"
   [ "${status}" -eq 66 ]
 }
 

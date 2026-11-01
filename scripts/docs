@@ -14,10 +14,17 @@ readonly reference="${project_root}/docs/reference"
 
 # @description Write the library modules in the order that scripts/build combines them.
 docs::modules() {
-  printf '%s\n' settings console number string regex array arguments completion help \
-    system command shell terminal path prompt time log json option file os \
-    os-darwin os-ubuntu os-fedora \
-    user aws git net util package install android android-avd desktop
+  local core=(
+    settings console number string regex array arg help
+    system command shell terminal path time log json option file os
+  )
+  local path='' name=''
+  printf '%s\n' "${core[@]}" os-darwin os-ubuntu os-fedora
+  for path in "${project_root}"/src/*.sh; do
+    name="$(basename -- "${path}" .sh)"
+    case " ${core[*]} " in *" ${name} "*) continue ;; esac
+    [[ "${name}" == os-* ]] || printf '%s\n' "${name}"
+  done | LC_ALL=C sort
 }
 
 # @description Write the Markdown anchor that shdoc gives a function heading.
@@ -49,8 +56,8 @@ docs::index() {
   cat <<'HEADER'
 # 関数リファレンス
 
-BashStockが公開する関数をモジュールごとに示します。
-各関数の引数、出力、終了状態、例は、モジュールのページと`help::show 関数名`で確認できます。
+BashStockが公開する関数を名前空間ごとに示します。
+各関数の引数、出力、終了状態、例は、名前空間のページと`help::show 関数名`で確認できます。
 このファイルと`modules/`は`scripts/docs`が`src/`のshdocコメントから生成します。直接編集しないでください。
 
 関数名と入出力の規則は[ライブラリ仕様](../specifications/library.md)、名前付き引数とTab補完は[名前付き引数とTab補完の仕様](../specifications/named-arguments.md)で定義します。

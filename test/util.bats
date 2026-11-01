@@ -83,7 +83,7 @@ bats_require_minimum_version 1.5.0
   [ "${status}" -eq 0 ]
   mkdir -p "$directory/sub"
   printf 'x' >"$directory/sub/file"
-  run directory::clear "$directory"
+  run dir::clear "$directory"
   [ "${status}" -eq 0 ]
   [ -d "$directory" ]
   [ ! -e "$directory/sub" ]
@@ -357,14 +357,14 @@ bats_require_minimum_version 1.5.0
   printf 'kept\n' >"$destination/nested/other"
   printf 'hidden\n' >"$source/.hidden"
   ln -s /nonexistent "$source/link"
-  run directory::merge "$source" "$destination"
+  run dir::merge "$source" "$destination"
   [ "$status" -eq 0 ]
   [ ! -e "$source" ]
   [ "$(<"$destination/nested/same")" = new ]
   [ "$(<"$destination/nested/other")" = kept ]
   [ "$(<"$destination/.hidden")" = hidden ]
   [ "$(readlink "$destination/link")" = /nonexistent ]
-  run directory::merge "${BATS_TEST_TMPDIR}/missing" "$destination"
+  run dir::merge "${BATS_TEST_TMPDIR}/missing" "$destination"
   [ "$status" -eq 64 ]
 }
 
@@ -393,11 +393,11 @@ TABLE
   local parent="${BATS_TEST_TMPDIR}/parent"
   mkdir -p "$parent"
   time::local-date-time-seconds-basic() { printf '20260102T030405\n'; }
-  run directory::create-with-date-time "$parent"
+  run dir::create-with-date-time "$parent"
   [ "$output" = "$parent/20260102T030405" ]
-  run directory::create-with-date-time "$parent"
+  run dir::create-with-date-time "$parent"
   [ "$output" = "$parent/20260102T030405-2" ]
-  run directory::create-with-date-time "$parent"
+  run dir::create-with-date-time "$parent"
   [ "$output" = "$parent/20260102T030405-3" ]
   [ -d "$parent/20260102T030405-3" ]
 }
@@ -407,18 +407,18 @@ TABLE
   mkdir -p "$HOME/data/.hidden" "${BATS_TEST_TMPDIR}/target"
   printf 'kept\n' >"${BATS_TEST_TMPDIR}/target/file"
   ln -s "${BATS_TEST_TMPDIR}/target" "${BATS_TEST_TMPDIR}/link"
-  run directory::clear /
+  run dir::clear /
   [ "$status" -eq 64 ]
-  run directory::clear "$HOME"
+  run dir::clear "$HOME"
   [ "$status" -eq 64 ]
-  run directory::clear "$HOME/data/.."
+  run dir::clear "$HOME/data/.."
   [ "$status" -eq 64 ]
-  run directory::clear ''
+  run dir::clear ''
   [ "$status" -eq 64 ]
-  run directory::clear "${BATS_TEST_TMPDIR}/link"
+  run dir::clear "${BATS_TEST_TMPDIR}/link"
   [ "$status" -eq 64 ]
   [ -f "${BATS_TEST_TMPDIR}/target/file" ]
-  run directory::clear "$HOME/data"
+  run dir::clear "$HOME/data"
   [ "$status" -eq 0 ]
   [ -d "$HOME/data" ] && [ -z "$(ls -A "$HOME/data")" ]
 }
@@ -659,18 +659,18 @@ TABLE
   local source="${BATS_TEST_TMPDIR}/source"
   mkdir -p "${source}/keep"
   printf 'data\n' >"${source}/file"
-  run directory::merge "${source}" "${source}"
+  run dir::merge "${source}" "${source}"
   [ "${status}" -eq 64 ]
-  run directory::merge "${source}" "${source}/."
+  run dir::merge "${source}" "${source}/."
   [ "${status}" -eq 64 ]
-  run directory::merge "${source}" "${source}/keep/inner"
+  run dir::merge "${source}" "${source}/keep/inner"
   [ "${status}" -eq 64 ]
   [ ! -e "${source}/keep/inner" ]
   [ "$(<"${source}/file")" = data ]
 
   # An entry named like SOURCE would replace SOURCE in its parent.
   mkdir -p "${source}/source"
-  run directory::merge "${source}" "${BATS_TEST_TMPDIR}"
+  run dir::merge "${source}" "${BATS_TEST_TMPDIR}"
   [ "${status}" -eq 64 ]
   [ "$(<"${source}/file")" = data ]
 }

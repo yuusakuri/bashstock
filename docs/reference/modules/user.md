@@ -1,6 +1,6 @@
 # user
 
-User and group lookup and account creation.
+User and group lookup, account creation, and home directories.
 
 ## Overview
 
@@ -16,6 +16,8 @@ Account creation runs through administrator execution and works on macOS, Ubuntu
 * [user::create-login-as-root](#usercreate-login-as-root)
 * [user::create-system](#usercreate-system)
 * [user::create-login](#usercreate-login)
+* [user::add-to-group](#useradd-to-group)
+* [user::directory::create-english-links](#userdirectorycreate-english-links)
 
 ### user::name
 
@@ -192,4 +194,60 @@ user::create-login alice 'Alice Example'
 * **66**: No controlling terminal is available for the password.
 * **73**: The account already exists or cannot be created.
 * other The status of the root helper.
+
+### user::add-to-group
+
+Add a user to a supplementary group through administrator execution.
+
+#### Example
+
+```bash
+user::add-to-group dialout
+```
+
+#### Arguments
+
+* **$1** (string): Group name.
+* **$2** (string): Optional user name. Defaults to the current user.
+
+#### Exit codes
+
+* **0**: The user is in the group; it applies to new login sessions.
+* **64**: The group name is invalid, or the argument count is wrong.
+* **69**: The operating system is unsupported, or usermod or dseditgroup is unavailable.
+* **77**: sudo refused the credentials.
+* other The status of usermod or dseditgroup.
+
+### user::directory::create-english-links
+
+Link the English XDG user directory names to the directories of the current locale.
+
+Each standard XDG directory is resolved with xdg-user-dir. A localized
+directory that does not exist is skipped and never created. An existing
+English directory is merged into the localized one, overwriting entries
+with the same name, and then replaced by the link.
+
+#### Example
+
+```bash
+user::directory::create-english-links
+```
+
+#### Arguments
+
+* **$1** (string): Optional home directory to update. Defaults to $HOME.
+
+#### Exit codes
+
+* **0**: Every link was created or already existed.
+* **64**: More than one argument was given.
+* **66**: The home directory does not exist.
+* **69**: xdg-user-dir is unavailable.
+* **73**: An English name is held by something other than a directory or link.
+* **74**: A directory could not be resolved, removed, or linked.
+* other The status of dir::merge.
+
+#### Output on stderr
+
+* A message for each English name that is not a directory.
 

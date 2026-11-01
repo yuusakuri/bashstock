@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # @file aws
-# @brief Amazon EC2 instance metadata.
-# @description The functions read the instance metadata service with IMDSv2 tokens.
+# @brief Amazon EC2 instance metadata and AWS VPN Client logs.
+# @description Metadata functions read the instance metadata service with IMDSv2 tokens; VPN Client functions manage its local log files.
 
 # shellcheck disable=SC2119,SC2120
 
@@ -571,4 +571,76 @@ aws::auto-scaling-group-size() {
       exit 75 unless defined($size) && !ref($size) && $size =~ /\A[0-9]+\z/;
       print $size, "\n";
     ' 2>/dev/null
+}
+
+# @description Write the default AWS VPN Client log directory.
+# @internal
+aws::vpn-client::log::_default-directory() {
+  [[ "$#" -eq 0 ]] || return 64
+  printf '%s\n' "${HOME}/.config/AWSVPNClient/logs"
+}
+
+# @description Write AWS VPN Client log files as NUL-separated paths.
+#
+# Files whose names contain aws_vpn_client_ and do not contain
+# ovpn_aws_vpn_client are selected, as in the reference script.
+#
+# @arg $1 string Optional log directory. Defaults to the AWS VPN Client log directory of this OS.
+# @stdout NUL-separated paths of the log files.
+# @exitcode 0 The paths were written.
+# @exitcode 64 More than one argument was given.
+# @exitcode 66 The directory does not exist or is a symbolic link.
+# @exitcode 69 find is unavailable.
+# @example
+#   aws::vpn-client::log::files | xargs -0 tail -n 50
+aws::vpn-client::log::files() {
+  [[ "$#" -le 1 ]] || return 64
+  local directory="${1:-}"
+  [[ -n "${directory}" ]] || directory="$(aws::vpn-client::log::_default-directory)"
+  [[ -d "${directory}" && ! -L "${directory}" ]] || return 66
+  command::require find || return "$?"
+  find "${directory}" -type f -name '*aws_vpn_client_*' ! -name '*ovpn_aws_vpn_client*' -print0
+}
+
+# @description Remove regular log files below the AWS VPN Client log directory.
+#
+# @arg $1 string Optional log directory. Defaults to the AWS VPN Client log directory of this OS.
+# @exitcode 0 Every regular file below the directory was removed.
+# @exitcode 64 More than one argument was given.
+# @exitcode 66 The directory does not exist or is a symbolic link.
+# @exitcode 69 find is unavailable.
+# @exitcode 74 A file could not be removed.
+# @example
+#   aws::vpn-client::log::clear
+aws::vpn-client::log::clear() {
+  [[ "$#" -le 1 ]] || return 64
+  local directory="${1:-}"
+  [[ -n "${directory}" ]] || directory="$(aws::vpn-client::log::_default-directory)"
+  [[ -d "${directory}" && ! -L "${directory}" ]] || return 66
+  command::require find || return "$?"
+  find "${directory}" -type f -exec rm -f -- {} + || return 74
+}
+
+# @description Open log files with an editor command, passing each path as one argument.
+#
+# @arg $1 string Editor command, such as code.
+# @arg $@ string Log files; at least one.
+# @exitcode 0 The editor was started.
+# @exitcode 64 The editor is empty, or no file was given.
+# @exitcode 66 A path is not a regular file.
+# @exitcode 69 The editor command is unavailable.
+# @exitcode other The status of the editor.
+# @example
+#   files=()
+#   while IFS= read -r -d '' file; do files+=("${file}"); done < <(aws::vpn-client::log::files)
+#   aws::vpn-client::log::open code "${files[@]}"
+aws::vpn-client::log::open() {
+  [[ "$#" -ge 2 && -n "$1" ]] || return 64
+  local editor="$1" path=''
+  shift
+  for path in "$@"; do
+    [[ -f "${path}" ]] || return 66
+  done
+  command::require "${editor}" || return "$?"
+  "${editor}" "$@"
 }

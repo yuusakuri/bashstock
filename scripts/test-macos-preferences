@@ -52,7 +52,7 @@ apply_settings() {
   check shell::completion::enable-ignore-case
   check mac::wake-on-lan::enable
   check mac::keyboard::use-function-keys
-  check key-binding::disable-option-t
+  check mac::keyboard::disable-option-t
   check mac::keyboard::set-repeat
   check mac::dock::set-autohide-instant
   check mac::trackpad::disable-smart-zoom

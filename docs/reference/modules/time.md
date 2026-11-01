@@ -1,6 +1,6 @@
 # time
 
-Clocks, timestamps, and waiting.
+Clocks, timestamps, time zones, and waiting.
 
 ## Overview
 
@@ -20,6 +20,9 @@ Formats follow ISO 8601. Functions that need a clock provider return 69 when it 
 * [time::local-date-time-seconds-extended](#timelocal-date-time-seconds-extended)
 * [time::local-date-extended](#timelocal-date-extended)
 * [time::local-date-time-seconds-basic](#timelocal-date-time-seconds-basic)
+* [time::sleep-hours](#timesleep-hours)
+* [time::posix-timezone](#timeposix-timezone)
+* [time::status-continuous](#timestatus-continuous)
 
 ### time::monotonic-milliseconds
 
@@ -297,4 +300,73 @@ _Function has no arguments._
 #### Output on stdout
 
 * A time such as 20261014T120405.
+
+### time::sleep-hours
+
+Sleep for a non-negative integer number of hours.
+
+#### Example
+
+```bash
+time::sleep-hours 2 && make release
+```
+
+#### Arguments
+
+* **$1** (integer): Number of hours, 0 or more.
+
+#### Exit codes
+
+* **0**: The time passed.
+* **64**: The value is not a non-negative integer.
+* **69**: sleep is unavailable.
+
+### time::posix-timezone
+
+Write the POSIX TZ string for a UTC offset.
+
+POSIX TZ offsets have the opposite sign of ISO 8601 offsets, so +09:30
+becomes UTC-9:30 and -05:00 becomes UTC+5.
+
+#### Example
+
+```bash
+time::posix-timezone +09:00
+# UTC-9
+```
+
+#### Arguments
+
+* **$1** (string): OFFSET Z or an offset in the form +HH:MM or -HH:MM, with HH up to 23 and MM up to 59.
+
+#### Exit codes
+
+* **0**: The value was written.
+* **64**: The offset is malformed or out of range.
+
+#### Output on stdout
+
+* The TZ value, such as UTC-9 or UTC+5:30.
+
+### time::status-continuous
+
+Write the elapsed time since boot and the local time every three seconds until stopped.
+
+#### Example
+
+```bash
+time::status-continuous   # Stop with Ctrl-C.
+```
+
+_Function has no arguments._
+
+#### Exit codes
+
+* **64**: An argument was given.
+* **74**: sleep failed.
+* other The status of the clock function that failed.
+
+#### Output on stdout
+
+* Two lines every three seconds: the seconds since boot and the local date and time.
 
