@@ -711,8 +711,7 @@ ubuntu::setup-desktop-22() {
 # @description Install Homebrew with the official installer when it is missing.
 #
 # The new Zsh sessions read brew shellenv from .zshrc, and the current
-# process finds brew on PATH afterwards. The prefix is /opt/homebrew on Apple
-# silicon and /usr/local on Intel Macs.
+# process finds brew on PATH afterwards. Homebrew lives in /opt/homebrew.
 #
 # @noargs
 # @exitcode 0 Homebrew is installed.
@@ -735,7 +734,6 @@ homebrew::install() {
   rm -rf -- "${directory}"
   [[ "${status}" -eq 0 ]] || return "${status}"
   local prefix=/opt/homebrew
-  [[ -x "${prefix}/bin/brew" ]] || prefix=/usr/local
   setup::_ensure-file "${HOME}/.zshrc" || return "$?"
   file::replace-text-or-append "${HOME}/.zshrc" '^.*brew shellenv.*$' \
     "eval \"\$(${prefix}/bin/brew shellenv)\"" || return "$?"

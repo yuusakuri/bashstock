@@ -451,7 +451,7 @@ BashStockが公開する関数をモジュールごとに示します。
 | [`go::version::latest`](modules/util.md#goversionlatest) | Write the newest stable Go version from go::version::list. |
 | [`ruby::version::list`](modules/util.md#rubyversionlist) | Write stable Ruby versions that rbenv can install in ascending order. |
 | [`ruby::version::latest`](modules/util.md#rubyversionlatest) | Write the newest stable Ruby version that rbenv can install. |
-| [`rosetta::install`](modules/util.md#rosettainstall) | Install Rosetta on Apple silicon when it is missing, accepting its license. |
+| [`rosetta::install`](modules/util.md#rosettainstall) | Install Rosetta when it is missing, accepting its license. |
 | [`net::dns::servers`](modules/util.md#netdnsservers) | Write the configured IPv4 and IPv6 DNS servers, one per line. |
 | [`utm::open`](modules/util.md#utmopen) | Open the UTM application on macOS. |
 | [`mozc::config::open`](modules/util.md#mozcconfigopen) | Open the Mozc settings dialog on a Linux desktop. |

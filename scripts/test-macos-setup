@@ -197,9 +197,7 @@ printf '#include <stdio.h>\nint main(void) { puts("built"); return 0; }\n' >"${R
 check clang -o "${RUNNER_TEMP}/hello" "${RUNNER_TEMP}/hello.c"
 check output_is built "${RUNNER_TEMP}/hello"
 check rosetta::install
-if [[ "$(uname -m)" == arm64 ]]; then
-  check /usr/bin/arch -x86_64 /usr/bin/true
-fi
+check /usr/bin/arch -x86_64 /usr/bin/true
 
 # The log is long, so the output before each failed setup step is repeated here.
 for log in "${RUNNER_TEMP}"/mac-setup-*.log; do
