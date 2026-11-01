@@ -595,12 +595,19 @@ chmod +x "${HOME}/.local/bin/codex"'
   [ "${SECONDS}" -lt 10 ]
 }
 
-@test "Rancher Desktop refuses Ubuntu releases that its packages do not support" {
+@test "Rancher Desktop refuses Ubuntu and Fedora releases that its packages do not support" {
   use_platform ubuntu 20.04 focal
   record_root_commands
   run --separate-stderr rancher-desktop::install
   [ "${status}" -eq 69 ]
   [[ "${stderr}" == *'Rancher Desktop requires Ubuntu 22.04 or later.'* ]]
+  [ ! -s "${ROOT_LOG}" ]
+
+  # Its rdctl needs glibc 2.34, which Fedora 34 lacks.
+  use_platform fedora 34
+  run --separate-stderr rancher-desktop::install
+  [ "${status}" -eq 69 ]
+  [[ "${stderr}" == *'Rancher Desktop requires Fedora 35 or later.'* ]]
   [ ! -s "${ROOT_LOG}" ]
 }
 

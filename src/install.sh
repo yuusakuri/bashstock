@@ -1424,14 +1424,14 @@ rancher-desktop::versions() {
 # @description Install Rancher Desktop and start it.
 #
 # Rosetta and Colima are installed separately with rosetta::install and colima::install.
-# Ubuntu 22.04 or later and Fedora install from Rancher's repository; Fedora
-# uses the packages that Rancher builds for Fedora.
+# Ubuntu 22.04 or later and Fedora 35 or later install from Rancher's
+# repository; Fedora uses the packages that Rancher builds for Fedora.
 #
 # @arg $1 string Optional version from rancher-desktop::versions; on macOS only the current version.
 # @stderr On Linux, a reminder to log in again when the user was added to the kvm group.
 # @exitcode 0 Rancher Desktop is installed and was started.
 # @exitcode 64 The argument count is wrong.
-# @exitcode 69 The platform is unsupported, Ubuntu is older than 22.04, or the version is unavailable.
+# @exitcode 69 The platform is unsupported, Ubuntu is older than 22.04, Fedora is older than 35, or the version is unavailable.
 # @exitcode 74 The repository or its key could not be downloaded.
 # @exitcode other The status of the package manager.
 # @example
@@ -1463,6 +1463,8 @@ rancher-desktop::_install-linux() {
       https://download.opensuse.org/repositories/isv:/Rancher:/stable/deb/Release.key \
       https://download.opensuse.org/repositories/isv:/Rancher:/stable/deb/ ./ '' || return "$?"
   else
+    # The bundled rdctl needs glibc 2.34, which Fedora 35 introduced.
+    package::_require-release fedora 35 'Rancher Desktop' || return "$?"
     # Rancher builds the rpm repository for openSUSE, whose package names Fedora
     # lacks, so dnf fell back to version 1.2.1; the fedora repository is built for Fedora.
     package::_dnf-register-repository isv-rancher-stable \
