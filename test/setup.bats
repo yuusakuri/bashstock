@@ -1635,7 +1635,8 @@ use_fake_sudoers() {
   curl() { printf '%s\n' "$*" >>"${CURL_LOG}"; return 28; }
   run package::_download https://example.invalid/stalled "${BATS_TEST_TMPDIR}/stalled"
   [ "${status}" -eq 74 ]
-  [ "$(grep -c . "${CURL_LOG}")" -eq 3 ]
+  [ "$(grep -c . "${CURL_LOG}")" -eq 1 ]
+  grep -q -- '--retry 3 --connect-timeout 30 --speed-limit 1024 --speed-time 60' "${CURL_LOG}"
 }
 
 @test "Ruby versions survive pipefail when rbenv lists other implementations last" {
