@@ -4,39 +4,39 @@ load test_helper
 bats_require_minimum_version 1.5.0
 
 @test "confirmation normalizes one input line" {
-  run --separate-stderr prompt::confirm 'Continue' yes <<<"Y"
+  run --separate-stderr shell::confirm 'Continue' yes <<<"Y"
   [ "${status}" -eq 0 ]
   [ "${output}" = 'yes' ]
   [ "${stderr}" = 'Continue [yes/no]:' ]
 
-  run --separate-stderr prompt::confirm 'Continue' no <<<""
+  run --separate-stderr shell::confirm 'Continue' no <<<""
   [ "${status}" -eq 0 ]
   [ "${output}" = 'no' ]
 
-  run --separate-stderr prompt::confirm 'Continue' <<<"maybe"
+  run --separate-stderr shell::confirm 'Continue' <<<"maybe"
   [ "${status}" -eq 64 ]
 }
 
 @test "line input uses the default only for empty input" {
-  run prompt::read-line-with-default 'Name' default <<<"value\\path"
+  run shell::read-line 'Name' default <<<"value\\path"
   [ "${status}" -eq 0 ]
   [[ "${output}" == *'value\path' ]]
 
-  run prompt::read-line-with-default 'Name' default <<<""
+  run shell::read-line 'Name' default <<<""
   [ "${status}" -eq 0 ]
   [[ "${output}" == *'default' ]]
 }
 
 @test "cancel confirmation and selection normalize results" {
-  run prompt::confirm-or-cancel 'Continue' cancel <<<"C"
+  run shell::confirm-or-cancel 'Continue' cancel <<<"C"
   [ "${status}" -eq 0 ]
   [[ "${output}" == *'cancel' ]]
 
-  run prompt::select-one 'Choose' first 'second value' <<<"2"
+  run shell::choose-one 'Choose' first 'second value' <<<"2"
   [ "${status}" -eq 0 ]
   [[ "${output}" == *'second value' ]]
 
-  run prompt::select-one 'Choose' first second <<<"3"
+  run shell::choose-one 'Choose' first second <<<"3"
   [ "${status}" -eq 64 ]
 }
 

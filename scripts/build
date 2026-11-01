@@ -6,6 +6,12 @@ set -o pipefail
 
 project_root="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
 readonly project_root
+# Modules that the OS providers and every namespace module depend on.
+core_modules=(
+  settings console number string regex array arg help
+  system command shell terminal path time log json option file os
+)
+readonly core_modules
 build_staging_root=''
 
 # @description Remove the temporary build directory.
@@ -23,14 +29,25 @@ build::_write-module() {
   printf '\n'
 }
 
+# @description Write the namespace modules that follow the OS providers, in name order.
+build::_after-platform-modules() {
+  local path='' name=''
+  for path in "${project_root}"/src/*.sh; do
+    name="$(basename -- "${path}" .sh)"
+    case " ${core_modules[*]} " in *" ${name} "*) continue ;; esac
+    [[ "${name}" == os-* ]] || printf '%s\n' "${name}"
+  done | LC_ALL=C sort
+}
+
 # @description Combine the license, library modules, OS providers, and execution entry point.
 build::_write-library() {
-  local before_platform=(
-    runtime/header settings console number string regex array arguments completion help
-    system command shell terminal path prompt time log json option file os
-  )
-  local after_platform=(user aws git net util package install android android-avd desktop runtime/operations runtime/footer)
+  local before_platform=(runtime/header "${core_modules[@]}")
+  local after_platform=()
   local module=''
+  while IFS= read -r module; do
+    after_platform+=("${module}")
+  done < <(build::_after-platform-modules)
+  after_platform+=(runtime/operations runtime/footer)
 
   printf '#!/usr/bin/env bash\n'
   printf '# Zero-argument functions validate arity; regex subshells preserve BASH_REMATCH.\n'

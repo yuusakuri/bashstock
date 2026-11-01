@@ -38,8 +38,9 @@ git submodule update --init --recursive
 | `just test` | 配布物を生成してからBatsテストを実行します。 |
 | `just verify` | 静的検査、配布物の生成、全テストを順に実行します。 |
 
-開発では`src/`の機能別ファイルと`src/runtime/`の実行制御を編集します。
-`scripts/build`がモジュールの結合順を管理します。
+開発では`src/`の名前空間別ファイルと`src/runtime/`の実行制御を編集します。
+公開関数は、最上位の名前空間と同じ名前のファイル（`git::commit::create`なら`src/git.sh`）へ置きます。
+`scripts/build`が基盤モジュールの結合順を管理し、それ以外のモジュールは名前順に結合します。
 生成した`dist/bashstock.sh`は直接編集せず、テストではこの配布ファイルを読み込みます。
 `dist/`はローカルとCIで生成するため、Gitの追跡対象には含めません。
 

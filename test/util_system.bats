@@ -111,19 +111,19 @@ record_root_commands() {
   record_root_commands
   mkswap() { :; }
   file::append-text() { printf 'append %s %s' "$1" "$2" >>"${ROOT_LOG}"; }
-  run swap::create '' "${BATS_TEST_TMPDIR}/swapfile"
+  run mem::swap::create '' "${BATS_TEST_TMPDIR}/swapfile"
   [ "$status" -eq 0 ]
   grep -Fqx "fallocate -l 8589934592 ${BATS_TEST_TMPDIR}/swapfile" "${ROOT_LOG}"
   grep -Fqx "swapon ${BATS_TEST_TMPDIR}/swapfile" "${ROOT_LOG}"
   grep -Fq "append /etc/fstab ${BATS_TEST_TMPDIR}/swapfile none swap sw 0 0" "${ROOT_LOG}"
   : >"${BATS_TEST_TMPDIR}/existing"
-  run --separate-stderr swap::create 1048576 "${BATS_TEST_TMPDIR}/existing"
+  run --separate-stderr mem::swap::create 1048576 "${BATS_TEST_TMPDIR}/existing"
   [ "$status" -eq 73 ]
-  run swap::create 1048576 relative
+  run mem::swap::create 1048576 relative
   [ "$status" -eq 64 ]
-  run swap::create 1048576 '/swap file'
+  run mem::swap::create 1048576 '/swap file'
   [ "${status}" -eq 64 ]
-  run swap::create 1048576 '/swap\file'
+  run mem::swap::create 1048576 '/swap\file'
   [ "${status}" -eq 64 ]
 }
 
@@ -183,14 +183,14 @@ record_root_commands() {
   sysctl() {
     printf 'total = 2048.00M  used = 1201.25M  free = 846.75M  (encrypted)\n'
   }
-  run mem::swap-total-bytes
+  run mem::swap::total-bytes
   [ "${status}" -eq 0 ]
   [ "${output}" = '2147483648' ]
 
   sysctl() {
     printf 'total = 0.00M  used = 0.00M  free = 0.00M  (encrypted)\n'
   }
-  run mem::swap-total-bytes
+  run mem::swap::total-bytes
   [ "${output}" = '0' ]
 }
 
@@ -199,7 +199,7 @@ record_root_commands() {
   record_root_commands
   mkswap() { :; }
   file::append-text() { return 74; }
-  run swap::create 1048576 "${BATS_TEST_TMPDIR}/swapfile"
+  run mem::swap::create 1048576 "${BATS_TEST_TMPDIR}/swapfile"
   [ "$status" -eq 74 ]
   grep -Fqx "swapoff ${BATS_TEST_TMPDIR}/swapfile" "${ROOT_LOG}"
   grep -Fqx "rm -f -- ${BATS_TEST_TMPDIR}/swapfile" "${ROOT_LOG}"
@@ -209,7 +209,7 @@ record_root_commands() {
     printf '%s\n' "$*" >>"${ROOT_LOG}"
     [[ "$1" != mkswap ]]
   }
-  run swap::create 1048576 "${BATS_TEST_TMPDIR}/swapfile"
+  run mem::swap::create 1048576 "${BATS_TEST_TMPDIR}/swapfile"
   [ "$status" -eq 74 ]
   ! grep -q '^swapon\|^swapoff' "${ROOT_LOG}"
   grep -Fqx "rm -f -- ${BATS_TEST_TMPDIR}/swapfile" "${ROOT_LOG}"

@@ -140,14 +140,16 @@ package::_temporary-directory() {
   mktemp -d "${TMPDIR:-/tmp}/bashstock.XXXXXX" 2>/dev/null || return 74
 }
 
-# @description Run curl for one HTTPS request, retrying network failures up to three times.
+# @description Run curl for one HTTPS request, retrying each network failure through one retry path.
 #
 # A transfer slower than 1 KiB/s for 60 seconds is aborted and retried, so a
-# stalled connection does not hang the caller. curl itself retries timeouts
-# and transient HTTP statuses such as 502 and 429; any other HTTP error status
-# (curl exit 22) is final, while dropped connections are attempted again. Requests to api.github.com carry GITHUB_TOKEN when it is
-# set, which raises GitHub's rate limit for clients that share an address;
-# the token goes to curl on standard input, never in its arguments.
+# stalled connection does not hang the caller. curl retries timeouts and
+# transient HTTP statuses such as 502 and 429 up to three times. Other
+# transport errors are retried by this function up to three total attempts;
+# HTTP errors not retried by curl (curl exit 22) are final. Requests to
+# api.github.com carry GITHUB_TOKEN when it is set, which raises GitHub's rate
+# limit for clients that share an address; the token goes to curl on standard
+# input, never in its arguments.
 # @internal
 package::_curl() {
   [[ "$#" -ge 1 ]] || return 64
@@ -168,7 +170,9 @@ package::_curl() {
       [[ -z "${body}" ]] || printf '%s\n' "${body}"
       return 0
     fi
-    [[ "${status}" -ne 22 && "${attempt}" -lt 3 ]] || return 74
+    # curl has already exhausted its own retry budget for timeouts (28) and
+    # transient HTTP errors (22); retry only failures outside those classes.
+    [[ "${status}" -ne 22 && "${status}" -ne 28 && "${attempt}" -lt 3 ]] || return 74
     sleep $((attempt * 5))
     attempt=$((attempt + 1))
   done
@@ -641,4 +645,28 @@ package::_add-current-user-to-group() {
       return 69
       ;;
   esac
+}
+
+# @description Sort tab-separated lines by the version in their first field and drop that field.
+# @internal
+package::_sort-by-first-field() {
+  [[ "$#" -eq 0 ]] || return 64
+  command::require perl || return "$?"
+  perl -e '
+    sub compare_versions {
+      my @left = split /([0-9]+)/, $_[0];
+      my @right = split /([0-9]+)/, $_[1];
+      while (@left || @right) {
+        my $x = shift @left;
+        my $y = shift @right;
+        return -1 unless defined $x;
+        return 1 unless defined $y;
+        my $result = ($x =~ /^[0-9]+$/ && $y =~ /^[0-9]+$/) ? $x <=> $y : $x cmp $y;
+        return $result if $result;
+      }
+      return 0;
+    }
+    my @lines = map { chomp; [split /\t/, $_, 2] } grep { /\t/ } <STDIN>;
+    print "$_->[1]\n" for sort { compare_versions($a->[0], $b->[0]) } @lines;
+  '
 }

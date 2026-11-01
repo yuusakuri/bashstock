@@ -1,6 +1,6 @@
 # path
 
-Lexical path operations and file-type tests.
+Lexical path operations, file-type tests, and path search.
 
 ## Overview
 
@@ -25,6 +25,7 @@ Lexical functions never touch the file system; tests follow the Bash test semant
 * [path::config-home](#pathconfig-home)
 * [path::change-owner-recursively](#pathchange-owner-recursively)
 * [path::change-owner-recursively-as-root](#pathchange-owner-recursively-as-root)
+* [path::find](#pathfind)
 
 ### path::directory-name
 
@@ -420,4 +421,30 @@ path::change-owner-recursively-as-root /srv/app deploy www-data
 * **64**: An argument is invalid.
 * **66**: The directory does not exist or is a symbolic link.
 * other The status of the root helper.
+
+### path::find
+
+Write the paths below a directory that match a case-insensitive Bash ERE, separated by NUL.
+
+#### Example
+
+```bash
+path::find '\.(jpe?g|png)$' "${HOME}/Pictures" | xargs -0 ls -l
+```
+
+#### Arguments
+
+* **$1** (string): Extended regular expression evaluated by Bash on each path.
+* **$2** (string): Optional directory to search. Defaults to the current directory.
+
+#### Exit codes
+
+* **0**: At least one path matches.
+* **1**: No path matches.
+* **64**: The arguments are invalid or the expression is not valid.
+* **66**: The directory does not exist.
+
+#### Output on stdout
+
+* NUL-separated matching paths.
 

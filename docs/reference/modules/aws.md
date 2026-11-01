@@ -1,10 +1,10 @@
 # aws
 
-Amazon EC2 instance metadata.
+Amazon EC2 instance metadata and AWS VPN Client logs.
 
 ## Overview
 
-The functions read the instance metadata service with IMDSv2 tokens.
+Metadata functions read the instance metadata service with IMDSv2 tokens; VPN Client functions manage its local log files.
 
 ## Index
 
@@ -22,6 +22,9 @@ The functions read the instance metadata service with IMDSv2 tokens.
 * [aws::instances-in-auto-scaling-group](#awsinstances-in-auto-scaling-group)
 * [aws::auto-scaling-group-name](#awsauto-scaling-group-name)
 * [aws::auto-scaling-group-size](#awsauto-scaling-group-size)
+* [aws::vpn-client::log::files](#awsvpn-clientlogfiles)
+* [aws::vpn-client::log::clear](#awsvpn-clientlogclear)
+* [aws::vpn-client::log::open](#awsvpn-clientlogopen)
 
 ### aws::is-ec2-instance
 
@@ -395,4 +398,79 @@ aws::auto-scaling-group-size web-asg ap-northeast-1
 #### Output on stdout
 
 * The desired capacity as a number.
+
+### aws::vpn-client::log::files
+
+Write AWS VPN Client log files as NUL-separated paths.
+
+Files whose names contain aws_vpn_client_ and do not contain
+ovpn_aws_vpn_client are selected, as in the reference script.
+
+#### Example
+
+```bash
+aws::vpn-client::log::files | xargs -0 tail -n 50
+```
+
+#### Arguments
+
+* **$1** (string): Optional log directory. Defaults to the AWS VPN Client log directory of this OS.
+
+#### Exit codes
+
+* **0**: The paths were written.
+* **64**: More than one argument was given.
+* **66**: The directory does not exist or is a symbolic link.
+* **69**: find is unavailable.
+
+#### Output on stdout
+
+* NUL-separated paths of the log files.
+
+### aws::vpn-client::log::clear
+
+Remove regular log files below the AWS VPN Client log directory.
+
+#### Example
+
+```bash
+aws::vpn-client::log::clear
+```
+
+#### Arguments
+
+* **$1** (string): Optional log directory. Defaults to the AWS VPN Client log directory of this OS.
+
+#### Exit codes
+
+* **0**: Every regular file below the directory was removed.
+* **64**: More than one argument was given.
+* **66**: The directory does not exist or is a symbolic link.
+* **69**: find is unavailable.
+* **74**: A file could not be removed.
+
+### aws::vpn-client::log::open
+
+Open log files with an editor command, passing each path as one argument.
+
+#### Example
+
+```bash
+files=()
+while IFS= read -r -d '' file; do files+=("${file}"); done < <(aws::vpn-client::log::files)
+aws::vpn-client::log::open code "${files[@]}"
+```
+
+#### Arguments
+
+* **$1** (string): Editor command, such as code.
+* **...** (string): Log files; at least one.
+
+#### Exit codes
+
+* **0**: The editor was started.
+* **64**: The editor is empty, or no file was given.
+* **66**: A path is not a regular file.
+* **69**: The editor command is unavailable.
+* other The status of the editor.
 

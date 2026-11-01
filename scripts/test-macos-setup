@@ -103,7 +103,7 @@ bindings="${HOME}/Library/KeyBindings/DefaultKeyBinding.dict"
 check plutil -lint "${bindings}"
 check output_is 'noop:' plutil -extract '~t' raw -o - "${bindings}"
 cp "${bindings}" "${RUNNER_TEMP}/bindings.before"
-check key-binding::disable-option-t
+check mac::keyboard::disable-option-t
 check cmp "${RUNNER_TEMP}/bindings.before" "${bindings}"
 
 printf '== startup files\n'

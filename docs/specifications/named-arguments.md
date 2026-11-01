@@ -59,7 +59,7 @@ user::create() {
 
 ### 検査関数
 
-`src/arguments.sh`が提供する検査関数は次のとおり。値の存在確認、必須値の確認、型や形式の検査、不明な引数のエラー生成を共通化する。すべて失敗時に終了状態64を返し、標準エラー出力へ診断を書く。
+`src/arg.sh`が提供する検査関数は次のとおり。値の存在確認、必須値の確認、型や形式の検査、不明な引数のエラー生成を共通化する。すべて失敗時に終了状態64を返し、標準エラー出力へ診断を書く。
 
 | 関数 | 検査内容 |
 |---|---|
@@ -90,7 +90,7 @@ user::_create-args() {
 }
 ```
 
-`src/completion.sh`の`arg::completion::dispatch`は、補完対象の公開関数名から補完用内部関数名を自動的に導出して呼び出す。中央のdispatcherには個別関数の知識を持たせない。`arg::completion::register-all`は、呼び出された時点で定義されているすべての`::_*-args`関数を検出し、対応する公開関数へ`complete -F arg::completion::dispatch`を登録する。
+`src/arg.sh`の`arg::completion::dispatch`は、補完対象の公開関数名から補完用内部関数名を自動的に導出して呼び出す。中央のdispatcherには個別関数の知識を持たせない。`arg::completion::register-all`は、呼び出された時点で定義されているすべての`::_*-args`関数を検出し、対応する公開関数へ`complete -F arg::completion::dispatch`を登録する。
 
 対話型Bashでは、最初の読み込み時に`arg::completion::register-all`を自動で呼び出す。非対話型Bashでは自動登録しない。読み込み後に補完用の関数を定義した場合は、`arg::completion::register-all`を明示的に呼び出して登録できる。
 

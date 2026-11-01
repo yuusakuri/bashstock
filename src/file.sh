@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # @file file
-# @brief Reading, writing, and replacing text in files.
+# @brief Reading, writing, finding, and replacing text in files.
 # @description Text is written to a temporary file in the target directory and then moved into place.
 
-# shellcheck disable=SC2234
+# shellcheck disable=SC2015,SC2034,SC2046,SC2119,SC2120,SC2155,SC2163,SC2234,SC2317,SC2319,SC2329
 
 # @description Require a readable regular file that is not a symbolic link.
 # @internal
@@ -751,7 +751,6 @@ file::replace-or-append-text() {
   file::replace-text-or-append "$@"
 }
 
-
 # @description Append text through the root execution dispatcher.
 #
 # Same as file::append-text, but always in a separate root process.
@@ -862,4 +861,268 @@ file::replace-all-text-in-files-as-root() {
 file::replace-or-append-text-as-root() {
   [[ "$#" -eq 3 ]] || return 64
   bashstock::_run-as-root replace-or-append-text "$@"
+}
+
+# @description Write text to a regular file using an atomic replacement.
+#
+# New files get mode 0644 whatever the caller's umask is and whether or not
+# root writes them; existing metadata is preserved.
+#
+# @arg $1 string File path; a symbolic link is refused.
+# @arg $2 string Text to write exactly; include a trailing newline when one is needed.
+# @exitcode 0 The file holds the text.
+# @exitcode 64 The path is empty or a symbolic link, or the argument count is not two.
+# @exitcode 66 The path exists but is not a regular file.
+# @exitcode 74 The temporary file could not be written or moved into place.
+# @exitcode other The status of the root helper when elevation was needed.
+# @example
+#   file::write-text /etc/udev/rules.d/90-device.rules $'SUBSYSTEM=="usb", MODE="0666"\n'
+file::write-text() {
+  if [[ "$#" -ne 2 || -z "$1" || -L "$1" ]]; then return 64; fi
+  local file="$1" text="$2" temporary='' new_file=0
+  if [[ -e "$file" && ! -f "$file" ]]; then return 66; fi
+  if file::_requires-root "$file"; then
+    bashstock::_run-as-root write-text "$@"
+    return
+  fi
+  temporary="$(umask 077 && file::_temporary-path "$file")" || return "$?"
+  if [[ -e "$file" ]]; then
+    file::_copy-metadata-and-content "$file" "$temporary" || { rm -f -- "$temporary"; return 74; }
+  else
+    new_file=1
+  fi
+  if ! printf '%s' "$text" >"$temporary"; then rm -f -- "$temporary"; return 74; fi
+  if [[ "${new_file}" -eq 1 ]] && ! chmod 0644 "${temporary}"; then
+    rm -f -- "${temporary}"
+    return 74
+  fi
+  if ! mv -f -- "$temporary" "$file"; then rm -f -- "$temporary"; return 74; fi
+}
+
+# @description Write the regular files below a directory whose content matches an ERE, separated by NUL.
+#
+# The files are searched in parallel by grep -E.
+#
+# @arg $1 string Extended regular expression evaluated by grep -E.
+# @arg $2 string Optional directory to search. Defaults to the current directory.
+# @arg $3 integer Optional number of parallel grep processes. Defaults to the number of online CPUs.
+# @arg $4 string Optional binary mode: skip (default) ignores binary files; include searches them as text.
+# @stdout NUL-separated paths of the matching files.
+# @exitcode 0 At least one file matches.
+# @exitcode 1 No file matches.
+# @exitcode 64 The expression is invalid, or a mode or count is malformed.
+# @exitcode 66 The directory does not exist.
+# @exitcode 69 find, xargs, or grep is unavailable.
+# @exitcode 74 A file could not be searched.
+# @example
+#   file::find-by-content 'FIXME|XXX' src | xargs -0 grep -nE 'FIXME|XXX'
+file::find-by-content() {
+  [[ "$#" -ge 1 && "$#" -le 4 && -n "$1" ]] || return 64
+  local expression="$1" directory="${2:-.}" processes="${3:-}" binary="${4:-skip}" output='' status=0
+  local binary_option=''
+  [[ -d "${directory}" ]] || return 66
+  case "${binary}" in
+    skip) binary_option='-I' ;;
+    include) binary_option='-a' ;;
+    *) return 64 ;;
+  esac
+  command::require grep || return "$?"
+  command::require xargs || return "$?"
+  if [[ -z "${processes}" ]]; then
+    processes="$(getconf _NPROCESSORS_ONLN 2>/dev/null)" || processes=1
+  fi
+  ( [[ "${processes}" =~ ^[1-9][0-9]*$ ]] ) || return 64
+  grep -E -e "${expression}" </dev/null >/dev/null 2>&1 || status="$?"
+  [[ "${status}" -ne 2 ]] || return 64
+  output="$(mktemp -d "${TMPDIR:-/tmp}/bashstock-find.XXXXXX")" || return 74
+  status=0
+  # The file list is collected first, so a directory that find cannot read
+  # fails the search instead of hiding behind the xargs status.
+  if ! find "${directory}" -type f -print0 >"${output}/files" 2>/dev/null; then
+    rm -rf -- "${output}"
+    return 74
+  fi
+  # xargs reports one status for every grep, so a grep that could not read a
+  # file leaves a marker instead; its own status 1 only means no match.
+  # shellcheck disable=SC2016 # The worker script expands its own arguments.
+  BASHSTOCK_FIND_ERROR="${output}/error" xargs -0 -P "${processes}" -n 64 sh -c '
+    grep "$@"
+    [ "$?" -le 1 ] || : >"${BASHSTOCK_FIND_ERROR}"
+  ' sh -E -l --null "${binary_option}" -e "${expression}" -- \
+    <"${output}/files" >"${output}/matches" 2>/dev/null || status="$?"
+  if [[ "${status}" -ne 0 || -e "${output}/error" ]]; then
+    rm -rf -- "${output}"
+    return 74
+  fi
+  if [[ ! -s "${output}/matches" ]]; then
+    rm -rf -- "${output}"
+    return 1
+  fi
+  cat -- "${output}/matches"
+  rm -rf -- "${output}"
+}
+
+# @description Write the most recently modified regular file whose base name matches a Bash ERE.
+#
+# Files modified at the same second are ordered by their path bytes, and the
+# first one is written.
+#
+# @arg $1 string Extended regular expression matched against base names.
+# @arg $2 string Optional directory to search recursively. Defaults to the current directory.
+# @stdout The path of the newest matching file.
+# @exitcode 0 A file was written.
+# @exitcode 1 No file matches.
+# @exitcode 64 The argument count is wrong.
+# @exitcode 66 The directory does not exist.
+# @example
+#   file::latest-by-name '^backup-.*\.tar\.gz$' /var/backups
+file::latest-by-name() {
+  [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64
+  local expression="$1" directory="${2:-.}" path='' newest='' newest_time=0 current_time='' LC_ALL=C
+  [[ -d "${directory}" ]] || return 66
+  while IFS= read -r -d '' path; do
+    ( [[ "${path##*/}" =~ ${expression} ]] ) || continue
+    current_time="$(file::modified-time-unix-seconds "${path}" 2>/dev/null)" || continue
+    if [[ -z "${newest}" ]] || ((current_time > newest_time)) ||
+      { ((current_time == newest_time)) && [[ "${path}" < "${newest}" ]]; }; then
+      newest="${path}"
+      newest_time="${current_time}"
+    fi
+  done < <(find "${directory}" -type f -print0)
+  [[ -n "${newest}" ]] || return 1
+  printf '%s\n' "${newest}"
+}
+
+# @description Open an editor for a file, using sudoedit only when required.
+#
+# EDITOR is split on whitespace into a command and its arguments, such as
+# code --wait. It defaults to vi.
+#
+# @arg $1 string File to edit. A missing file is created by the editor.
+# @exitcode 0 The editor exited successfully.
+# @exitcode 64 The argument count is not one or the path is empty.
+# @exitcode 66 The path exists but is not a regular file.
+# @exitcode 69 The file is not writable and sudoedit is unavailable.
+# @exitcode other The status of the editor.
+# @example
+#   EDITOR=nano file::edit /etc/hosts
+file::edit() {
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  if [[ -e "$1" && ! -f "$1" ]]; then
+    return 66
+  fi
+  if [[ -w "$1" || ( ! -e "$1" && -w "$(path::directory-name "$1")" ) ]]; then
+    local IFS=$' \t\n'
+    local editor_command=()
+    read -r -a editor_command <<<"${EDITOR:-vi}"
+    [[ "${#editor_command[@]}" -gt 0 ]] || editor_command=(vi)
+    "${editor_command[@]}" "$1"
+  else
+    command -v sudoedit >/dev/null 2>&1 || return 69
+    sudoedit "$1"
+  fi
+}
+
+# @description Release a file held by other processes.
+#
+# Each holder receives SIGTERM, and holders left after the timeout receive
+# SIGKILL. A signal the current user may not send is sent through
+# administrator execution.
+#
+# @arg $1 string File to release.
+# @arg $2 integer Optional seconds to wait after SIGTERM: a non-negative integer. Defaults to 2.
+# @exitcode 0 No process holds the file.
+# @exitcode 64 The arguments are invalid, the timeout is not a non-negative integer, or the file does not exist.
+# @exitcode 69 lsof is unavailable.
+# @exitcode 74 The clock could not be read.
+# @exitcode 75 The file is still open after SIGKILL.
+# @example
+#   file::release "${HOME}/.local/share/app/database.lock" 5
+file::release() {
+  [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64
+  local timeout="${2:-2}" start='' pid=''
+  ( [[ "${timeout}" =~ ^[0-9]+$ ]] ) || return 64
+  command -v lsof >/dev/null 2>&1 || return 69
+  start="$(date +%s)" || return 74
+  while read -r pid; do
+    [[ -n "$pid" ]] || continue
+    kill -TERM "$pid" 2>/dev/null || command::run-as-root kill -TERM "$pid" 2>/dev/null || true
+  done < <(lsof -t -- "$1" 2>/dev/null)
+  while (( $(date +%s) - start < timeout )); do
+    lsof -t -- "$1" >/dev/null 2>&1 || return 0
+    sleep 0.1
+  done
+  while read -r pid; do
+    kill -KILL "$pid" 2>/dev/null || command::run-as-root kill -KILL "$pid" 2>/dev/null || true
+  done < <(lsof -t -- "$1" 2>/dev/null)
+  if lsof -t -- "$1" >/dev/null 2>&1; then
+    return 75
+  fi
+}
+
+# @description Write the directories and text files below a path, with the contents of each text file.
+#
+# Directories are written as paths. Regular files whose MIME type is text/*
+# are written by file::_print-text; other files are skipped.
+#
+# @arg $1 string Optional starting path. Defaults to the current directory.
+# @arg $2 integer Optional minimum depth. Defaults to 1.
+# @arg $3 integer Optional maximum depth. Unlimited when omitted.
+# @stdout Directory paths and the contents of text files.
+# @exitcode 0 The tree was written.
+# @exitcode 64 The arguments are invalid.
+# @exitcode 66 The path does not exist.
+# @exitcode 69 file is unavailable.
+# @exitcode other The status of the file that could not be written.
+# @example
+#   file::tree-with-contents src 1 2 > context.txt
+file::tree-with-contents() {
+  [[ "$#" -le 3 ]] || return 64
+  local path="${1:-.}" minimum="${2:-1}" maximum="${3:-}" entry=''
+  [[ -e "${path}" ]] || return 66
+  ( [[ "${minimum}" =~ ^[0-9]+$ && ( -z "${maximum}" || "${maximum}" =~ ^[0-9]+$ ) ]] ) || return 64
+  command::require file || return "$?"
+  local arguments=("${path}" -mindepth "${minimum}")
+  [[ -z "${maximum}" ]] || arguments+=(-maxdepth "${maximum}")
+  while IFS= read -r -d '' entry; do
+    if [[ -d "${entry}" && ! -L "${entry}" ]]; then
+      printf '%s\n' "${entry}"
+    elif [[ -f "${entry}" && ! -L "${entry}" ]]; then
+      file::_print-text "${entry}" || return "$?"
+    fi
+  done < <(find "${arguments[@]}" -print0)
+}
+
+# @description Write a text file between header lines; files of other MIME types write nothing.
+# @internal
+file::_print-text() {
+  [[ "$#" -eq 1 && -f "$1" ]] || return 64
+  local type=''
+  type="$(file --brief --mime-type -- "$1")" || return 74
+  [[ "${type}" == text/* ]] || return 0
+  printf '==> %s <==\n' "$1"
+  cat -- "$1" || return 74
+  [[ -z "$(tail -c 1 -- "$1")" ]] || printf '\n'
+}
+
+# @description Write the last modification time of a file as Unix seconds.
+#
+# @arg $1 string File or symbolic link.
+# @stdout The modification time in seconds since 1970-01-01 UTC.
+# @exitcode 0 The time was written.
+# @exitcode 64 The argument count is not one or the path is empty.
+# @exitcode 66 The path does not exist.
+# @exitcode 69 stat is unavailable or the operating system is unsupported.
+# @exitcode 74 stat failed.
+# @example
+#   file::modified-time-unix-seconds /etc/hosts
+file::modified-time-unix-seconds() {
+  [[ "$#" -eq 1 && -n "$1" ]] || return 64
+  [[ -e "$1" || -L "$1" ]] || return 66
+  command::require stat || return "$?"
+  case "$(system::operating-system)" in
+    darwin) stat -f '%m' -- "$1" || return 74 ;;
+    linux) stat -c '%Y' -- "$1" || return 74 ;;
+    *) return 69 ;;
+  esac
 }

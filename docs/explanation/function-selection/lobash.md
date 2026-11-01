@@ -63,19 +63,19 @@ Pure Bash Bibleから採用した関数と同じ責務を持つLobashモジュ�
 
 | 参照元 | 本プロジェクトの関数 | 機能 | Bash 3.2での実装規則と必須テスト |
 |---|---|---|---|
-| `ask` | `prompt::confirm` | yesまたはnoを一度だけ読み、正規化した`yes`または`no`を標準出力へ書きます。 | `read -r`を使用し、`y`と`yes`、`n`と`no`をASCIIの大小文字を区別せずに受け付けます。yes、no、大小文字、空入力、不正値、EOF、非対話入力を確認します。 |
-| `ask_input` | `prompt::read-line-with-default` | 一行を読み、空入力なら指定された既定値、それ以外なら入力値を標準出力へ書きます。 | `read -r`を使用し、バックスラッシュを変換しません。通常入力、空入力、空の既定値、空白、バックスラッシュ、EOF、非対話入力を確認します。 |
-| `ask_with_cancel` | `prompt::confirm-or-cancel` | yes、no、cancelを一度だけ読み、正規化した値を標準出力へ書きます。 | `read -r`を使用し、`y`、`yes`、`n`、`no`、`c`、`cancel`をASCIIの大小文字を区別せずに受け付けます。三つの結果、大小文字、空入力、不正値、EOF、非対話入力を確認します。 |
-| `choose` | `prompt::select-one` | 一覧の番号を一度だけ読み、対応する選択肢を標準出力へ書きます。 | 選択肢を値引数として受け取り、配列名の間接参照と`eval`を使いません。先頭、末尾、範囲外、数値以外、空の一覧、空要素、改行を含む要素、EOF、非対話入力を確認します。 |
+| `ask` | `shell::confirm` | yesまたはnoを一度だけ読み、正規化した`yes`または`no`を標準出力へ書きます。 | `read -r`を使用し、`y`と`yes`、`n`と`no`をASCIIの大小文字を区別せずに受け付けます。yes、no、大小文字、空入力、不正値、EOF、非対話入力を確認します。 |
+| `ask_input` | `shell::read-line` | 一行を読み、空入力なら指定された既定値、それ以外なら入力値を標準出力へ書きます。 | `read -r`を使用し、バックスラッシュを変換しません。通常入力、空入力、空の既定値、空白、バックスラッシュ、EOF、非対話入力を確認します。 |
+| `ask_with_cancel` | `shell::confirm-or-cancel` | yes、no、cancelを一度だけ読み、正規化した値を標準出力へ書きます。 | `read -r`を使用し、`y`、`yes`、`n`、`no`、`c`、`cancel`をASCIIの大小文字を区別せずに受け付けます。三つの結果、大小文字、空入力、不正値、EOF、非対話入力を確認します。 |
+| `choose` | `shell::choose-one` | 一覧の番号を一度だけ読み、対応する選択肢を標準出力へ書きます。 | 選択肢を値引数として受け取り、配列名の間接参照と`eval`を使いません。先頭、末尾、範囲外、数値以外、空の一覧、空要素、改行を含む要素、EOF、非対話入力を確認します。 |
 
 #### 対話入力APIの共通契約
 
 | 公開関数 | 引数 | 正常時の出力 |
 |---|---|---|
-| `prompt::confirm` | `MESSAGE [DEFAULT]`。`DEFAULT`は`yes`または`no`です。 | 入力を`yes`または`no`へ正規化します。空入力では指定された既定値を出力します。 |
-| `prompt::read-line-with-default` | `MESSAGE DEFAULT` | 空でない入力はそのまま出力し、空入力は`DEFAULT`を出力します。 |
-| `prompt::confirm-or-cancel` | `MESSAGE [DEFAULT]`。`DEFAULT`は`yes`、`no`、`cancel`のいずれかです。 | 入力を`yes`、`no`、`cancel`のいずれかへ正規化します。空入力では指定された既定値を出力します。 |
-| `prompt::select-one` | `MESSAGE ITEM...`。一つ以上の`ITEM`が必要です。 | 1から始まる選択番号に対応する`ITEM`をそのまま出力します。 |
+| `shell::confirm` | `MESSAGE [DEFAULT]`。`DEFAULT`は`yes`または`no`です。 | 入力を`yes`または`no`へ正規化します。空入力では指定された既定値を出力します。 |
+| `shell::read-line` | `MESSAGE DEFAULT` | 空でない入力はそのまま出力し、空入力は`DEFAULT`を出力します。 |
+| `shell::confirm-or-cancel` | `MESSAGE [DEFAULT]`。`DEFAULT`は`yes`、`no`、`cancel`のいずれかです。 | 入力を`yes`、`no`、`cancel`のいずれかへ正規化します。空入力では指定された既定値を出力します。 |
+| `shell::choose-one` | `MESSAGE ITEM...`。一つ以上の`ITEM`が必要です。 | 1から始まる選択番号に対応する`ITEM`をそのまま出力します。 |
 
 メッセージ、既定値の案内、選択肢は標準エラー出力へ書き、結果だけを標準出力へ書きます。`DEFAULT`を省略した確認関数へ空入力を渡した場合は終了状態64を返します。入力に改行がないままEOFへ到達した場合でも、EOFより前に読み取った文字列を一行として処理します。入力内容を画面へ表示しない秘密入力には使用しません。
 

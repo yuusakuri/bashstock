@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # @file user
-# @brief User and group lookup and account creation.
+# @brief User and group lookup, account creation, and home directories.
 # @description Account creation runs through administrator execution and works on macOS, Ubuntu, and Fedora.
 
-# shellcheck disable=SC2234
+# shellcheck disable=SC2015,SC2034,SC2046,SC2119,SC2120,SC2155,SC2163,SC2234,SC2317,SC2319,SC2329
 
 # @description Write the effective user's name.
 #
@@ -129,7 +129,6 @@ user::create-login-as-root() {
   bashstock::_run-as-root create-login-user "$@"
 }
 
-
 # @description Create a non-login system account.
 #
 # @arg $1 string Account name that starts with an underscore, such as _backup.
@@ -161,4 +160,72 @@ user::create-system() {
 user::create-login() {
   user::_validate-login-creation "$@" || return "$?"
   bashstock::_run-as-root create-login-user "$@"
+}
+
+# @description Add a user to a supplementary group through administrator execution.
+#
+# @arg $1 string Group name.
+# @arg $2 string Optional user name. Defaults to the current user.
+# @exitcode 0 The user is in the group; it applies to new login sessions.
+# @exitcode 64 The group name is invalid, or the argument count is wrong.
+# @exitcode 69 The operating system is unsupported, or usermod or dseditgroup is unavailable.
+# @exitcode 77 sudo refused the credentials.
+# @exitcode other The status of usermod or dseditgroup.
+# @example
+#   user::add-to-group dialout
+user::add-to-group() {
+  if ( [[ "$#" -lt 1 || "$#" -gt 2 || ! "$1" =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]] ); then return 64; fi
+  local user="${2:-}"
+  [[ -n "${user}" ]] || user="$(user::name)" || return "$?"
+  case "$(system::operating-system)" in
+    darwin) command::require dseditgroup || return "$?"; command::run-as-root dseditgroup -o edit -a "${user}" -t user "$1" ;;
+    linux) command::require usermod || return "$?"; command::run-as-root usermod -a -G "$1" "${user}" ;;
+    *) return 69 ;;
+  esac
+}
+
+# @description Link the English XDG user directory names to the directories of the current locale.
+#
+# Each standard XDG directory is resolved with xdg-user-dir. A localized
+# directory that does not exist is skipped and never created. An existing
+# English directory is merged into the localized one, overwriting entries
+# with the same name, and then replaced by the link.
+#
+# @arg $1 string Optional home directory to update. Defaults to $HOME.
+# @stderr A message for each English name that is not a directory.
+# @exitcode 0 Every link was created or already existed.
+# @exitcode 64 More than one argument was given.
+# @exitcode 66 The home directory does not exist.
+# @exitcode 69 xdg-user-dir is unavailable.
+# @exitcode 73 An English name is held by something other than a directory or link.
+# @exitcode 74 A directory could not be resolved, removed, or linked.
+# @exitcode other The status of dir::merge.
+# @example
+#   user::directory::create-english-links
+user::directory::create-english-links() {
+  [[ "$#" -le 1 ]] || return 64
+  local home="${1:-${HOME}}" pair='' key='' name='' localized='' english='' status=0
+  [[ -d "${home}" ]] || return 66
+  command::require xdg-user-dir || return "$?"
+  for pair in DESKTOP:Desktop DOWNLOAD:Downloads TEMPLATES:Templates PUBLICSHARE:Public \
+    DOCUMENTS:Documents MUSIC:Music PICTURES:Pictures VIDEOS:Videos; do
+    key="${pair%%:*}"
+    name="${pair#*:}"
+    localized="$(HOME="${home}" XDG_CONFIG_HOME="${home}/.config" xdg-user-dir "${key}")" || return 74
+    english="${home}/${name}"
+    [[ -d "${localized}" && ! -L "${localized}" ]] || continue
+    [[ "${localized%/}" != "${home%/}" && "${localized}" != "${english}" ]] || continue
+    if [[ -L "${english}" ]]; then
+      [[ "$(readlink -- "${english}")" != "${localized}" ]] || continue
+      rm -f -- "${english}" || return 74
+    elif [[ -d "${english}" ]]; then
+      dir::merge "${english}" "${localized}" || return "$?"
+    elif [[ -e "${english}" ]]; then
+      console::_write-error "Not linking ${english}: it is not a directory."
+      status=73
+      continue
+    fi
+    ln -s -- "${localized}" "${english}" || return 74
+  done
+  return "${status}"
 }

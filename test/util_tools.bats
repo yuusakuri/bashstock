@@ -273,3 +273,27 @@ record_root_commands() {
   [ "$(<"${key_path}")" = 'new private' ]
   [ "$(<"${key_path}.pub")" = 'new public' ]
 }
+
+@test "terminal open uses the first available terminal and passes the command as separate arguments" {
+  local log="${BATS_TEST_TMPDIR}/terminal.log"
+  # shellcheck disable=SC2317
+  system::operating-system() { printf 'linux\n'; }
+  # shellcheck disable=SC2317
+  gnome-terminal() { printf 'gnome-terminal %s\n' "$*" >>"${log}"; }
+  # shellcheck disable=SC2317
+  xterm() { printf 'xterm %s\n' "$*" >>"${log}"; }
+  local saved_path="${PATH}"
+  PATH="${BATS_TEST_TMPDIR}/empty"
+  run terminal::open
+  [ "${status}" -eq 0 ]
+  run terminal::open printf '%s\n' 'two words'
+  [ "${status}" -eq 0 ]
+  PATH="${saved_path}"
+  [ "$(sed -n 1p "${log}")" = 'gnome-terminal ' ]
+  [ "$(sed -n 2p "${log}")" = 'gnome-terminal -- bash -c "$@"; exec bash -i bash printf %s\n two words' ]
+  unset -f gnome-terminal xterm
+  PATH="${BATS_TEST_TMPDIR}/empty"
+  run terminal::open
+  PATH="${saved_path}"
+  [ "${status}" -eq 69 ]
+}

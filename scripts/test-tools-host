@@ -8,8 +8,8 @@ set -euo pipefail
 source ./dist/bashstock.sh
 
 printf '== OpenSSH server\n'
-ssh-server::install
-ssh-server::install
+ssh::server::install
+ssh::server::install
 systemctl is-enabled ssh
 systemctl is-active ssh
 mkdir -p ~/.ssh && chmod 700 ~/.ssh

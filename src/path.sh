@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # @file path
-# @brief Lexical path operations and file-type tests.
+# @brief Lexical path operations, file-type tests, and path search.
 # @description Lexical functions never touch the file system; tests follow the Bash test semantics.
+
+# shellcheck disable=SC2015,SC2034,SC2046,SC2119,SC2120,SC2155,SC2163,SC2317,SC2319,SC2329
 
 # @description Write the lexical directory portion of a path.
 #
@@ -505,7 +507,6 @@ path::change-owner-recursively() {
   bashstock::_run-as-root change-owner-recursively "$@"
 }
 
-
 # @description Validate a directory and its requested owner and group.
 # @internal
 path::_validate-ownership() {
@@ -531,4 +532,35 @@ path::_validate-ownership() {
 path::change-owner-recursively-as-root() {
   path::_validate-ownership "$@" || return "$?"
   bashstock::_run-as-root change-owner-recursively "$@"
+}
+
+# @description Write the paths below a directory that match a case-insensitive Bash ERE, separated by NUL.
+#
+# @arg $1 string Extended regular expression evaluated by Bash on each path.
+# @arg $2 string Optional directory to search. Defaults to the current directory.
+# @stdout NUL-separated matching paths.
+# @exitcode 0 At least one path matches.
+# @exitcode 1 No path matches.
+# @exitcode 64 The arguments are invalid or the expression is not valid.
+# @exitcode 66 The directory does not exist.
+# @example
+#   path::find '\.(jpe?g|png)$' "${HOME}/Pictures" | xargs -0 ls -l
+path::find() {
+  [[ "$#" -ge 1 && "$#" -le 2 && -n "$1" ]] || return 64
+  local expression="$1" directory="${2:-.}" path='' found=1 status=0
+  [[ -d "${directory}" ]] || return 66
+  # [[ =~ ]] returns 2 for an invalid expression.
+  # shellcheck disable=SC2319
+  ( [[ '' =~ ${expression} ]] ) || status="$?"
+  [[ "${status}" -ne 2 ]] || return 64
+  (
+    shopt -s nocasematch
+    while IFS= read -r -d '' path; do
+      if ( [[ "${path}" =~ ${expression} ]] ); then
+        printf '%s\0' "${path}"
+        found=0
+      fi
+    done < <(find "${directory}" -print0)
+    exit "${found}"
+  )
 }
