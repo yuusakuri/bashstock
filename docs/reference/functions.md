@@ -389,6 +389,12 @@ BashStockが公開する関数を名前空間ごとに示します。
 | [`dir::create-with-date-time`](modules/dir.md#dircreate-with-date-time) | Create a directory named with the local date and time and write its path. |
 | [`dir::clear`](modules/dir.md#dirclear) | Remove every entry of a directory, including hidden ones, and keep the directory. |
 
+## [`discord`](modules/discord.md)
+
+| 関数 | 説明 |
+|---|---|
+| [`discord::install`](modules/discord.md#discordinstall) | Install the newest Discord desktop app. |
+
 ## [`docker`](modules/docker.md)
 
 | 関数 | 説明 |
