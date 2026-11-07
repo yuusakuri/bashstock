@@ -123,7 +123,8 @@ ubuntu::download-server-iso() {
 # The steps then register ~/.env, set the editor of Bash and Zsh to
 # code --wait, ignore case in completion, link English names to localized
 # user directories, add the user to dialout, configure Git with Git Credential
-# Manager, fix ~/.ssh permissions, and install external tools.
+# Manager, fix ~/.ssh permissions, and install external tools. Electron
+# applications prefer native Wayland rendering in supported Wayland sessions.
 #
 # @noargs
 # @stderr The step that failed.
@@ -164,7 +165,8 @@ ubuntu::setup-external() {
 #
 # After ubuntu::setup, Mozc for IBus and VLC are installed when they are
 # missing, and the IME keys, Mozc and US input sources, Hiragana start, and VLC
-# as the video application are set.
+# as the video application are set. Electron applications prefer native
+# Wayland rendering in supported Wayland sessions.
 #
 # @noargs
 # @stderr The step that failed.

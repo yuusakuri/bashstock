@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # @file setup
 # @brief Shared steps of the desktop setup functions.
-# @description The module defines internal functions that mac::setup and ubuntu::setup share.
+# @description The module defines internal functions that desktop setup functions share.
 
 # shellcheck disable=SC2119,SC2120
 
@@ -60,10 +60,14 @@ setup::_install-prerequisites() {
 }
 
 # @description Apply the user configuration that Ubuntu and Fedora share, stopping at the first failure.
+#
+# Wayland desktop sessions with systemd 246 or later also prefer native
+# Wayland rendering for Electron applications.
 # @internal
 setup::_apply-linux-user-configuration() {
   [[ "$#" -eq 0 ]] || return 64
   setup::_install-prerequisites || return "$?"
+  setup::_run-step electron::wayland::enable || return "$?"
   # ~/.env holds secrets, so only the user may read a new one.
   setup::_ensure-file "${HOME}/.env" 0600 || return "$?"
   setup::_run-step env::dotenv::register "${HOME}/.env" || return "$?"

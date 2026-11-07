@@ -79,7 +79,8 @@ Missing curl, Git, and Perl modules that bashstock uses are installed first.
 The steps then register ~/.env, set the editor of Bash and Zsh to
 code --wait, ignore case in completion, link English names to localized
 user directories, add the user to dialout, configure Git with Git Credential
-Manager, fix ~/.ssh permissions, and install external tools.
+Manager, fix ~/.ssh permissions, and install external tools. Electron
+applications prefer native Wayland rendering in supported Wayland sessions.
 
 #### Example
 
@@ -130,7 +131,8 @@ Apply the Ubuntu user configuration and desktop settings, stopping at the first 
 
 After ubuntu::setup, Mozc for IBus and VLC are installed when they are
 missing, and the IME keys, Mozc and US input sources, Hiragana start, and VLC
-as the video application are set.
+as the video application are set. Electron applications prefer native
+Wayland rendering in supported Wayland sessions.
 
 #### Example
 

@@ -20,7 +20,8 @@ modules that bashstock uses are installed, ~/.env is registered, the editor
 of Bash and Zsh is set to code --wait, completion ignores case, English
 names are linked to localized user directories, the user joins dialout, Git
 uses Git Credential Manager, ~/.ssh permissions are fixed, and external
-tools are installed.
+tools are installed. In supported Wayland sessions, Electron applications
+also prefer native Wayland rendering.
 
 #### Example
 

@@ -409,6 +409,12 @@ BashStockが公開する関数を名前空間ごとに示します。
 | [`docker::versions`](modules/docker.md#dockerversions) | Write Docker Engine or Docker CLI versions available to the current platform. |
 | [`docker::install`](modules/docker.md#dockerinstall) | Install the Docker CLI, and Docker Engine on Linux. |
 
+## [`electron`](modules/electron.md)
+
+| 関数 | 説明 |
+|---|---|
+| [`electron::wayland::enable`](modules/electron.md#electronwaylandenable) | Prefer native Wayland rendering for Electron applications in a Wayland session. |
+
 ## [`env`](modules/env.md)
 
 | 関数 | 説明 |
