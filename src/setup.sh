@@ -99,13 +99,23 @@ setup::_install-external() {
   setup::_run-step git::config::use-credential-manager
 }
 
-# @description Install IBus Mozc on Ubuntu when it is missing.
+# @description Install IBus Mozc on Ubuntu, or upgrade it when the repository offers a newer version.
 #
-# Desktop installations in another language may not include IBus Mozc.
+# A newer installed version is kept. The same-version Mozc server is installed
+# when the Ubuntu repository offers it.
 # @internal
-setup::_install-ubuntu-mozc() {
+setup::_upgrade-ubuntu-mozc() {
   [[ "$#" -eq 0 ]] || return 64
-  if [[ "$(dpkg-query -W -f='${Status}' ibus-mozc 2>/dev/null)" != 'install ok installed' ]]; then
-    setup::_run-step mozc::ibus::install || return "$?"
+  local record='' installed='' versions='' latest=''
+  record="$(dpkg-query -W -f='${Status}\t${Version}' ibus-mozc 2>/dev/null)" || record=''
+  if [[ "${record}" == 'install ok installed'* ]]; then
+    installed="${record#*$'\t'}"
   fi
+  versions="$(mozc::ibus::versions)" || return "$?"
+  latest="${versions##*$'\n'}"
+  [[ -n "${latest}" ]] || return 69
+  if [[ -n "${installed}" ]] && dpkg --compare-versions "${installed}" ge "${latest}"; then
+    return 0
+  fi
+  setup::_run-step mozc::ibus::install "${latest}"
 }

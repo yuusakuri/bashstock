@@ -1151,6 +1151,20 @@ gsettings_value() {
   [ "${status}" -eq 69 ]
 }
 
+@test "Ubuntu desktop setup updates old Mozc and applies the Ubuntu 22.04 title-bar layout" {
+  use_platform ubuntu 22.04 jammy
+  STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
+  ubuntu::setup() { printf 'ubuntu::setup\n' >>"${STEP_LOG}"; }
+  setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+  setup::_upgrade-ubuntu-mozc() { printf 'setup::_upgrade-ubuntu-mozc\n' >>"${STEP_LOG}"; }
+
+  run ubuntu::setup-desktop
+  [ "${status}" -eq 0 ]
+  [ "$(sed -n '1p' "${STEP_LOG}")" = 'ubuntu::setup' ]
+  [ "$(sed -n '2p' "${STEP_LOG}")" = 'setup::_upgrade-ubuntu-mozc' ]
+  [ "$(sed -n '$p' "${STEP_LOG}")" = 'gnome::window::set-button-layout' ]
+}
+
 @test "Ubuntu setup leaves external tools for the optional follow-up function" {
   use_platform ubuntu 24.04 noble
   HOME="${BATS_TEST_TMPDIR}/home"
@@ -1180,6 +1194,7 @@ gsettings_value() {
   [ "${status}" -eq 0 ]
   [ "$(sed -n '1p' "${STEP_LOG}")" = 'package::_install curl git' ]
   [ "$(sed -n '2p' "${STEP_LOG}")" = 'package::_install curl git' ]
+  grep -Fqx 'git::config::setup' "${STEP_LOG}"
   ! grep -Fq 'package::_install gnupg' "${STEP_LOG}"
   ! grep -Fq 'gh::install' "${STEP_LOG}"
   ! grep -Fq 'git-credential-manager::install' "${STEP_LOG}"
@@ -1207,6 +1222,7 @@ gsettings_value() {
   run fedora::setup
   [ "${status}" -eq 0 ]
   [ "$(sed -n '1p' "${STEP_LOG}")" = 'package::_install perl-JSON-PP perl-Time-HiRes' ]
+  grep -Fqx 'git::config::setup' "${STEP_LOG}"
   ! grep -Fq 'git::config::use-credential-manager' "${STEP_LOG}"
   ! grep -Fq 'package::_install gnupg2' "${STEP_LOG}"
   ! grep -Fq 'git-credential-manager::install' "${STEP_LOG}"
@@ -1227,21 +1243,36 @@ gsettings_value() {
   [ "${status}" -eq 69 ]
 }
 
-@test "Ubuntu desktop setup installs Mozc only when it is missing" {
+@test "Ubuntu desktop setup installs or upgrades Mozc only when needed" {
   use_platform ubuntu 24.04 noble
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
   setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+  mozc::ibus::versions() { printf '%s\n' '2.26.4220.100+dfsg-5.2' '2.28.5160.102+dfsg-0ubuntu0.22.04.1'; }
 
   dpkg-query() { return 1; }
-  run setup::_install-ubuntu-mozc
+  run setup::_upgrade-ubuntu-mozc
   [ "${status}" -eq 0 ]
-  grep -Fqx 'mozc::ibus::install' "${STEP_LOG}"
+  grep -Fqx 'mozc::ibus::install 2.28.5160.102+dfsg-0ubuntu0.22.04.1' "${STEP_LOG}"
 
   : >"${STEP_LOG}"
-  dpkg-query() { printf 'install ok installed'; }
-  run setup::_install-ubuntu-mozc
+  dpkg-query() { printf 'install ok installed\t2.26.4220.100+dfsg-5.2'; }
+  dpkg() {
+    [[ "$1" == '--compare-versions' && "$2" == '2.28.5160.102+dfsg-0ubuntu0.22.04.1' &&
+      "$3" == ge && "$4" == '2.28.5160.102+dfsg-0ubuntu0.22.04.1' ]]
+  }
+  run setup::_upgrade-ubuntu-mozc
   [ "${status}" -eq 0 ]
-  ! grep -Fqx 'mozc::ibus::install' "${STEP_LOG}"
+  grep -Fqx 'mozc::ibus::install 2.28.5160.102+dfsg-0ubuntu0.22.04.1' "${STEP_LOG}"
+
+  : >"${STEP_LOG}"
+  dpkg-query() { printf 'install ok installed\t2.28.5160.102+dfsg-0ubuntu0.22.04.1'; }
+  dpkg() {
+    [[ "$1" == '--compare-versions' && "$2" == '2.28.5160.102+dfsg-0ubuntu0.22.04.1' &&
+      "$3" == ge && "$4" == '2.28.5160.102+dfsg-0ubuntu0.22.04.1' ]]
+  }
+  run setup::_upgrade-ubuntu-mozc
+  [ "${status}" -eq 0 ]
+  [ ! -s "${STEP_LOG}" ]
 }
 
 @test "Ubuntu setup installs perl only when its modules are missing" {

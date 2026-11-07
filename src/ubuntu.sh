@@ -164,10 +164,11 @@ ubuntu::setup-external() {
 
 # @description Apply the Ubuntu user configuration and desktop settings, stopping at the first failure.
 #
-# After ubuntu::setup, missing IBus Mozc is installed, and the IME keys, Mozc
-# and US input sources, and Hiragana start are set. Electron applications prefer
-# native Wayland rendering in supported Wayland sessions. On Ubuntu 22.04, the newest
-# available Mozc is installed first and the GNOME title-bar buttons are set.
+# After ubuntu::setup, IBus Mozc is installed or upgraded when the repository
+# offers a newer version, and the IME keys, Mozc and US input sources, and
+# Hiragana start are set. Ubuntu 22.04 also gets the GNOME title-bar layout.
+# Electron applications prefer native Wayland rendering in supported Wayland
+# sessions.
 #
 # @noargs
 # @stderr The step that failed.
@@ -182,12 +183,8 @@ ubuntu::setup-desktop() {
   package::_require-platform ubuntu || return "$?"
   local version=''
   version="$(platform::_os-release-value VERSION_ID)" || return "$?"
-  if [[ "${version}" == '22.04' ]]; then
-    setup::_run-step mozc::server::install || return "$?"
-    setup::_run-step mozc::ibus::install || return "$?"
-  fi
   ubuntu::setup || return "$?"
-  setup::_install-ubuntu-mozc || return "$?"
+  setup::_upgrade-ubuntu-mozc || return "$?"
   setup::_run-step keyboard::setup-ime-keys || return "$?"
   setup::_run-step gnome::input-source::set-mozc-first || return "$?"
   setup::_run-step gnome::keyboard-layout::set-us || return "$?"
@@ -200,8 +197,7 @@ ubuntu::setup-desktop() {
 # @description Run the Ubuntu 22.04 desktop setup through the shared desktop setup function.
 #
 # This compatibility entry point validates the Ubuntu release and delegates to
-# ubuntu::setup-desktop, which handles the version-specific Mozc and title-bar
-# settings.
+# ubuntu::setup-desktop, which applies available Mozc upgrades and the Ubuntu 22.04 title-bar setting.
 #
 # @noargs
 # @stderr The step that failed, or a message on other releases.

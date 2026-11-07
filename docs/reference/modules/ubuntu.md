@@ -131,10 +131,11 @@ _Function has no arguments._
 
 Apply the Ubuntu user configuration and desktop settings, stopping at the first failure.
 
-After ubuntu::setup, missing IBus Mozc is installed, and the IME keys, Mozc
-and US input sources, and Hiragana start are set. Electron applications prefer
-native Wayland rendering in supported Wayland sessions. On Ubuntu 22.04, the newest
-available Mozc is installed first and the GNOME title-bar buttons are set.
+After ubuntu::setup, IBus Mozc is installed or upgraded when the repository
+offers a newer version, and the IME keys, Mozc and US input sources, and
+Hiragana start are set. Ubuntu 22.04 also gets the GNOME title-bar layout.
+Electron applications prefer native Wayland rendering in supported Wayland
+sessions.
 
 #### Example
 
@@ -160,8 +161,7 @@ _Function has no arguments._
 Run the Ubuntu 22.04 desktop setup through the shared desktop setup function.
 
 This compatibility entry point validates the Ubuntu release and delegates to
-ubuntu::setup-desktop, which handles the version-specific Mozc and title-bar
-settings.
+ubuntu::setup-desktop, which applies available Mozc upgrades and the Ubuntu 22.04 title-bar setting.
 
 #### Example
 
