@@ -130,7 +130,8 @@ Apply the Ubuntu user configuration and desktop settings, stopping at the first 
 
 After ubuntu::setup, Mozc for IBus and VLC are installed when they are
 missing, and the IME keys, Mozc and US input sources, Hiragana start, and VLC
-as the video application are set.
+as the video application are set. Nonconvert/LANG2 selects US, and
+Convert/LANG1 selects Mozc through GNOME shortcuts.
 
 #### Example
 

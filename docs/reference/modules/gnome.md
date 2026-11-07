@@ -13,6 +13,7 @@ Settings are written with gsettings.
 * [gnome::keyboard-layout::set-us](#gnomekeyboard-layoutset-us)
 * [gnome::keyboard-layout::set-jp](#gnomekeyboard-layoutset-jp)
 * [gnome::input-source::set-shortcuts](#gnomeinput-sourceset-shortcuts)
+* [gnome::input-source::setup-ime-keys](#gnomeinput-sourcesetup-ime-keys)
 * [gnome::input-source::set-mozc-first](#gnomeinput-sourceset-mozc-first)
 * [gnome::window::set-button-layout](#gnomewindowset-button-layout)
 
@@ -138,6 +139,34 @@ gnome::input-source::set-shortcuts --us '<Alt>u' --mozc '<Alt>j'
 * **64**: An option is unknown or has no value.
 * **74**: A binding could not be quoted for gsettings.
 * other The status of gsettings.
+
+### gnome::input-source::setup-ime-keys
+
+Bind Nonconvert to the US input source and Convert to Mozc.
+
+keyboard::setup-ime-keys maps USB Convert/LANG1 to Henkan_Mode and
+Nonconvert/LANG2 to Muhenkan. These shortcuts select the same source on
+every press. The HHKB US ANSI (hhkb/ansi) alt_convert_non_convert and
+alt_lang keymaps in https://github.com/yuusakuri/qmk_firmware send these
+events on Alt taps: English on the left and Japanese on the right.
+Held Alt keys keep their normal shortcuts. Mozc should use
+mozc::ibus::set-hiragana-as-default to start in Hiragana mode.
+
+#### Example
+
+```bash
+keyboard::setup-ime-keys 4653 0001
+gnome::input-source::setup-ime-keys
+```
+
+_Function has no arguments._
+
+#### Exit codes
+
+* **0**: The IME shortcuts were registered.
+* **64**: An argument was given.
+* **69**: The system is not Linux, or gsettings or ibus is unavailable.
+* other The status of the shortcut registration.
 
 ### gnome::input-source::set-mozc-first
 

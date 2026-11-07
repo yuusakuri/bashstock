@@ -747,7 +747,7 @@ chmod +x "${HOME}/.local/bin/codex"'
   [ "${output}" = 'openjdk-21-jdk' ]
 }
 
-@test "keyboard IME keys map Convert and Nonconvert for the selected USB keyboards" {
+@test "keyboard IME keys map Convert, Nonconvert, LANG1, and LANG2 for selected USB keyboards" {
   use_platform ubuntu 24.04 noble
   record_root_commands
   use_fake_root
@@ -760,11 +760,18 @@ chmod +x "${HOME}/.local/bin/codex"'
   [ "$(sed -n 2p "${hwdb}")" = 'evdev:input:b0003v*p*' ]
   grep -Fqx ' KEYBOARD_KEY_7008a=henkan' "${hwdb}"
   grep -Fqx ' KEYBOARD_KEY_7008b=muhenkan' "${hwdb}"
+  grep -Fqx ' KEYBOARD_KEY_70090=henkan' "${hwdb}"
+  grep -Fqx ' KEYBOARD_KEY_70091=muhenkan' "${hwdb}"
+  [ "$(grep -c '^ KEYBOARD_KEY_' "${hwdb}")" -eq 4 ]
   [ "$(<"${ROOT_LOG}")" = $'systemd-hwdb update\nudevadm trigger --subsystem-match=input --action=change' ]
 
   run keyboard::setup-ime-keys 046d c52b
   [ "${status}" -eq 0 ]
   [ "$(sed -n 2p "${hwdb}")" = 'evdev:input:b0003v046DpC52B*' ]
+  grep -Fqx ' KEYBOARD_KEY_7008a=henkan' "${hwdb}"
+  grep -Fqx ' KEYBOARD_KEY_7008b=muhenkan' "${hwdb}"
+  grep -Fqx ' KEYBOARD_KEY_70090=henkan' "${hwdb}"
+  grep -Fqx ' KEYBOARD_KEY_70091=muhenkan' "${hwdb}"
 
   run keyboard::setup-ime-keys 46d c52b
   [ "${status}" -eq 64 ]
@@ -813,6 +820,73 @@ gsettings_value() {
 
   run gnome::keybinding::set-custom custom101 'Enable IME (Mozc)' "ibus engine 'mozc-jp'" '<Alt>a'
   [ "$(gsettings_value "${schema}" custom-keybindings)" = "['${base}/terminal/', '${base}/custom101/']" ]
+}
+
+@test "GNOME IME keys select US and Mozc without replacing Alt shortcuts and can be set twice" {
+  use_platform ubuntu 24.04 noble
+  use_fake_gsettings
+  ibus() { :; }
+  local schema='org.gnome.settings-daemon.plugins.media-keys'
+  local item="${schema}.custom-keybinding"
+  local base='/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings'
+  gsettings set "${schema}" custom-keybindings "['${base}/terminal/']"
+  gsettings set "${item}:${base}/terminal/" name "'Terminal'"
+  gsettings set "${item}:${base}/terminal/" command "'gnome-terminal'"
+  gsettings set "${item}:${base}/terminal/" binding "'<Ctrl><Alt>t'"
+  run gnome::input-source::set-shortcuts
+  [ "${status}" -eq 0 ]
+  local expected="['${base}/terminal/', '${base}/custom100/', '${base}/custom101/', '${base}/bashstock-ime-off/', '${base}/bashstock-ime-on/']"
+
+  local platform=''
+  for platform in ubuntu fedora; do
+    use_platform "${platform}"
+    run gnome::input-source::setup-ime-keys
+    [ "${status}" -eq 0 ]
+    [ "$(gsettings_value "${schema}" custom-keybindings)" = "${expected}" ]
+    [ "$(gsettings_value "${item}:${base}/bashstock-ime-off/" binding)" = "'Muhenkan'" ]
+    [ "$(gsettings_value "${item}:${base}/bashstock-ime-off/" command)" = "'ibus engine \\'xkb:us::eng\\''" ]
+    [ "$(gsettings_value "${item}:${base}/bashstock-ime-on/" binding)" = "'Henkan_Mode'" ]
+    [ "$(gsettings_value "${item}:${base}/bashstock-ime-on/" command)" = "'ibus engine \\'mozc-jp\\''" ]
+    [ "$(gsettings_value "${item}:${base}/terminal/" binding)" = "'<Ctrl><Alt>t'" ]
+    [ "$(gsettings_value "${item}:${base}/custom100/" binding)" = "'<Alt>semicolon'" ]
+    [ "$(gsettings_value "${item}:${base}/custom101/" binding)" = "'<Alt>a'" ]
+  done
+}
+
+@test "GNOME IME keys reject arguments and missing prerequisites before writing settings" {
+  use_platform ubuntu 24.04 noble
+  use_fake_gsettings
+  ibus() { :; }
+  run gnome::input-source::setup-ime-keys unexpected
+  [ "${status}" -eq 64 ]
+
+  use_platform darwin
+  run gnome::input-source::setup-ime-keys
+  [ "${status}" -eq 69 ]
+
+  use_platform ubuntu
+  local missing=''
+  command::require() { [[ "$1" != "${missing}" ]] || return 69; }
+  for missing in gsettings ibus; do
+    run gnome::input-source::setup-ime-keys
+    [ "${status}" -eq 69 ]
+  done
+  [ -z "$(find "${GSETTINGS_STORE}" -type f -print)" ]
+}
+
+@test "GNOME IME keys report a failed settings write" {
+  use_platform ubuntu 24.04 noble
+  use_fake_gsettings
+  ibus() { :; }
+  gsettings() {
+    case "$1" in
+      range) printf 'type as\n' ;;
+      get) printf '@as []\n' ;;
+      set) return 1 ;;
+    esac
+  }
+  run gnome::input-source::setup-ime-keys
+  [ "${status}" -eq 74 ]
 }
 
 @test "Mozc becomes the first input source while the keyboard layout is kept" {
