@@ -11,13 +11,13 @@ case "${ID}" in
   ubuntu)
     export DEBIAN_FRONTEND=noninteractive
     apt-get update >/dev/null
-    apt-get install -y --no-install-recommends ca-certificates curl diffutils perl iproute2 procps \
+    apt-get install -y --no-install-recommends ca-certificates curl diffutils python3 iproute2 procps \
       >/dev/null
     apt-get install -y --no-install-recommends openjdk-21-jdk-headless >/dev/null 2>&1 ||
       apt-get install -y --no-install-recommends openjdk-17-jdk-headless >/dev/null
     ;;
   fedora)
-    dnf install -y ca-certificates curl diffutils perl-JSON-PP perl-File-Temp iproute procps-ng \
+    dnf install -y ca-certificates curl diffutils python3 iproute procps-ng \
       which >/dev/null
     # java-latest-openjdk can be an early-access build, so the newest LTS JDK
     # that the release provides is used.

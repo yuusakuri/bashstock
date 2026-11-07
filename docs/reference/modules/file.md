@@ -33,7 +33,7 @@ Text is written to a temporary file in the target directory and then moved into 
 
 ### file::contains-match
 
-Test whether any file line matches a Perl regular expression.
+Test whether any file line matches a Python regular expression.
 
 #### Example
 
@@ -44,7 +44,7 @@ file::contains-match /etc/hosts '^127\.0\.0\.1\s+localhost\b'
 #### Arguments
 
 * **$1** (string): Readable regular file; a symbolic link is refused.
-* **$2** (string): Perl regular expression without newlines.
+* **$2** (string): Python regular expression without newlines.
 
 #### Exit codes
 
@@ -52,7 +52,7 @@ file::contains-match /etc/hosts '^127\.0\.0\.1\s+localhost\b'
 * **1**: No line matches.
 * **64**: The expression is invalid, or the argument count is not two.
 * **66**: The file is missing, unreadable, or a symbolic link.
-* **69**: Perl is unavailable.
+* **69**: Python 3 is unavailable.
 
 ### file::verify-sha256
 

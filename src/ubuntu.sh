@@ -119,7 +119,7 @@ ubuntu::download-server-iso() {
 
 # @description Apply the common Ubuntu user configuration, stopping at the first failure.
 #
-# Missing curl, Git, and Perl modules that bashstock uses are installed first.
+# Missing curl, Git, and Python 3 are installed first.
 # The steps then register ~/.env, set the editor of Bash and Zsh to
 # code --wait, ignore case in completion, link English names to localized
 # user directories, add the user to dialout, configure Git, and fix ~/.ssh
@@ -166,7 +166,7 @@ ubuntu::setup-external() {
 #
 # After ubuntu::setup, IBus Mozc is installed or upgraded when the repository
 # offers a newer version, and the IME keys, Mozc and US input sources, and
-# Hiragana start are set. Ubuntu 22.04 also gets the GNOME title-bar layout.
+# Hiragana start are set. The GNOME title-bar layout is also set.
 # Electron applications prefer native Wayland rendering in supported Wayland
 # sessions.
 #
@@ -181,23 +181,19 @@ ubuntu::setup-external() {
 ubuntu::setup-desktop() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform ubuntu || return "$?"
-  local version=''
-  version="$(platform::_os-release-value VERSION_ID)" || return "$?"
   ubuntu::setup || return "$?"
   setup::_upgrade-ubuntu-mozc || return "$?"
   setup::_run-step keyboard::setup-ime-keys || return "$?"
   setup::_run-step gnome::input-source::set-mozc-first || return "$?"
   setup::_run-step gnome::keyboard-layout::set-us || return "$?"
   setup::_run-step mozc::ibus::set-hiragana-as-default || return "$?"
-  if [[ "${version}" == '22.04' ]]; then
-    setup::_run-step gnome::window::set-button-layout
-  fi
+  setup::_run-step gnome::window::set-button-layout
 }
 
 # @description Run the Ubuntu 22.04 desktop setup through the shared desktop setup function.
 #
 # This compatibility entry point validates the Ubuntu release and delegates to
-# ubuntu::setup-desktop, which applies available Mozc upgrades and the Ubuntu 22.04 title-bar setting.
+# ubuntu::setup-desktop, which applies the shared desktop configuration.
 #
 # @noargs
 # @stderr The step that failed, or a message on other releases.

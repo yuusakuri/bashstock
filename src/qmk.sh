@@ -68,12 +68,7 @@ qmk::cli::install() {
 # @internal
 qmk::cli::_latest-version() {
   [[ "$#" -eq 0 ]] || return 64
-  command::require perl || return "$?"
   local json=''
   json="$(package::_fetch https://pypi.org/pypi/qmk/json)" || return "$?"
-  printf '%s' "${json}" | perl -MJSON::PP -e '
-    local $/;
-    my $data = eval { decode_json(<STDIN>) } or exit 74;
-    print "$data->{info}{version}\n";
-  '
+  printf '%s' "${json}" | python::run -c 'import json, sys; print(json.load(sys.stdin)["info"]["version"])'
 }

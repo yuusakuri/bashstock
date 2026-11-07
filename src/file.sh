@@ -49,15 +49,17 @@ file::_require-no-nul() {
   done 3<"$1"
 }
 
-# @description Require a one-line expression that compiles as a Perl regular expression.
+# @description Require a one-line expression that compiles as a Python regular expression.
 # @internal
-file::_require-perl-expression() {
+file::_require-python-expression() {
   if [[ "$#" -ne 1 ]] || ! string::_require-one-line "$1"; then
     return 64
   fi
-  command -v perl >/dev/null 2>&1 || return 69
-  perl -e 'my $expression = shift; eval { qr/$expression/ }; exit($@ ? 64 : 0)' \
-    -- "$1" 2>/dev/null
+  python::run -c 'import re, sys; re.compile(sys.argv[1])' "$1" 2>/dev/null || {
+    local status="$?"
+    [[ "$status" -eq 69 ]] && return 69
+    return 64
+  }
 }
 
 # @description Require a one-line expression that compiles as a Bash extended regular expression.
@@ -346,15 +348,15 @@ file::_prepare-replacement() {
   return 1
 }
 
-# @description Test whether any file line matches a Perl regular expression.
+# @description Test whether any file line matches a Python regular expression.
 #
 # @arg $1 string Readable regular file; a symbolic link is refused.
-# @arg $2 string Perl regular expression without newlines.
+# @arg $2 string Python regular expression without newlines.
 # @exitcode 0 At least one line matches.
 # @exitcode 1 No line matches.
 # @exitcode 64 The expression is invalid, or the argument count is not two.
 # @exitcode 66 The file is missing, unreadable, or a symbolic link.
-# @exitcode 69 Perl is unavailable.
+# @exitcode 69 Python 3 is unavailable.
 # @example
 #   file::contains-match /etc/hosts '^127\.0\.0\.1\s+localhost\b'
 file::contains-match() {
@@ -362,20 +364,25 @@ file::contains-match() {
     return 64
   fi
   file::_require-existing "$1" || return "$?"
-  file::_require-perl-expression "$2" || return "$?"
+  file::_require-python-expression "$2" || return "$?"
 
-  perl -e '
-    use strict;
-    use warnings;
-    my ($path, $expression) = @ARGV;
-    my $regex = eval { qr/$expression/ };
-    exit 64 if $@;
-    open my $input, "<", $path or exit 66;
-    while (defined(my $line = <$input>)) {
-      exit 0 if $line =~ $regex;
-    }
-    exit 1;
-  ' -- "$1" "$2" 2>/dev/null
+  python::run -c '
+import re
+import sys
+path, expression = sys.argv[1:]
+try:
+    pattern = re.compile(expression)
+except re.error:
+    sys.exit(64)
+try:
+    with open(path, encoding="utf-8", errors="surrogateescape") as stream:
+        for line in stream:
+            if pattern.search(line):
+                sys.exit(0)
+except OSError:
+    sys.exit(66)
+sys.exit(1)
+' "$1" "$2" 2>/dev/null
 }
 
 # @description Test a file against an expected SHA-256 digest.

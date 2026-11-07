@@ -197,7 +197,7 @@ BashStockが公開する関数を名前空間ごとに示します。
 
 | 関数 | 説明 |
 |---|---|
-| [`file::contains-match`](modules/file.md#filecontains-match) | Test whether any file line matches a Perl regular expression. |
+| [`file::contains-match`](modules/file.md#filecontains-match) | Test whether any file line matches a Python regular expression. |
 | [`file::verify-sha256`](modules/file.md#fileverify-sha256) | Test a file against an expected SHA-256 digest. |
 | [`file::append-text`](modules/file.md#fileappend-text) | Append text without conversion, elevating only when permissions require it. |
 | [`file::replace-text`](modules/file.md#filereplace-text) | Replace the first Bash ERE match on every file line. |

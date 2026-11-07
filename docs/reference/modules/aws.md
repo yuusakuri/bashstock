@@ -113,7 +113,7 @@ _Function has no arguments._
 
 * **0**: The region was written.
 * **64**: An argument was given.
-* **69**: curl or Perl is unavailable.
+* **69**: curl or Python 3 is unavailable.
 * **75**: The metadata service did not answer or the document is invalid.
 
 #### Output on stdout
@@ -214,7 +214,7 @@ aws::instance-tag i-0123456789abcdef0 ap-northeast-1 Name
 * **0**: The value was written.
 * **1**: The instance has no tag with that key.
 * **64**: An argument is empty or contains a newline.
-* **69**: The AWS CLI or Perl is unavailable.
+* **69**: The AWS CLI or Python 3 is unavailable.
 * **75**: The AWS CLI failed or returned invalid JSON.
 * **77**: The credentials were missing, expired, or not allowed.
 
@@ -247,7 +247,7 @@ aws::wait-for-instance-tag "$(aws::instance-id)" "$(aws::instance-region)" Role 
 
 * **0**: The value was written.
 * **64**: An argument is invalid.
-* **69**: The AWS CLI, Perl, or the clock provider is unavailable.
+* **69**: The AWS CLI, Python 3, or the clock provider is unavailable.
 * **75**: The tag did not appear before the timeout, or the AWS CLI failed.
 * **77**: The credentials were missing, expired, or not allowed.
 
@@ -333,7 +333,7 @@ aws::instances-in-auto-scaling-group web-asg ap-northeast-1
 * **0**: The instances were written.
 * **1**: No group has that name.
 * **64**: An argument is empty or contains a newline.
-* **69**: The AWS CLI or Perl is unavailable.
+* **69**: The AWS CLI or Python 3 is unavailable.
 * **75**: The AWS CLI failed or returned invalid JSON.
 * **77**: The credentials were missing, expired, or not allowed.
 
@@ -363,7 +363,7 @@ group="$(aws::auto-scaling-group-name 300 10)"
 
 * **0**: The name was written.
 * **64**: The timeout or interval is not a positive integer.
-* **69**: curl, the AWS CLI, or Perl is unavailable.
+* **69**: curl, the AWS CLI, or Python 3 is unavailable.
 * **75**: The metadata service did not answer, or the tag did not appear in time.
 * **77**: The credentials were missing, expired, or not allowed.
 
@@ -391,7 +391,7 @@ aws::auto-scaling-group-size web-asg ap-northeast-1
 * **0**: The capacity was written.
 * **1**: No group has that name.
 * **64**: An argument is empty or contains a newline.
-* **69**: The AWS CLI or Perl is unavailable.
+* **69**: The AWS CLI or Python 3 is unavailable.
 * **75**: The AWS CLI failed or returned invalid JSON.
 * **77**: The credentials were missing, expired, or not allowed.
 

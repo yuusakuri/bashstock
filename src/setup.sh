@@ -30,30 +30,19 @@ setup::_ensure-file() {
   [[ -f "$1" ]] || return 66
 }
 
-# @description Install curl, Git, and the Perl modules that bashstock uses when they are missing.
+# @description Install curl, Git, and Python 3 when they are missing.
 #
-# Ubuntu's perl package carries JSON::PP and Time::HiRes, which a minimal
-# system with only perl-base lacks. Fedora packages each Perl module
-# separately, and Fedora Workstation lacks perl-JSON-PP, and on 34 also
-# perl-Time-HiRes.
 # @internal
 setup::_install-prerequisites() {
   [[ "$#" -eq 0 ]] || return 64
-  local platform='' module=''
+  local platform=''
   local packages=()
   platform="$(package::_platform)" || return "$?"
   command::exists curl || packages+=(curl)
   command::exists git || packages+=(git)
+  command::exists python3 || packages+=(python3)
   case "${platform}" in
-    ubuntu)
-      perl -MJSON::PP -MTime::HiRes -MPOSIX -e 1 >/dev/null 2>&1 || packages+=(perl)
-      ;;
-    fedora)
-      command::exists perl || packages+=(perl-interpreter)
-      for module in JSON::PP Time::HiRes POSIX; do
-        perl -M"${module}" -e 1 >/dev/null 2>&1 || packages+=("perl-${module//::/-}")
-      done
-      ;;
+    ubuntu | fedora) ;;
     *) return 69 ;;
   esac
   [[ "${#packages[@]}" -eq 0 ]] || setup::_run-step package::_install "${packages[@]}"

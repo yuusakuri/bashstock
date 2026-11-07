@@ -75,7 +75,7 @@ ubuntu::download-server-iso 24.04.3 amd64 "${HOME}/iso/ubuntu.iso"
 
 Apply the common Ubuntu user configuration, stopping at the first failure.
 
-Missing curl, Git, and Perl modules that bashstock uses are installed first.
+Missing curl, Git, and Python 3 are installed first.
 The steps then register ~/.env, set the editor of Bash and Zsh to
 code --wait, ignore case in completion, link English names to localized
 user directories, add the user to dialout, configure Git, and fix ~/.ssh
@@ -133,7 +133,7 @@ Apply the Ubuntu user configuration and desktop settings, stopping at the first 
 
 After ubuntu::setup, IBus Mozc is installed or upgraded when the repository
 offers a newer version, and the IME keys, Mozc and US input sources, and
-Hiragana start are set. Ubuntu 22.04 also gets the GNOME title-bar layout.
+Hiragana start are set. The GNOME title-bar layout is also set.
 Electron applications prefer native Wayland rendering in supported Wayland
 sessions.
 
@@ -161,7 +161,7 @@ _Function has no arguments._
 Run the Ubuntu 22.04 desktop setup through the shared desktop setup function.
 
 This compatibility entry point validates the Ubuntu release and delegates to
-ubuntu::setup-desktop, which applies available Mozc upgrades and the Ubuntu 22.04 title-bar setting.
+ubuntu::setup-desktop, which applies the shared desktop configuration.
 
 #### Example
 

@@ -432,7 +432,7 @@ mac::setup() {
   # Each failed step replaces status only while it is still 0.
   local status=0 formula='' cask=''
   local formulae=(
-    duti sqlite postgresql rustup ffmpeg pnpm tree ripgrep fd gh python shellcheck shfmt font-udev-gothic
+    duti sqlite postgresql rustup ffmpeg pnpm tree ripgrep fd gh shellcheck shfmt font-udev-gothic
   )
   local casks=(
     google-chrome brave-browser obs zoom webex visual-studio-code android-studio thunderbird discord
@@ -463,6 +463,7 @@ mac::setup() {
   setup::_run-step homebrew::install || status="${status/#0/$?}"
   setup::_run-step brew update || status="${status/#0/$?}"
   setup::_run-step brew upgrade || status="${status/#0/$?}"
+  setup::_run-step brew install python || status="${status/#0/$?}"
   for formula in "${formulae[@]}"; do
     setup::_run-step brew install "${formula}" || status="${status/#0/$?}"
   done

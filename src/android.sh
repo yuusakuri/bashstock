@@ -731,13 +731,12 @@ android::avd::delete() {
 # @exitcode 0 The versions were written.
 # @exitcode 1 No stable version was found.
 # @exitcode 64 An argument was given.
-# @exitcode 69 perl, or both android and sdkmanager, are unavailable.
+# @exitcode 69 Python 3, or both android and sdkmanager, are unavailable.
 # @exitcode other The status of the SDK command that failed.
 # @example
 #   android::build-tools::versions | tail -n 3
 android::build-tools::versions() {
   [[ "$#" -eq 0 ]] || return 64
-  command::require perl || return "$?"
   local listing='' versions=''
   local arguments=(--no-metrics)
   if command -v android >/dev/null 2>&1; then
@@ -747,10 +746,16 @@ android::build-tools::versions() {
     command::require sdkmanager || return "$?"
     listing="$(sdkmanager --list --channel=0)" || return "$?"
   fi
-  versions="$(printf '%s\n' "${listing}" | perl -ne '
-    print "$1\n" if /^\s*build-tools;([0-9]+\.[0-9]+\.[0-9]+)\s*\|/
-      || /^\s*build-tools\/([0-9]+\.[0-9]+\.[0-9]+)\s+[0-9]+\.[0-9]+\.[0-9]+(?=\s|$)/;
-  ' | package::_sort-versions)" || return "$?"
+  versions="$(printf '%s\n' "${listing}" | python::run -c '
+import re
+import sys
+for line in sys.stdin:
+    match = re.match(r"^\s*build-tools;([0-9]+\.[0-9]+\.[0-9]+)\s*\|", line)
+    if not match:
+        match = re.match(r"^\s*build-tools/([0-9]+\.[0-9]+\.[0-9]+)\s+[0-9]+\.[0-9]+\.[0-9]+(?=\s|$)", line)
+    if match:
+        print(match.group(1))
+' | package::_sort-versions)" || return "$?"
   [[ -n "${versions}" ]] || return 1
   printf '%s\n' "${versions}"
 }

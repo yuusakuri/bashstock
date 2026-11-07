@@ -64,29 +64,42 @@ package::_is-stable-version() {
 # @internal
 package::_sort-versions() {
   [[ "$#" -eq 0 ]] || return 64
-  command::require perl || return "$?"
-  perl -e '
-    sub compare_versions {
-      my ($left, $right) = @_;
-      my $left_epoch = $left =~ s/^([0-9]+):// ? $1 : 0;
-      my $right_epoch = $right =~ s/^([0-9]+):// ? $1 : 0;
-      return $left_epoch <=> $right_epoch if $left_epoch != $right_epoch;
-      my @left = split /([0-9]+)/, $left;
-      my @right = split /([0-9]+)/, $right;
-      while (@left || @right) {
-        my $x = shift @left;
-        my $y = shift @right;
-        return -1 unless defined $x;
-        return 1 unless defined $y;
-        my $result = ($x =~ /^[0-9]+$/ && $y =~ /^[0-9]+$/) ? $x <=> $y : $x cmp $y;
-        return $result if $result;
-      }
-      return 0;
-    }
-    my %seen;
-    my @versions = grep { length && !$seen{$_}++ } map { s/^\s+|\s+$//gr } <STDIN>;
-    print "$_\n" for sort { compare_versions($a, $b) } @versions;
-  '
+  python::run -c '
+import re
+import sys
+from functools import cmp_to_key
+
+def compare_versions(left, right):
+    left_epoch = re.match(r"^([0-9]+):", left)
+    right_epoch = re.match(r"^([0-9]+):", right)
+    left_value = int(left_epoch.group(1)) if left_epoch else 0
+    right_value = int(right_epoch.group(1)) if right_epoch else 0
+    if left_value != right_value:
+        return (left_value > right_value) - (left_value < right_value)
+    if left_epoch:
+        left = left[left_epoch.end():]
+    if right_epoch:
+        right = right[right_epoch.end():]
+    left_parts = re.split(r"([0-9]+)", left)
+    right_parts = re.split(r"([0-9]+)", right)
+    for index in range(max(len(left_parts), len(right_parts))):
+        if index >= len(left_parts):
+            return -1
+        if index >= len(right_parts):
+            return 1
+        x, y = left_parts[index], right_parts[index]
+        if x.isdigit() and y.isdigit():
+            result = (int(x) > int(y)) - (int(x) < int(y))
+        else:
+            result = (x > y) - (x < y)
+        if result:
+            return result
+    return 0
+
+versions = dict.fromkeys(line.strip() for line in sys.stdin if line.strip())
+for version in sorted(versions, key=cmp_to_key(compare_versions)):
+    print(version)
+'
 }
 
 # @description Read versions from standard input and write stable values in ascending version order.
@@ -216,19 +229,22 @@ package::_rpm-architecture() {
 package::_brew-formula-versions() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   command::require brew || return "$?"
-  command::require perl || return "$?"
   local json=''
   json="$(brew info --json=v2 --formula "$1")" || return 1
-  printf '%s' "${json}" | perl -MJSON::PP -e '
-    local $/;
-    my $data = eval { decode_json(<STDIN>) } or exit 74;
-    for my $formula (@{$data->{formulae} || []}) {
-      print "$formula->{versions}{stable}\n" if defined $formula->{versions}{stable};
-      for my $name (@{$formula->{versioned_formulae} || []}) {
-        print "$1\n" if $name =~ /\@(.+)$/;
-      }
-    }
-  '
+  printf '%s' "${json}" | python::run -c '
+import json
+import re
+import sys
+data = json.load(sys.stdin)
+for formula in data.get("formulae", []):
+    stable = formula.get("versions", {}).get("stable")
+    if stable:
+        print(stable)
+    for name in formula.get("versioned_formulae", []):
+        match = re.search(r"@(.+)$", name)
+        if match:
+            print(match.group(1))
+'
 }
 
 # @description Write the stable version of a Homebrew formula.
@@ -236,15 +252,9 @@ package::_brew-formula-versions() {
 package::_brew-formula-stable-version() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   command::require brew || return "$?"
-  command::require perl || return "$?"
   local json=''
   json="$(brew info --json=v2 --formula "$1")" || return 1
-  printf '%s' "${json}" | perl -MJSON::PP -e '
-    local $/;
-    my $data = eval { decode_json(<STDIN>) } or exit 74;
-    my $formula = $data->{formulae}[0] or exit 1;
-    print "$formula->{versions}{stable}\n";
-  '
+  printf '%s' "${json}" | python::run -c 'import json, sys; data=json.load(sys.stdin); print(data["formulae"][0]["versions"]["stable"])'
 }
 
 # @description Write the version of a Homebrew cask.
@@ -252,17 +262,9 @@ package::_brew-formula-stable-version() {
 package::_brew-cask-version() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   command::require brew || return "$?"
-  command::require perl || return "$?"
   local json=''
   json="$(brew info --json=v2 --cask "$1")" || return 1
-  printf '%s' "${json}" | perl -MJSON::PP -e '
-    local $/;
-    my $data = eval { decode_json(<STDIN>) } or exit 74;
-    my $cask = $data->{casks}[0] or exit 1;
-    my $version = $cask->{version};
-    $version =~ s/,.*$//;
-    print "$version\n";
-  '
+  printf '%s' "${json}" | python::run -c 'import json, sys; version=json.load(sys.stdin)["casks"][0]["version"]; print(version.split(",", 1)[0])'
 }
 
 # @description Write available versions of one system package in ascending version order.
@@ -406,46 +408,47 @@ package::_cask-versions() {
 # @internal
 package::_github-release-versions() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] ) || return 64
-  command::require perl || return "$?"
   local json='' versions=''
   json="$(package::_fetch "https://api.github.com/repos/$1/releases?per_page=100")" || return "$?"
-  versions="$(printf '%s' "${json}" | perl -MJSON::PP -e '
-    local $/;
-    my $data = eval { decode_json(<STDIN>) } or exit 74;
-    for my $release (@$data) {
-      next if $release->{draft} || $release->{prerelease};
-      my $tag = $release->{tag_name};
-      $tag =~ s/^v(?=[0-9])//;
-      # Repositories also tag other components, such as config-v0.10.0 in supabase/cli.
-      print "$tag\n" if $tag =~ /^[0-9]+(?:\.[0-9]+)*$/;
-    }
-  ')" || return "$?"
+  versions="$(printf '%s' "${json}" | python::run -c '
+import json
+import re
+import sys
+for release in json.load(sys.stdin):
+    if release.get("draft") or release.get("prerelease"):
+        continue
+    tag = re.sub(r"^v(?=[0-9])", "", release.get("tag_name", ""))
+    # Repositories also tag other components, such as config-v0.10.0 in supabase/cli.
+    if re.fullmatch(r"[0-9]+(?:\.[0-9]+)*", tag):
+        print(tag)
+')" || return "$?"
   printf '%s\n' "${versions}" | package::_sort-stable-versions
 }
 
-# @description Write the download URL of a GitHub release asset whose name matches a Perl expression.
+# @description Write the download URL of a GitHub release asset whose name matches a Python regular expression.
 # @internal
 package::_github-release-asset-url() {
   ( [[ "$#" -eq 3 && "$1" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ && -n "$2" && -n "$3" ]] ) || return 64
-  command::require perl || return "$?"
   local json=''
   json="$(package::_fetch "https://api.github.com/repos/$1/releases?per_page=100")" || return "$?"
-  printf '%s' "${json}" | perl -MJSON::PP -e '
-    my ($version, $expression) = @ARGV;
-    local $/;
-    my $data = eval { decode_json(<STDIN>) } or exit 74;
-    my $pattern = eval { qr/$expression/ } or exit 64;
-    for my $release (@$data) {
-      next unless $release->{tag_name} eq $version || $release->{tag_name} eq "v$version";
-      for my $asset (@{$release->{assets} || []}) {
-        if ($asset->{name} =~ $pattern) {
-          print "$asset->{browser_download_url}\n";
-          exit 0;
-        }
-      }
-    }
-    exit 1;
-  ' "$2" "$3"
+  printf '%s' "${json}" | python::run -c '
+import json
+import re
+import sys
+version, expression = sys.argv[1:]
+try:
+    pattern = re.compile(expression)
+except re.error:
+    sys.exit(64)
+for release in json.load(sys.stdin):
+    if release.get("tag_name") not in (version, "v" + version):
+        continue
+    for asset in release.get("assets", []):
+        if pattern.search(asset.get("name", "")):
+            print(asset["browser_download_url"])
+            sys.exit(0)
+sys.exit(1)
+' "$2" "$3"
 }
 
 # @description Download an APT Packages index to a file, decompressing a .gz index.
@@ -465,21 +468,22 @@ package::_deb-index-download() {
 # @internal
 package::_deb-index-entries() {
   [[ "$#" -eq 2 && "$1" == https://* && -n "$2" ]] || return 64
-  command::require perl || return "$?"
   local directory='' status=0
   directory="$(package::_temporary-directory)" || return "$?"
   package::_deb-index-download "$1" "${directory}/Packages" || status="$?"
   if [[ "${status}" -eq 0 ]]; then
-    perl -e '
-      my $name = shift;
-      local $/ = "";
-      while (my $stanza = <STDIN>) {
-        my %field;
-        $field{lc $1} = $2 while $stanza =~ /^([A-Za-z-]+):\s*(.*)$/mg;
-        next unless defined $field{package} && $field{package} eq $name;
-        print "$field{version}\t$field{filename}\n";
-      }
-    ' "$2" <"${directory}/Packages" || status=74
+    python::run -c '
+import sys
+name = sys.argv[1]
+for stanza in sys.stdin.read().split("\n\n"):
+    fields = {}
+    for line in stanza.splitlines():
+        if line and not line[0].isspace() and ":" in line:
+            key, value = line.split(":", 1)
+            fields[key.lower()] = value.strip()
+    if fields.get("package") == name and "version" in fields and "filename" in fields:
+        print(fields["version"] + "\t" + fields["filename"])
+' "$2" <"${directory}/Packages" || status=74
   fi
   rm -rf -- "${directory}"
   return "${status}"
@@ -493,25 +497,28 @@ package::_deb-index-entries() {
 # @internal
 package::_deb-runnable-versions() {
   [[ "$#" -eq 2 && "$1" == https://* && -n "$2" ]] || return 64
-  command::require perl || return "$?"
   command::require dpkg || return "$?"
   local directory='' status=0 requirement_lines='' libc='' version='' required='' supported=''
   libc="$(dpkg-query -W -f='${Version}' libc6 2>/dev/null)" || return 69
   directory="$(package::_temporary-directory)" || return "$?"
   package::_deb-index-download "$1" "${directory}/Packages" || status="$?"
   if [[ "${status}" -eq 0 ]]; then
-    requirement_lines="$(perl -e '
-      my $name = shift;
-      local $/ = "";
-      while (my $stanza = <STDIN>) {
-        my %field;
-        $field{lc $1} = $2 while $stanza =~ /^([A-Za-z-]+):\s*(.*)$/mg;
-        next unless defined $field{package} && $field{package} eq $name;
-        my $depends = join ", ", grep { defined } @field{qw(pre-depends depends)};
-        my @required = $depends =~ /(?:^|[,|]\s*)libc6\s*\(\s*>[>=]\s*([^)\s]+)\s*\)/g;
-        print join("\t", $field{version}, @required), "\n";
-      }
-    ' "$2" <"${directory}/Packages")" || status=74
+    requirement_lines="$(python::run -c '
+import re
+import sys
+name = sys.argv[1]
+for stanza in sys.stdin.read().split("\n\n"):
+    fields = {}
+    for line in stanza.splitlines():
+        if line and not line[0].isspace() and ":" in line:
+            key, value = line.split(":", 1)
+            fields[key.lower()] = value.strip()
+    if fields.get("package") != name or "version" not in fields:
+        continue
+    depends = ", ".join(fields.get(key, "") for key in ("pre-depends", "depends"))
+    required = re.findall(r"(?:^|[,|]\s*)libc6\s*\(\s*>[>=]\s*([^\s)]+)\s*\)", depends)
+    print("\t".join([fields["version"]] + required))
+' "$2" <"${directory}/Packages")" || status=74
   fi
   rm -rf -- "${directory}"
   [[ "${status}" -eq 0 ]] || return "${status}"
@@ -651,22 +658,30 @@ package::_add-current-user-to-group() {
 # @internal
 package::_sort-by-first-field() {
   [[ "$#" -eq 0 ]] || return 64
-  command::require perl || return "$?"
-  perl -e '
-    sub compare_versions {
-      my @left = split /([0-9]+)/, $_[0];
-      my @right = split /([0-9]+)/, $_[1];
-      while (@left || @right) {
-        my $x = shift @left;
-        my $y = shift @right;
-        return -1 unless defined $x;
-        return 1 unless defined $y;
-        my $result = ($x =~ /^[0-9]+$/ && $y =~ /^[0-9]+$/) ? $x <=> $y : $x cmp $y;
-        return $result if $result;
-      }
-      return 0;
-    }
-    my @lines = map { chomp; [split /\t/, $_, 2] } grep { /\t/ } <STDIN>;
-    print "$_->[1]\n" for sort { compare_versions($a->[0], $b->[0]) } @lines;
-  '
+  python::run -c '
+import re
+import sys
+from functools import cmp_to_key
+
+def compare_versions(left, right):
+    left_parts = re.split(r"([0-9]+)", left)
+    right_parts = re.split(r"([0-9]+)", right)
+    for index in range(max(len(left_parts), len(right_parts))):
+        if index >= len(left_parts):
+            return -1
+        if index >= len(right_parts):
+            return 1
+        x, y = left_parts[index], right_parts[index]
+        if x.isdigit() and y.isdigit():
+            result = (int(x) > int(y)) - (int(x) < int(y))
+        else:
+            result = (x > y) - (x < y)
+        if result:
+            return result
+    return 0
+
+lines = [line.rstrip("\n").split("\t", 1) for line in sys.stdin if "\t" in line]
+for version, value in sorted(lines, key=cmp_to_key(lambda left, right: compare_versions(left[0], right[0]))):
+    print(value)
+'
 }

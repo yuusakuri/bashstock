@@ -12,42 +12,34 @@ time::_clock-milliseconds() {
     return 64
   fi
 
-  command -v perl >/dev/null 2>&1 || return 69
+  command -v python3 >/dev/null 2>&1 || return 69
 
   local operating_system=''
   operating_system="$(system::operating-system)" || return 69
   case "${operating_system}:$1" in
     linux:monotonic)
-      perl -MTime::HiRes=clock_gettime,CLOCK_MONOTONIC \
-        -e 'printf "%d\n", int(clock_gettime(CLOCK_MONOTONIC) * 1000)' \
-        2>/dev/null || return 69
+      python::run -c 'import time; print(int(time.clock_gettime(time.CLOCK_MONOTONIC) * 1000))' 2>/dev/null || return 69
       ;;
     linux:boot-time)
-      perl -e '
-        use strict;
-        use warnings;
-
-        open my $input, "<", "/proc/uptime" or exit 69;
-        my $line = <$input>;
-        close $input or exit 69;
-        exit 69 unless defined($line)
-          && $line =~ /\A([0-9]+)(?:\.([0-9]+))?[[:space:]]/;
-
-        my $seconds = $1;
-        my $fraction = defined($2) ? $2 : "";
-        $fraction .= "000";
-        printf "%d\n", ($seconds * 1000) + substr($fraction, 0, 3);
-      ' 2>/dev/null || return 69
+      python::run -c '
+import re
+try:
+    with open("/proc/uptime", encoding="ascii") as stream:
+        line = stream.readline()
+    match = re.match(r"^([0-9]+)(?:\.([0-9]+))?\s", line)
+    if not match:
+        raise ValueError()
+    fraction = (match.group(2) or "") + "000"
+    print(int(match.group(1)) * 1000 + int(fraction[:3]))
+except (OSError, ValueError):
+    raise SystemExit(69)
+' 2>/dev/null || return 69
       ;;
     darwin:monotonic)
-      perl -MTime::HiRes=clock_gettime,CLOCK_UPTIME_RAW \
-        -e 'printf "%d\n", int(clock_gettime(CLOCK_UPTIME_RAW) * 1000)' \
-        2>/dev/null || return 69
+      python::run -c 'import time; print(int(time.clock_gettime(time.CLOCK_UPTIME_RAW) * 1000))' 2>/dev/null || return 69
       ;;
     darwin:boot-time)
-      perl -MTime::HiRes=clock_gettime,CLOCK_MONOTONIC_RAW \
-        -e 'printf "%d\n", int(clock_gettime(CLOCK_MONOTONIC_RAW) * 1000)' \
-        2>/dev/null || return 69
+      python::run -c 'import time; print(int(time.clock_gettime(time.CLOCK_MONOTONIC_RAW) * 1000))' 2>/dev/null || return 69
       ;;
     *)
       return 69
@@ -61,8 +53,8 @@ time::_realtime-milliseconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
-  command -v perl >/dev/null 2>&1 || return 69
-  perl -MTime::HiRes=time -e 'printf "%d\n", int(time() * 1000)' 2>/dev/null ||
+  command -v python3 >/dev/null 2>&1 || return 69
+  python::run -c 'import time; print(int(time.time() * 1000))' 2>/dev/null ||
     return 69
 }
 
@@ -72,42 +64,47 @@ time::_format-milliseconds() {
   if [[ "$#" -ne 2 ]] || ! number::_is-non-negative-integer "$1"; then
     return 64
   fi
-  command -v perl >/dev/null 2>&1 || return 69
+  command -v python3 >/dev/null 2>&1 || return 69
 
-  perl -MPOSIX=strftime -e '
-    use strict;
-    use warnings;
-    my ($milliseconds, $mode) = @ARGV;
-    exit 64 unless defined $milliseconds && $milliseconds =~ /\A[0-9]+\z/;
-    my $seconds = int($milliseconds / 1000);
-    my $fraction = $milliseconds % 1000;
-    my ($base, $offset);
-    if ($mode eq "utc-ms-extended") {
-      $base = strftime("%Y-%m-%dT%H:%M:%S", gmtime($seconds));
-      printf "%s.%03dZ\n", $base, $fraction;
-    } elsif ($mode eq "utc-s-extended") {
-      print strftime("%Y-%m-%dT%H:%M:%SZ", gmtime($seconds)), "\n";
-    } elsif ($mode eq "utc-date-extended") {
-      print strftime("%Y-%m-%d", gmtime($seconds)), "\n";
-    } elsif ($mode eq "local-ms-extended" || $mode eq "local-s-extended") {
-      my @local = localtime($seconds);
-      $base = strftime("%Y-%m-%dT%H:%M:%S", @local);
-      $offset = strftime("%z", @local);
-      $offset =~ s/([+-][0-9]{2})([0-9]{2})\z/$1:$2/;
-      exit 69 unless $offset =~ /\A[+-][0-9]{2}:[0-9]{2}\z/;
-      if ($mode eq "local-ms-extended") {
-        printf "%s.%03d%s\n", $base, $fraction, $offset;
-      } else {
-        print $base, $offset, "\n";
-      }
-    } elsif ($mode eq "local-date-extended") {
-      print strftime("%Y-%m-%d", localtime($seconds)), "\n";
-    } elsif ($mode eq "local-s-basic") {
-      print strftime("%Y%m%dT%H%M%S", localtime($seconds)), "\n";
-    } else {
-      exit 64;
-    }
-  ' -- "$1" "$2" 2>/dev/null || {
+  python::run -c '
+import datetime
+import re
+import sys
+milliseconds, mode = sys.argv[1:]
+if not re.fullmatch(r"[0-9]+", milliseconds):
+    sys.exit(64)
+milliseconds = int(milliseconds)
+seconds, fraction = divmod(milliseconds, 1000)
+try:
+    if mode.startswith("utc-"):
+        value = datetime.datetime.fromtimestamp(seconds, datetime.timezone.utc)
+    else:
+        value = datetime.datetime.fromtimestamp(seconds).astimezone()
+except (OverflowError, OSError, ValueError):
+    sys.exit(69)
+if mode == "utc-ms-extended":
+    print(value.strftime("%Y-%m-%dT%H:%M:%S") + ".%03dZ" % fraction)
+elif mode == "utc-s-extended":
+    print(value.strftime("%Y-%m-%dT%H:%M:%SZ"))
+elif mode == "utc-date-extended":
+    print(value.strftime("%Y-%m-%d"))
+elif mode in ("local-ms-extended", "local-s-extended"):
+    offset = value.strftime("%z")
+    if not re.fullmatch(r"[+-][0-9]{4}", offset):
+        sys.exit(69)
+    offset = offset[:3] + ":" + offset[3:]
+    base = value.strftime("%Y-%m-%dT%H:%M:%S")
+    if mode == "local-ms-extended":
+        print(base + ".%03d" % fraction + offset)
+    else:
+        print(base + offset)
+elif mode == "local-date-extended":
+    print(value.strftime("%Y-%m-%d"))
+elif mode == "local-s-basic":
+    print(value.strftime("%Y%m%dT%H%M%S"))
+else:
+    sys.exit(64)
+' "$1" "$2" 2>/dev/null || {
     local status="$?"
     [[ "${status}" -eq 64 ]] && return 64
     return 69
@@ -130,7 +127,7 @@ time::_provider-error() {
 # @stdout Milliseconds of a monotonic clock.
 # @exitcode 0 The value was written.
 # @exitcode 64 An argument was given.
-# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
 #   start="$(time::monotonic-milliseconds)"
 #   make build
@@ -148,7 +145,7 @@ time::monotonic-milliseconds() {
 # @stdout Milliseconds since the system started.
 # @exitcode 0 The value was written.
 # @exitcode 64 An argument was given.
-# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
 #   time::boot-time-milliseconds
 time::boot-time-milliseconds() {
@@ -164,7 +161,7 @@ time::boot-time-milliseconds() {
 # @stdout Milliseconds since 1970-01-01T00:00:00Z.
 # @exitcode 0 The value was written.
 # @exitcode 64 An argument was given.
-# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
 #   time::unix-milliseconds
 #   # 1791900000123
@@ -181,7 +178,7 @@ time::unix-milliseconds() {
 # @stdout Seconds since 1970-01-01T00:00:00Z.
 # @exitcode 0 The value was written.
 # @exitcode 64 An argument was given.
-# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
 #   expires=$(( $(time::unix-seconds) + 3600 ))
 time::unix-seconds() {
@@ -202,7 +199,7 @@ time::unix-seconds() {
 # @stdout Whole days since 1970-01-01.
 # @exitcode 0 The value was written.
 # @exitcode 64 An argument was given.
-# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
 #   time::unix-days
 #   # 20739
@@ -243,7 +240,7 @@ time::_date-time() {
 # @stdout A time such as 2026-10-14T03:04:05.678Z.
 # @exitcode 0 The value was written.
 # @exitcode 64 An argument was given.
-# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
 #   time::utc-date-time-milliseconds-extended
 #   # 2026-10-14T03:04:05.678Z
@@ -258,7 +255,7 @@ time::utc-date-time-milliseconds-extended() {
 # @stdout A time such as 2026-10-14T03:04:05Z.
 # @exitcode 0 The value was written.
 # @exitcode 64 An argument was given.
-# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
 #   time::utc-date-time-seconds-extended
 #   # 2026-10-14T03:04:05Z
@@ -273,7 +270,7 @@ time::utc-date-time-seconds-extended() {
 # @stdout A date such as 2026-10-14.
 # @exitcode 0 The value was written.
 # @exitcode 64 An argument was given.
-# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
 #   time::utc-date-extended
 #   # 2026-10-14
@@ -288,7 +285,7 @@ time::utc-date-extended() {
 # @stdout A time such as 2026-10-14T12:04:05.678+09:00.
 # @exitcode 0 The value was written.
 # @exitcode 64 An argument was given.
-# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
 #   time::local-date-time-milliseconds-extended
 #   # 2026-10-14T12:04:05.678+09:00
@@ -303,7 +300,7 @@ time::local-date-time-milliseconds-extended() {
 # @stdout A time such as 2026-10-14T12:04:05+09:00.
 # @exitcode 0 The value was written.
 # @exitcode 64 An argument was given.
-# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
 #   log_line="$(time::local-date-time-seconds-extended) started"
 time::local-date-time-seconds-extended() {
@@ -317,7 +314,7 @@ time::local-date-time-seconds-extended() {
 # @stdout A date such as 2026-10-14.
 # @exitcode 0 The value was written.
 # @exitcode 64 An argument was given.
-# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
 #   mkdir -p "backup/$(time::local-date-extended)"
 time::local-date-extended() {
@@ -333,7 +330,7 @@ time::local-date-extended() {
 # @stdout A time such as 20261014T120405.
 # @exitcode 0 The value was written.
 # @exitcode 64 An argument was given.
-# @exitcode 69 Perl with Time::HiRes, the clock provider, is unavailable.
+# @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
 #   cp config.yaml "config.yaml.$(time::local-date-time-seconds-basic)"
 time::local-date-time-seconds-basic() {

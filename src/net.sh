@@ -564,18 +564,20 @@ net::capture-host() { [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64; local host="$
 # @stdout The port number.
 # @exitcode 0 The port was written.
 # @exitcode 64 An argument was given.
-# @exitcode 69 perl is unavailable or the socket could not be bound.
+# @exitcode 69 Python 3 is unavailable or the socket could not be bound.
 # @example
 #   port="$(net::unused-port)" && python3 -m http.server "${port}"
 net::unused-port() {
   [[ "$#" -eq 0 ]] || return 64
-  command::require perl || return "$?"
-  perl -MSocket -e '
-    socket(my $socket, PF_INET, SOCK_STREAM, getprotobyname("tcp")) or exit 69;
-    bind($socket, pack_sockaddr_in(0, inet_aton("127.0.0.1"))) or exit 69;
-    my ($port) = unpack_sockaddr_in(getsockname($socket));
-    print "$port\n";
-  '
+  python::run -c '
+import socket
+try:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        print(sock.getsockname()[1])
+except OSError:
+    raise SystemExit(69)
+'
 }
 
 # @description Write the DNS servers that systemd-resolved uses, one per line.

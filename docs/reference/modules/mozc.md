@@ -187,7 +187,7 @@ _Function has no arguments._
 
 * **0**: Mozc starts in Hiragana mode from now on.
 * **64**: An argument was given.
-* **69**: Perl or ibus-daemon is unavailable.
+* **69**: Python 3 or ibus-daemon is unavailable.
 * **74**: The configuration file could not be created.
 * other The status of the settings update or ibus-daemon.
 

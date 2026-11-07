@@ -9,63 +9,70 @@
 # @internal
 pipx::_python-version() {
   [[ "$#" -eq 0 ]] || return 64
-  command::require python3 || return "$?"
-  python3 -c 'import sys; print("%d.%d.%d" % sys.version_info[:3])' || return 74
+  python::run -c 'import sys; print("%d.%d.%d" % sys.version_info[:3])' || return 74
 }
 
 # @description Write pipx releases on PyPI whose Requires-Python accepts PYTHON_VERSION.
 # @internal
 pipx::_official-versions() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ) || return 64
-  command::require perl || return "$?"
   local json='' versions=''
   json="$(package::_fetch https://pypi.org/pypi/pipx/json)" || return "$?"
-  versions="$(printf '%s' "${json}" | perl -MJSON::PP -e '
-    my @python = split /\./, shift;
-    sub compare {
-      my ($left, $right) = @_;
-      for my $index (0 .. ($#$left > $#$right ? $#$left : $#$right)) {
-        my $difference = ($left->[$index] // 0) <=> ($right->[$index] // 0);
-        return $difference if $difference;
-      }
-      return 0;
-    }
-    # Accepts the PEP 440 operators that Requires-Python uses; anything else rejects the release.
-    sub accepts {
-      my ($specifiers) = @_;
-      for my $specifier (split /\s*,\s*/, $specifiers) {
-        next if $specifier eq "";
-        $specifier =~ /^(~=|==|!=|<=|>=|<|>)\s*([0-9]+(?:\.[0-9]+)*)(\.\*)?$/ or return 0;
-        my ($operator, $wildcard) = ($1, $3);
-        my @version = split /\./, $2;
-        if ($wildcard) {
-          my $same = compare([@python[0 .. $#version]], \@version) == 0;
-          return 0 if ($operator eq "==" && !$same) || ($operator eq "!=" && $same);
-          return 0 if $operator ne "==" && $operator ne "!=";
-          next;
-        }
-        my $order = compare(\@python, \@version);
-        return 0 if $operator eq ">=" && $order < 0;
-        return 0 if $operator eq ">" && $order <= 0;
-        return 0 if $operator eq "<=" && $order > 0;
-        return 0 if $operator eq "<" && $order >= 0;
-        return 0 if $operator eq "==" && $order != 0;
-        return 0 if $operator eq "!=" && $order == 0;
-        if ($operator eq "~=") {
-          return 0 if $order < 0 || @version < 2;
-          return 0 if compare([@python[0 .. $#version - 1]], [@version[0 .. $#version - 1]]) != 0;
-        }
-      }
-      return 1;
-    }
-    local $/;
-    my $data = eval { decode_json(<STDIN>) } or exit 74;
-    while (my ($release, $files) = each %{$data->{releases} || {}}) {
-      my @files = grep { !$_->{yanked} } @$files;
-      next unless @files && $release =~ /^[0-9]+(?:\.[0-9]+)*$/;
-      print "$release\n" if accepts($files[0]{requires_python} // "");
-    }
-  ' "$1")" || return "$?"
+  versions="$(printf '%s' "${json}" | python::run -c '
+import json
+import re
+import sys
+python_version = [int(part) for part in sys.argv[1].split(".")]
+
+def compare(left, right):
+    size = max(len(left), len(right))
+    left = left + [0] * (size - len(left))
+    right = right + [0] * (size - len(right))
+    return (left > right) - (left < right)
+
+def accepts(specifiers):
+    for specifier in specifiers.split(","):
+        specifier = specifier.strip()
+        if not specifier:
+            continue
+        match = re.fullmatch(r"(~=|==|!=|<=|>=|<|>)\s*([0-9]+(?:\.[0-9]+)*)(\.\*)?", specifier)
+        if not match:
+            return False
+        operator, raw_version, wildcard = match.groups()
+        version = [int(part) for part in raw_version.split(".")]
+        if wildcard:
+            same = compare(python_version[:len(version)], version) == 0
+            if (operator == "==" and not same) or (operator == "!=" and same):
+                return False
+            if operator not in ("==", "!="):
+                return False
+            continue
+        order = compare(python_version, version)
+        if operator == ">=" and order < 0:
+            return False
+        if operator == ">" and order <= 0:
+            return False
+        if operator == "<=" and order > 0:
+            return False
+        if operator == "<" and order >= 0:
+            return False
+        if operator == "==" and order != 0:
+            return False
+        if operator == "!=" and order == 0:
+            return False
+        if operator == "~=" and (order < 0 or len(version) < 2 or compare(python_version[:len(version) - 1], version[:-1]) != 0):
+            return False
+    return True
+
+try:
+    data = json.load(sys.stdin)
+except (ValueError, TypeError):
+    sys.exit(74)
+for release, files in data.get("releases", {}).items():
+    files = [file_info for file_info in files if not file_info.get("yanked")]
+    if files and re.fullmatch(r"[0-9]+(?:\.[0-9]+)*", release) and accepts(files[0].get("requires_python", "")):
+        print(release)
+' "$1")" || return "$?"
   printf '%s\n' "${versions}" | package::_sort-stable-versions
 }
 

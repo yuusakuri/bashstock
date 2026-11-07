@@ -7,8 +7,8 @@
 
 # @description Apply the common Fedora user configuration, stopping at the first failure.
 #
-# The same steps as ubuntu::setup run on Fedora: missing curl, Git, and Perl
-# modules that bashstock uses are installed, ~/.env is registered, the editor
+# The same steps as ubuntu::setup run on Fedora: missing curl, Git, and Python
+# 3 are installed, ~/.env is registered, the editor
 # of Bash and Zsh is set to code --wait, completion ignores case, English
 # names are linked to localized user directories, the user joins dialout, Git
 # is configured, and ~/.ssh permissions are fixed. External tools can be

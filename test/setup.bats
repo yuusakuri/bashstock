@@ -1151,20 +1151,6 @@ gsettings_value() {
   [ "${status}" -eq 69 ]
 }
 
-@test "Ubuntu desktop setup updates old Mozc and applies the Ubuntu 22.04 title-bar layout" {
-  use_platform ubuntu 22.04 jammy
-  STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
-  ubuntu::setup() { printf 'ubuntu::setup\n' >>"${STEP_LOG}"; }
-  setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
-  setup::_upgrade-ubuntu-mozc() { printf 'setup::_upgrade-ubuntu-mozc\n' >>"${STEP_LOG}"; }
-
-  run ubuntu::setup-desktop
-  [ "${status}" -eq 0 ]
-  [ "$(sed -n '1p' "${STEP_LOG}")" = 'ubuntu::setup' ]
-  [ "$(sed -n '2p' "${STEP_LOG}")" = 'setup::_upgrade-ubuntu-mozc' ]
-  [ "$(sed -n '$p' "${STEP_LOG}")" = 'gnome::window::set-button-layout' ]
-}
-
 @test "Ubuntu setup leaves external tools for the optional follow-up function" {
   use_platform ubuntu 24.04 noble
   HOME="${BATS_TEST_TMPDIR}/home"
@@ -1192,8 +1178,8 @@ gsettings_value() {
 
   run ubuntu::setup
   [ "${status}" -eq 0 ]
-  [ "$(sed -n '1p' "${STEP_LOG}")" = 'package::_install curl git' ]
-  [ "$(sed -n '2p' "${STEP_LOG}")" = 'package::_install curl git' ]
+  [ "$(sed -n '1p' "${STEP_LOG}")" = 'package::_install curl git python3' ]
+  [ "$(sed -n '2p' "${STEP_LOG}")" = 'package::_install curl git python3' ]
   grep -Fqx 'git::config::setup' "${STEP_LOG}"
   ! grep -Fq 'package::_install gnupg' "${STEP_LOG}"
   ! grep -Fq 'gh::install' "${STEP_LOG}"
@@ -1211,17 +1197,15 @@ gsettings_value() {
   use_platform fedora 34
   HOME="${BATS_TEST_TMPDIR}/home"
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
-  local installed='curl git perl'
+  local installed='curl git python3'
   mkdir -p "${HOME}"
   command::exists() { [[ " ${installed} " == *" $1 "* ]]; }
-  # Fedora Workstation 34 has POSIX but neither JSON::PP nor Time::HiRes.
-  perl() { [[ "$1" == -MPOSIX ]]; }
   setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
   gh::install() { printf 'gh::install\n' >>"${STEP_LOG}"; }
 
   run fedora::setup
   [ "${status}" -eq 0 ]
-  [ "$(sed -n '1p' "${STEP_LOG}")" = 'package::_install perl-JSON-PP perl-Time-HiRes' ]
+  ! grep -Fq 'package::_install python3' "${STEP_LOG}"
   grep -Fqx 'git::config::setup' "${STEP_LOG}"
   ! grep -Fq 'git::config::use-credential-manager' "${STEP_LOG}"
   ! grep -Fq 'package::_install gnupg2' "${STEP_LOG}"
@@ -1275,22 +1259,25 @@ gsettings_value() {
   [ ! -s "${STEP_LOG}" ]
 }
 
-@test "Ubuntu setup installs perl only when its modules are missing" {
+@test "Ubuntu setup installs Python 3 when it is missing" {
   use_platform ubuntu 24.04 noble
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
-  command::exists() { :; }
+  local installed='curl git python3'
+  command::exists() { [[ " ${installed} " == *" $1 "* ]]; }
   setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+  package::_install() {
+    printf 'package::_install %s\n' "$*" >>"${STEP_LOG}"
+    installed+=" $*"
+  }
 
-  perl() { :; }
   run setup::_install-prerequisites
   [ "${status}" -eq 0 ]
   [ ! -e "${STEP_LOG}" ]
 
-  # perl-base alone, as in a minimal Ubuntu image, lacks JSON::PP and Time::HiRes.
-  perl() { return 2; }
+  installed='curl git'
   run setup::_install-prerequisites
   [ "${status}" -eq 0 ]
-  [ "$(<"${STEP_LOG}")" = 'package::_install perl' ]
+  [ "$(<"${STEP_LOG}")" = 'package::_install python3' ]
 }
 
 @test "GitHub CLI repository setup checks both published key fingerprints" {
