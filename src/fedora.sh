@@ -11,9 +11,9 @@
 # modules that bashstock uses are installed, ~/.env is registered, the editor
 # of Bash and Zsh is set to code --wait, completion ignores case, English
 # names are linked to localized user directories, the user joins dialout, Git
-# uses Git Credential Manager, ~/.ssh permissions are fixed, and external
-# tools are installed. In supported Wayland sessions, Electron applications
-# also prefer native Wayland rendering.
+# is configured, and ~/.ssh permissions are fixed. External tools can be
+# installed separately with fedora::setup-external. In supported Wayland
+# sessions, Electron applications also prefer native Wayland rendering.
 #
 # @noargs
 # @stderr The step that failed.
@@ -28,13 +28,13 @@ fedora::setup() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform fedora || return "$?"
   setup::_apply-linux-user-configuration || return "$?"
-  fedora::setup-external
 }
 
 # @description Install GnuPG, GitHub CLI, and Git Credential Manager on Fedora when they are not already available.
 #
 # GitHub CLI is installed from its official DNF repository after checking the
-# repository key against GitHub's published fingerprints.
+# repository key against GitHub's published fingerprints. Git is configured
+# to use Git Credential Manager after the missing external tools are installed.
 #
 # @noargs
 # @exitcode 0 The missing tools were installed or were already available.

@@ -76,14 +76,13 @@ setup::_apply-linux-user-configuration() {
   setup::_run-step user::directory::create-english-links || return "$?"
   setup::_run-step user::add-to-group dialout || return "$?"
   setup::_run-step git::config::setup || return "$?"
-  setup::_run-step git::config::use-credential-manager || return "$?"
   setup::_run-step ssh::setup-directory
 }
 
 # @description Install GnuPG, GitHub CLI, and Git Credential Manager when they are not already available.
 #
-# The setup makes Git use Git Credential Manager, so it is installed here
-# instead of leaving Git with a helper that does not exist.
+# Git Credential Manager is configured as Git's credential helper after it is
+# installed.
 # @internal
 # @arg $1 string GnuPG package name of the platform.
 setup::_install-external() {
@@ -97,19 +96,16 @@ setup::_install-external() {
   if ! command::exists git-credential-manager; then
     setup::_run-step git-credential-manager::install || return "$?"
   fi
+  setup::_run-step git::config::use-credential-manager
 }
 
-# @description Install Mozc for IBus and VLC on Ubuntu when they are missing.
+# @description Install IBus Mozc on Ubuntu when it is missing.
 #
-# The desktop setup selects Mozc as an input source and VLC as the video
-# application, and a desktop installed in another language has neither.
+# Desktop installations in another language may not include IBus Mozc.
 # @internal
-setup::_install-ubuntu-desktop-applications() {
+setup::_install-ubuntu-mozc() {
   [[ "$#" -eq 0 ]] || return 64
   if [[ "$(dpkg-query -W -f='${Status}' ibus-mozc 2>/dev/null)" != 'install ok installed' ]]; then
     setup::_run-step mozc::ibus::install || return "$?"
-  fi
-  if [[ ! -f /usr/share/applications/vlc.desktop && ! -f /usr/share/applications/org.videolan.VLC.desktop ]]; then
-    setup::_run-step package::_install vlc || return "$?"
   fi
 }

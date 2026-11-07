@@ -954,7 +954,7 @@ BashStockが公開する関数を名前空間ごとに示します。
 | [`ubuntu::setup`](modules/ubuntu.md#ubuntusetup) | Apply the common Ubuntu user configuration, stopping at the first failure. |
 | [`ubuntu::setup-external`](modules/ubuntu.md#ubuntusetup-external) | Install GnuPG, GitHub CLI, and Git Credential Manager when they are not already available. |
 | [`ubuntu::setup-desktop`](modules/ubuntu.md#ubuntusetup-desktop) | Apply the Ubuntu user configuration and desktop settings, stopping at the first failure. |
-| [`ubuntu::setup-desktop-22`](modules/ubuntu.md#ubuntusetup-desktop-22) | Install the newest Mozc for Ubuntu 22.04 and apply the desktop settings. |
+| [`ubuntu::setup-desktop-22`](modules/ubuntu.md#ubuntusetup-desktop-22) | Run the Ubuntu 22.04 desktop setup through the shared desktop setup function. |
 
 ## [`usb`](modules/usb.md)
 

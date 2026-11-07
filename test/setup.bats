@@ -1151,7 +1151,7 @@ gsettings_value() {
   [ "${status}" -eq 69 ]
 }
 
-@test "Ubuntu setup installs only missing common and external prerequisites" {
+@test "Ubuntu setup leaves external tools for the optional follow-up function" {
   use_platform ubuntu 24.04 noble
   HOME="${BATS_TEST_TMPDIR}/home"
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
@@ -1180,13 +1180,19 @@ gsettings_value() {
   [ "${status}" -eq 0 ]
   [ "$(sed -n '1p' "${STEP_LOG}")" = 'package::_install curl git' ]
   [ "$(sed -n '2p' "${STEP_LOG}")" = 'package::_install curl git' ]
+  ! grep -Fq 'package::_install gnupg' "${STEP_LOG}"
+  ! grep -Fq 'gh::install' "${STEP_LOG}"
+  ! grep -Fq 'git-credential-manager::install' "${STEP_LOG}"
+  ! grep -Fq 'git::config::use-credential-manager' "${STEP_LOG}"
+
+  run ubuntu::setup-external
+  [ "${status}" -eq 0 ]
   grep -Fqx 'package::_install gnupg' "${STEP_LOG}"
   grep -Fqx 'gh::install' "${STEP_LOG}"
-  # Git is configured to use Git Credential Manager, so the setup installs it last.
-  [ "$(tail -n 1 "${STEP_LOG}")" = 'git-credential-manager::install' ]
+  [ "$(tail -n 1 "${STEP_LOG}")" = 'git::config::use-credential-manager' ]
 }
 
-@test "Fedora setup installs missing Perl modules and runs the shared steps with Fedora's GnuPG" {
+@test "Fedora setup leaves external tools for the optional follow-up function" {
   use_platform fedora 34
   HOME="${BATS_TEST_TMPDIR}/home"
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
@@ -1201,13 +1207,18 @@ gsettings_value() {
   run fedora::setup
   [ "${status}" -eq 0 ]
   [ "$(sed -n '1p' "${STEP_LOG}")" = 'package::_install perl-JSON-PP perl-Time-HiRes' ]
-  grep -Fqx 'git::config::use-credential-manager' "${STEP_LOG}"
-  grep -Fqx 'package::_install gnupg2' "${STEP_LOG}"
-  [ "$(sed -n '$p' "${STEP_LOG}")" = 'git-credential-manager::install' ]
+  ! grep -Fq 'git::config::use-credential-manager' "${STEP_LOG}"
+  ! grep -Fq 'package::_install gnupg2' "${STEP_LOG}"
+  ! grep -Fq 'git-credential-manager::install' "${STEP_LOG}"
   case "$(uname -s)" in
     Darwin) [ "$(stat -f '%Lp' "${HOME}/.env")" = 600 ] ;;
     *) [ "$(stat -c '%a' "${HOME}/.env")" = 600 ] ;;
   esac
+
+  run fedora::setup-external
+  [ "${status}" -eq 0 ]
+  grep -Fqx 'package::_install gnupg2' "${STEP_LOG}"
+  [ "$(sed -n '$p' "${STEP_LOG}")" = 'git::config::use-credential-manager' ]
 
   use_platform ubuntu 24.04 noble
   run --separate-stderr fedora::setup
@@ -1216,22 +1227,19 @@ gsettings_value() {
   [ "${status}" -eq 69 ]
 }
 
-@test "Ubuntu desktop setup installs Mozc and VLC only when they are missing" {
+@test "Ubuntu desktop setup installs Mozc only when it is missing" {
   use_platform ubuntu 24.04 noble
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
   setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
 
   dpkg-query() { return 1; }
-  run setup::_install-ubuntu-desktop-applications
+  run setup::_install-ubuntu-mozc
   [ "${status}" -eq 0 ]
   grep -Fqx 'mozc::ibus::install' "${STEP_LOG}"
-  if [[ ! -f /usr/share/applications/vlc.desktop && ! -f /usr/share/applications/org.videolan.VLC.desktop ]]; then
-    grep -Fqx 'package::_install vlc' "${STEP_LOG}"
-  fi
 
   : >"${STEP_LOG}"
   dpkg-query() { printf 'install ok installed'; }
-  run setup::_install-ubuntu-desktop-applications
+  run setup::_install-ubuntu-mozc
   [ "${status}" -eq 0 ]
   ! grep -Fqx 'mozc::ibus::install' "${STEP_LOG}"
 }
