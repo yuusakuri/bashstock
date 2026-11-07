@@ -34,13 +34,15 @@ keyboard::system-layout::set() {
   command::run-as-root localectl set-x11-keymap "$1"
 }
 
-# @description Map the Convert and Nonconvert keys of USB keyboards to henkan and muhenkan.
+# @description Map USB Convert, Nonconvert, LANG1, and LANG2 keys to henkan and muhenkan.
 #
-# KC_INT4 (HID usage 0x7008A, Convert) becomes henkan and KC_INT5 (HID usage
-# 0x7008B, Nonconvert) becomes muhenkan, as in the reference script. The input
-# method handles the keys; this function does not change IME settings. The
-# hwdb entry applies to every USB keyboard, or only to the keyboard identified
-# by VENDOR_ID and PRODUCT_ID.
+# KC_INT4 (Convert) and KC_LNG1 become henkan; KC_INT5 (Nonconvert) and
+# KC_LNG2 become muhenkan. This supports the HHKB US ANSI (hhkb/ansi)
+# alt_convert_non_convert and alt_lang keymaps in
+# https://github.com/yuusakuri/qmk_firmware without remapping held Alt keys.
+# The hwdb entry applies to every USB keyboard, or only to VENDOR_ID and
+# PRODUCT_ID. Use gnome::input-source::setup-ime-keys to bind the keys to
+# US and Mozc.
 #
 # @arg $1 string Optional vendor ID as four hexadecimal digits. Requires PRODUCT_ID.
 # @arg $2 string Optional product ID as four hexadecimal digits. Requires VENDOR_ID.
@@ -62,6 +64,7 @@ keyboard::setup-ime-keys() {
   command::require udevadm || return "$?"
   content='# Managed by BashStock keyboard::setup-ime-keys.'$'\n'"${match}"$'\n'
   content+=' KEYBOARD_KEY_7008a=henkan'$'\n'' KEYBOARD_KEY_7008b=muhenkan'$'\n'
+  content+=' KEYBOARD_KEY_70090=henkan'$'\n'' KEYBOARD_KEY_70091=muhenkan'$'\n'
   file::write-text /etc/udev/hwdb.d/90-bashstock-ime-keys.hwdb "${content}" || return "$?"
   command::run-as-root systemd-hwdb update || return "$?"
   command::run-as-root udevadm trigger --subsystem-match=input --action=change
