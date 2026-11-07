@@ -414,6 +414,7 @@ BashStockが公開する関数を名前空間ごとに示します。
 | 関数 | 説明 |
 |---|---|
 | [`electron::wayland::enable`](modules/electron.md#electronwaylandenable) | Prefer native Wayland rendering for Electron applications in a Wayland session. |
+| [`electron::wayland::disable`](modules/electron.md#electronwaylanddisable) | Remove BashStock's native Wayland preference for Electron applications. |
 
 ## [`env`](modules/env.md)
 
