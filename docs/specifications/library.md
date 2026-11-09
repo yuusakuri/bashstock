@@ -10,6 +10,7 @@
 | 対象 | 対応範囲 |
 | --- | --- |
 | シェル | Bash 3.2以上 |
+| Python | Pythonを使う関数とSetupでは3.6.9以上 |
 | OS | macOS、Ubuntu、Fedora |
 
 Linux向けの導入関数は、Fedora 34と、Ubuntu 18.04以降のすべてのLTSメジャー版で、実行中のOSに適合するソフトウェアを導入して動作させます。

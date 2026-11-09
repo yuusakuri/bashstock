@@ -441,7 +441,7 @@ mac::setup() {
   )
 
   setup::_run-step sudo::passwordless::enable || status="${status/#0/$?}"
-  setup::_ensure-file "${HOME}/.env" 0600 || status="${status/#0/$?}"
+  file::ensure-exists "${HOME}/.env" 0600 || status="${status/#0/$?}"
   setup::_run-step env::dotenv::register "${HOME}/.env" || status="${status/#0/$?}"
   # Zsh is the default macOS shell, so the editor also goes into .zshrc.
   setup::_run-step shell::editor::set-default 'code --wait' bash,zsh || status="${status/#0/$?}"

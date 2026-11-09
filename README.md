@@ -65,6 +65,7 @@ help::show string::trim
 | 対象 | 対応範囲 |
 | --- | --- |
 | シェル | Bash 3.2以上 |
+| Python | 3.6.9以上（Pythonを使う関数とSetup） |
 | OS | macOS、Ubuntu、Fedora |
 
 外部コマンドを使う関数は、そのコマンドがない場合に終了状態69を返します。

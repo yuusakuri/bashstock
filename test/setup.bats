@@ -1270,12 +1270,12 @@ gsettings_value() {
     installed+=" $*"
   }
 
-  run setup::_install-prerequisites
+  run setup::_ensure-linux-setup-tools
   [ "${status}" -eq 0 ]
   [ ! -e "${STEP_LOG}" ]
 
   installed='curl git'
-  run setup::_install-prerequisites
+  run setup::_ensure-linux-setup-tools
   [ "${status}" -eq 0 ]
   [ "$(<"${STEP_LOG}")" = 'package::_install python3' ]
 }

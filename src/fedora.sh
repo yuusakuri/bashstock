@@ -27,7 +27,7 @@
 fedora::setup() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform fedora || return "$?"
-  setup::_apply-linux-user-configuration || return "$?"
+  setup::linux-config || return "$?"
 }
 
 # @description Install GnuPG, GitHub CLI, and Git Credential Manager on Fedora when they are not already available.
@@ -47,5 +47,5 @@ fedora::setup() {
 fedora::setup-external() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform fedora || return "$?"
-  setup::_install-external gnupg2
+  setup::_setup-external gnupg2
 }

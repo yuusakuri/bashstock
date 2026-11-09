@@ -139,7 +139,7 @@ ubuntu::download-server-iso() {
 ubuntu::setup() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform ubuntu || return "$?"
-  setup::_apply-linux-user-configuration || return "$?"
+  setup::linux-config || return "$?"
 }
 
 # @description Install GnuPG, GitHub CLI, and Git Credential Manager when they are not already available.
@@ -159,7 +159,7 @@ ubuntu::setup() {
 ubuntu::setup-external() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform ubuntu || return "$?"
-  setup::_install-external gnupg
+  setup::_setup-external gnupg
 }
 
 # @description Apply the Ubuntu user configuration and desktop settings, stopping at the first failure.

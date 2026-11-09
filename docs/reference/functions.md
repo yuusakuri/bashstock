@@ -197,6 +197,7 @@ BashStockが公開する関数を名前空間ごとに示します。
 
 | 関数 | 説明 |
 |---|---|
+| [`file::ensure-exists`](modules/file.md#fileensure-exists) | Create an empty regular file when it does not exist. |
 | [`file::contains-match`](modules/file.md#filecontains-match) | Test whether any file line matches a Python regular expression. |
 | [`file::verify-sha256`](modules/file.md#fileverify-sha256) | Test a file against an expected SHA-256 digest. |
 | [`file::append-text`](modules/file.md#fileappend-text) | Append text without conversion, elevating only when permissions require it. |
@@ -857,6 +858,12 @@ BashStockが公開する関数を名前空間ごとに示します。
 | [`serial::write`](modules/serial.md#serialwrite) | Write literal data to a serial device. |
 | [`serial::write-command`](modules/serial.md#serialwrite-command) | Write a command and terminator to a serial device. |
 | [`serial::release`](modules/serial.md#serialrelease) | Release a serial device so another process, such as a Python tool, can open it. |
+
+## [`setup`](modules/setup.md)
+
+| 関数 | 説明 |
+|---|---|
+| [`setup::linux-config`](modules/setup.md#setuplinux-config) | Apply the common Linux user configuration, stopping at the first failure. |
 
 ## [`ssh`](modules/ssh.md)
 

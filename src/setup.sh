@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # @file setup
-# @brief Shared steps of the desktop setup functions.
-# @description The module defines internal functions that desktop setup functions share.
+# @brief Linux setup and shared setup steps.
+# @description The module defines common Linux configuration and internal setup helpers.
 
 # shellcheck disable=SC2119,SC2120
 
@@ -15,25 +15,10 @@ setup::_run-step() {
   return "${status}"
 }
 
-# @description Create an empty file when it does not exist.
-#
-# The new file gets the given mode whatever the caller's umask is.
-# @internal
-# @arg $1 string File path.
-# @arg $2 string Optional octal mode of a new file. Defaults to 0644.
-setup::_ensure-file() {
-  [[ ( "$#" -eq 1 || "$#" -eq 2 ) && -n "$1" ]] || return 64
-  ( [[ "${2:-0644}" =~ ^0[0-7]{3}$ ]] ) || return 64
-  if [[ ! -e "$1" ]]; then
-    (umask 077 && : >>"$1") && chmod "${2:-0644}" "$1" || return 74
-  fi
-  [[ -f "$1" ]] || return 66
-}
-
 # @description Install curl, Git, and Python 3 when they are missing.
 #
 # @internal
-setup::_install-prerequisites() {
+setup::_ensure-linux-setup-tools() {
   [[ "$#" -eq 0 ]] || return 64
   local platform=''
   local packages=()
@@ -48,17 +33,26 @@ setup::_install-prerequisites() {
   [[ "${#packages[@]}" -eq 0 ]] || setup::_run-step package::_install "${packages[@]}"
 }
 
-# @description Apply the user configuration that Ubuntu and Fedora share, stopping at the first failure.
+# @description Apply the common Linux user configuration, stopping at the first failure.
 #
-# Wayland desktop sessions with systemd 246 or later also prefer native
-# Wayland rendering for Electron applications.
-# @internal
-setup::_apply-linux-user-configuration() {
+# This function supports Ubuntu and Fedora. It ensures the setup tools are
+# installed, then configures Wayland, the user's environment, shell, Git, and SSH.
+#
+# @noargs
+# @stderr The step that failed.
+# @exitcode 0 Every step succeeded.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The platform is not Ubuntu or Fedora.
+# @exitcode other The status of the first step that failed.
+# @example
+#   setup::linux-config
+setup::linux-config() {
   [[ "$#" -eq 0 ]] || return 64
-  setup::_install-prerequisites || return "$?"
+  package::_require-platform ubuntu fedora || return "$?"
+  setup::_ensure-linux-setup-tools || return "$?"
   setup::_run-step electron::wayland::enable || return "$?"
   # ~/.env holds secrets, so only the user may read a new one.
-  setup::_ensure-file "${HOME}/.env" 0600 || return "$?"
+  file::ensure-exists "${HOME}/.env" 0600 || return "$?"
   setup::_run-step env::dotenv::register "${HOME}/.env" || return "$?"
   setup::_run-step shell::editor::set-default 'code --wait' bash,zsh || return "$?"
   setup::_run-step shell::completion::enable-ignore-case || return "$?"
@@ -74,7 +68,7 @@ setup::_apply-linux-user-configuration() {
 # installed.
 # @internal
 # @arg $1 string GnuPG package name of the platform.
-setup::_install-external() {
+setup::_setup-external() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   if ! command::exists gpg; then
     setup::_run-step package::_install "$1" || return "$?"

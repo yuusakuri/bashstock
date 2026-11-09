@@ -49,6 +49,29 @@ file::_require-no-nul() {
   done 3<"$1"
 }
 
+# @description Create an empty regular file when it does not exist.
+#
+# The mode applies only to a newly created file and is independent of the
+# caller's umask. An existing regular file is left unchanged.
+#
+# @arg $1 string File path.
+# @arg $2 string Optional octal mode for a new file. Defaults to 0644.
+# @exitcode 0 The file exists or was created.
+# @exitcode 64 The path is empty, the mode is invalid, or the argument count is wrong.
+# @exitcode 66 The path is not a regular file.
+# @exitcode 74 The file could not be created with the requested mode.
+# @example
+#   file::ensure-exists "${HOME}/.env" 0600
+file::ensure-exists() {
+  [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64
+  [[ -n "$1" ]] || return 64
+  ( [[ "${2:-0644}" =~ ^0[0-7]{3}$ ]] ) || return 64
+  if [[ ! -e "$1" ]]; then
+    (umask 077 && : >>"$1") && chmod "${2:-0644}" "$1" || return 74
+  fi
+  [[ -f "$1" ]] || return 66
+}
+
 # @description Require a one-line expression that compiles as a Python regular expression.
 # @internal
 file::_require-python-expression() {
