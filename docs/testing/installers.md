@@ -45,7 +45,7 @@
 | D10 | 導入後に始めたログインセッションで、sudo を使わずに `hello-world` を動かす | 利用者が docker グループに入り、コンテナの実行が成功する | 同上 |
 | S01 | sudo を使う一般ユーザーが、日本語名の XDG ディレクトリがある状態で `ubuntu::setup` を二度実行する | 起動ファイルの各行が一つだけで、新しいログインセッションで `.env` の値、`EDITOR`、補完の大文字小文字無視が有効になる | `scripts/test-ubuntu-setup-container` |
 | S02 | S01 の後に利用者ディレクトリ、グループ、Git、SSH を確認する | 英語名のリンクが日本語名のディレクトリを指し、既存の内容が残る。新しいセッションで `dialout` に属し、Git の各設定と `.ssh` の 700 が設定される | 同上 |
-| S03 | GNOME の入力ソースが JP 配列だけの状態で、`ubuntu::setup-desktop` を D-Bus セッション内で実行する | 新しいセッションで入力ソースが Mozc と US の順になり、`/etc/default/keyboard` が US 配列、hwdb で USB キーボードの変換・無変換キーが henkan・muhenkan になる。Mozc はひらがなで始まり、GNOME のボタン配置も共通設定になる | `scripts/test-ubuntu-desktop-container` |
+| S03 | GNOME の入力ソースが JP 配列だけの状態で、`ubuntu::setup-desktop` を D-Bus セッション内で実行する | 新しいセッションで入力ソースが Mozc と US の順になり、`/etc/default/keyboard` が US 配列になる。hwdb では USB キーボードの変換・LANG1 が henkan、無変換・LANG2 が muhenkan になり、GNOME のショートカットで変換が Mozc、無変換が US を選択する。ショートカットを再設定しても登録が重複しない。Mozc はひらがなで始まり、GNOME のボタン配置も共通設定になる | `scripts/test-ubuntu-desktop-container` |
 | P01 | macOS 実行環境で、`mac::setup` が呼び出す設定関数（sudo の password 不要化、環境変数、起動ファイル、キー・Dock・trackpad、標準アプリの削除、quarantine、Gatekeeper、Git）を二度実行する | すべて成功し、二度目も設定が重複しない。sudo は password なしで通る | `CI` の `scripts/test-macos-preferences` |
 | P02 | P01 の後に defaults、`DefaultKeyBinding.dict`、起動ファイル、Git 設定を読む | 各値が設定どおりで、新しい Zsh と Bash のセッションで `.env` の値、`EDITOR`、`HOMEBREW_CASK_OPTS` が有効になる | 同上 |
 | M01 | 使い捨ての macOS 実行環境で `mac::setup` を二度実行する | 失敗する手順があっても残りを続け、最初に失敗した手順の終了状態を返す。Hypervisor.framework がない実行環境で失敗してよいのは Colima の起動と、起動中のエンジンを要求する `docker::install` だけ | `scripts/test-macos-setup` |

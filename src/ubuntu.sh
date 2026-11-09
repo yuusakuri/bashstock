@@ -166,7 +166,8 @@ ubuntu::setup-external() {
 #
 # After ubuntu::setup, IBus Mozc is installed or upgraded when the repository
 # offers a newer version, and the IME keys, Mozc and US input sources, and
-# Hiragana start are set. The GNOME title-bar layout is also set.
+# Hiragana start are set. Nonconvert/LANG2 selects US, and Convert/LANG1
+# selects Mozc through GNOME shortcuts. The GNOME title-bar layout is also set.
 # Electron applications prefer native Wayland rendering in supported Wayland
 # sessions.
 #
@@ -187,6 +188,7 @@ ubuntu::setup-desktop() {
   setup::_run-step gnome::input-source::set-mozc-first || return "$?"
   setup::_run-step gnome::keyboard-layout::set-us || return "$?"
   setup::_run-step mozc::ibus::set-hiragana-as-default || return "$?"
+  setup::_run-step gnome::input-source::setup-ime-keys || return "$?"
   setup::_run-step gnome::window::set-button-layout
 }
 

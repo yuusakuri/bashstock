@@ -37,13 +37,15 @@ keyboard::system-layout::set us
 
 ### keyboard::setup-ime-keys
 
-Map the Convert and Nonconvert keys of USB keyboards to henkan and muhenkan.
+Map USB Convert, Nonconvert, LANG1, and LANG2 keys to henkan and muhenkan.
 
-KC_INT4 (HID usage 0x7008A, Convert) becomes henkan and KC_INT5 (HID usage
-0x7008B, Nonconvert) becomes muhenkan, as in the reference script. The input
-method handles the keys; this function does not change IME settings. The
-hwdb entry applies to every USB keyboard, or only to the keyboard identified
-by VENDOR_ID and PRODUCT_ID.
+KC_INT4 (Convert) and KC_LNG1 become henkan; KC_INT5 (Nonconvert) and
+KC_LNG2 become muhenkan. This supports the HHKB US ANSI (hhkb/ansi)
+alt_convert_non_convert and alt_lang keymaps in
+https://github.com/yuusakuri/qmk_firmware without remapping held Alt keys.
+The hwdb entry applies to every USB keyboard, or only to VENDOR_ID and
+PRODUCT_ID. Use gnome::input-source::setup-ime-keys to bind the keys to
+US and Mozc.
 
 #### Example
 
