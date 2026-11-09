@@ -6,17 +6,21 @@
 # shellcheck disable=SC2119,SC2120
 
 # @description Write the command for the active Python 3 interpreter.
+#
+# The executable is resolved through PATH, so a shell function named python3
+# does not replace the interpreter.
 # @internal
 python::_command() {
   [[ "$#" -eq 0 ]] || return 64
-  command -v python3 >/dev/null 2>&1 || return 69
-  local versioned='' executable=''
-  versioned="$(python3 -c 'import sys; print(f"python{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null)" || return 69
-  if [[ "${versioned}" =~ ^python3\.[0-9]+$ ]] && command -v "${versioned}" >/dev/null 2>&1; then
-    printf '%s\n' "${versioned}"
+  local python3='' versioned='' executable=''
+  python3="$(type -P python3)" || return 69
+  [[ -n "${python3}" ]] || return 69
+  versioned="$("${python3}" -c 'import sys; print("python%d.%d" % sys.version_info[:2])' 2>/dev/null)" || return 69
+  if ( [[ "${versioned}" =~ ^python3\.[0-9]+$ ]] ) && type -P "${versioned}" >/dev/null 2>&1; then
+    type -P "${versioned}"
     return 0
   fi
-  executable="$(python3 -c 'import sys; print(sys.executable)' 2>/dev/null)" || return 69
+  executable="$("${python3}" -c 'import sys; print(sys.executable)' 2>/dev/null)" || return 69
   [[ -x "${executable}" ]] || return 69
   printf '%s\n' "${executable}"
 }

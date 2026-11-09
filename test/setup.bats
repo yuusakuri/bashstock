@@ -1734,7 +1734,9 @@ use_fake_sudoers() {
     chmod +x "${HOME}/.local/bin/pipx"
   }
   curl() {
+    # Old releases on PyPI have a null Requires-Python, which accepts any Python.
     printf '%s' '{"releases":{
+      "0.12.0":[{"requires_python":null,"yanked":false}],
       "0.17.0":[{"requires_python":">=3.6","yanked":false}],
       "1.0.0":[{"requires_python":">=3.6","yanked":false}],
       "1.1.0":[{"requires_python":">=3.7","yanked":false}],
@@ -1748,7 +1750,7 @@ use_fake_sudoers() {
 
   run pipx::versions official
   [ "${status}" -eq 0 ]
-  [ "${output}" = $'0.17.0\n1.0.0' ]
+  [ "${output}" = $'0.12.0\n0.17.0\n1.0.0' ]
 
   run pipx::install '' official
   [ "${status}" -eq 0 ]

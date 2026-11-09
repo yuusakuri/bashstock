@@ -9,7 +9,8 @@
 # @internal
 pipx::_python-version() {
   [[ "$#" -eq 0 ]] || return 64
-  python::run -c 'import sys; print("%d.%d.%d" % sys.version_info[:3])' || return 74
+  command::require python3 || return "$?"
+  python3 -c 'import sys; print("%d.%d.%d" % sys.version_info[:3])' || return 74
 }
 
 # @description Write pipx releases on PyPI whose Requires-Python accepts PYTHON_VERSION.
@@ -70,7 +71,7 @@ except (ValueError, TypeError):
     sys.exit(74)
 for release, files in data.get("releases", {}).items():
     files = [file_info for file_info in files if not file_info.get("yanked")]
-    if files and re.fullmatch(r"[0-9]+(?:\.[0-9]+)*", release) and accepts(files[0].get("requires_python", "")):
+    if files and re.fullmatch(r"[0-9]+(?:\.[0-9]+)*", release) and accepts(files[0].get("requires_python") or ""):
         print(release)
 ' "$1")" || return "$?"
   printf '%s\n' "${versions}" | package::_sort-stable-versions
