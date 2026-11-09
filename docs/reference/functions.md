@@ -549,6 +549,7 @@ BashStockが公開する関数を名前空間ごとに示します。
 | [`gnome::keyboard-layout::set-us`](modules/gnome.md#gnomekeyboard-layoutset-us) | Set GNOME input sources and the system keyboard layout to Mozc and US. |
 | [`gnome::keyboard-layout::set-jp`](modules/gnome.md#gnomekeyboard-layoutset-jp) | Set GNOME input sources and the system keyboard layout to Mozc and JP. |
 | [`gnome::input-source::set-shortcuts`](modules/gnome.md#gnomeinput-sourceset-shortcuts) | Set GNOME input-source switching shortcuts and direct US and Mozc shortcuts. |
+| [`gnome::input-source::setup-ime-keys`](modules/gnome.md#gnomeinput-sourcesetup-ime-keys) | Bind Nonconvert to the US input source and Convert to Mozc. |
 | [`gnome::input-source::set-mozc-first`](modules/gnome.md#gnomeinput-sourceset-mozc-first) | Put Mozc first in GNOME input sources while keeping the current XKB layout. |
 | [`gnome::window::set-button-layout`](modules/gnome.md#gnomewindowset-button-layout) | Set the GNOME window title-bar button layout. |
 
@@ -641,7 +642,7 @@ BashStockが公開する関数を名前空間ごとに示します。
 | 関数 | 説明 |
 |---|---|
 | [`keyboard::system-layout::set`](modules/keyboard.md#keyboardsystem-layoutset) | Set the system keyboard layout. |
-| [`keyboard::setup-ime-keys`](modules/keyboard.md#keyboardsetup-ime-keys) | Map the Convert and Nonconvert keys of USB keyboards to henkan and muhenkan. |
+| [`keyboard::setup-ime-keys`](modules/keyboard.md#keyboardsetup-ime-keys) | Map USB Convert, Nonconvert, LANG1, and LANG2 keys to henkan and muhenkan. |
 
 ## [`ltrace`](modules/ltrace.md)
 

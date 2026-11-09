@@ -156,6 +156,33 @@ gnome::input-source::set-shortcuts() {
   gnome::keybinding::set-custom custom101 'Enable IME (Mozc)' "ibus engine 'mozc-jp'" "${mozc}"
 }
 
+# @description Bind Nonconvert to the US input source and Convert to Mozc.
+#
+# keyboard::setup-ime-keys maps USB Convert/LANG1 to Henkan_Mode and
+# Nonconvert/LANG2 to Muhenkan. These shortcuts select the same source on
+# every press. The HHKB US ANSI (hhkb/ansi) alt_convert_non_convert and
+# alt_lang keymaps in https://github.com/yuusakuri/qmk_firmware send these
+# events on Alt taps: English on the left and Japanese on the right.
+# Held Alt keys keep their normal shortcuts. Mozc should use
+# mozc::ibus::set-hiragana-as-default to start in Hiragana mode.
+#
+# @noargs
+# @exitcode 0 The IME shortcuts were registered.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not Linux, or gsettings or ibus is unavailable.
+# @exitcode other The status of the shortcut registration.
+# @example
+#   keyboard::setup-ime-keys 4653 0001
+#   gnome::input-source::setup-ime-keys
+gnome::input-source::setup-ime-keys() {
+  [[ "$#" -eq 0 ]] || return 64
+  [[ "$(system::operating-system)" == 'linux' ]] || return 69
+  command::require gsettings || return "$?"
+  command::require ibus || return "$?"
+  gnome::keybinding::set-custom bashstock-ime-off 'Disable IME (Nonconvert)' "ibus engine 'xkb:us::eng'" Muhenkan || return "$?"
+  gnome::keybinding::set-custom bashstock-ime-on 'Enable IME (Convert)' "ibus engine 'mozc-jp'" Henkan_Mode
+}
+
 # @description Write the first XKB layout from GNOME input sources.
 # @internal
 gnome::input-source::_first-layout() {

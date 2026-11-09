@@ -164,7 +164,8 @@ ubuntu::setup-external() {
 #
 # After ubuntu::setup, Mozc for IBus and VLC are installed when they are
 # missing, and the IME keys, Mozc and US input sources, Hiragana start, and VLC
-# as the video application are set.
+# as the video application are set. Nonconvert/LANG2 selects US, and
+# Convert/LANG1 selects Mozc through GNOME shortcuts.
 #
 # @noargs
 # @stderr The step that failed.
@@ -182,6 +183,7 @@ ubuntu::setup-desktop() {
   setup::_run-step gnome::input-source::set-mozc-first || return "$?"
   setup::_run-step gnome::keyboard-layout::set-us || return "$?"
   setup::_run-step mozc::ibus::set-hiragana-as-default || return "$?"
+  setup::_run-step gnome::input-source::setup-ime-keys || return "$?"
   setup::_run-step vlc::set-default-app
 }
 
