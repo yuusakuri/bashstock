@@ -21,22 +21,13 @@ in_session() {
 in_session gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'jp')]"
 
 export GIT_EMAIL=tester@example.invalid GIT_USERNAME='Setup Tester'
-if [[ "$VERSION_ID" == 22.04 ]]; then
-  in_session ubuntu::setup-desktop-22
-else
-  status=0
-  in_session ubuntu::setup-desktop-22 2>/dev/null || status="$?"
-  [[ "$status" -eq 69 ]]
-  in_session ubuntu::setup-desktop
-fi
+in_session ubuntu::setup-desktop
 
 printf '== GNOME settings in a new session\n'
 sources="$(in_session gsettings get org.gnome.desktop.input-sources sources)"
 printf '%s\n' "$sources"
 [[ "$sources" == "[('ibus', 'mozc-jp'), ('xkb', 'us')]" ]]
-if [[ "$VERSION_ID" == 22.04 ]]; then
-  [[ "$(in_session gsettings get org.gnome.desktop.wm.preferences button-layout)" == "'appmenu:minimize,maximize,close'" ]]
-fi
+[[ "$(in_session gsettings get org.gnome.desktop.wm.preferences button-layout)" == "'appmenu:minimize,maximize,close'" ]]
 
 printf '== keyboard\n'
 grep -x 'XKBLAYOUT="us"' /etc/default/keyboard

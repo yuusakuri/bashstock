@@ -1220,9 +1220,6 @@ gsettings_value() {
   esac
   [ -z "${output}" ]
   [[ "${stderr}" == *'shell::editor::set-default'* ]]
-
-  run --separate-stderr ubuntu::setup-desktop-22
-  [ "${status}" -eq 69 ]
 }
 
 @test "Ubuntu setup leaves external tools for the optional follow-up function" {

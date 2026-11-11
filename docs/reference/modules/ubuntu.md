@@ -13,7 +13,6 @@ Setup functions configure a fresh Ubuntu installation.
 * [ubuntu::setup](#ubuntusetup)
 * [ubuntu::setup-external](#ubuntusetup-external)
 * [ubuntu::setup-desktop](#ubuntusetup-desktop)
-* [ubuntu::setup-desktop-22](#ubuntusetup-desktop-22)
 
 ### ubuntu::server-iso-versions
 
@@ -156,30 +155,4 @@ _Function has no arguments._
 #### Output on stderr
 
 * The step that failed.
-
-### ubuntu::setup-desktop-22
-
-Run the Ubuntu 22.04 desktop setup through the shared desktop setup function.
-
-This compatibility entry point validates the Ubuntu release and delegates to
-ubuntu::setup-desktop, which applies the shared desktop configuration.
-
-#### Example
-
-```bash
-ubuntu::setup-desktop-22
-```
-
-_Function has no arguments._
-
-#### Exit codes
-
-* **0**: Every step succeeded.
-* **64**: An argument was given.
-* **69**: The system is not Ubuntu 22.04.
-* other The status of the first step that failed.
-
-#### Output on stderr
-
-* The step that failed, or a message on other releases.
 

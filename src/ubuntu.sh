@@ -191,28 +191,3 @@ ubuntu::setup-desktop() {
   setup::_run-step gnome::input-source::setup-ime-keys || return "$?"
   setup::_run-step gnome::window::set-button-layout
 }
-
-# @description Run the Ubuntu 22.04 desktop setup through the shared desktop setup function.
-#
-# This compatibility entry point validates the Ubuntu release and delegates to
-# ubuntu::setup-desktop, which applies the shared desktop configuration.
-#
-# @noargs
-# @stderr The step that failed, or a message on other releases.
-# @exitcode 0 Every step succeeded.
-# @exitcode 64 An argument was given.
-# @exitcode 69 The system is not Ubuntu 22.04.
-# @exitcode other The status of the first step that failed.
-# @example
-#   ubuntu::setup-desktop-22
-ubuntu::setup-desktop-22() {
-  [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform ubuntu || return "$?"
-  local version=''
-  version="$(platform::_os-release-value VERSION_ID)" || return "$?"
-  if [[ "${version}" != '22.04' ]]; then
-    console::_write-error 'This setup supports only Ubuntu 22.04.'
-    return 69
-  fi
-  ubuntu::setup-desktop || return "$?"
-}
