@@ -12,7 +12,6 @@ time::_clock-milliseconds() {
     return 64
   fi
 
-  command -v python3 >/dev/null 2>&1 || return 69
 
   local operating_system=''
   operating_system="$(system::operating-system)" || return 69
@@ -53,7 +52,6 @@ time::_realtime-milliseconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
-  command -v python3 >/dev/null 2>&1 || return 69
   python::run -c 'import time; print(int(time.time() * 1000))' 2>/dev/null ||
     return 69
 }
@@ -64,7 +62,6 @@ time::_format-milliseconds() {
   if [[ "$#" -ne 2 ]] || ! number::_is-non-negative-integer "$1"; then
     return 64
   fi
-  command -v python3 >/dev/null 2>&1 || return 69
 
   python::run -c '
 import datetime

@@ -1,35 +1,28 @@
 #!/usr/bin/env bash
 # @file python
-# @brief Python interpreter selection.
-# @description Python scripts use the installed Python 3 minor-version command when available.
+# @brief Python script execution.
+# @description Python scripts run once with the python3 found in PATH, reading and writing UTF-8.
 
 # shellcheck disable=SC2119,SC2120
 
-# @description Write the command for the active Python 3 interpreter.
+# @description Run a script once with the python3 found in PATH.
 #
-# The executable is resolved through PATH, so a shell function named python3
-# does not replace the interpreter.
+# The interpreter is resolved through PATH, so a shell function named python3
+# does not replace it. Standard input, standard output, and the script's
+# arguments are read as UTF-8 whatever the locale is, and bytes that are not
+# UTF-8 pass through unchanged. Python 3.6 would otherwise read them as ASCII
+# in the C or POSIX locale, so text read from a UTF-8 file would neither print
+# nor match the arguments.
 # @internal
-python::_command() {
-  [[ "$#" -eq 0 ]] || return 64
-  local python3='' versioned='' executable=''
-  python3="$(type -P python3)" || return 69
-  [[ -n "${python3}" ]] || return 69
-  versioned="$("${python3}" -c 'import sys; print("python%d.%d" % sys.version_info[:2])' 2>/dev/null)" || return 69
-  if ( [[ "${versioned}" =~ ^python3\.[0-9]+$ ]] ) && type -P "${versioned}" >/dev/null 2>&1; then
-    type -P "${versioned}"
-    return 0
-  fi
-  executable="$("${python3}" -c 'import sys; print(sys.executable)' 2>/dev/null)" || return 69
-  [[ -x "${executable}" ]] || return 69
-  printf '%s\n' "${executable}"
-}
-
-# @description Run a script with the active Python 3 interpreter.
-# @internal
+# @arg $1 string -c.
+# @arg $2 string Python script.
+# @arg $@ string Arguments of the script.
 python::run() {
-  [[ "$#" -ge 1 ]] || return 64
+  [[ "$#" -ge 2 && "$1" == '-c' ]] || return 64
   local interpreter=''
-  interpreter="$(python::_command)" || return "$?"
-  "${interpreter}" "$@"
+  interpreter="$(type -P python3)" || return 69
+  [[ -n "${interpreter}" ]] || return 69
+  PYTHONIOENCODING='utf-8:surrogateescape' "${interpreter}" -c 'import os, sys
+sys.argv[1:] = [os.fsencode(argument).decode("utf-8", "surrogateescape") for argument in sys.argv[1:]]
+'"$2" "${@:3}"
 }

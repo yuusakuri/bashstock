@@ -204,6 +204,23 @@ record_root_commands() {
   [ "$status" -eq 65 ]
 }
 
+@test "textproto keeps text that is not ASCII, and bytes that are not UTF-8, in any locale" {
+  local file="${BATS_TEST_TMPDIR}/config.textproto" expected="${BATS_TEST_TMPDIR}/expected"
+  # Python 3.6 writes ASCII in the C locale; later versions do the same without UTF-8 mode.
+  export PYTHONUTF8=0
+  printf '# 日本語のコメント\n# \377\nmode: OLD\n' >"$file"
+  run textproto::set-scalar "$file" mode NEW
+  [ "$status" -eq 0 ]
+  printf '# 日本語のコメント\n# \377\nmode: NEW\n' >"$expected"
+  cmp "$file" "$expected"
+
+  export LC_ALL=C
+  run textproto::set-scalar "$file" label '"値"'
+  [ "$status" -eq 0 ]
+  printf '# 日本語のコメント\n# \377\nmode: NEW\nlabel: "値"\n' >"$expected"
+  cmp "$file" "$expected"
+}
+
 @test "file release validates the timeout before signaling holders" {
   local file="${BATS_TEST_TMPDIR}/held"
   : >"${file}"

@@ -79,6 +79,19 @@ bats_require_minimum_version 1.5.0
   [[ "${output}" =~ ^[0-9]+$ ]]
 }
 
+@test "time functions start Python once per call" {
+  local site="${BATS_TEST_TMPDIR}/site"
+  # Clocks are read in polling loops, so every extra interpreter start delays each round.
+  mkdir -p "${site}"
+  printf '%s\n' 'import os' 'with open(os.environ["PYTHON_START_LOG"], "a") as log:' '    log.write("start\n")' \
+    >"${site}/sitecustomize.py"
+  export PYTHONPATH="${site}" PYTHON_START_LOG="${BATS_TEST_TMPDIR}/starts.log"
+
+  run time::unix-milliseconds
+  [ "${status}" -eq 0 ]
+  [ "$(wc -l <"${PYTHON_START_LOG}")" -eq 1 ]
+}
+
 @test "time functions reject arguments" {
   run time::utc-date-extended unexpected
   [ "${status}" -eq 64 ]
