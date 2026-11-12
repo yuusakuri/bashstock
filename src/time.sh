@@ -35,10 +35,12 @@ except (OSError, ValueError):
 ' 2>/dev/null || return 69
       ;;
     darwin:monotonic)
-      python::run -c 'import time; print(int(time.clock_gettime(time.CLOCK_UPTIME_RAW) * 1000))' 2>/dev/null || return 69
+      # Python 3.8 added CLOCK_UPTIME_RAW; earlier versions take its value 8 from macOS <time.h>.
+      python::run -c 'import time; print(int(time.clock_gettime(getattr(time, "CLOCK_UPTIME_RAW", 8)) * 1000))' 2>/dev/null || return 69
       ;;
     darwin:boot-time)
-      python::run -c 'import time; print(int(time.clock_gettime(time.CLOCK_MONOTONIC_RAW) * 1000))' 2>/dev/null || return 69
+      # Python builds without CLOCK_MONOTONIC_RAW take its value 4 from macOS <time.h>.
+      python::run -c 'import time; print(int(time.clock_gettime(getattr(time, "CLOCK_MONOTONIC_RAW", 4)) * 1000))' 2>/dev/null || return 69
       ;;
     *)
       return 69
