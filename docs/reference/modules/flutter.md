@@ -143,7 +143,7 @@ _Function has no arguments._
 
 * **0**: The versions were written.
 * **64**: An argument was given.
-* **69**: Perl is unavailable, or the platform is unsupported.
+* **69**: Python 3 is unavailable, or the platform is unsupported.
 * **74**: The release index could not be downloaded or read.
 
 #### Output on stdout

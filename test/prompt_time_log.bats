@@ -79,6 +79,40 @@ bats_require_minimum_version 1.5.0
   [[ "${output}" =~ ^[0-9]+$ ]]
 }
 
+@test "time functions start Python once per call" {
+  local site="${BATS_TEST_TMPDIR}/site"
+  # Clocks are read in polling loops, so every extra interpreter start delays each round.
+  mkdir -p "${site}"
+  printf '%s\n' 'import os' 'with open(os.environ["PYTHON_START_LOG"], "a") as log:' '    log.write("start\n")' \
+    >"${site}/sitecustomize.py"
+  export PYTHONPATH="${site}" PYTHON_START_LOG="${BATS_TEST_TMPDIR}/starts.log"
+
+  run time::unix-milliseconds
+  [ "${status}" -eq 0 ]
+  [ "$(wc -l <"${PYTHON_START_LOG}")" -eq 1 ]
+}
+
+@test "macOS clocks keep reading the same clocks on Python without the macOS clock constants" {
+  [[ "$(uname -s)" == Darwin ]] || skip 'The clock constants exist only on macOS.'
+  local monotonic='' boot='' site="${BATS_TEST_TMPDIR}/site"
+  monotonic="$(time::monotonic-milliseconds)"
+  boot="$(time::boot-time-milliseconds)"
+
+  # Python 3.6 and 3.7 lack CLOCK_UPTIME_RAW, and some builds lack CLOCK_MONOTONIC_RAW.
+  mkdir -p "${site}"
+  printf '%s\n' 'import time' 'del time.CLOCK_UPTIME_RAW' 'del time.CLOCK_MONOTONIC_RAW' >"${site}/sitecustomize.py"
+  export PYTHONPATH="${site}"
+  python3 -c 'import sys, time; sys.exit(hasattr(time, "CLOCK_UPTIME_RAW") or hasattr(time, "CLOCK_MONOTONIC_RAW"))'
+
+  # The clocks without sleep time and with it differ, so a wrong clock moves the value far.
+  run time::monotonic-milliseconds
+  [ "${status}" -eq 0 ]
+  ((output >= monotonic && output - monotonic < 1000))
+  run time::boot-time-milliseconds
+  [ "${status}" -eq 0 ]
+  ((output >= boot && output - boot < 1000))
+}
+
 @test "time functions reject arguments" {
   run time::utc-date-extended unexpected
   [ "${status}" -eq 64 ]

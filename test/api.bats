@@ -16,7 +16,7 @@ load test_helper
       awk '/^## 採用する関数$/{on=1; next} /^## /{on=0} on' \
         "${PROJECT_ROOT}/docs/explanation/function-selection/util-scripts.md"
     } |
-      perl -nle 'while (/`([a-z][a-z0-9-]*(?:::[a-z][a-z0-9-]*)+)/g) { print $1 }' |
+      python3 -c 'import re, sys; print("\n".join(re.findall(r"`([a-z][a-z0-9-]*(?:::[a-z][a-z0-9-]*)+)`", sys.stdin.read())))' |
       sort -u
   )"
 

@@ -13,7 +13,7 @@
 # @stdout Lines of package name and candidate version separated by a tab, ordered by version.
 # @exitcode 0 The candidates were written; none is not an error.
 # @exitcode 64 The prefix is not a valid package name start.
-# @exitcode 69 The system is not Ubuntu, or apt-cache or Perl is missing.
+# @exitcode 69 The system is not Ubuntu, or apt-cache or Python 3 is missing.
 # @exitcode 74 apt-cache policy failed.
 # @example
 #   apt::package::candidates gcc-
@@ -22,7 +22,6 @@ apt::package::candidates() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[a-z0-9][a-z0-9.+-]*$ ]] ) || return 64
   package::_require-platform ubuntu || return "$?"
   command::require apt-cache || return "$?"
-  command::require perl || return "$?"
   local prefix="$1" name='' policy=''
   local names=()
   while IFS= read -r name; do
@@ -30,17 +29,21 @@ apt::package::candidates() {
   done < <(apt-cache pkgnames "${prefix}" 2>/dev/null)
   [[ "${#names[@]}" -gt 0 ]] || return 0
   policy="$(apt-cache policy "${names[@]}" 2>/dev/null)" || return 74
-  printf '%s\n' "${policy}" | perl -e '
-    my ($prefix) = @ARGV;
-    my $name;
-    while (<STDIN>) {
-      if (/^(\S+):$/) { $name = $1; next; }
-      if (defined $name && /^\s+Candidate:\s+(\S+)/) {
-        print substr($name, length $prefix), "\t$name\t$1\n" unless $1 eq "(none)";
-        undef $name;
-      }
-    }
-  ' "${prefix}" | package::_sort-by-first-field
+  printf '%s\n' "${policy}" | python::run -c '
+import re
+import sys
+prefix = sys.argv[1]
+name = None
+for line in sys.stdin:
+    match = re.match(r"^(\S+):$", line)
+    if match:
+        name = match.group(1)
+        continue
+    match = re.match(r"^\s+Candidate:\s+(\S+)", line)
+    if name and match and match.group(1) != "(none)":
+        print(name[len(prefix):] + "\t" + name + "\t" + match.group(1))
+        name = None
+' "${prefix}" | package::_sort-by-first-field
 }
 
 # @description Write the APT package name with the newest version suffix after PREFIX.
@@ -50,7 +53,7 @@ apt::package::candidates() {
 # @exitcode 0 The name was written.
 # @exitcode 1 No package name starts with the prefix and a digit.
 # @exitcode 64 The prefix is invalid.
-# @exitcode 69 The system is not Ubuntu, or apt-cache or Perl is missing.
+# @exitcode 69 The system is not Ubuntu, or apt-cache or Python 3 is missing.
 # @exitcode 74 apt-cache policy failed.
 # @example
 #   package::_install "$(apt::package::latest gcc-)"

@@ -45,7 +45,7 @@ _Function has no arguments._
 
 * **0**: The value was written.
 * **64**: An argument was given.
-* **69**: Perl with Time::HiRes, the clock provider, is unavailable.
+* **69**: Python 3 or the requested clock provider is unavailable.
 
 #### Output on stdout
 
@@ -67,7 +67,7 @@ _Function has no arguments._
 
 * **0**: The value was written.
 * **64**: An argument was given.
-* **69**: Perl with Time::HiRes, the clock provider, is unavailable.
+* **69**: Python 3 or the requested clock provider is unavailable.
 
 #### Output on stdout
 
@@ -90,7 +90,7 @@ _Function has no arguments._
 
 * **0**: The value was written.
 * **64**: An argument was given.
-* **69**: Perl with Time::HiRes, the clock provider, is unavailable.
+* **69**: Python 3 or the requested clock provider is unavailable.
 
 #### Output on stdout
 
@@ -112,7 +112,7 @@ _Function has no arguments._
 
 * **0**: The value was written.
 * **64**: An argument was given.
-* **69**: Perl with Time::HiRes, the clock provider, is unavailable.
+* **69**: Python 3 or the requested clock provider is unavailable.
 
 #### Output on stdout
 
@@ -135,7 +135,7 @@ _Function has no arguments._
 
 * **0**: The value was written.
 * **64**: An argument was given.
-* **69**: Perl with Time::HiRes, the clock provider, is unavailable.
+* **69**: Python 3 or the requested clock provider is unavailable.
 
 #### Output on stdout
 
@@ -158,7 +158,7 @@ _Function has no arguments._
 
 * **0**: The value was written.
 * **64**: An argument was given.
-* **69**: Perl with Time::HiRes, the clock provider, is unavailable.
+* **69**: Python 3 or the requested clock provider is unavailable.
 
 #### Output on stdout
 
@@ -181,7 +181,7 @@ _Function has no arguments._
 
 * **0**: The value was written.
 * **64**: An argument was given.
-* **69**: Perl with Time::HiRes, the clock provider, is unavailable.
+* **69**: Python 3 or the requested clock provider is unavailable.
 
 #### Output on stdout
 
@@ -204,7 +204,7 @@ _Function has no arguments._
 
 * **0**: The value was written.
 * **64**: An argument was given.
-* **69**: Perl with Time::HiRes, the clock provider, is unavailable.
+* **69**: Python 3 or the requested clock provider is unavailable.
 
 #### Output on stdout
 
@@ -227,7 +227,7 @@ _Function has no arguments._
 
 * **0**: The value was written.
 * **64**: An argument was given.
-* **69**: Perl with Time::HiRes, the clock provider, is unavailable.
+* **69**: Python 3 or the requested clock provider is unavailable.
 
 #### Output on stdout
 
@@ -249,7 +249,7 @@ _Function has no arguments._
 
 * **0**: The value was written.
 * **64**: An argument was given.
-* **69**: Perl with Time::HiRes, the clock provider, is unavailable.
+* **69**: Python 3 or the requested clock provider is unavailable.
 
 #### Output on stdout
 
@@ -271,7 +271,7 @@ _Function has no arguments._
 
 * **0**: The value was written.
 * **64**: An argument was given.
-* **69**: Perl with Time::HiRes, the clock provider, is unavailable.
+* **69**: Python 3 or the requested clock provider is unavailable.
 
 #### Output on stdout
 
@@ -295,7 +295,7 @@ _Function has no arguments._
 
 * **0**: The value was written.
 * **64**: An argument was given.
-* **69**: Perl with Time::HiRes, the clock provider, is unavailable.
+* **69**: Python 3 or the requested clock provider is unavailable.
 
 #### Output on stdout
 

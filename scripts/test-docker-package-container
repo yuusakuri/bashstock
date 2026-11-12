@@ -26,11 +26,10 @@ REPO
         sed -i 's/^enabled=1/enabled=0/' "$repository"
     done
   fi
-  dnf install -y git curl ca-certificates perl perl-JSON-PP procps-ng sudo
+  dnf install -y git curl ca-certificates python3 procps-ng sudo
 else
   apt-get update
-  DEBIAN_FRONTEND=noninteractive apt-get install -y git curl ca-certificates perl \
-    libjson-pp-perl procps sudo
+  DEBIAN_FRONTEND=noninteractive apt-get install -y git curl ca-certificates python3 procps sudo
 fi
 
 mkdir -p /tmp/bashstock-test-bin

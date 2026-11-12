@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-# The Docker package suite has already installed Git, curl, and Perl.
+# The Docker package suite has already installed Git, curl, and Python 3.
 source /opt/bashstock.sh
 directory="$(mktemp -d)"
 trap 'rm -rf -- "$directory"' EXIT

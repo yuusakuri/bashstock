@@ -197,7 +197,8 @@ BashStockが公開する関数を名前空間ごとに示します。
 
 | 関数 | 説明 |
 |---|---|
-| [`file::contains-match`](modules/file.md#filecontains-match) | Test whether any file line matches a Perl regular expression. |
+| [`file::ensure-exists`](modules/file.md#fileensure-exists) | Create an empty regular file when it does not exist. |
+| [`file::contains-match`](modules/file.md#filecontains-match) | Test whether any file line matches a Python regular expression. |
 | [`file::verify-sha256`](modules/file.md#fileverify-sha256) | Test a file against an expected SHA-256 digest. |
 | [`file::append-text`](modules/file.md#fileappend-text) | Append text without conversion, elevating only when permissions require it. |
 | [`file::replace-text`](modules/file.md#filereplace-text) | Replace the first Bash ERE match on every file line. |
@@ -414,6 +415,13 @@ BashStockが公開する関数を名前空間ごとに示します。
 | [`docker::login-artifactory`](modules/docker.md#dockerlogin-artifactory) | Log in to an Artifactory Docker registry using a token on standard input. |
 | [`docker::versions`](modules/docker.md#dockerversions) | Write Docker Engine or Docker CLI versions available to the current platform. |
 | [`docker::install`](modules/docker.md#dockerinstall) | Install the Docker CLI, and Docker Engine on Linux. |
+
+## [`electron`](modules/electron.md)
+
+| 関数 | 説明 |
+|---|---|
+| [`electron::wayland::enable`](modules/electron.md#electronwaylandenable) | Prefer native Wayland rendering for Electron applications in a Wayland session. |
+| [`electron::wayland::disable`](modules/electron.md#electronwaylanddisable) | Remove BashStock's native Wayland preference for Electron applications. |
 
 ## [`env`](modules/env.md)
 
@@ -858,6 +866,12 @@ BashStockが公開する関数を名前空間ごとに示します。
 | [`serial::write-command`](modules/serial.md#serialwrite-command) | Write a command and terminator to a serial device. |
 | [`serial::release`](modules/serial.md#serialrelease) | Release a serial device so another process, such as a Python tool, can open it. |
 
+## [`setup`](modules/setup.md)
+
+| 関数 | 説明 |
+|---|---|
+| [`setup::linux-config`](modules/setup.md#setuplinux-config) | Apply the common Linux user configuration, stopping at the first failure. |
+
 ## [`ssh`](modules/ssh.md)
 
 | 関数 | 説明 |
@@ -954,7 +968,6 @@ BashStockが公開する関数を名前空間ごとに示します。
 | [`ubuntu::setup`](modules/ubuntu.md#ubuntusetup) | Apply the common Ubuntu user configuration, stopping at the first failure. |
 | [`ubuntu::setup-external`](modules/ubuntu.md#ubuntusetup-external) | Install GnuPG, GitHub CLI, and Git Credential Manager when they are not already available. |
 | [`ubuntu::setup-desktop`](modules/ubuntu.md#ubuntusetup-desktop) | Apply the Ubuntu user configuration and desktop settings, stopping at the first failure. |
-| [`ubuntu::setup-desktop-22`](modules/ubuntu.md#ubuntusetup-desktop-22) | Install the newest Mozc for Ubuntu 22.04 and apply the desktop settings. |
 
 ## [`usb`](modules/usb.md)
 

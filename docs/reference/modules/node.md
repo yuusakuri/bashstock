@@ -29,7 +29,7 @@ node::versions official | tail -n 3
 
 * **0**: The versions were written.
 * **64**: The source is not os or official.
-* **69**: The platform is unsupported, or Perl is missing for the official source.
+* **69**: The platform is unsupported, or Python 3 is missing for the official source.
 * **74**: The release index could not be downloaded or read.
 
 #### Output on stdout

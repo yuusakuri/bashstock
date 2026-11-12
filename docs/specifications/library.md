@@ -10,6 +10,7 @@
 | 対象 | 対応範囲 |
 | --- | --- |
 | シェル | Bash 3.2以上 |
+| Python | Pythonを使う関数とSetupでは3.6.9以上 |
 | OS | macOS、Ubuntu、Fedora |
 
 Linux向けの導入関数は、Fedora 34と、Ubuntu 18.04以降のすべてのLTSメジャー版で、実行中のOSに適合するソフトウェアを導入して動作させます。
@@ -158,13 +159,13 @@ Docコメントに`TODO`は残しません。
 | `regex::is-match` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 入力文字列 |
 | `regex::capture-group` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 入力文字列 |
 | `regex::capture-groups` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 入力文字列 |
-| `file::contains-match` | Perlの`qr//`が解釈する正規表現 | ファイルの各行 |
-| `file::replace-text` | Perlの`qr//`が解釈する正規表現 | 各行の最初の一致 |
-| `file::replace-text-as-root` | Perlの`qr//`が解釈する正規表現 | 各行の最初の一致 |
-| `file::replace-text-in-files` | Perlの`qr//`が解釈する正規表現 | 各ファイルの各行にある最初の一致 |
-| `file::replace-text-in-files-as-root` | Perlの`qr//`が解釈する正規表現 | 各ファイルの各行にある最初の一致 |
-| `file::replace-or-append-text` | Perlの`qr//`が解釈する正規表現 | 各行の最初の一致 |
-| `file::replace-or-append-text-as-root` | Perlの`qr//`が解釈する正規表現 | 各行の最初の一致 |
+| `file::contains-match` | Pythonの`re`が解釈する正規表現 | ファイルの各行 |
+| `file::replace-text` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の最初の一致 |
+| `file::replace-text-as-root` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の最初の一致 |
+| `file::replace-text-in-files` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各ファイルの各行にある最初の一致 |
+| `file::replace-text-in-files-as-root` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各ファイルの各行にある最初の一致 |
+| `file::replace-or-append-text` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の最初の一致 |
+| `file::replace-or-append-text-as-root` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の最初の一致 |
 
 ファイル置換関数は置換値をリテラル文字列として扱います。
 
@@ -200,4 +201,4 @@ Tab補完の登録は、対話型Bashでの初回読み込み時、または`arg
 `platform`名前空間は、macOS、Ubuntu、Fedoraで同じ内部関数を定義します。
 公開関数はOS固有コマンドを直接呼び出さず、`platform`の内部関数を通して実行します。
 
-時間関数はPerlの`Time::HiRes`と`POSIX`を使用し、単調時計、起動後時計、Unix時刻、UTC日時、UTCオフセット付きローカル日時を同じ形式で返します。
+時間関数はPython 3標準の`time`と`datetime`を使用し、単調時計、起動後時計、Unix時刻、UTC日時、UTCオフセット付きローカル日時を同じ形式で返します。

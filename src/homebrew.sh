@@ -31,7 +31,7 @@ homebrew::install() {
   rm -rf -- "${directory}"
   [[ "${status}" -eq 0 ]] || return "${status}"
   local prefix=/opt/homebrew
-  setup::_ensure-file "${HOME}/.zshrc" || return "$?"
+  file::ensure-exists "${HOME}/.zshrc" || return "$?"
   file::replace-text-or-append "${HOME}/.zshrc" '^.*brew shellenv.*$' \
     "eval \"\$(${prefix}/bin/brew shellenv)\"" || return "$?"
   PATH="${prefix}/bin:${prefix}/sbin:${PATH}"

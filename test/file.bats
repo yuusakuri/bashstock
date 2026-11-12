@@ -14,6 +14,17 @@ load test_helper
   [ "${status}" -eq 64 ]
 }
 
+@test "contains-match finds text that is not ASCII in any locale" {
+  local file="${BATS_TEST_TMPDIR}/input"
+  printf '# 日本語の設定\nname=値\n' >"${file}"
+  # Python 3.6 reads arguments as ASCII in the C locale; later versions do the same without UTF-8 mode.
+  export LC_ALL=C PYTHONUTF8=0
+
+  file::contains-match "${file}" '^name=値$'
+  file::contains-match "${file}" '日本語'
+  ! file::contains-match "${file}" '^name=別$'
+}
+
 @test "SHA-256 verification is case-insensitive" {
   local file="${BATS_TEST_TMPDIR}/input"
   local expected=''
