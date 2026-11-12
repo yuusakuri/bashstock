@@ -1749,6 +1749,31 @@ use_fake_sudoers() {
   [ "${output}" = $'2.118.0\n2.119.1' ]
 }
 
+@test "release queries return 74 without a traceback when the release data is not the expected JSON" {
+  use_platform ubuntu 24.04 noble
+  uname() { [[ "$1" == '-m' ]] && printf 'x86_64\n'; }
+  curl() { printf '%s' "${BODY}"; }
+  brew() { printf '%s' "${BODY}"; }
+  local query=''
+  # A cut-off download, a GitHub rate-limit answer, and JSON null all lack the release data.
+  for BODY in '[{"tag_name":"v1.0.0"' '{"message":"API rate limit exceeded"}' 'null'; do
+    use_platform ubuntu 24.04 noble
+    for query in supabase::versions utm::versions flutter::versions 'node::versions official' \
+      'pipx::versions official' 'qmk::cli::install 1.0.0'; do
+      read -r -a words <<<"${query}"
+      run --separate-stderr "${words[@]}"
+      [ "${status}" -eq 74 ]
+      [[ "${stderr}" != *Traceback* ]]
+    done
+
+    # Homebrew answers with its own JSON on macOS.
+    use_platform darwin
+    run --separate-stderr node::versions os
+    [ "${status}" -eq 74 ]
+    [[ "${stderr}" != *Traceback* ]]
+  done
+}
+
 @test "VS Code on an old Ubuntu installs the newest build its C library can run" {
   use_platform ubuntu 18.04 bionic
   record_root_commands

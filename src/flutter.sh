@@ -103,12 +103,10 @@ flutter::versions() {
   platform="$(package::_platform)" || return "$?"
   [[ "${platform}" != 'darwin' ]] || index='macos'
   json="$(package::_fetch "https://storage.googleapis.com/flutter_infra_release/releases/releases_${index}.json")" || return "$?"
-  versions="$(printf '%s' "${json}" | python::run -c '
-import json
+  versions="$(printf '%s' "${json}" | python::_run-json 74 '
 import re
-import sys
-for release in json.load(sys.stdin).get("releases", []):
-    version = release.get("version", "")
+for release in data["releases"]:
+    version = release.get("version") or ""
     if release.get("channel") == "stable" and re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
         print(version)
 ')" || return "$?"

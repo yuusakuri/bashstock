@@ -231,16 +231,13 @@ package::_brew-formula-versions() {
   command::require brew || return "$?"
   local json=''
   json="$(brew info --json=v2 --formula "$1")" || return 1
-  printf '%s' "${json}" | python::run -c '
-import json
+  printf '%s' "${json}" | python::_run-json 74 '
 import re
-import sys
-data = json.load(sys.stdin)
-for formula in data.get("formulae", []):
-    stable = formula.get("versions", {}).get("stable")
+for formula in data["formulae"]:
+    stable = (formula.get("versions") or {}).get("stable")
     if stable:
         print(stable)
-    for name in formula.get("versioned_formulae", []):
+    for name in formula.get("versioned_formulae") or []:
         match = re.search(r"@(.+)$", name)
         if match:
             print(match.group(1))
@@ -254,7 +251,16 @@ package::_brew-formula-stable-version() {
   command::require brew || return "$?"
   local json=''
   json="$(brew info --json=v2 --formula "$1")" || return 1
-  printf '%s' "${json}" | python::run -c 'import json, sys; data=json.load(sys.stdin); print(data["formulae"][0]["versions"]["stable"])'
+  printf '%s' "${json}" | python::_run-json 74 '
+import sys
+formulae = data["formulae"]
+if not formulae:
+    sys.exit(1)
+stable = formulae[0]["versions"]["stable"]
+if not isinstance(stable, str):
+    raise TypeError("stable")
+print(stable)
+'
 }
 
 # @description Write the version of a Homebrew cask.
@@ -264,7 +270,16 @@ package::_brew-cask-version() {
   command::require brew || return "$?"
   local json=''
   json="$(brew info --json=v2 --cask "$1")" || return 1
-  printf '%s' "${json}" | python::run -c 'import json, sys; version=json.load(sys.stdin)["casks"][0]["version"]; print(version.split(",", 1)[0])'
+  printf '%s' "${json}" | python::_run-json 74 '
+import sys
+casks = data["casks"]
+if not casks:
+    sys.exit(1)
+version = casks[0]["version"]
+if not isinstance(version, str):
+    raise TypeError("version")
+print(version.split(",", 1)[0])
+'
 }
 
 # @description Write available versions of one system package in ascending version order.
@@ -410,14 +425,14 @@ package::_github-release-versions() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] ) || return 64
   local json='' versions=''
   json="$(package::_fetch "https://api.github.com/repos/$1/releases?per_page=100")" || return "$?"
-  versions="$(printf '%s' "${json}" | python::run -c '
-import json
+  versions="$(printf '%s' "${json}" | python::_run-json 74 '
 import re
-import sys
-for release in json.load(sys.stdin):
+if not isinstance(data, list):
+    raise TypeError("releases")
+for release in data:
     if release.get("draft") or release.get("prerelease"):
         continue
-    tag = re.sub(r"^v(?=[0-9])", "", release.get("tag_name", ""))
+    tag = re.sub(r"^v(?=[0-9])", "", release.get("tag_name") or "")
     # Repositories also tag other components, such as config-v0.10.0 in supabase/cli.
     if re.fullmatch(r"[0-9]+(?:\.[0-9]+)*", tag):
         print(tag)
@@ -431,8 +446,7 @@ package::_github-release-asset-url() {
   ( [[ "$#" -eq 3 && "$1" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ && -n "$2" && -n "$3" ]] ) || return 64
   local json=''
   json="$(package::_fetch "https://api.github.com/repos/$1/releases?per_page=100")" || return "$?"
-  printf '%s' "${json}" | python::run -c '
-import json
+  printf '%s' "${json}" | python::_run-json 74 '
 import re
 import sys
 version, expression = sys.argv[1:]
@@ -440,11 +454,13 @@ try:
     pattern = re.compile(expression)
 except re.error:
     sys.exit(64)
-for release in json.load(sys.stdin):
+if not isinstance(data, list):
+    raise TypeError("releases")
+for release in data:
     if release.get("tag_name") not in (version, "v" + version):
         continue
-    for asset in release.get("assets", []):
-        if pattern.search(asset.get("name", "")):
+    for asset in release.get("assets") or []:
+        if pattern.search(asset.get("name") or ""):
             print(asset["browser_download_url"])
             sys.exit(0)
 sys.exit(1)

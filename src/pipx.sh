@@ -19,8 +19,7 @@ pipx::_official-versions() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ) || return 64
   local json='' versions=''
   json="$(package::_fetch https://pypi.org/pypi/pipx/json)" || return "$?"
-  versions="$(printf '%s' "${json}" | python::run -c '
-import json
+  versions="$(printf '%s' "${json}" | python::_run-json 74 '
 import re
 import sys
 python_version = [int(part) for part in sys.argv[1].split(".")]
@@ -65,12 +64,8 @@ def accepts(specifiers):
             return False
     return True
 
-try:
-    data = json.load(sys.stdin)
-except (ValueError, TypeError):
-    sys.exit(74)
-for release, files in data.get("releases", {}).items():
-    files = [file_info for file_info in files if not file_info.get("yanked")]
+for release, files in data["releases"].items():
+    files = [file_info for file_info in files or [] if not file_info.get("yanked")]
     if files and re.fullmatch(r"[0-9]+(?:\.[0-9]+)*", release) and accepts(files[0].get("requires_python") or ""):
         print(release)
 ' "$1")" || return "$?"

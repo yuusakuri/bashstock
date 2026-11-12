@@ -43,21 +43,26 @@ node::versions() {
     artifact="$(node::_official-platform)" || return "$?"
     if [[ "${artifact}" == darwin-* ]]; then artifact="osx-${artifact#darwin-}-tar"; fi
     json="$(package::_fetch https://nodejs.org/dist/index.json)" || return "$?"
-    versions="$(printf '%s' "${json}" | python::run -c '
-import json
+    versions="$(printf '%s' "${json}" | python::_run-json 74 '
 import re
 import sys
 artifact = sys.argv[1]
-for release in json.load(sys.stdin):
-    match = re.fullmatch(r"v([0-9]+\.[0-9]+\.[0-9]+)", release.get("version", ""))
-    if match and artifact in release.get("files", []):
+if not isinstance(data, list):
+    raise TypeError("releases")
+for release in data:
+    match = re.fullmatch(r"v([0-9]+\.[0-9]+\.[0-9]+)", release.get("version") or "")
+    if match and artifact in (release.get("files") or []):
         print(match.group(1))
 ' "${artifact}")" || return "$?"
   elif [[ "${platform}" == darwin ]]; then
     versions="$(package::_brew-formula-stable-version node)" || return "$?"
     local formula='' versioned_formulae=''
     versioned_formulae="$(brew info --json=v2 --formula node |
-      python::run -c 'import json, sys; print("\n".join(json.load(sys.stdin)["formulae"][0].get("versioned_formulae", [])))')" || return "$?"
+      python::_run-json 74 '
+for formula in data["formulae"][:1]:
+    for name in formula.get("versioned_formulae") or []:
+        print(name)
+')" || return "$?"
     while IFS= read -r formula; do
       [[ -n "${formula}" ]] || continue
       raw="$(package::_brew-formula-stable-version "${formula}")" || return "$?"
@@ -118,7 +123,11 @@ node::install() {
     if [[ "${version}" != "${stable}" ]]; then
       formula=''
       versioned_formulae="$(brew info --json=v2 --formula node |
-        python::run -c 'import json, sys; print("\n".join(json.load(sys.stdin)["formulae"][0].get("versioned_formulae", [])))')" || return "$?"
+        python::_run-json 74 '
+for formula in data["formulae"][:1]:
+    for name in formula.get("versioned_formulae") or []:
+        print(name)
+')" || return "$?"
       while IFS= read -r candidate; do
         [[ -n "${candidate}" ]] || continue
         stable="$(package::_brew-formula-stable-version "${candidate}")" || return "$?"

@@ -31,7 +31,7 @@ qmk::toolbox::install() {
 # @exitcode 0 The QMK CLI is installed and starts; doctor found at most warnings.
 # @exitcode 64 The argument count is wrong.
 # @exitcode 69 The version is not the newest one, or sh is unavailable.
-# @exitcode 74 The installer could not be downloaded.
+# @exitcode 74 The installer or the PyPI release data could not be downloaded or read.
 # @exitcode other The status of the installer, qmk --version, or qmk doctor.
 # @example
 #   qmk::cli::install
@@ -70,5 +70,10 @@ qmk::cli::_latest-version() {
   [[ "$#" -eq 0 ]] || return 64
   local json=''
   json="$(package::_fetch https://pypi.org/pypi/qmk/json)" || return "$?"
-  printf '%s' "${json}" | python::run -c 'import json, sys; print(json.load(sys.stdin)["info"]["version"])'
+  printf '%s' "${json}" | python::_run-json 74 '
+version = data["info"]["version"]
+if not isinstance(version, str):
+    raise TypeError("version")
+print(version)
+'
 }

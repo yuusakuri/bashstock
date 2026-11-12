@@ -26,3 +26,29 @@ python::run() {
 sys.argv[1:] = [os.fsencode(argument).decode("utf-8", "surrogateescape") for argument in sys.argv[1:]]
 '"$2" "${@:3}"
 }
+
+# @description Run a script on the JSON document read from standard input.
+#
+# The script reads the decoded document from the global variable data and its
+# own arguments from sys.argv[1:]. Input that is not JSON, or whose structure
+# the script cannot read, ends with the given status instead of a traceback.
+# @internal
+# @arg $1 int Status for input that is not the expected JSON.
+# @arg $2 string Python script.
+# @arg $@ string Arguments of the script.
+python::_run-json() {
+  [[ "$#" -ge 2 && -n "$2" ]] || return 64
+  ( [[ "$1" =~ ^[0-9]+$ ]] ) || return 64
+  python::run -c '
+import json
+import sys
+status = int(sys.argv[1])
+script = sys.argv[2]
+del sys.argv[1:3]
+try:
+    data = json.load(sys.stdin)
+    exec(compile(script, "<bashstock>", "exec"), {"__name__": "__main__", "data": data})
+except (ValueError, LookupError, TypeError, AttributeError):
+    sys.exit(status)
+' "$@"
+}
