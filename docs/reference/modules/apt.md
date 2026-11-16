@@ -33,7 +33,7 @@ apt::package::candidates gcc-
 
 * **0**: The candidates were written; none is not an error.
 * **64**: The prefix is not a valid package name start.
-* **69**: The system is not Ubuntu, or apt-cache or Perl is missing.
+* **69**: The system is not Ubuntu, or apt-cache or Python 3 is missing.
 * **74**: apt-cache policy failed.
 
 #### Output on stdout
@@ -59,7 +59,7 @@ package::_install "$(apt::package::latest gcc-)"
 * **0**: The name was written.
 * **1**: No package name starts with the prefix and a digit.
 * **64**: The prefix is invalid.
-* **69**: The system is not Ubuntu, or apt-cache or Perl is missing.
+* **69**: The system is not Ubuntu, or apt-cache or Python 3 is missing.
 * **74**: apt-cache policy failed.
 
 #### Output on stdout

@@ -27,8 +27,8 @@ _Function has no arguments._
 
 * **0**: The versions were written.
 * **64**: An argument was given.
-* **69**: The platform is unsupported, or Perl is missing.
-* **74**: The release list could not be downloaded.
+* **69**: The platform is unsupported, or Python 3 is missing.
+* **74**: The release list could not be downloaded or read.
 
 #### Output on stdout
 
@@ -54,6 +54,6 @@ supabase --version
 * **0**: The Supabase CLI is installed.
 * **64**: The argument count is wrong.
 * **69**: The platform or CPU is unsupported, or the version is unavailable.
-* **74**: The release package could not be downloaded.
+* **74**: The release list or package could not be downloaded or read.
 * other The status of brew or the package manager.
 

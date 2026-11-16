@@ -1220,12 +1220,9 @@ gsettings_value() {
   esac
   [ -z "${output}" ]
   [[ "${stderr}" == *'shell::editor::set-default'* ]]
-
-  run --separate-stderr ubuntu::setup-desktop-22
-  [ "${status}" -eq 69 ]
 }
 
-@test "Ubuntu setup installs only missing common and external prerequisites" {
+@test "Ubuntu setup leaves external tools for the optional follow-up function" {
   use_platform ubuntu 24.04 noble
   HOME="${BATS_TEST_TMPDIR}/home"
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
@@ -1252,36 +1249,47 @@ gsettings_value() {
 
   run ubuntu::setup
   [ "${status}" -eq 0 ]
-  [ "$(sed -n '1p' "${STEP_LOG}")" = 'package::_install curl git' ]
-  [ "$(sed -n '2p' "${STEP_LOG}")" = 'package::_install curl git' ]
+  [ "$(sed -n '1p' "${STEP_LOG}")" = 'package::_install curl git python3' ]
+  [ "$(sed -n '2p' "${STEP_LOG}")" = 'package::_install curl git python3' ]
+  grep -Fqx 'git::config::setup' "${STEP_LOG}"
+  ! grep -Fq 'package::_install gnupg' "${STEP_LOG}"
+  ! grep -Fq 'gh::install' "${STEP_LOG}"
+  ! grep -Fq 'git-credential-manager::install' "${STEP_LOG}"
+  ! grep -Fq 'git::config::use-credential-manager' "${STEP_LOG}"
+
+  run ubuntu::setup-external
+  [ "${status}" -eq 0 ]
   grep -Fqx 'package::_install gnupg' "${STEP_LOG}"
   grep -Fqx 'gh::install' "${STEP_LOG}"
-  # Git is configured to use Git Credential Manager, so the setup installs it last.
-  [ "$(tail -n 1 "${STEP_LOG}")" = 'git-credential-manager::install' ]
+  [ "$(tail -n 1 "${STEP_LOG}")" = 'git::config::use-credential-manager' ]
 }
 
-@test "Fedora setup installs missing Perl modules and runs the shared steps with Fedora's GnuPG" {
+@test "Fedora setup leaves external tools for the optional follow-up function" {
   use_platform fedora 34
   HOME="${BATS_TEST_TMPDIR}/home"
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
-  local installed='curl git perl'
+  local installed='curl git python3'
   mkdir -p "${HOME}"
   command::exists() { [[ " ${installed} " == *" $1 "* ]]; }
-  # Fedora Workstation 34 has POSIX but neither JSON::PP nor Time::HiRes.
-  perl() { [[ "$1" == -MPOSIX ]]; }
   setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
   gh::install() { printf 'gh::install\n' >>"${STEP_LOG}"; }
 
   run fedora::setup
   [ "${status}" -eq 0 ]
-  [ "$(sed -n '1p' "${STEP_LOG}")" = 'package::_install perl-JSON-PP perl-Time-HiRes' ]
-  grep -Fqx 'git::config::use-credential-manager' "${STEP_LOG}"
-  grep -Fqx 'package::_install gnupg2' "${STEP_LOG}"
-  [ "$(sed -n '$p' "${STEP_LOG}")" = 'git-credential-manager::install' ]
+  ! grep -Fq 'package::_install python3' "${STEP_LOG}"
+  grep -Fqx 'git::config::setup' "${STEP_LOG}"
+  ! grep -Fq 'git::config::use-credential-manager' "${STEP_LOG}"
+  ! grep -Fq 'package::_install gnupg2' "${STEP_LOG}"
+  ! grep -Fq 'git-credential-manager::install' "${STEP_LOG}"
   case "$(uname -s)" in
     Darwin) [ "$(stat -f '%Lp' "${HOME}/.env")" = 600 ] ;;
     *) [ "$(stat -c '%a' "${HOME}/.env")" = 600 ] ;;
   esac
+
+  run fedora::setup-external
+  [ "${status}" -eq 0 ]
+  grep -Fqx 'package::_install gnupg2' "${STEP_LOG}"
+  [ "$(sed -n '$p' "${STEP_LOG}")" = 'git::config::use-credential-manager' ]
 
   use_platform ubuntu 24.04 noble
   run --separate-stderr fedora::setup
@@ -1290,42 +1298,57 @@ gsettings_value() {
   [ "${status}" -eq 69 ]
 }
 
-@test "Ubuntu desktop setup installs Mozc and VLC only when they are missing" {
+@test "Ubuntu desktop setup installs or upgrades Mozc only when needed" {
   use_platform ubuntu 24.04 noble
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
   setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+  mozc::ibus::versions() { printf '%s\n' '2.26.4220.100+dfsg-5.2' '2.28.5160.102+dfsg-0ubuntu0.22.04.1'; }
 
   dpkg-query() { return 1; }
-  run setup::_install-ubuntu-desktop-applications
+  run setup::_upgrade-ubuntu-mozc
   [ "${status}" -eq 0 ]
-  grep -Fqx 'mozc::ibus::install' "${STEP_LOG}"
-  if [[ ! -f /usr/share/applications/vlc.desktop && ! -f /usr/share/applications/org.videolan.VLC.desktop ]]; then
-    grep -Fqx 'package::_install vlc' "${STEP_LOG}"
-  fi
+  grep -Fqx 'mozc::ibus::install 2.28.5160.102+dfsg-0ubuntu0.22.04.1' "${STEP_LOG}"
 
   : >"${STEP_LOG}"
-  dpkg-query() { printf 'install ok installed'; }
-  run setup::_install-ubuntu-desktop-applications
+  dpkg-query() { printf 'install ok installed\t2.26.4220.100+dfsg-5.2'; }
+  dpkg() {
+    [[ "$1" == '--compare-versions' && "$2" == '2.28.5160.102+dfsg-0ubuntu0.22.04.1' &&
+      "$3" == ge && "$4" == '2.28.5160.102+dfsg-0ubuntu0.22.04.1' ]]
+  }
+  run setup::_upgrade-ubuntu-mozc
   [ "${status}" -eq 0 ]
-  ! grep -Fqx 'mozc::ibus::install' "${STEP_LOG}"
+  grep -Fqx 'mozc::ibus::install 2.28.5160.102+dfsg-0ubuntu0.22.04.1' "${STEP_LOG}"
+
+  : >"${STEP_LOG}"
+  dpkg-query() { printf 'install ok installed\t2.28.5160.102+dfsg-0ubuntu0.22.04.1'; }
+  dpkg() {
+    [[ "$1" == '--compare-versions' && "$2" == '2.28.5160.102+dfsg-0ubuntu0.22.04.1' &&
+      "$3" == ge && "$4" == '2.28.5160.102+dfsg-0ubuntu0.22.04.1' ]]
+  }
+  run setup::_upgrade-ubuntu-mozc
+  [ "${status}" -eq 0 ]
+  [ ! -s "${STEP_LOG}" ]
 }
 
-@test "Ubuntu setup installs perl only when its modules are missing" {
+@test "Ubuntu setup installs Python 3 when it is missing" {
   use_platform ubuntu 24.04 noble
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
-  command::exists() { :; }
+  local installed='curl git python3'
+  command::exists() { [[ " ${installed} " == *" $1 "* ]]; }
   setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+  package::_install() {
+    printf 'package::_install %s\n' "$*" >>"${STEP_LOG}"
+    installed+=" $*"
+  }
 
-  perl() { :; }
-  run setup::_install-prerequisites
+  run setup::_ensure-linux-setup-tools
   [ "${status}" -eq 0 ]
   [ ! -e "${STEP_LOG}" ]
 
-  # perl-base alone, as in a minimal Ubuntu image, lacks JSON::PP and Time::HiRes.
-  perl() { return 2; }
-  run setup::_install-prerequisites
+  installed='curl git'
+  run setup::_ensure-linux-setup-tools
   [ "${status}" -eq 0 ]
-  [ "$(<"${STEP_LOG}")" = 'package::_install perl' ]
+  [ "$(<"${STEP_LOG}")" = 'package::_install python3' ]
 }
 
 @test "GitHub CLI repository setup checks both published key fingerprints" {
@@ -1726,6 +1749,31 @@ use_fake_sudoers() {
   [ "${output}" = $'2.118.0\n2.119.1' ]
 }
 
+@test "release queries return 74 without a traceback when the release data is not the expected JSON" {
+  use_platform ubuntu 24.04 noble
+  uname() { [[ "$1" == '-m' ]] && printf 'x86_64\n'; }
+  curl() { printf '%s' "${BODY}"; }
+  brew() { printf '%s' "${BODY}"; }
+  local query=''
+  # A cut-off download, a GitHub rate-limit answer, and JSON null all lack the release data.
+  for BODY in '[{"tag_name":"v1.0.0"' '{"message":"API rate limit exceeded"}' 'null'; do
+    use_platform ubuntu 24.04 noble
+    for query in supabase::versions utm::versions flutter::versions 'node::versions official' \
+      'pipx::versions official' 'qmk::cli::install 1.0.0'; do
+      read -r -a words <<<"${query}"
+      run --separate-stderr "${words[@]}"
+      [ "${status}" -eq 74 ]
+      [[ "${stderr}" != *Traceback* ]]
+    done
+
+    # Homebrew answers with its own JSON on macOS.
+    use_platform darwin
+    run --separate-stderr node::versions os
+    [ "${status}" -eq 74 ]
+    [[ "${stderr}" != *Traceback* ]]
+  done
+}
+
 @test "VS Code on an old Ubuntu installs the newest build its C library can run" {
   use_platform ubuntu 18.04 bionic
   record_root_commands
@@ -1782,7 +1830,9 @@ use_fake_sudoers() {
     chmod +x "${HOME}/.local/bin/pipx"
   }
   curl() {
+    # Old releases on PyPI have a null Requires-Python, which accepts any Python.
     printf '%s' '{"releases":{
+      "0.12.0":[{"requires_python":null,"yanked":false}],
       "0.17.0":[{"requires_python":">=3.6","yanked":false}],
       "1.0.0":[{"requires_python":">=3.6","yanked":false}],
       "1.1.0":[{"requires_python":">=3.7","yanked":false}],
@@ -1796,7 +1846,7 @@ use_fake_sudoers() {
 
   run pipx::versions official
   [ "${status}" -eq 0 ]
-  [ "${output}" = $'0.17.0\n1.0.0' ]
+  [ "${output}" = $'0.12.0\n0.17.0\n1.0.0' ]
 
   run pipx::install '' official
   [ "${status}" -eq 0 ]

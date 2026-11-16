@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-# The Docker package suite has already installed curl, Perl, Git, and a JDK.
+# The Docker package suite has already installed curl, Python 3, Git, and a JDK.
 source /opt/bashstock.sh
 source /etc/os-release
 

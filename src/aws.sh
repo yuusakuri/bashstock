@@ -220,7 +220,7 @@ aws::instance-id() {
 # @stdout A region such as ap-northeast-1.
 # @exitcode 0 The region was written.
 # @exitcode 64 An argument was given.
-# @exitcode 69 curl or Perl is unavailable.
+# @exitcode 69 curl or Python 3 is unavailable.
 # @exitcode 75 The metadata service did not answer or the document is invalid.
 # @example
 #   aws::instance-tags "$(aws::instance-id)" "$(aws::instance-region)"
@@ -231,15 +231,19 @@ aws::instance-region() {
   local document=''
   token="$(aws::_imds-token)" || return "$?"
   document="$(aws::_imds-document "${token}")" || return "$?"
-  command -v perl >/dev/null 2>&1 || return 69
   printf '%s' "${document}" |
-    perl -MJSON::PP -0777 -e '
-      my $data = eval { decode_json(<STDIN>) };
-      exit 75 if $@ || ref($data) ne "HASH";
-      my $value = $data->{region};
-      exit 75 unless defined $value && !ref($value) && length($value);
-      print $value, "\n";
-    ' 2>/dev/null
+    python::run -c '
+import json
+import sys
+try:
+    data = json.load(sys.stdin)
+    value = data.get("region") if isinstance(data, dict) else None
+    if not isinstance(value, str) or not value:
+        raise ValueError()
+except (ValueError, TypeError):
+    sys.exit(75)
+print(value)
+' 2>/dev/null
 }
 
 # @description Write the current EC2 instance availability zone.
@@ -302,7 +306,7 @@ aws::instance-tags() {
 # @exitcode 0 The value was written.
 # @exitcode 1 The instance has no tag with that key.
 # @exitcode 64 An argument is empty or contains a newline.
-# @exitcode 69 The AWS CLI or Perl is unavailable.
+# @exitcode 69 The AWS CLI or Python 3 is unavailable.
 # @exitcode 75 The AWS CLI failed or returned invalid JSON.
 # @exitcode 77 The credentials were missing, expired, or not allowed.
 # @example
@@ -316,23 +320,28 @@ aws::instance-tag() {
   fi
 
   local tags=''
-  command -v perl >/dev/null 2>&1 || return 69
   tags="$(aws::instance-tags "$1" "$2")" || return "$?"
   printf '%s' "${tags}" |
-    perl -MJSON::PP -0777 -e '
-      my $key = shift;
-      my $data = eval { decode_json(<STDIN>) };
-      exit 75 if $@ || ref($data) ne "HASH" || ref($data->{Tags}) ne "ARRAY";
-      for my $tag (@{$data->{Tags}}) {
-        next unless ref($tag) eq "HASH";
-        if (defined($tag->{Key}) && $tag->{Key} eq $key) {
-          exit 75 if !defined($tag->{Value}) || ref($tag->{Value});
-          print $tag->{Value}, "\n";
-          exit 0;
-        }
-      }
-      exit 1;
-    ' -- "$3" 2>/dev/null
+    python::run -c '
+import json
+import sys
+key = sys.argv[1]
+try:
+    data = json.load(sys.stdin)
+    tags = data.get("Tags") if isinstance(data, dict) else None
+    if not isinstance(tags, list):
+        raise ValueError()
+except (ValueError, TypeError):
+    sys.exit(75)
+for tag in tags:
+    if isinstance(tag, dict) and tag.get("Key") == key:
+        value = tag.get("Value")
+        if not isinstance(value, str):
+            sys.exit(75)
+        print(value)
+        sys.exit(0)
+sys.exit(1)
+' "$3" 2>/dev/null
 }
 
 # @description Wait for one EC2 instance tag to become available.
@@ -348,7 +357,7 @@ aws::instance-tag() {
 # @stdout The tag value.
 # @exitcode 0 The value was written.
 # @exitcode 64 An argument is invalid.
-# @exitcode 69 The AWS CLI, Perl, or the clock provider is unavailable.
+# @exitcode 69 The AWS CLI, Python 3, or the clock provider is unavailable.
 # @exitcode 75 The tag did not appear before the timeout, or the AWS CLI failed.
 # @exitcode 77 The credentials were missing, expired, or not allowed.
 # @example
@@ -466,7 +475,7 @@ aws::auto-scaling-group() {
 # @exitcode 0 The instances were written.
 # @exitcode 1 No group has that name.
 # @exitcode 64 An argument is empty or contains a newline.
-# @exitcode 69 The AWS CLI or Perl is unavailable.
+# @exitcode 69 The AWS CLI or Python 3 is unavailable.
 # @exitcode 75 The AWS CLI failed or returned invalid JSON.
 # @exitcode 77 The credentials were missing, expired, or not allowed.
 # @example
@@ -480,22 +489,27 @@ aws::instances-in-auto-scaling-group() {
   local instance_ids=''
   local ids=()
   local id=''
-  command -v perl >/dev/null 2>&1 || return 69
   group="$(aws::auto-scaling-group "$1" "$2")" || return "$?"
   instance_ids="$(
     printf '%s' "${group}" |
-      perl -MJSON::PP -0777 -e '
-        my $data = eval { decode_json(<STDIN>) };
-        exit 75 if $@ || ref($data) ne "HASH";
-        my $instances = $data->{Instances};
-        exit 75 unless ref($instances) eq "ARRAY";
-        for my $instance (@$instances) {
-          next unless ref($instance) eq "HASH";
-          my $id = $instance->{InstanceId};
-          exit 75 unless defined($id) && !ref($id) && $id !~ /\n/;
-          print $id, "\n";
-        }
-      ' 2>/dev/null
+      python::run -c '
+import json
+import sys
+try:
+    data = json.load(sys.stdin)
+    instances = data.get("Instances") if isinstance(data, dict) else None
+    if not isinstance(instances, list):
+        raise ValueError()
+except (ValueError, TypeError):
+    sys.exit(75)
+for instance in instances:
+    if not isinstance(instance, dict):
+        continue
+    instance_id = instance.get("InstanceId")
+    if not isinstance(instance_id, str) or "\n" in instance_id:
+        sys.exit(75)
+    print(instance_id)
+' 2>/dev/null
   )" || return "$?"
 
   if [[ -z "${instance_ids}" ]]; then
@@ -522,7 +536,7 @@ aws::instances-in-auto-scaling-group() {
 # @stdout The Auto Scaling group name.
 # @exitcode 0 The name was written.
 # @exitcode 64 The timeout or interval is not a positive integer.
-# @exitcode 69 curl, the AWS CLI, or Perl is unavailable.
+# @exitcode 69 curl, the AWS CLI, or Python 3 is unavailable.
 # @exitcode 75 The metadata service did not answer, or the tag did not appear in time.
 # @exitcode 77 The credentials were missing, expired, or not allowed.
 # @example
@@ -550,7 +564,7 @@ aws::auto-scaling-group-name() {
 # @exitcode 0 The capacity was written.
 # @exitcode 1 No group has that name.
 # @exitcode 64 An argument is empty or contains a newline.
-# @exitcode 69 The AWS CLI or Perl is unavailable.
+# @exitcode 69 The AWS CLI or Python 3 is unavailable.
 # @exitcode 75 The AWS CLI failed or returned invalid JSON.
 # @exitcode 77 The credentials were missing, expired, or not allowed.
 # @example
@@ -561,16 +575,20 @@ aws::auto-scaling-group-size() {
   fi
 
   local group=''
-  command -v perl >/dev/null 2>&1 || return 69
   group="$(aws::auto-scaling-group "$1" "$2")" || return "$?"
   printf '%s' "${group}" |
-    perl -MJSON::PP -0777 -e '
-      my $data = eval { decode_json(<STDIN>) };
-      exit 75 if $@ || ref($data) ne "HASH";
-      my $size = $data->{DesiredCapacity};
-      exit 75 unless defined($size) && !ref($size) && $size =~ /\A[0-9]+\z/;
-      print $size, "\n";
-    ' 2>/dev/null
+    python::run -c '
+import json
+import sys
+try:
+    data = json.load(sys.stdin)
+    size = data.get("DesiredCapacity") if isinstance(data, dict) else None
+    if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+        raise ValueError()
+except (ValueError, TypeError):
+    sys.exit(75)
+print(size)
+' 2>/dev/null
 }
 
 # @description Write the default AWS VPN Client log directory.

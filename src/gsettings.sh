@@ -11,38 +11,63 @@
 # @internal
 gsettings::_parse-string-array() {
   [[ "$#" -eq 1 ]] || return 64
-  command::require perl || return "$?"
-  perl -e '
-    my $text = shift;
-    $text =~ s/^\s*\@as\s+//;
-    $text =~ s/^\s+|\s+$//g;
-    exit 65 unless $text =~ s/^\[// && $text =~ s/\]$//;
-    my @values;
-    while (length $text) {
-      $text =~ s/^\s+//;
-      last unless length $text;
-      if ($text =~ s/^(["\x27])((?:\\.|(?!\1).)*)\1//s) {
-        my $value = $2;
-        $value =~ s/\\(.)/$1/g;
-        exit 65 if $value =~ /\n/;
-        push @values, $value;
-      } else {
-        exit 65;
-      }
-      $text =~ s/^\s*//;
-      last unless length $text;
-      exit 65 unless $text =~ s/^,//;
-    }
-    print "$_\n" for @values;
-  ' "$1"
+  python::run -c '
+import sys
+
+text = sys.argv[1].strip()
+if text.startswith("@as"):
+    text = text[3:].lstrip()
+if not (text.startswith("[") and text.endswith("]")):
+    sys.exit(65)
+text = text[1:-1]
+values = []
+index = 0
+while True:
+    while index < len(text) and text[index].isspace():
+        index += 1
+    if index == len(text):
+        break
+    quote = text[index]
+    if quote not in (chr(34), chr(39)):
+        sys.exit(65)
+    index += 1
+    value = []
+    while index < len(text):
+        char = text[index]
+        if char == chr(92):
+            index += 1
+            if index >= len(text):
+                sys.exit(65)
+            value.append(text[index])
+            index += 1
+        elif char == quote:
+            index += 1
+            break
+        else:
+            if char == chr(10):
+                sys.exit(65)
+            value.append(char)
+            index += 1
+    else:
+        sys.exit(65)
+    values.append("".join(value))
+    while index < len(text) and text[index].isspace():
+        index += 1
+    if index == len(text):
+        break
+    if text[index] != ",":
+        sys.exit(65)
+    index += 1
+for value in values:
+    print(value)
+' "$1"
 }
 
 # @description Write one value as a single-quoted GVariant string literal.
 # @internal
 gsettings::_quote() {
   [[ "$#" -eq 1 && "$1" != *$'\n'* ]] || return 64
-  command::require perl || return "$?"
-  perl -e 'my $value = shift; $value =~ s/([\\\x27])/\\$1/g; print "\x27$value\x27\n";' "$1"
+  python::run -c 'import sys; q=chr(39); b=chr(92); print(q+sys.argv[1].replace(b,b+b).replace(q,b+q)+q)' "$1"
 }
 
 # @description Write lines from standard input as a GVariant string array.

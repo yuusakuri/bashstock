@@ -5,7 +5,7 @@ set -euo pipefail
 
 # Run inside a disposable Ubuntu container.
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y curl ca-certificates perl
+DEBIAN_FRONTEND=noninteractive apt-get install -y curl ca-certificates python3
 
 source /opt/bashstock.sh
 source /etc/os-release

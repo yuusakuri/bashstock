@@ -28,4 +28,4 @@ gnome::input-source::setup-ime-keys
 keyboard::setup-ime-keys 4653 0001
 ```
 
-Ubuntu では、`ubuntu::setup-desktop` と `ubuntu::setup-desktop-22` でも一連の設定を行えます。
+Ubuntu では、`ubuntu::setup-desktop` でも一連の設定を行えます。

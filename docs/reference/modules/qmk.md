@@ -57,7 +57,7 @@ qmk setup -y
 * **0**: The QMK CLI is installed and starts; doctor found at most warnings.
 * **64**: The argument count is wrong.
 * **69**: The version is not the newest one, or sh is unavailable.
-* **74**: The installer could not be downloaded.
+* **74**: The installer or the PyPI release data could not be downloaded or read.
 * other The status of the installer, qmk --version, or qmk doctor.
 
 #### Output on stdout

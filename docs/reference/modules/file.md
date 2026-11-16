@@ -8,6 +8,7 @@ Text is written to a temporary file in the target directory and then moved into 
 
 ## Index
 
+* [file::ensure-exists](#fileensure-exists)
 * [file::contains-match](#filecontains-match)
 * [file::verify-sha256](#fileverify-sha256)
 * [file::append-text](#fileappend-text)
@@ -31,9 +32,34 @@ Text is written to a temporary file in the target directory and then moved into 
 * [file::tree-with-contents](#filetree-with-contents)
 * [file::modified-time-unix-seconds](#filemodified-time-unix-seconds)
 
+### file::ensure-exists
+
+Create an empty regular file when it does not exist.
+
+The mode applies only to a newly created file and is independent of the
+caller's umask. An existing regular file is left unchanged.
+
+#### Example
+
+```bash
+file::ensure-exists "${HOME}/.env" 0600
+```
+
+#### Arguments
+
+* **$1** (string): File path.
+* **$2** (string): Optional octal mode for a new file. Defaults to 0644.
+
+#### Exit codes
+
+* **0**: The file exists or was created.
+* **64**: The path is empty, the mode is invalid, or the argument count is wrong.
+* **66**: The path is not a regular file.
+* **74**: The file could not be created with the requested mode.
+
 ### file::contains-match
 
-Test whether any file line matches a Perl regular expression.
+Test whether any file line matches a Python regular expression.
 
 #### Example
 
@@ -44,7 +70,7 @@ file::contains-match /etc/hosts '^127\.0\.0\.1\s+localhost\b'
 #### Arguments
 
 * **$1** (string): Readable regular file; a symbolic link is refused.
-* **$2** (string): Perl regular expression without newlines.
+* **$2** (string): Python regular expression without newlines.
 
 #### Exit codes
 
@@ -52,7 +78,7 @@ file::contains-match /etc/hosts '^127\.0\.0\.1\s+localhost\b'
 * **1**: No line matches.
 * **64**: The expression is invalid, or the argument count is not two.
 * **66**: The file is missing, unreadable, or a symbolic link.
-* **69**: Perl is unavailable.
+* **69**: Python 3 is unavailable.
 
 ### file::verify-sha256
 

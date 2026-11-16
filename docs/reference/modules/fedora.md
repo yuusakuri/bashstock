@@ -15,12 +15,13 @@ Setup functions configure a fresh Fedora installation.
 
 Apply the common Fedora user configuration, stopping at the first failure.
 
-The same steps as ubuntu::setup run on Fedora: missing curl, Git, and Perl
-modules that bashstock uses are installed, ~/.env is registered, the editor
+The same steps as ubuntu::setup run on Fedora: missing curl, Git, and Python
+3 are installed, ~/.env is registered, the editor
 of Bash and Zsh is set to code --wait, completion ignores case, English
 names are linked to localized user directories, the user joins dialout, Git
-uses Git Credential Manager, ~/.ssh permissions are fixed, and external
-tools are installed.
+is configured, and ~/.ssh permissions are fixed. External tools can be
+installed separately with fedora::setup-external. In supported Wayland
+sessions, Electron applications also prefer native Wayland rendering.
 
 #### Example
 
@@ -47,7 +48,8 @@ _Function has no arguments._
 Install GnuPG, GitHub CLI, and Git Credential Manager on Fedora when they are not already available.
 
 GitHub CLI is installed from its official DNF repository after checking the
-repository key against GitHub's published fingerprints.
+repository key against GitHub's published fingerprints. Git is configured
+to use Git Credential Manager after the missing external tools are installed.
 
 #### Example
 

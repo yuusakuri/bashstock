@@ -46,7 +46,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes gawk libtime-hires-perl perl shellcheck
+          sudo apt-get install --yes gawk python3 shellcheck
 
       - name: Run all checks
         run: just verify

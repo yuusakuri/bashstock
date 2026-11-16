@@ -79,7 +79,7 @@ SCRIPT
 @test "sdkmanager lists stable numeric versions when Android CLI is unavailable" {
   local tools="${BATS_TEST_TMPDIR}/tools"
   mkdir -p "${tools}"
-  ln -s "$(command -v perl)" "${tools}/perl"
+  ln -s "$(command -v python3)" "${tools}/python3"
   cat >"${tools}/sdkmanager" <<'SCRIPT'
 #!/bin/sh
 [ "$1" = '--list' ] && [ "$2" = '--channel=0' ] || exit 98
@@ -103,7 +103,7 @@ SCRIPT
 @test "Android Build Tools queries report missing commands and reject arguments" {
   local tools="${BATS_TEST_TMPDIR}/tools"
   mkdir -p "${tools}"
-  ln -s "$(command -v perl)" "${tools}/perl"
+  ln -s "$(command -v python3)" "${tools}/python3"
   query_with_tools() { (PATH="${tools}"; "$@"); }
   run query_with_tools android::build-tools::versions
   [ "${status}" -eq 69 ]

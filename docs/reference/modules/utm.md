@@ -47,7 +47,7 @@ _Function has no arguments._
 
 * **0**: The versions were written.
 * **64**: An argument was given.
-* **69**: Perl is unavailable.
+* **69**: Python 3 is unavailable.
 * **74**: The GitHub release list could not be downloaded or read.
 
 #### Output on stdout

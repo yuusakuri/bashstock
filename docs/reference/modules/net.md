@@ -332,7 +332,7 @@ _Function has no arguments._
 
 * **0**: The port was written.
 * **64**: An argument was given.
-* **69**: perl is unavailable or the socket could not be bound.
+* **69**: Python 3 is unavailable or the socket could not be bound.
 
 #### Output on stdout
 

@@ -495,7 +495,7 @@ _Function has no arguments._
 * **0**: The versions were written.
 * **1**: No stable version was found.
 * **64**: An argument was given.
-* **69**: perl, or both android and sdkmanager, are unavailable.
+* **69**: Python 3, or both android and sdkmanager, are unavailable.
 * other The status of the SDK command that failed.
 
 #### Output on stdout

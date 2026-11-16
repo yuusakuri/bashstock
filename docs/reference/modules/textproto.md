@@ -39,6 +39,6 @@ textproto::set-scalar config.textproto name '"production"'
 * **64**: The arguments are invalid.
 * **65**: The field is ambiguous or holds a message, or the file is unbalanced.
 * **66**: The file cannot be read.
-* **69**: perl is unavailable.
+* **69**: Python 3 is unavailable.
 * other The status of file::write-text.
 

@@ -119,11 +119,13 @@ ubuntu::download-server-iso() {
 
 # @description Apply the common Ubuntu user configuration, stopping at the first failure.
 #
-# Missing curl, Git, and Perl modules that bashstock uses are installed first.
+# Missing curl, Git, and Python 3 are installed first.
 # The steps then register ~/.env, set the editor of Bash and Zsh to
 # code --wait, ignore case in completion, link English names to localized
-# user directories, add the user to dialout, configure Git with Git Credential
-# Manager, fix ~/.ssh permissions, and install external tools.
+# user directories, add the user to dialout, configure Git, and fix ~/.ssh
+# permissions. External tools can be installed separately with
+# ubuntu::setup-external. Electron applications prefer native Wayland rendering
+# in supported Wayland sessions.
 #
 # @noargs
 # @stderr The step that failed.
@@ -137,14 +139,14 @@ ubuntu::download-server-iso() {
 ubuntu::setup() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform ubuntu || return "$?"
-  setup::_apply-linux-user-configuration || return "$?"
-  ubuntu::setup-external
+  setup::linux-config || return "$?"
 }
 
 # @description Install GnuPG, GitHub CLI, and Git Credential Manager when they are not already available.
 #
 # GitHub CLI is installed from its official Ubuntu APT repository after checking
-# the repository key against GitHub's published fingerprints.
+# the repository key against GitHub's published fingerprints. Git is configured
+# to use Git Credential Manager after the missing external tools are installed.
 #
 # @noargs
 # @exitcode 0 The missing tools were installed or were already available.
@@ -157,15 +159,17 @@ ubuntu::setup() {
 ubuntu::setup-external() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform ubuntu || return "$?"
-  setup::_install-external gnupg
+  setup::_setup-external gnupg
 }
 
 # @description Apply the Ubuntu user configuration and desktop settings, stopping at the first failure.
 #
-# After ubuntu::setup, Mozc for IBus and VLC are installed when they are
-# missing, and the IME keys, Mozc and US input sources, Hiragana start, and VLC
-# as the video application are set. Nonconvert/LANG2 selects US, and
-# Convert/LANG1 selects Mozc through GNOME shortcuts.
+# After ubuntu::setup, IBus Mozc is installed or upgraded when the repository
+# offers a newer version, and the IME keys, Mozc and US input sources, and
+# Hiragana start are set. Nonconvert/LANG2 selects US, and Convert/LANG1
+# selects Mozc through GNOME shortcuts. The GNOME title-bar layout is also set.
+# Electron applications prefer native Wayland rendering in supported Wayland
+# sessions.
 #
 # @noargs
 # @stderr The step that failed.
@@ -177,39 +181,13 @@ ubuntu::setup-external() {
 #   ubuntu::setup-desktop
 ubuntu::setup-desktop() {
   [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform ubuntu || return "$?"
   ubuntu::setup || return "$?"
-  setup::_install-ubuntu-desktop-applications || return "$?"
+  setup::_upgrade-ubuntu-mozc || return "$?"
   setup::_run-step keyboard::setup-ime-keys || return "$?"
   setup::_run-step gnome::input-source::set-mozc-first || return "$?"
   setup::_run-step gnome::keyboard-layout::set-us || return "$?"
   setup::_run-step mozc::ibus::set-hiragana-as-default || return "$?"
   setup::_run-step gnome::input-source::setup-ime-keys || return "$?"
-  setup::_run-step vlc::set-default-app
-}
-
-# @description Install the newest Mozc for Ubuntu 22.04 and apply the desktop settings.
-#
-# The window button layout is also set as on Ubuntu 22.04's reference setup.
-#
-# @noargs
-# @stderr The step that failed, or a message on other releases.
-# @exitcode 0 Every step succeeded.
-# @exitcode 64 An argument was given.
-# @exitcode 69 The system is not Ubuntu 22.04.
-# @exitcode other The status of the first step that failed.
-# @example
-#   ubuntu::setup-desktop-22
-ubuntu::setup-desktop-22() {
-  [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform ubuntu || return "$?"
-  local version=''
-  version="$(platform::_os-release-value VERSION_ID)" || return "$?"
-  if [[ "${version}" != '22.04' ]]; then
-    console::_write-error 'This setup supports only Ubuntu 22.04.'
-    return 69
-  fi
-  setup::_run-step mozc::server::install || return "$?"
-  setup::_run-step mozc::ibus::install || return "$?"
-  ubuntu::setup-desktop || return "$?"
   setup::_run-step gnome::window::set-button-layout
 }

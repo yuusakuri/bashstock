@@ -93,25 +93,23 @@ flutter::use-version() {
 # @stdout Stable Flutter versions such as 3.35.7, one per line, oldest first.
 # @exitcode 0 The versions were written.
 # @exitcode 64 An argument was given.
-# @exitcode 69 Perl is unavailable, or the platform is unsupported.
+# @exitcode 69 Python 3 is unavailable, or the platform is unsupported.
 # @exitcode 74 The release index could not be downloaded or read.
 # @example
 #   flutter::versions | tail -n 1
 flutter::versions() {
   [[ "$#" -eq 0 ]] || return 64
-  command::require perl || return "$?"
   local platform='' index='linux' json='' versions=''
   platform="$(package::_platform)" || return "$?"
   [[ "${platform}" != 'darwin' ]] || index='macos'
   json="$(package::_fetch "https://storage.googleapis.com/flutter_infra_release/releases/releases_${index}.json")" || return "$?"
-  versions="$(printf '%s' "${json}" | perl -MJSON::PP -e '
-    local $/;
-    my $data = eval { decode_json(<STDIN>) } or exit 74;
-    for my $release (@{$data->{releases} || []}) {
-      print "$release->{version}\n"
-        if $release->{channel} eq "stable" && $release->{version} =~ /^[0-9]+\.[0-9]+\.[0-9]+$/;
-    }
-  ')" || return "$?"
+  versions="$(printf '%s' "${json}" | python::_run-json 74 '
+import re
+for release in data["releases"]:
+    version = release.get("version") or ""
+    if release.get("channel") == "stable" and re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
+        print(version)
+')" || return "$?"
   printf '%s\n' "${versions}" | package::_sort-stable-versions
 }
 

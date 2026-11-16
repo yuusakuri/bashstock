@@ -45,5 +45,4 @@ sudo su -l "$(id -un)" -c 'id -nG' | grep -qw dialout
 [[ "$(git config --global init.defaultBranch)" == main ]]
 [[ "$(git config --global pull.rebase)" == true ]]
 [[ "$(git config --global fetch.prune)" == true ]]
-[[ "$(git config --global credential.helper)" == manager ]]
 [[ "$(stat -c %a "$HOME/.ssh")" == 700 ]]

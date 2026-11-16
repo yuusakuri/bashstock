@@ -10,7 +10,7 @@ set -euo pipefail
 source /etc/os-release
 sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   dbus-x11 dconf-cli dconf-gsettings-backend gsettings-desktop-schemas gnome-settings-daemon-common libglib2.0-bin \
-  ibus ibus-mozc keyboard-configuration udev vlc xdg-utils >/dev/null
+  ibus ibus-mozc keyboard-configuration udev >/dev/null
 
 # @description Run a BashStock command in a new D-Bus session.
 in_session() {
@@ -21,22 +21,13 @@ in_session() {
 in_session gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'jp')]"
 
 export GIT_EMAIL=tester@example.invalid GIT_USERNAME='Setup Tester'
-if [[ "$VERSION_ID" == 22.04 ]]; then
-  in_session ubuntu::setup-desktop-22
-else
-  status=0
-  in_session ubuntu::setup-desktop-22 2>/dev/null || status="$?"
-  [[ "$status" -eq 69 ]]
-  in_session ubuntu::setup-desktop
-fi
+in_session ubuntu::setup-desktop
 
 printf '== GNOME settings in a new session\n'
 sources="$(in_session gsettings get org.gnome.desktop.input-sources sources)"
 printf '%s\n' "$sources"
 [[ "$sources" == "[('ibus', 'mozc-jp'), ('xkb', 'us')]" ]]
-if [[ "$VERSION_ID" == 22.04 ]]; then
-  [[ "$(in_session gsettings get org.gnome.desktop.wm.preferences button-layout)" == "'appmenu:minimize,maximize,close'" ]]
-fi
+[[ "$(in_session gsettings get org.gnome.desktop.wm.preferences button-layout)" == "'appmenu:minimize,maximize,close'" ]]
 
 printf '== keyboard\n'
 grep -x 'XKBLAYOUT="us"' /etc/default/keyboard
@@ -60,8 +51,7 @@ bindings="$(in_session gsettings get "$schema" custom-keybindings)"
 [[ "$(in_session gsettings get "$schema.custom-keybinding:$base/bashstock-ime-off/" command)" == "\"ibus engine 'xkb:us::eng'\"" ]]
 [[ "$(in_session gsettings get "$schema.custom-keybinding:$base/bashstock-ime-on/" command)" == "\"ibus engine 'mozc-jp'\"" ]]
 
-printf '== Mozc and VLC\n'
+printf '== Mozc\n'
 grep -Fx 'active_on_launch: True' "$HOME/.config/mozc/ibus_config.textproto"
 # Without its engines block, Mozc offers IBus no engine at all.
 grep -Fx '  name : "mozc-jp"' "$HOME/.config/mozc/ibus_config.textproto"
-[[ "$(xdg-mime query default video/mp4)" == vlc.desktop ]]

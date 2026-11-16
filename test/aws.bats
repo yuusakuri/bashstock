@@ -71,6 +71,18 @@ load test_helper
   [ "${status}" -eq 1 ]
 }
 
+@test "EC2 tag functions find tag keys that are not ASCII in any locale" {
+  aws::_cli() { printf '{"Tags":[{"Key":"環境","Value":"本番"},{"Key":"Role","Value":"web"}]}\n'; }
+  # Python 3.6 reads ASCII in the C locale; later versions do the same without UTF-8 mode.
+  export LC_ALL=C PYTHONUTF8=0
+
+  run aws::instance-tag 'i-123' 'ap-northeast-1' '環境'
+  [ "${status}" -eq 0 ]
+  [ "${output}" = '本番' ]
+  run aws::instance-tag 'i-123' 'ap-northeast-1' '開発'
+  [ "${status}" -eq 1 ]
+}
+
 @test "tag waiting returns an immediately available value" {
   aws::instance-tag() {
     printf 'ready\n'

@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-# The Docker package suite has already installed curl, Perl, and Git.
+# The Docker package suite has already installed curl, Python 3, and Git.
 source /opt/bashstock.sh
 
 version='16.20.2'

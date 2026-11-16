@@ -11,8 +11,8 @@
 # @stdout Supabase CLI versions, one per line.
 # @exitcode 0 The versions were written.
 # @exitcode 64 An argument was given.
-# @exitcode 69 The platform is unsupported, or Perl is missing.
-# @exitcode 74 The release list could not be downloaded.
+# @exitcode 69 The platform is unsupported, or Python 3 is missing.
+# @exitcode 74 The release list could not be downloaded or read.
 # @example
 #   supabase::versions | tail -n 1
 supabase::versions() {
@@ -32,7 +32,7 @@ supabase::versions() {
 # @exitcode 0 The Supabase CLI is installed.
 # @exitcode 64 The argument count is wrong.
 # @exitcode 69 The platform or CPU is unsupported, or the version is unavailable.
-# @exitcode 74 The release package could not be downloaded.
+# @exitcode 74 The release list or package could not be downloaded or read.
 # @exitcode other The status of brew or the package manager.
 # @example
 #   supabase::install

@@ -87,7 +87,7 @@ shell::completion::enable-ignore-case() {
 #   shell::zsh::enable-interactive-comments
 shell::zsh::enable-interactive-comments() {
   [[ "$#" -eq 0 ]] || return 64
-  setup::_ensure-file "${HOME}/.zshrc" || return "$?"
+  file::ensure-exists "${HOME}/.zshrc" || return "$?"
   file::replace-text-or-append "${HOME}/.zshrc" '^setopt interactivecomments.*$' 'setopt interactivecomments'
 }
 

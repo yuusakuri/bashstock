@@ -26,7 +26,7 @@ utm::open() {
 # @stdout Stable UTM release versions, one per line, oldest first.
 # @exitcode 0 The versions were written.
 # @exitcode 64 An argument was given.
-# @exitcode 69 Perl is unavailable.
+# @exitcode 69 Python 3 is unavailable.
 # @exitcode 74 The GitHub release list could not be downloaded or read.
 # @example
 #   utm::versions | tail -n 1
