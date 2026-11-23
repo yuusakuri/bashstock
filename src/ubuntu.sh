@@ -139,7 +139,7 @@ ubuntu::download-server-iso() {
 ubuntu::setup() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform ubuntu || return "$?"
-  setup::linux-config || return "$?"
+  linux::setup || return "$?"
 }
 
 # @description Install GnuPG, GitHub CLI, and Git Credential Manager when they are not already available.
@@ -159,14 +159,14 @@ ubuntu::setup() {
 ubuntu::setup-external() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform ubuntu || return "$?"
-  setup::_setup-external gnupg
+  linux::_setup-external gnupg
 }
 
 # @description Apply the Ubuntu user configuration and desktop settings, stopping at the first failure.
 #
-# After ubuntu::setup, IBus Mozc is installed or upgraded when the repository
-# offers a newer version, and the IME keys, Mozc and US input sources, and
-# Hiragana start are set. Nonconvert/LANG2 selects US, and Convert/LANG1
+# After ubuntu::setup, mozc::ibus::upgrade installs IBus Mozc or upgrades it
+# when the release offers a newer version, and the IME keys, Mozc and US input
+# sources, and Hiragana start are set. Nonconvert/LANG2 selects US, and Convert/LANG1
 # selects Mozc through GNOME shortcuts. The GNOME title-bar layout is also set.
 # Electron applications prefer native Wayland rendering in supported Wayland
 # sessions.
@@ -183,11 +183,11 @@ ubuntu::setup-desktop() {
   [[ "$#" -eq 0 ]] || return 64
   package::_require-platform ubuntu || return "$?"
   ubuntu::setup || return "$?"
-  setup::_upgrade-ubuntu-mozc || return "$?"
-  setup::_run-step keyboard::setup-ime-keys || return "$?"
-  setup::_run-step gnome::input-source::set-mozc-first || return "$?"
-  setup::_run-step gnome::keyboard-layout::set-us || return "$?"
-  setup::_run-step mozc::ibus::set-hiragana-as-default || return "$?"
-  setup::_run-step gnome::input-source::setup-ime-keys || return "$?"
-  setup::_run-step gnome::window::set-button-layout
+  command::_run-step mozc::ibus::upgrade || return "$?"
+  command::_run-step keyboard::setup-ime-keys || return "$?"
+  command::_run-step gnome::input-source::set-mozc-first || return "$?"
+  command::_run-step gnome::keyboard-layout::set-us || return "$?"
+  command::_run-step mozc::ibus::set-hiragana-as-default || return "$?"
+  command::_run-step gnome::input-source::setup-ime-keys || return "$?"
+  command::_run-step gnome::window::set-button-layout
 }

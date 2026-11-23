@@ -13,6 +13,7 @@ Mozc is installed from the platform package source.
 * [mozc::server::install](#mozcserverinstall)
 * [mozc::ibus::versions](#mozcibusversions)
 * [mozc::ibus::install](#mozcibusinstall)
+* [mozc::ibus::upgrade](#mozcibusupgrade)
 * [mozc::tool::versions](#mozctoolversions)
 * [mozc::tool::install](#mozctoolinstall)
 * [mozc::ibus::set-hiragana-as-default](#mozcibusset-hiragana-as-default)
@@ -121,6 +122,34 @@ mozc::ibus::install
 * **64**: The argument count is wrong.
 * **69**: The platform is unsupported, or the version is unavailable.
 * other The status of the package manager.
+
+### mozc::ibus::upgrade
+
+Install IBus Mozc on Ubuntu, or upgrade it when the release offers a newer version.
+
+The newest version from mozc::ibus::versions is installed through
+mozc::ibus::install, with the Mozc server of the same version when the
+release provides it. An installed version at least as new is kept, so a
+newer version is never downgraded. Fedora is not supported yet.
+
+#### Example
+
+```bash
+mozc::ibus::upgrade
+```
+
+_Function has no arguments._
+
+#### Exit codes
+
+* **0**: IBus Mozc was installed or upgraded, or is already up to date.
+* **64**: An argument was given.
+* **69**: The system is not Ubuntu, or the release provides no IBus Mozc version.
+* other The status of the package manager.
+
+#### Output on stderr
+
+* A message when the release provides no IBus Mozc version.
 
 ### mozc::tool::versions
 

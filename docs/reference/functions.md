@@ -652,6 +652,12 @@ BashStockが公開する関数を名前空間ごとに示します。
 | [`keyboard::system-layout::set`](modules/keyboard.md#keyboardsystem-layoutset) | Set the system keyboard layout. |
 | [`keyboard::setup-ime-keys`](modules/keyboard.md#keyboardsetup-ime-keys) | Map USB Convert, Nonconvert, LANG1, and LANG2 keys to henkan and muhenkan. |
 
+## [`linux`](modules/linux.md)
+
+| 関数 | 説明 |
+|---|---|
+| [`linux::setup`](modules/linux.md#linuxsetup) | Apply the common Linux user configuration, stopping at the first failure. |
+
 ## [`ltrace`](modules/ltrace.md)
 
 | 関数 | 説明 |
@@ -716,6 +722,7 @@ BashStockが公開する関数を名前空間ごとに示します。
 | [`mozc::server::install`](modules/mozc.md#mozcserverinstall) | Install the Mozc server, defaulting to the newest version for the running release. |
 | [`mozc::ibus::versions`](modules/mozc.md#mozcibusversions) | Write IBus Mozc versions provided for the running operating-system release. |
 | [`mozc::ibus::install`](modules/mozc.md#mozcibusinstall) | Install IBus Mozc and the Mozc server of the same version. |
+| [`mozc::ibus::upgrade`](modules/mozc.md#mozcibusupgrade) | Install IBus Mozc on Ubuntu, or upgrade it when the release offers a newer version. |
 | [`mozc::tool::versions`](modules/mozc.md#mozctoolversions) | Write Mozc GUI tool versions provided for the running operating-system release. |
 | [`mozc::tool::install`](modules/mozc.md#mozctoolinstall) | Install the Mozc GUI tools. |
 | [`mozc::ibus::set-hiragana-as-default`](modules/mozc.md#mozcibusset-hiragana-as-default) | Start Mozc in Hiragana mode and restart IBus. |
@@ -865,12 +872,6 @@ BashStockが公開する関数を名前空間ごとに示します。
 | [`serial::write`](modules/serial.md#serialwrite) | Write literal data to a serial device. |
 | [`serial::write-command`](modules/serial.md#serialwrite-command) | Write a command and terminator to a serial device. |
 | [`serial::release`](modules/serial.md#serialrelease) | Release a serial device so another process, such as a Python tool, can open it. |
-
-## [`setup`](modules/setup.md)
-
-| 関数 | 説明 |
-|---|---|
-| [`setup::linux-config`](modules/setup.md#setuplinux-config) | Apply the common Linux user configuration, stopping at the first failure. |
 
 ## [`ssh`](modules/ssh.md)
 

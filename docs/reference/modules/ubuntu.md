@@ -130,9 +130,9 @@ _Function has no arguments._
 
 Apply the Ubuntu user configuration and desktop settings, stopping at the first failure.
 
-After ubuntu::setup, IBus Mozc is installed or upgraded when the repository
-offers a newer version, and the IME keys, Mozc and US input sources, and
-Hiragana start are set. Nonconvert/LANG2 selects US, and Convert/LANG1
+After ubuntu::setup, mozc::ibus::upgrade installs IBus Mozc or upgrades it
+when the release offers a newer version, and the IME keys, Mozc and US input
+sources, and Hiragana start are set. Nonconvert/LANG2 selects US, and Convert/LANG1
 selects Mozc through GNOME shortcuts. The GNOME title-bar layout is also set.
 Electron applications prefer native Wayland rendering in supported Wayland
 sessions.
