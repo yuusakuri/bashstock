@@ -16,7 +16,7 @@ Tests return 0 or 1 without output; prompts read from the controlling terminal a
 * [shell::read-line](#shellread-line)
 * [shell::confirm-or-cancel](#shellconfirm-or-cancel)
 * [shell::choose-one](#shellchoose-one)
-* [shell::wait-for-enter](#shellwait-for-enter)
+* [shell::pause](#shellpause)
 
 ### shell::is-function-defined
 
@@ -233,14 +233,14 @@ version="$(shell::choose-one 'Node.js version' 20.18.0 22.11.0)"
 
 * The message, the numbered choices, and a Selection: prompt.
 
-### shell::wait-for-enter
+### shell::pause
 
 Wait for one line from the controlling terminal.
 
 #### Example
 
 ```bash
-shell::wait-for-enter 'Connect the device, then press Enter.'
+shell::pause 'Connect the device, then press Enter.'
 ```
 
 #### Arguments

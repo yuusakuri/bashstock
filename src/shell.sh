@@ -300,8 +300,8 @@ shell::choose-one() {
 # @exitcode 69 No controlling terminal is available.
 # @exitcode 74 The terminal could not be read.
 # @example
-#   shell::wait-for-enter 'Connect the device, then press Enter.'
-shell::wait-for-enter() {
+#   shell::pause 'Connect the device, then press Enter.'
+shell::pause() {
   if [[ "$#" -gt 1 ]]; then return 64; fi
   local message="${1:-Press Enter to continue.}"
   terminal::is-available || return 69
