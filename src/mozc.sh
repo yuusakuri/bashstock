@@ -122,6 +122,41 @@ mozc::ibus::install() {
   fi
 }
 
+# @description Install IBus Mozc on Ubuntu, or upgrade it when the release offers a newer version.
+#
+# The newest version from mozc::ibus::versions is installed through
+# mozc::ibus::install, with the Mozc server of the same version when the
+# release provides it. An installed version at least as new is kept, so a
+# newer version is never downgraded. Fedora is not supported yet.
+#
+# @noargs
+# @stderr A message when the release provides no IBus Mozc version.
+# @exitcode 0 IBus Mozc was installed or upgraded, or is already up to date.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not Ubuntu, or the release provides no IBus Mozc version.
+# @exitcode other The status of the package manager.
+# @example
+#   mozc::ibus::upgrade
+mozc::ibus::upgrade() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform ubuntu || return "$?"
+  local record='' installed='' versions='' latest=''
+  record="$(dpkg-query -W -f='${Status}\t${Version}' ibus-mozc 2>/dev/null)" || record=''
+  if [[ "${record}" == 'install ok installed'* ]]; then
+    installed="${record#*$'\t'}"
+  fi
+  versions="$(mozc::ibus::versions)" || return "$?"
+  latest="${versions##*$'\n'}"
+  if [[ -z "${latest}" ]]; then
+    console::_write-error 'This release provides no IBus Mozc version.'
+    return 69
+  fi
+  if [[ -n "${installed}" ]] && dpkg --compare-versions "${installed}" ge "${latest}"; then
+    return 0
+  fi
+  mozc::ibus::install "${latest}"
+}
+
 # @description Write Mozc GUI tool versions provided for the running operating-system release.
 #
 # @noargs
