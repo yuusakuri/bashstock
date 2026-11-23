@@ -121,7 +121,7 @@ BashStockが公開する関数を名前空間ごとに示します。
 | [`shell::read-line`](modules/shell.md#shellread-line) | Read one line and substitute a default only for empty input. |
 | [`shell::confirm-or-cancel`](modules/shell.md#shellconfirm-or-cancel) | Read and normalize a yes, no, or cancel answer. |
 | [`shell::choose-one`](modules/shell.md#shellchoose-one) | Display indexed choices and write the selected value. |
-| [`shell::wait-for-enter`](modules/shell.md#shellwait-for-enter) | Wait for one line from the controlling terminal. |
+| [`shell::pause`](modules/shell.md#shellpause) | Wait for one line from the controlling terminal. |
 
 ## [`terminal`](modules/terminal.md)
 

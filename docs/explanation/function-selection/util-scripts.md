@@ -22,7 +22,7 @@
 
 | 参照元の関数 | BashStockの関数 | 区分 | 機能 | 変更点 | 設計 |
 |---|---|---|---|---|---|
-| `pause` | `shell::wait-for-enter [MESSAGE]` | 標準 | Enterキーが入力されるまで待機します。 | <ul><li>標準入力の`read -p`ではなく、利用可能な制御端末から一行を読みます。</li><li>固定messageは未指定時の既定値とし、任意のmessageで上書きできます。</li></ul> | 利用可能な制御端末から一行を読みます。非対話環境では終了状態69を返します。 |
+| `pause` | `shell::pause [MESSAGE]` | 標準 | Enterキーが入力されるまで待機します。 | <ul><li>標準入力の`read -p`ではなく、利用可能な制御端末から一行を読みます。</li><li>固定messageは未指定時の既定値とし、任意のmessageで上書きできます。</li></ul> | 利用可能な制御端末から一行を読みます。非対話環境では終了状態69を返します。 |
 | `datetime-for-filename` | `time::local-date-time-seconds-basic` | 既存 | ローカル日時を`YYYYMMDDTHHMMSS`形式で出力します。 | <ul><li>OSの`date`ではなく、BashStockの実時間時計と日時formatterを使用します。</li></ul> | ファイル名へ使用できる固定長のASCII文字列を出力し、UTC offsetは含めません。 |
 | `sleep-hour` | `time::sleep-hours HOURS` | 標準 | 時間を秒へ変換して`sleep`します。 | <ul><li>算術展開の前に、時間が0以上の10進整数であることを検証します。</li></ul> | 0以上の10進整数を検証してから待機します。 |
 | `storage-usage` | `storage::usage [PATH]` | 任意 | `df`の人間向け表示から一部のファイルシステムを除外します。 | <ul><li>OSへ直接依存する`df`と`grep`の組合せを、OS別adapter経由の`df`実行へ置き換えます。</li></ul> | OS別の`df`へ委譲して人間向け出力を返します。 |
