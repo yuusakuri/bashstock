@@ -88,3 +88,13 @@ command::run-as-root() {
     sudo -n -- "$@"
   fi
 }
+
+# @description Run one step of a setup function, report a failure, and return its status.
+# @internal
+command::_run-step() {
+  [[ "$#" -ge 1 ]] || return 64
+  "$@"
+  local status="$?"
+  [[ "${status}" -eq 0 ]] || console::_write-error "Setup step failed with status ${status}: $*"
+  return "${status}"
+}

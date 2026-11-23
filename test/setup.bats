@@ -1229,7 +1229,7 @@ gsettings_value() {
   local installed=''
   mkdir -p "${HOME}"
   command::exists() { [[ " ${installed} " == *" $1 "* ]]; }
-  setup::_run-step() {
+  command::_run-step() {
     printf '%s\n' "$*" >>"${STEP_LOG}"
     if [[ "$1" == package::_install ]]; then
       shift
@@ -1271,7 +1271,7 @@ gsettings_value() {
   local installed='curl git python3'
   mkdir -p "${HOME}"
   command::exists() { [[ " ${installed} " == *" $1 "* ]]; }
-  setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+  command::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
   gh::install() { printf 'gh::install\n' >>"${STEP_LOG}"; }
 
   run fedora::setup
@@ -1298,16 +1298,16 @@ gsettings_value() {
   [ "${status}" -eq 69 ]
 }
 
-@test "Ubuntu desktop setup installs or upgrades Mozc only when needed" {
+@test "IBus Mozc upgrade installs only a missing or older version on Ubuntu" {
   use_platform ubuntu 24.04 noble
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
-  setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+  mozc::ibus::install() { printf 'mozc::ibus::install %s\n' "$*" >>"${STEP_LOG}"; }
   mozc::ibus::versions() { printf '%s\n' '2.26.4220.100+dfsg-5.2' '2.28.5160.102+dfsg-0ubuntu0.22.04.1'; }
 
   dpkg-query() { return 1; }
-  run setup::_upgrade-ubuntu-mozc
+  run mozc::ibus::upgrade
   [ "${status}" -eq 0 ]
-  grep -Fqx 'mozc::ibus::install 2.28.5160.102+dfsg-0ubuntu0.22.04.1' "${STEP_LOG}"
+  [ "$(<"${STEP_LOG}")" = 'mozc::ibus::install 2.28.5160.102+dfsg-0ubuntu0.22.04.1' ]
 
   : >"${STEP_LOG}"
   dpkg-query() { printf 'install ok installed\t2.26.4220.100+dfsg-5.2'; }
@@ -1315,18 +1315,28 @@ gsettings_value() {
     [[ "$1" == '--compare-versions' && "$2" == '2.28.5160.102+dfsg-0ubuntu0.22.04.1' &&
       "$3" == ge && "$4" == '2.28.5160.102+dfsg-0ubuntu0.22.04.1' ]]
   }
-  run setup::_upgrade-ubuntu-mozc
+  run mozc::ibus::upgrade
   [ "${status}" -eq 0 ]
-  grep -Fqx 'mozc::ibus::install 2.28.5160.102+dfsg-0ubuntu0.22.04.1' "${STEP_LOG}"
+  [ "$(<"${STEP_LOG}")" = 'mozc::ibus::install 2.28.5160.102+dfsg-0ubuntu0.22.04.1' ]
 
   : >"${STEP_LOG}"
   dpkg-query() { printf 'install ok installed\t2.28.5160.102+dfsg-0ubuntu0.22.04.1'; }
-  dpkg() {
-    [[ "$1" == '--compare-versions' && "$2" == '2.28.5160.102+dfsg-0ubuntu0.22.04.1' &&
-      "$3" == ge && "$4" == '2.28.5160.102+dfsg-0ubuntu0.22.04.1' ]]
-  }
-  run setup::_upgrade-ubuntu-mozc
+  run mozc::ibus::upgrade
   [ "${status}" -eq 0 ]
+  [ ! -s "${STEP_LOG}" ]
+
+  mozc::ibus::versions() { :; }
+  run --separate-stderr mozc::ibus::upgrade
+  [ "${status}" -eq 69 ]
+  [[ "${stderr}" == *'no IBus Mozc version'* ]]
+  [ ! -s "${STEP_LOG}" ]
+
+  run mozc::ibus::upgrade extra
+  [ "${status}" -eq 64 ]
+
+  use_platform fedora 40
+  run --separate-stderr mozc::ibus::upgrade
+  [ "${status}" -eq 69 ]
   [ ! -s "${STEP_LOG}" ]
 }
 
@@ -1335,18 +1345,18 @@ gsettings_value() {
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
   local installed='curl git python3'
   command::exists() { [[ " ${installed} " == *" $1 "* ]]; }
-  setup::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+  command::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
   package::_install() {
     printf 'package::_install %s\n' "$*" >>"${STEP_LOG}"
     installed+=" $*"
   }
 
-  run setup::_ensure-linux-setup-tools
+  run linux::_setup-prerequisites
   [ "${status}" -eq 0 ]
   [ ! -e "${STEP_LOG}" ]
 
   installed='curl git'
-  run setup::_ensure-linux-setup-tools
+  run linux::_setup-prerequisites
   [ "${status}" -eq 0 ]
   [ "$(<"${STEP_LOG}")" = 'package::_install python3' ]
 }
@@ -1438,7 +1448,7 @@ gsettings_value() {
   HOME="${BATS_TEST_TMPDIR}/home"
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
   mkdir -p "${HOME}"
-  setup::_run-step() {
+  command::_run-step() {
     printf '%s\n' "$*" >>"${STEP_LOG}"
     case "$1" in
       colima::install) return 75 ;;

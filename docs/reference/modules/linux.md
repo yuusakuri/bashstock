@@ -1,16 +1,16 @@
-# setup
+# linux
 
-Linux setup and shared setup steps.
+Common Linux setup.
 
 ## Overview
 
-The module defines common Linux configuration and internal setup helpers.
+The module defines the setup steps that Ubuntu and Fedora share.
 
 ## Index
 
-* [setup::linux-config](#setuplinux-config)
+* [linux::setup](#linuxsetup)
 
-### setup::linux-config
+### linux::setup
 
 Apply the common Linux user configuration, stopping at the first failure.
 
@@ -20,7 +20,7 @@ installed, then configures Wayland, the user's environment, shell, Git, and SSH.
 #### Example
 
 ```bash
-setup::linux-config
+linux::setup
 ```
 
 _Function has no arguments._
