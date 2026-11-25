@@ -8,20 +8,20 @@ Workspaces are initialized and synchronized with the repo tool.
 
 ## Index
 
-* [repo__init](#repo__init)
-* [repo__sync](#repo__sync)
-* [repo__write-manifest](#repo__write-manifest)
-* [repo__check](#repo__check)
-* [repo__reset](#repo__reset)
+* [repo.init](#repoinit)
+* [repo.sync](#reposync)
+* [repo.write-manifest](#repowrite-manifest)
+* [repo.check](#repocheck)
+* [repo.reset](#reporeset)
 
-### repo__init
+### repo.init
 
 Initialize a Google Repo workspace with shallow history.
 
 #### Example
 
 ```bash
-repo__init https://android.googlesource.com/platform/manifest android-14.0.0_r1 default.xml aosp
+repo.init https://android.googlesource.com/platform/manifest android-14.0.0_r1 default.xml aosp
 ```
 
 #### Arguments
@@ -39,14 +39,14 @@ repo__init https://android.googlesource.com/platform/manifest android-14.0.0_r1 
 * **74**: The directory could not be created.
 * other The status of repo init.
 
-### repo__sync
+### repo.sync
 
 Synchronize one path of a Google Repo workspace, forcing the sync.
 
 #### Example
 
 ```bash
-repo__sync frameworks/base 8 aosp
+repo.sync frameworks/base 8 aosp
 ```
 
 #### Arguments
@@ -62,14 +62,14 @@ repo__sync frameworks/base 8 aosp
 * **69**: repo is unavailable.
 * other The status of repo sync.
 
-### repo__write-manifest
+### repo.write-manifest
 
 Write the current Google Repo manifest with revisions to a file.
 
 #### Example
 
 ```bash
-repo__write-manifest pinned.xml aosp
+repo.write-manifest pinned.xml aosp
 ```
 
 #### Arguments
@@ -84,14 +84,14 @@ repo__write-manifest pinned.xml aosp
 * **69**: repo is unavailable.
 * other The status of repo manifest.
 
-### repo__check
+### repo.check
 
 Run git fsck in every project of a Google Repo workspace.
 
 #### Example
 
 ```bash
-repo__check aosp
+repo.check aosp
 ```
 
 #### Arguments
@@ -109,7 +109,7 @@ repo__check aosp
 
 * The output of git fsck for each project.
 
-### repo__reset
+### repo.reset
 
 Hard reset every project of a Google Repo workspace and remove untracked files.
 
@@ -118,7 +118,7 @@ Every uncommitted change in every project is discarded. Ignored files are kept.
 #### Example
 
 ```bash
-repo__reset aosp
+repo.reset aosp
 ```
 
 #### Arguments

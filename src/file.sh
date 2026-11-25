@@ -7,7 +7,7 @@
 
 # @description Require a readable regular file that is not a symbolic link.
 # @internal
-_file__require-existing() {
+_file.require-existing() {
   if [[ "$#" -ne 1 || -z "$1" ]]; then
     return 64
   fi
@@ -18,7 +18,7 @@ _file__require-existing() {
 
 # @description Require an existing regular file without checking read permissions.
 # @internal
-_file__require-regular-target() {
+_file.require-regular-target() {
   if [[ "$#" -ne 1 || -z "$1" ]]; then
     return 64
   fi
@@ -29,7 +29,7 @@ _file__require-regular-target() {
 
 # @description Require a text file without NUL bytes.
 # @internal
-_file__require-no-nul() {
+_file.require-no-nul() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -61,8 +61,8 @@ _file__require-no-nul() {
 # @exitcode 66 The path is not a regular file.
 # @exitcode 74 The file could not be created with the requested mode.
 # @example
-#   file__ensure-exists "${HOME}/.env" 0600
-file__ensure-exists() {
+#   file.ensure-exists "${HOME}/.env" 0600
+file.ensure-exists() {
   [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64
   [[ -n "$1" ]] || return 64
   ( [[ "${2:-0644}" =~ ^0[0-7]{3}$ ]] ) || return 64
@@ -74,11 +74,11 @@ file__ensure-exists() {
 
 # @description Require a one-line expression that compiles as a Python regular expression.
 # @internal
-_file__require-python-expression() {
-  if [[ "$#" -ne 1 ]] || ! _string__require-one-line "$1"; then
+_file.require-python-expression() {
+  if [[ "$#" -ne 1 ]] || ! _string.require-one-line "$1"; then
     return 64
   fi
-  python__run -c 'import re, sys; re.compile(sys.argv[1])' "$1" 2>/dev/null || {
+  python.run -c 'import re, sys; re.compile(sys.argv[1])' "$1" 2>/dev/null || {
     local status="$?"
     [[ "$status" -eq 69 ]] && return 69
     return 64
@@ -87,10 +87,10 @@ _file__require-python-expression() {
 
 # @description Require a one-line expression that compiles as a Bash extended regular expression.
 # @internal
-_file__require-bash-expression() {
+_file.require-bash-expression() {
   if [[ "$#" -ne 2 ]] ||
     [[ -z "$1" ]] ||
-    ! _string__require-one-line "$1" ||
+    ! _string.require-one-line "$1" ||
     ! ( [[ "$2" -eq 0 || "$2" -eq 1 ]] ); then
     return 64
   fi
@@ -112,12 +112,12 @@ _file__require-bash-expression() {
 
 # @description Copy file content and metadata to another path.
 # @internal
-_file__copy-metadata-and-content() {
+_file.copy-metadata-and-content() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
 
-  case "$(system__operating-system)" in
+  case "$(system.operating-system)" in
     darwin)
       cp -p "$1" "$2" >/dev/null 2>&1
       ;;
@@ -132,28 +132,28 @@ _file__copy-metadata-and-content() {
 
 # @description Create a temporary path beside the target file.
 # @internal
-_file__temporary-path() {
+_file.temporary-path() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
 
   local directory=''
   local name=''
-  directory="$(path__directory-name "$1")" || return "$?"
-  name="$(path__base-name "$1")" || return "$?"
+  directory="$(path.directory-name "$1")" || return "$?"
+  name="$(path.base-name "$1")" || return "$?"
   command -v mktemp >/dev/null 2>&1 || return 69
   mktemp "${directory}/.${name}.bashstock.XXXXXX" 2>/dev/null || return 74
 }
 
 # @description Test whether the effective user can update a file atomically.
 # @internal
-_file__can-update() {
+_file.can-update() {
   if [[ "$#" -ne 1 || -z "$1" || -L "$1" ]]; then
     return 1
   fi
 
   local directory=''
-  directory="$(path__directory-name "$1")" || return 1
+  directory="$(path.directory-name "$1")" || return 1
   if [[ -e "$1" ]]; then
     [[ -f "$1" && -r "$1" && -w "$1" &&
       -d "${directory}" && -w "${directory}" && -x "${directory}" ]]
@@ -164,7 +164,7 @@ _file__can-update() {
 
 # @description Test whether the effective user can append to a file.
 # @internal
-_file__can-append() {
+_file.can-append() {
   if [[ "$#" -ne 1 || -z "$1" || -L "$1" ]]; then
     return 1
   fi
@@ -175,25 +175,25 @@ _file__can-append() {
   fi
 
   local directory=''
-  directory="$(path__directory-name "$1")" || return 1
+  directory="$(path.directory-name "$1")" || return 1
   [[ -d "${directory}" && -w "${directory}" && -x "${directory}" ]]
 }
 
 # @description Test whether appending requires administrator permissions.
 # @internal
-_file__requires-root-to-append() {
+_file.requires-root-to-append() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
   if [[ "${EUID}" -eq 0 ]]; then
     return 1
   fi
-  ! _file__can-append "$1"
+  ! _file.can-append "$1"
 }
 
 # @description Test whether any target requires administrator permissions to update.
 # @internal
-_file__requires-root() {
+_file.requires-root() {
   if [[ "$#" -lt 1 ]]; then
     return 64
   fi
@@ -203,7 +203,7 @@ _file__requires-root() {
 
   local path=''
   for path in "$@"; do
-    if ! _file__can-update "${path}"; then
+    if ! _file.can-update "${path}"; then
       return 0
     fi
   done
@@ -212,7 +212,7 @@ _file__requires-root() {
 
 # @description Replace regular-expression matches in one line using Bash.
 # @internal
-_file__replace-line() {
+_file.replace-line() {
   if [[ "$#" -ne 4 ]]; then
     return 64
   fi
@@ -278,7 +278,7 @@ _file__replace-line() {
 
 # @description Prepare a metadata-preserving replacement file.
 # @internal
-_file__prepare-replacement() {
+_file.prepare-replacement() {
   if [[ "$#" -ne 5 ]]; then
     return 64
   fi
@@ -299,8 +299,8 @@ _file__prepare-replacement() {
   local status=''
 
   shopt -u nocasematch
-  temporary="$(_file__temporary-path "${source}")" || return "$?"
-  if ! _file__copy-metadata-and-content "${source}" "${temporary}"; then
+  temporary="$(_file.temporary-path "${source}")" || return "$?"
+  if ! _file.copy-metadata-and-content "${source}" "${temporary}"; then
     rm -f -- "${temporary}"
     return 74
   fi
@@ -319,7 +319,7 @@ _file__prepare-replacement() {
     fi
 
     saw_bytes='1'
-    if _file__replace-line \
+    if _file.replace-line \
       "${line}" "${expression}" "${replacement}" "${replace_all}"; then
       replaced="${FILE_REPLACED_LINE}"
       changed='1'
@@ -381,15 +381,15 @@ _file__prepare-replacement() {
 # @exitcode 66 The file is missing, unreadable, or a symbolic link.
 # @exitcode 69 Python 3 is unavailable.
 # @example
-#   file__contains-match /etc/hosts '^127\.0\.0\.1\s+localhost\b'
-file__contains-match() {
+#   file.contains-match /etc/hosts '^127\.0\.0\.1\s+localhost\b'
+file.contains-match() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
-  _file__require-existing "$1" || return "$?"
-  _file__require-python-expression "$2" || return "$?"
+  _file.require-existing "$1" || return "$?"
+  _file.require-python-expression "$2" || return "$?"
 
-  python__run -c '
+  python.run -c '
 import re
 import sys
 path, expression = sys.argv[1:]
@@ -421,19 +421,19 @@ sys.exit(1)
 # @exitcode 69 sha256sum or shasum is unavailable.
 # @exitcode 74 The digest could not be computed.
 # @example
-#   file__verify-sha256 node.tar.gz "${expected_sha256}" || rm -f node.tar.gz
-file__verify-sha256() {
+#   file.verify-sha256 node.tar.gz "${expected_sha256}" || rm -f node.tar.gz
+file.verify-sha256() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
-  _file__require-existing "$1" || return "$?"
+  _file.require-existing "$1" || return "$?"
   if ! ( [[ "$2" =~ ^[0-9A-Fa-f]{64}$ ]] ); then
     return 64
   fi
 
   local output=''
   local actual=''
-  case "$(system__operating-system)" in
+  case "$(system.operating-system)" in
     darwin)
       command -v shasum >/dev/null 2>&1 || return 69
       output="$(shasum -a 256 -- "$1" 2>/dev/null)" || return 74
@@ -447,7 +447,7 @@ file__verify-sha256() {
       ;;
   esac
   actual="${output%% *}"
-  [[ "$(string__lower "${actual}")" == "$(string__lower "$2")" ]]
+  [[ "$(string.lower "${actual}")" == "$(string.lower "$2")" ]]
 }
 
 # @description Append text without conversion, elevating only when permissions require it.
@@ -463,8 +463,8 @@ file__verify-sha256() {
 # @exitcode 74 The file could not be written.
 # @exitcode other The status of the root helper when elevation was needed.
 # @example
-#   file__append-text "${HOME}/.bashrc" $'export EDITOR=vim\n'
-file__append-text() {
+#   file.append-text "${HOME}/.bashrc" $'export EDITOR=vim\n'
+file.append-text() {
   if [[ "$#" -ne 2 || -z "$1" || -L "$1" ]]; then
     return 64
   fi
@@ -472,8 +472,8 @@ file__append-text() {
     return 66
   fi
 
-  if _file__requires-root-to-append "$1"; then
-    _bashstock__run-as-root append-text "$1" "$2"
+  if _file.requires-root-to-append "$1"; then
+    _bashstock.run-as-root append-text "$1" "$2"
     return
   fi
   if [[ ! -e "$1" ]]; then
@@ -485,22 +485,22 @@ file__append-text() {
 
 # @description Replace Bash extended-regular-expression matches on every file line.
 # @internal
-_file__replace-text() {
+_file.replace-text() {
   if [[ "$#" -ne 4 ]] ||
     ! ( [[ "$4" -eq 0 || "$4" -eq 1 ]] ) ||
-    ! _string__require-one-line "$2" ||
-    ! _string__require-one-line "$3"; then
+    ! _string.require-one-line "$2" ||
+    ! _string.require-one-line "$3"; then
     return 64
   fi
 
   local file="$1"
   local replace_all="$4"
   local temporary=''
-  _file__require-existing "${file}" || return "$?"
-  _file__require-no-nul "${file}" || return "$?"
-  _file__require-bash-expression "$2" "${replace_all}" || return "$?"
+  _file.require-existing "${file}" || return "$?"
+  _file.require-no-nul "${file}" || return "$?"
+  _file.require-bash-expression "$2" "${replace_all}" || return "$?"
 
-  temporary="$(_file__prepare-replacement \
+  temporary="$(_file.prepare-replacement \
     "${file}" "$2" "$3" 0 "${replace_all}")" || return "$?"
   if ! mv -f -- "${temporary}" "${file}" 2>/dev/null; then
     rm -f -- "${temporary}"
@@ -522,19 +522,19 @@ _file__replace-text() {
 # @exitcode 74 The file could not be rewritten.
 # @exitcode other The status of the root helper when elevation was needed.
 # @example
-#   file__replace-text /etc/ssh/sshd_config '^#?PasswordAuthentication .*$' 'PasswordAuthentication no'
-file__replace-text() {
+#   file.replace-text /etc/ssh/sshd_config '^#?PasswordAuthentication .*$' 'PasswordAuthentication no'
+file.replace-text() {
   if [[ "$#" -ne 3 ]]; then
     return 64
   fi
-  _file__require-regular-target "$1" || return "$?"
-  _file__require-bash-expression "$2" 0 || return "$?"
-  _string__require-one-line "$3" || return "$?"
-  if _file__requires-root "$1"; then
-    _bashstock__run-as-root replace-text "$@"
+  _file.require-regular-target "$1" || return "$?"
+  _file.require-bash-expression "$2" 0 || return "$?"
+  _string.require-one-line "$3" || return "$?"
+  if _file.requires-root "$1"; then
+    _bashstock.run-as-root replace-text "$@"
     return
   fi
-  _file__replace-text "$@" 0
+  _file.replace-text "$@" 0
 }
 
 # @description Replace every nonempty Bash ERE match on every file line.
@@ -548,24 +548,24 @@ file__replace-text() {
 # @exitcode 74 The file could not be rewritten.
 # @exitcode other The status of the root helper when elevation was needed.
 # @example
-#   file__replace-all-text settings.ini 'http://' 'https://'
-file__replace-all-text() {
+#   file.replace-all-text settings.ini 'http://' 'https://'
+file.replace-all-text() {
   if [[ "$#" -ne 3 ]]; then
     return 64
   fi
-  _file__require-regular-target "$1" || return "$?"
-  _file__require-bash-expression "$2" 1 || return "$?"
-  _string__require-one-line "$3" || return "$?"
-  if _file__requires-root "$1"; then
-    _bashstock__run-as-root replace-all-text "$@"
+  _file.require-regular-target "$1" || return "$?"
+  _file.require-bash-expression "$2" 1 || return "$?"
+  _string.require-one-line "$3" || return "$?"
+  if _file.requires-root "$1"; then
+    _bashstock.run-as-root replace-all-text "$@"
     return
   fi
-  _file__replace-text "$@" 1
+  _file.replace-text "$@" 1
 }
 
 # @description Replace line matches across files with rollback on failure.
 # @internal
-_file__replace-text-in-files() {
+_file.replace-text-in-files() {
   if [[ "$#" -lt 4 ]] ||
     ! ( [[ "$1" -eq 0 || "$1" -eq 1 ]] ); then
     return 64
@@ -586,30 +586,30 @@ _file__replace-text-in-files() {
   shift 3
   paths=("$@")
 
-  if ! _string__require-one-line "${expression}" ||
-    ! _string__require-one-line "${replacement}"; then
+  if ! _string.require-one-line "${expression}" ||
+    ! _string.require-one-line "${replacement}"; then
     return 64
   fi
-  _file__require-bash-expression \
+  _file.require-bash-expression \
     "${expression}" "${replace_all}" || return "$?"
   for path in "${paths[@]}"; do
-    _file__require-existing "${path}" || return "$?"
-    _file__require-no-nul "${path}" || return "$?"
+    _file.require-existing "${path}" || return "$?"
+    _file.require-no-nul "${path}" || return "$?"
   done
 
   for path in "${paths[@]}"; do
-    backup="$(_file__temporary-path "${path}")" || {
+    backup="$(_file.temporary-path "${path}")" || {
       status="$?"
       break
     }
-    if ! _file__copy-metadata-and-content "${path}" "${backup}"; then
+    if ! _file.copy-metadata-and-content "${path}" "${backup}"; then
       rm -f -- "${backup}"
       status='74'
       break
     fi
     backups[${#backups[@]}]="${backup}"
 
-    temporary="$(_file__prepare-replacement \
+    temporary="$(_file.prepare-replacement \
       "${path}" "${expression}" "${replacement}" 0 "${replace_all}")" || {
       status="$?"
       break
@@ -663,23 +663,23 @@ _file__replace-text-in-files() {
 # @exitcode 74 A file could not be rewritten.
 # @exitcode other The status of the root helper when elevation was needed.
 # @example
-#   file__replace-text-in-files '^version=.*$' 'version=2.0.0' app/a.properties app/b.properties
-file__replace-text-in-files() {
+#   file.replace-text-in-files '^version=.*$' 'version=2.0.0' app/a.properties app/b.properties
+file.replace-text-in-files() {
   if [[ "$#" -lt 3 ]]; then
     return 64
   fi
   local paths=("${@:3}")
   local path=''
-  _file__require-bash-expression "$1" 0 || return "$?"
-  _string__require-one-line "$2" || return "$?"
+  _file.require-bash-expression "$1" 0 || return "$?"
+  _string.require-one-line "$2" || return "$?"
   for path in "${paths[@]}"; do
-    _file__require-regular-target "${path}" || return "$?"
+    _file.require-regular-target "${path}" || return "$?"
   done
-  if _file__requires-root "${paths[@]}"; then
-    _bashstock__run-as-root replace-text-in-files "$@"
+  if _file.requires-root "${paths[@]}"; then
+    _bashstock.run-as-root replace-text-in-files "$@"
     return
   fi
-  _file__replace-text-in-files 0 "$@"
+  _file.replace-text-in-files 0 "$@"
 }
 
 # @description Replace every line match across multiple files.
@@ -693,41 +693,41 @@ file__replace-text-in-files() {
 # @exitcode 74 A file could not be rewritten.
 # @exitcode other The status of the root helper when elevation was needed.
 # @example
-#   file__replace-all-text-in-files 'example\.org' 'example.com' docs/*.md
-file__replace-all-text-in-files() {
+#   file.replace-all-text-in-files 'example\.org' 'example.com' docs/*.md
+file.replace-all-text-in-files() {
   if [[ "$#" -lt 3 ]]; then
     return 64
   fi
   local paths=("${@:3}")
   local path=''
-  _file__require-bash-expression "$1" 1 || return "$?"
-  _string__require-one-line "$2" || return "$?"
+  _file.require-bash-expression "$1" 1 || return "$?"
+  _string.require-one-line "$2" || return "$?"
   for path in "${paths[@]}"; do
-    _file__require-regular-target "${path}" || return "$?"
+    _file.require-regular-target "${path}" || return "$?"
   done
-  if _file__requires-root "${paths[@]}"; then
-    _bashstock__run-as-root replace-all-text-in-files "$@"
+  if _file.requires-root "${paths[@]}"; then
+    _bashstock.run-as-root replace-all-text-in-files "$@"
     return
   fi
-  _file__replace-text-in-files 1 "$@"
+  _file.replace-text-in-files 1 "$@"
 }
 
 # @description Replace line matches or append one line when no match exists.
 # @internal
-_file__replace-text-or-append() {
+_file.replace-text-or-append() {
   if [[ "$#" -ne 4 ]] ||
     ! ( [[ "$4" -eq 0 || "$4" -eq 1 ]] ) ||
-    ! _string__require-one-line "$2" ||
-    ! _string__require-one-line "$3"; then
+    ! _string.require-one-line "$2" ||
+    ! _string.require-one-line "$3"; then
     return 64
   fi
   local replace_all="$4"
-  _file__require-existing "$1" || return "$?"
-  _file__require-no-nul "$1" || return "$?"
-  _file__require-bash-expression "$2" "${replace_all}" || return "$?"
+  _file.require-existing "$1" || return "$?"
+  _file.require-no-nul "$1" || return "$?"
+  _file.require-bash-expression "$2" "${replace_all}" || return "$?"
 
   local temporary=''
-  temporary="$(_file__prepare-replacement \
+  temporary="$(_file.prepare-replacement \
     "$1" "$2" "$3" 1 "${replace_all}")" || return "$?"
   if ! mv -f -- "${temporary}" "$1" 2>/dev/null; then
     rm -f -- "${temporary}"
@@ -749,24 +749,24 @@ _file__replace-text-or-append() {
 # @exitcode 74 The file could not be rewritten.
 # @exitcode other The status of the root helper when elevation was needed.
 # @example
-#   file__replace-text-or-append "${HOME}/.zshrc" '^export EDITOR=.*$' 'export EDITOR=vim'
-file__replace-text-or-append() {
+#   file.replace-text-or-append "${HOME}/.zshrc" '^export EDITOR=.*$' 'export EDITOR=vim'
+file.replace-text-or-append() {
   if [[ "$#" -ne 3 ]]; then
     return 64
   fi
-  _file__require-regular-target "$1" || return "$?"
-  _file__require-bash-expression "$2" 1 || return "$?"
-  _string__require-one-line "$3" || return "$?"
-  if _file__requires-root "$1"; then
-    _bashstock__run-as-root replace-or-append-text "$@"
+  _file.require-regular-target "$1" || return "$?"
+  _file.require-bash-expression "$2" 1 || return "$?"
+  _string.require-one-line "$3" || return "$?"
+  if _file.requires-root "$1"; then
+    _bashstock.run-as-root replace-or-append-text "$@"
     return
   fi
-  _file__replace-text-or-append "$@" 1
+  _file.replace-text-or-append "$@" 1
 }
 
 # @description Replace matching text or append it using the established API name.
 #
-# Same as file__replace-text-or-append.
+# Same as file.replace-text-or-append.
 #
 # @arg $1 string Regular text file to update.
 # @arg $2 string Bash extended regular expression that cannot match an empty string.
@@ -776,14 +776,14 @@ file__replace-text-or-append() {
 # @exitcode 66 The file is missing, not a regular file, or a symbolic link.
 # @exitcode 74 The file could not be rewritten.
 # @example
-#   file__replace-or-append-text /etc/environment '^LANG=.*$' 'LANG=en_US.UTF-8'
-file__replace-or-append-text() {
-  file__replace-text-or-append "$@"
+#   file.replace-or-append-text /etc/environment '^LANG=.*$' 'LANG=en_US.UTF-8'
+file.replace-or-append-text() {
+  file.replace-text-or-append "$@"
 }
 
 # @description Append text through the root execution dispatcher.
 #
-# Same as file__append-text, but always in a separate root process.
+# Same as file.append-text, but always in a separate root process.
 #
 # @arg $1 string File path; a symbolic link is refused.
 # @arg $2 string Text to append.
@@ -792,15 +792,15 @@ file__replace-or-append-text() {
 # @exitcode 74 The file could not be written.
 # @exitcode 77 sudo refused the credentials.
 # @example
-#   file__append-text-as-root /etc/hosts $'192.0.2.10 build-server\n'
-file__append-text-as-root() {
+#   file.append-text-as-root /etc/hosts $'192.0.2.10 build-server\n'
+file.append-text-as-root() {
   [[ "$#" -eq 2 ]] || return 64
-  _bashstock__run-as-root append-text "$@"
+  _bashstock.run-as-root append-text "$@"
 }
 
 # @description Replace the first expression match through the root execution dispatcher.
 #
-# Same as file__replace-text, but always in a separate root process.
+# Same as file.replace-text, but always in a separate root process.
 #
 # @arg $1 string Regular text file to update.
 # @arg $2 string Nonempty Bash extended regular expression.
@@ -811,15 +811,15 @@ file__append-text-as-root() {
 # @exitcode 74 The file could not be rewritten.
 # @exitcode 77 sudo refused the credentials.
 # @example
-#   file__replace-text-as-root /etc/default/grub '^GRUB_TIMEOUT=.*$' 'GRUB_TIMEOUT=3'
-file__replace-text-as-root() {
+#   file.replace-text-as-root /etc/default/grub '^GRUB_TIMEOUT=.*$' 'GRUB_TIMEOUT=3'
+file.replace-text-as-root() {
   [[ "$#" -eq 3 ]] || return 64
-  _bashstock__run-as-root replace-text "$@"
+  _bashstock.run-as-root replace-text "$@"
 }
 
 # @description Replace every expression match through the root execution dispatcher.
 #
-# Same as file__replace-all-text, but always in a separate root process.
+# Same as file.replace-all-text, but always in a separate root process.
 #
 # @arg $1 string Regular text file to update.
 # @arg $2 string Bash extended regular expression that cannot match an empty string.
@@ -830,15 +830,15 @@ file__replace-text-as-root() {
 # @exitcode 74 The file could not be rewritten.
 # @exitcode 77 sudo refused the credentials.
 # @example
-#   file__replace-all-text-as-root /etc/apt/sources.list 'http://archive' 'https://archive'
-file__replace-all-text-as-root() {
+#   file.replace-all-text-as-root /etc/apt/sources.list 'http://archive' 'https://archive'
+file.replace-all-text-as-root() {
   [[ "$#" -eq 3 ]] || return 64
-  _bashstock__run-as-root replace-all-text "$@"
+  _bashstock.run-as-root replace-all-text "$@"
 }
 
 # @description Replace expression matches in files through the root execution dispatcher.
 #
-# Same as file__replace-text-in-files, but always in a separate root process.
+# Same as file.replace-text-in-files, but always in a separate root process.
 #
 # @arg $1 string Nonempty Bash extended regular expression.
 # @arg $2 string Literal one-line replacement text.
@@ -849,15 +849,15 @@ file__replace-all-text-as-root() {
 # @exitcode 74 A file could not be rewritten.
 # @exitcode 77 sudo refused the credentials.
 # @example
-#   file__replace-text-in-files-as-root '^Port .*$' 'Port 2222' /etc/ssh/sshd_config
-file__replace-text-in-files-as-root() {
+#   file.replace-text-in-files-as-root '^Port .*$' 'Port 2222' /etc/ssh/sshd_config
+file.replace-text-in-files-as-root() {
   [[ "$#" -ge 3 ]] || return 64
-  _bashstock__run-as-root replace-text-in-files "$@"
+  _bashstock.run-as-root replace-text-in-files "$@"
 }
 
 # @description Replace all expression matches in files through the root execution dispatcher.
 #
-# Same as file__replace-all-text-in-files, but always in a separate root process.
+# Same as file.replace-all-text-in-files, but always in a separate root process.
 #
 # @arg $1 string Bash extended regular expression that cannot match an empty string.
 # @arg $2 string Literal one-line replacement text.
@@ -868,15 +868,15 @@ file__replace-text-in-files-as-root() {
 # @exitcode 74 A file could not be rewritten.
 # @exitcode 77 sudo refused the credentials.
 # @example
-#   file__replace-all-text-in-files-as-root 'old-mirror' 'new-mirror' /etc/apt/sources.list.d/*.list
-file__replace-all-text-in-files-as-root() {
+#   file.replace-all-text-in-files-as-root 'old-mirror' 'new-mirror' /etc/apt/sources.list.d/*.list
+file.replace-all-text-in-files-as-root() {
   [[ "$#" -ge 3 ]] || return 64
-  _bashstock__run-as-root replace-all-text-in-files "$@"
+  _bashstock.run-as-root replace-all-text-in-files "$@"
 }
 
 # @description Replace matching text or append it through the root execution dispatcher.
 #
-# Same as file__replace-text-or-append, but always in a separate root process.
+# Same as file.replace-text-or-append, but always in a separate root process.
 #
 # @arg $1 string Regular text file to update.
 # @arg $2 string Bash extended regular expression that cannot match an empty string.
@@ -887,10 +887,10 @@ file__replace-all-text-in-files-as-root() {
 # @exitcode 74 The file could not be rewritten.
 # @exitcode 77 sudo refused the credentials.
 # @example
-#   file__replace-or-append-text-as-root /etc/sysctl.conf '^vm\.swappiness=.*$' 'vm.swappiness=10'
-file__replace-or-append-text-as-root() {
+#   file.replace-or-append-text-as-root /etc/sysctl.conf '^vm\.swappiness=.*$' 'vm.swappiness=10'
+file.replace-or-append-text-as-root() {
   [[ "$#" -eq 3 ]] || return 64
-  _bashstock__run-as-root replace-or-append-text "$@"
+  _bashstock.run-as-root replace-or-append-text "$@"
 }
 
 # @description Write text to a regular file using an atomic replacement.
@@ -906,18 +906,18 @@ file__replace-or-append-text-as-root() {
 # @exitcode 74 The temporary file could not be written or moved into place.
 # @exitcode other The status of the root helper when elevation was needed.
 # @example
-#   file__write-text /etc/udev/rules.d/90-device.rules $'SUBSYSTEM=="usb", MODE="0666"\n'
-file__write-text() {
+#   file.write-text /etc/udev/rules.d/90-device.rules $'SUBSYSTEM=="usb", MODE="0666"\n'
+file.write-text() {
   if [[ "$#" -ne 2 || -z "$1" || -L "$1" ]]; then return 64; fi
   local file="$1" text="$2" temporary='' new_file=0
   if [[ -e "$file" && ! -f "$file" ]]; then return 66; fi
-  if _file__requires-root "$file"; then
-    _bashstock__run-as-root write-text "$@"
+  if _file.requires-root "$file"; then
+    _bashstock.run-as-root write-text "$@"
     return
   fi
-  temporary="$(umask 077 && _file__temporary-path "$file")" || return "$?"
+  temporary="$(umask 077 && _file.temporary-path "$file")" || return "$?"
   if [[ -e "$file" ]]; then
-    _file__copy-metadata-and-content "$file" "$temporary" || { rm -f -- "$temporary"; return 74; }
+    _file.copy-metadata-and-content "$file" "$temporary" || { rm -f -- "$temporary"; return 74; }
   else
     new_file=1
   fi
@@ -945,8 +945,8 @@ file__write-text() {
 # @exitcode 69 find, xargs, or grep is unavailable.
 # @exitcode 74 A file could not be searched.
 # @example
-#   file__find-by-content 'FIXME|XXX' src | xargs -0 grep -nE 'FIXME|XXX'
-file__find-by-content() {
+#   file.find-by-content 'FIXME|XXX' src | xargs -0 grep -nE 'FIXME|XXX'
+file.find-by-content() {
   [[ "$#" -ge 1 && "$#" -le 4 && -n "$1" ]] || return 64
   local expression="$1" directory="${2:-.}" processes="${3:-}" binary="${4:-skip}" output='' status=0
   local binary_option=''
@@ -956,8 +956,8 @@ file__find-by-content() {
     include) binary_option='-a' ;;
     *) return 64 ;;
   esac
-  command__require grep || return "$?"
-  command__require xargs || return "$?"
+  command.require grep || return "$?"
+  command.require xargs || return "$?"
   if [[ -z "${processes}" ]]; then
     processes="$(getconf _NPROCESSORS_ONLN 2>/dev/null)" || processes=1
   fi
@@ -1005,14 +1005,14 @@ file__find-by-content() {
 # @exitcode 64 The argument count is wrong.
 # @exitcode 66 The directory does not exist.
 # @example
-#   file__latest-by-name '^backup-.*\.tar\.gz$' /var/backups
-file__latest-by-name() {
+#   file.latest-by-name '^backup-.*\.tar\.gz$' /var/backups
+file.latest-by-name() {
   [[ "$#" -ge 1 && "$#" -le 2 ]] || return 64
   local expression="$1" directory="${2:-.}" path='' newest='' newest_time=0 current_time='' LC_ALL=C
   [[ -d "${directory}" ]] || return 66
   while IFS= read -r -d '' path; do
     ( [[ "${path##*/}" =~ ${expression} ]] ) || continue
-    current_time="$(file__modified-time-unix-seconds "${path}" 2>/dev/null)" || continue
+    current_time="$(file.modified-time-unix-seconds "${path}" 2>/dev/null)" || continue
     if [[ -z "${newest}" ]] || ((current_time > newest_time)) ||
       { ((current_time == newest_time)) && [[ "${path}" < "${newest}" ]]; }; then
       newest="${path}"
@@ -1035,13 +1035,13 @@ file__latest-by-name() {
 # @exitcode 69 The file is not writable and sudoedit is unavailable.
 # @exitcode other The status of the editor.
 # @example
-#   EDITOR=nano file__edit /etc/hosts
-file__edit() {
+#   EDITOR=nano file.edit /etc/hosts
+file.edit() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   if [[ -e "$1" && ! -f "$1" ]]; then
     return 66
   fi
-  if [[ -w "$1" || ( ! -e "$1" && -w "$(path__directory-name "$1")" ) ]]; then
+  if [[ -w "$1" || ( ! -e "$1" && -w "$(path.directory-name "$1")" ) ]]; then
     local IFS=$' \t\n'
     local editor_command=()
     read -r -a editor_command <<<"${EDITOR:-vi}"
@@ -1067,8 +1067,8 @@ file__edit() {
 # @exitcode 74 The clock could not be read.
 # @exitcode 75 The file is still open after SIGKILL.
 # @example
-#   file__release "${HOME}/.local/share/app/database.lock" 5
-file__release() {
+#   file.release "${HOME}/.local/share/app/database.lock" 5
+file.release() {
   [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64
   local timeout="${2:-2}" start='' pid=''
   ( [[ "${timeout}" =~ ^[0-9]+$ ]] ) || return 64
@@ -1076,14 +1076,14 @@ file__release() {
   start="$(date +%s)" || return 74
   while read -r pid; do
     [[ -n "$pid" ]] || continue
-    kill -TERM "$pid" 2>/dev/null || command__run-as-root kill -TERM "$pid" 2>/dev/null || true
+    kill -TERM "$pid" 2>/dev/null || command.run-as-root kill -TERM "$pid" 2>/dev/null || true
   done < <(lsof -t -- "$1" 2>/dev/null)
   while (( $(date +%s) - start < timeout )); do
     lsof -t -- "$1" >/dev/null 2>&1 || return 0
     sleep 0.1
   done
   while read -r pid; do
-    kill -KILL "$pid" 2>/dev/null || command__run-as-root kill -KILL "$pid" 2>/dev/null || true
+    kill -KILL "$pid" 2>/dev/null || command.run-as-root kill -KILL "$pid" 2>/dev/null || true
   done < <(lsof -t -- "$1" 2>/dev/null)
   if lsof -t -- "$1" >/dev/null 2>&1; then
     return 75
@@ -1093,7 +1093,7 @@ file__release() {
 # @description Write the directories and text files below a path, with the contents of each text file.
 #
 # Directories are written as paths. Regular files whose MIME type is text/*
-# are written by _file__print-text; other files are skipped.
+# are written by _file.print-text; other files are skipped.
 #
 # @arg $1 string Optional starting path. Defaults to the current directory.
 # @arg $2 integer Optional minimum depth. Defaults to 1.
@@ -1105,27 +1105,27 @@ file__release() {
 # @exitcode 69 file is unavailable.
 # @exitcode other The status of the file that could not be written.
 # @example
-#   file__tree-with-contents src 1 2 > context.txt
-file__tree-with-contents() {
+#   file.tree-with-contents src 1 2 > context.txt
+file.tree-with-contents() {
   [[ "$#" -le 3 ]] || return 64
   local path="${1:-.}" minimum="${2:-1}" maximum="${3:-}" entry=''
   [[ -e "${path}" ]] || return 66
   ( [[ "${minimum}" =~ ^[0-9]+$ && ( -z "${maximum}" || "${maximum}" =~ ^[0-9]+$ ) ]] ) || return 64
-  command__require file || return "$?"
+  command.require file || return "$?"
   local arguments=("${path}" -mindepth "${minimum}")
   [[ -z "${maximum}" ]] || arguments+=(-maxdepth "${maximum}")
   while IFS= read -r -d '' entry; do
     if [[ -d "${entry}" && ! -L "${entry}" ]]; then
       printf '%s\n' "${entry}"
     elif [[ -f "${entry}" && ! -L "${entry}" ]]; then
-      _file__print-text "${entry}" || return "$?"
+      _file.print-text "${entry}" || return "$?"
     fi
   done < <(find "${arguments[@]}" -print0)
 }
 
 # @description Write a text file between header lines; files of other MIME types write nothing.
 # @internal
-_file__print-text() {
+_file.print-text() {
   [[ "$#" -eq 1 && -f "$1" ]] || return 64
   local type=''
   type="$(file --brief --mime-type -- "$1")" || return 74
@@ -1145,12 +1145,12 @@ _file__print-text() {
 # @exitcode 69 stat is unavailable or the operating system is unsupported.
 # @exitcode 74 stat failed.
 # @example
-#   file__modified-time-unix-seconds /etc/hosts
-file__modified-time-unix-seconds() {
+#   file.modified-time-unix-seconds /etc/hosts
+file.modified-time-unix-seconds() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   [[ -e "$1" || -L "$1" ]] || return 66
-  command__require stat || return "$?"
-  case "$(system__operating-system)" in
+  command.require stat || return "$?"
+  case "$(system.operating-system)" in
     darwin) stat -f '%m' -- "$1" || return 74 ;;
     linux) stat -c '%Y' -- "$1" || return 74 ;;
     *) return 69 ;;

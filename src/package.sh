@@ -7,16 +7,16 @@
 
 # @description Write the platform that package operations support: darwin, ubuntu, or fedora.
 # @internal
-_package__platform() {
+_package.platform() {
   [[ "$#" -eq 0 ]] || return 64
   local platform=''
-  platform="$(_platform__identifier)" || return "$?"
+  platform="$(_platform.identifier)" || return "$?"
   case "${platform}" in
     darwin | ubuntu | fedora)
       printf '%s\n' "${platform}"
       ;;
     *)
-      _console__write-error "Unsupported platform: ${platform}"
+      _console.write-error "Unsupported platform: ${platform}"
       return 69
       ;;
   esac
@@ -24,28 +24,28 @@ _package__platform() {
 
 # @description Require the current platform to be one of the given identifiers.
 # @internal
-_package__require-platform() {
+_package.require-platform() {
   [[ "$#" -ge 1 ]] || return 64
   local platform='' candidate=''
-  platform="$(_package__platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   for candidate in "$@"; do
     [[ "${platform}" == "${candidate}" ]] && return 0
   done
-  _console__write-error "This operation does not support ${platform}."
+  _console.write-error "This operation does not support ${platform}."
   return 69
 }
 
 # @description Require an Ubuntu or Fedora release of at least a major version, naming the product in the message.
 # @internal
-_package__require-release() {
+_package.require-release() {
   ( [[ "$#" -eq 3 && "$1" =~ ^(ubuntu|fedora)$ && "$2" =~ ^[0-9]+$ && -n "$3" ]] ) || return 64
   local version='' major=''
-  version="$(_platform__os-release-value VERSION_ID)" || return 69
+  version="$(_platform.os-release-value VERSION_ID)" || return 69
   major="${version%%.*}"
   if ( [[ ! "${major}" =~ ^[0-9]+$ ]] ) || ((10#${major} < $2)); then
     case "$1" in
-      ubuntu) _console__write-error "$3 requires Ubuntu $2.04 or later." ;;
-      fedora) _console__write-error "$3 requires Fedora $2 or later." ;;
+      ubuntu) _console.write-error "$3 requires Ubuntu $2.04 or later." ;;
+      fedora) _console.write-error "$3 requires Fedora $2 or later." ;;
     esac
     return 69
   fi
@@ -53,7 +53,7 @@ _package__require-release() {
 
 # @description Test whether a version is a stable release rather than a preview.
 # @internal
-_package__is-stable-version() {
+_package.is-stable-version() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local lower=''
   lower="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
@@ -62,9 +62,9 @@ _package__is-stable-version() {
 
 # @description Read versions from standard input and write unique values in ascending version order.
 # @internal
-_package__sort-versions() {
+_package.sort-versions() {
   [[ "$#" -eq 0 ]] || return 64
-  python__run -c '
+  python.run -c '
 import re
 import sys
 from functools import cmp_to_key
@@ -104,23 +104,23 @@ for version in sorted(versions, key=cmp_to_key(compare_versions)):
 
 # @description Read versions from standard input and write stable values in ascending version order.
 # @internal
-_package__sort-stable-versions() {
+_package.sort-stable-versions() {
   [[ "$#" -eq 0 ]] || return 64
   local version=''
   while IFS= read -r version; do
     [[ -n "${version}" ]] || continue
-    if _package__is-stable-version "${version}"; then
+    if _package.is-stable-version "${version}"; then
       printf '%s\n' "${version}"
     fi
-  done | _package__sort-versions
+  done | _package.sort-versions
 }
 
 # @description Read versions from standard input and write the newest stable value.
 # @internal
-_package__latest-stable-version() {
+_package.latest-stable-version() {
   [[ "$#" -eq 0 ]] || return 64
   local versions=''
-  versions="$(_package__sort-stable-versions)" || return "$?"
+  versions="$(_package.sort-stable-versions)" || return "$?"
   [[ -n "${versions}" ]] || return 1
   printf '%s\n' "${versions##*$'\n'}"
 }
@@ -130,26 +130,26 @@ _package__latest-stable-version() {
 # @arg $1 string VERSIONS Newline-separated versions that can be installed on this system.
 # @arg $2 string VERSION Requested version, or an empty value for the newest stable version.
 # @arg $3 string NAME Product name used in diagnostics.
-_package__select-listed-version() {
+_package.select-listed-version() {
   [[ "$#" -eq 3 && -n "$3" ]] || return 64
   if [[ -z "$2" ]]; then
-    if ! printf '%s\n' "$1" | _package__latest-stable-version; then
-      _console__write-error "No $3 version can run on this system."
+    if ! printf '%s\n' "$1" | _package.latest-stable-version; then
+      _console.write-error "No $3 version can run on this system."
       return 69
     fi
   elif grep -Fqx -- "$2" <<<"$1"; then
     printf '%s\n' "$2"
   else
-    _console__write-error "$3 $2 cannot be installed on this system."
+    _console.write-error "$3 $2 cannot be installed on this system."
     return 69
   fi
 }
 
 # @description Create a private temporary directory and write its path.
 # @internal
-_package__temporary-directory() {
+_package.temporary-directory() {
   [[ "$#" -eq 0 ]] || return 64
-  command__require mktemp || return "$?"
+  command.require mktemp || return "$?"
   mktemp -d "${TMPDIR:-/tmp}/bashstock.XXXXXX" 2>/dev/null || return 74
 }
 
@@ -164,7 +164,7 @@ _package__temporary-directory() {
 # limit for clients that share an address; the token goes to curl on standard
 # input, never in its arguments.
 # @internal
-_package__curl() {
+_package.curl() {
   [[ "$#" -ge 1 ]] || return 64
   local url="${!#}" attempt=1 status=0 body=''
   [[ "${url}" == https://* ]] || return 64
@@ -193,45 +193,45 @@ _package__curl() {
 
 # @description Write the body of one HTTPS URL to standard output.
 # @internal
-_package__fetch() {
+_package.fetch() {
   [[ "$#" -eq 1 && "$1" == https://* ]] || return 64
-  command__require curl || return "$?"
-  _package__curl "$1" || return 74
+  command.require curl || return "$?"
+  _package.curl "$1" || return 74
 }
 
 # @description Download one HTTPS URL to a nonempty file.
 # @internal
-_package__download() {
+_package.download() {
   [[ "$#" -eq 2 && "$1" == https://* && -n "$2" ]] || return 64
-  command__require curl || return "$?"
-  _package__curl -o "$2" "$1" || return 74
+  command.require curl || return "$?"
+  _package.curl -o "$2" "$1" || return 74
   [[ -f "$2" && -s "$2" ]] || return 74
 }
 
 # @description Write the Debian architecture name of the current system.
 # @internal
-_package__deb-architecture() {
+_package.deb-architecture() {
   [[ "$#" -eq 0 ]] || return 64
-  command__require dpkg || return "$?"
+  command.require dpkg || return "$?"
   dpkg --print-architecture || return 74
 }
 
 # @description Write the RPM base architecture of the current system.
 # @internal
-_package__rpm-architecture() {
+_package.rpm-architecture() {
   [[ "$#" -eq 0 ]] || return 64
-  command__require uname || return "$?"
+  command.require uname || return "$?"
   uname -m || return 74
 }
 
 # @description Write available versions of a Homebrew formula and its versioned formulae.
 # @internal
-_package__brew-formula-versions() {
+_package.brew-formula-versions() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
-  command__require brew || return "$?"
+  command.require brew || return "$?"
   local json=''
   json="$(brew info --json=v2 --formula "$1")" || return 1
-  printf '%s' "${json}" | _python__run-json 74 '
+  printf '%s' "${json}" | _python.run-json 74 '
 import re
 for formula in data["formulae"]:
     stable = (formula.get("versions") or {}).get("stable")
@@ -246,12 +246,12 @@ for formula in data["formulae"]:
 
 # @description Write the stable version of a Homebrew formula.
 # @internal
-_package__brew-formula-stable-version() {
+_package.brew-formula-stable-version() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
-  command__require brew || return "$?"
+  command.require brew || return "$?"
   local json=''
   json="$(brew info --json=v2 --formula "$1")" || return 1
-  printf '%s' "${json}" | _python__run-json 74 '
+  printf '%s' "${json}" | _python.run-json 74 '
 import sys
 formulae = data["formulae"]
 if not formulae:
@@ -265,12 +265,12 @@ print(stable)
 
 # @description Write the version of a Homebrew cask.
 # @internal
-_package__brew-cask-version() {
+_package.brew-cask-version() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
-  command__require brew || return "$?"
+  command.require brew || return "$?"
   local json=''
   json="$(brew info --json=v2 --cask "$1")" || return 1
-  printf '%s' "${json}" | _python__run-json 74 '
+  printf '%s' "${json}" | _python.run-json 74 '
 import sys
 casks = data["casks"]
 if not casks:
@@ -286,51 +286,51 @@ print(version.split(",", 1)[0])
 #
 # macOS uses a Homebrew formula, Ubuntu uses APT, and Fedora uses DNF.
 # @internal
-_package__versions() {
+_package.versions() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local platform=''
-  platform="$(_package__platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   case "${platform}" in
     darwin)
       local versions=''
-      versions="$(_package__brew-formula-versions "$1")" || return "$?"
-      printf '%s\n' "${versions}" | _package__sort-versions
+      versions="$(_package.brew-formula-versions "$1")" || return "$?"
+      printf '%s\n' "${versions}" | _package.sort-versions
       ;;
     ubuntu)
-      command__require apt-cache || return "$?"
+      command.require apt-cache || return "$?"
       local versions=''
       versions="$(apt-cache madison "$1" 2>/dev/null |
         awk -F'|' '$3 ~ /Packages/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}')" || return 74
-      printf '%s\n' "${versions}" | _package__sort-versions
+      printf '%s\n' "${versions}" | _package.sort-versions
       ;;
     fedora)
-      command__require dnf || return "$?"
+      command.require dnf || return "$?"
       local versions=''
       versions="$(dnf repoquery --quiet --queryformat $'%{evr}\n' "$1" 2>/dev/null)" || return 74
-      printf '%s\n' "${versions}" | _package__sort-versions
+      printf '%s\n' "${versions}" | _package.sort-versions
       ;;
   esac
 }
 
 # @description Write the newest stable version of one system package.
 # @internal
-_package__latest-version() {
+_package.latest-version() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local versions=''
-  versions="$(_package__versions "$1")" || return "$?"
-  printf '%s\n' "${versions}" | _package__latest-stable-version
+  versions="$(_package.versions "$1")" || return "$?"
+  printf '%s\n' "${versions}" | _package.latest-stable-version
 }
 
 # @description Refresh package indexes after changing package sources.
 # @internal
-_package__refresh() {
+_package.refresh() {
   [[ "$#" -eq 0 ]] || return 64
   local platform=''
-  platform="$(_package__platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   case "${platform}" in
-    darwin) command__require brew || return "$?"; brew update ;;
-    ubuntu) command__run-as-root apt-get update ;;
-    fedora) command__run-as-root dnf makecache ;;
+    darwin) command.require brew || return "$?"; brew update ;;
+    ubuntu) command.run-as-root apt-get update ;;
+    fedora) command.run-as-root dnf makecache ;;
   esac
 }
 
@@ -340,12 +340,12 @@ _package__refresh() {
 # the versioned formula NAME@VERSION.
 # APT permits downgrades only when a version is explicitly requested.
 # @internal
-_package__install() {
+_package.install() {
   [[ "$#" -ge 1 ]] || return 64
   local platform='' specification='' name='' version='' stable=''
   local packages=()
   local install_options=()
-  platform="$(_package__platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   for specification in "$@"; do
     name="${specification%%=*}"
     version=''
@@ -355,7 +355,7 @@ _package__install() {
     case "${platform}" in
       darwin)
         if [[ -n "${version}" ]]; then
-          stable="$(_package__brew-formula-stable-version "${name}")" || return "$?"
+          stable="$(_package.brew-formula-stable-version "${name}")" || return "$?"
           [[ "${version}" == "${stable}" ]] || name="${name}@${version}"
         fi
         packages+=("${name}")
@@ -369,42 +369,42 @@ _package__install() {
   done
   case "${platform}" in
     darwin)
-      command__require brew || return "$?"
+      command.require brew || return "$?"
       brew install "${packages[@]}"
       ;;
     ubuntu)
-      command__require apt-get || return "$?"
-      command__run-as-root env DEBIAN_FRONTEND=noninteractive apt-get install -y ${install_options[@]+"${install_options[@]}"} "${packages[@]}"
+      command.require apt-get || return "$?"
+      command.run-as-root env DEBIAN_FRONTEND=noninteractive apt-get install -y ${install_options[@]+"${install_options[@]}"} "${packages[@]}"
       ;;
     fedora)
-      command__require dnf || return "$?"
-      command__run-as-root dnf install -y "${packages[@]}"
+      command.require dnf || return "$?"
+      command.run-as-root dnf install -y "${packages[@]}"
       ;;
   esac
 }
 
 # @description Install one system package whose optional version is selected by the caller.
 # @internal
-_package__install-version() {
+_package.install-version() {
   [[ "$#" -ge 1 && "$#" -le 2 && -n "$1" ]] || return 64
   if [[ -n "${2:-}" ]]; then
-    _package__install "$1=$2"
+    _package.install "$1=$2"
   else
-    _package__install "$1"
+    _package.install "$1"
   fi
 }
 
 # @description Install a Homebrew cask, accepting only its current version when one is given.
 # @internal
-_package__install-cask() {
+_package.install-cask() {
   ( [[ "$#" -ge 1 && "$#" -le 2 && "$1" =~ ^[A-Za-z0-9][A-Za-z0-9._/@-]*$ ]] ) || return 64
-  _package__require-platform darwin || return "$?"
-  command__require brew || return "$?"
+  _package.require-platform darwin || return "$?"
+  command.require brew || return "$?"
   if [[ -n "${2:-}" ]]; then
     local current=''
-    current="$(_package__brew-cask-version "$1")" || return "$?"
+    current="$(_package.brew-cask-version "$1")" || return "$?"
     if [[ "$2" != "${current}" ]]; then
-      _console__write-error "Homebrew provides only version ${current} of $1."
+      _console.write-error "Homebrew provides only version ${current} of $1."
       return 69
     fi
   fi
@@ -413,19 +413,19 @@ _package__install-cask() {
 
 # @description Write versions of a Homebrew cask.
 # @internal
-_package__cask-versions() {
+_package.cask-versions() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
-  _package__require-platform darwin || return "$?"
-  _package__brew-cask-version "$1"
+  _package.require-platform darwin || return "$?"
+  _package.brew-cask-version "$1"
 }
 
 # @description Write stable release versions of a GitHub repository without a leading v.
 # @internal
-_package__github-release-versions() {
+_package.github-release-versions() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] ) || return 64
   local json='' versions=''
-  json="$(_package__fetch "https://api.github.com/repos/$1/releases?per_page=100")" || return "$?"
-  versions="$(printf '%s' "${json}" | _python__run-json 74 '
+  json="$(_package.fetch "https://api.github.com/repos/$1/releases?per_page=100")" || return "$?"
+  versions="$(printf '%s' "${json}" | _python.run-json 74 '
 import re
 if not isinstance(data, list):
     raise TypeError("releases")
@@ -437,16 +437,16 @@ for release in data:
     if re.fullmatch(r"[0-9]+(?:\.[0-9]+)*", tag):
         print(tag)
 ')" || return "$?"
-  printf '%s\n' "${versions}" | _package__sort-stable-versions
+  printf '%s\n' "${versions}" | _package.sort-stable-versions
 }
 
 # @description Write the download URL of a GitHub release asset whose name matches a Python regular expression.
 # @internal
-_package__github-release-asset-url() {
+_package.github-release-asset-url() {
   ( [[ "$#" -eq 3 && "$1" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ && -n "$2" && -n "$3" ]] ) || return 64
   local json=''
-  json="$(_package__fetch "https://api.github.com/repos/$1/releases?per_page=100")" || return "$?"
-  printf '%s' "${json}" | _python__run-json 74 '
+  json="$(_package.fetch "https://api.github.com/repos/$1/releases?per_page=100")" || return "$?"
+  printf '%s' "${json}" | _python.run-json 74 '
 import re
 import sys
 version, expression = sys.argv[1:]
@@ -469,26 +469,26 @@ sys.exit(1)
 
 # @description Download an APT Packages index to a file, decompressing a .gz index.
 # @internal
-_package__deb-index-download() {
+_package.deb-index-download() {
   [[ "$#" -eq 2 && "$1" == https://* && -n "$2" ]] || return 64
   if [[ "$1" != *.gz ]]; then
-    _package__download "$1" "$2"
+    _package.download "$1" "$2"
     return
   fi
-  _package__download "$1" "$2.gz" || return "$?"
-  command__require gzip || return "$?"
+  _package.download "$1" "$2.gz" || return "$?"
+  command.require gzip || return "$?"
   gzip -dc -- "$2.gz" >"$2" || return 74
 }
 
 # @description Write VERSION and FILENAME pairs of one package from an APT Packages index URL.
 # @internal
-_package__deb-index-entries() {
+_package.deb-index-entries() {
   [[ "$#" -eq 2 && "$1" == https://* && -n "$2" ]] || return 64
   local directory='' status=0
-  directory="$(_package__temporary-directory)" || return "$?"
-  _package__deb-index-download "$1" "${directory}/Packages" || status="$?"
+  directory="$(_package.temporary-directory)" || return "$?"
+  _package.deb-index-download "$1" "${directory}/Packages" || status="$?"
   if [[ "${status}" -eq 0 ]]; then
-    python__run -c '
+    python.run -c '
 import sys
 name = sys.argv[1]
 for stanza in sys.stdin.read().split("\n\n"):
@@ -511,15 +511,15 @@ for stanza in sys.stdin.read().split("\n\n"):
 # require is satisfied by the installed libc6, so an old release is offered
 # the newest build it can start instead of one that fails to install.
 # @internal
-_package__deb-runnable-versions() {
+_package.deb-runnable-versions() {
   [[ "$#" -eq 2 && "$1" == https://* && -n "$2" ]] || return 64
-  command__require dpkg || return "$?"
+  command.require dpkg || return "$?"
   local directory='' status=0 requirement_lines='' libc='' version='' required='' supported=''
   libc="$(dpkg-query -W -f='${Version}' libc6 2>/dev/null)" || return 69
-  directory="$(_package__temporary-directory)" || return "$?"
-  _package__deb-index-download "$1" "${directory}/Packages" || status="$?"
+  directory="$(_package.temporary-directory)" || return "$?"
+  _package.deb-index-download "$1" "${directory}/Packages" || status="$?"
   if [[ "${status}" -eq 0 ]]; then
-    requirement_lines="$(python__run -c '
+    requirement_lines="$(python.run -c '
 import re
 import sys
 name = sys.argv[1]
@@ -557,7 +557,7 @@ for stanza in sys.stdin.read().split("\n\n"):
       fi
     done
     [[ "${supported}" -eq 0 ]] || printf '%s\n' "${fields[0]}"
-  done <<<"${requirement_lines}" | _package__sort-versions
+  done <<<"${requirement_lines}" | _package.sort-versions
 }
 
 # @description Write versions of one package from an RPM repository without registering it.
@@ -565,26 +565,26 @@ for stanza in sys.stdin.read().split("\n\n"):
 # Only builds for the running CPU are listed, because a repository such as
 # VS Code's gives each architecture its own release number.
 # @internal
-_package__rpm-repository-versions() {
+_package.rpm-repository-versions() {
   [[ "$#" -eq 2 && "$1" == https://* && -n "$2" ]] || return 64
-  command__require dnf || return "$?"
+  command.require dnf || return "$?"
   local architecture='' versions=''
-  architecture="$(_package__rpm-architecture)" || return "$?"
+  architecture="$(_package.rpm-architecture)" || return "$?"
   versions="$(dnf repoquery --quiet --disablerepo='*' --repofrompath="bashstock-query,$1" \
     --enablerepo=bashstock-query --arch="${architecture},noarch" --queryformat $'%{evr}\n' "$2" 2>/dev/null)" || return 74
-  printf '%s\n' "${versions}" | _package__sort-versions
+  printf '%s\n' "${versions}" | _package.sort-versions
 }
 
 # @description Download an armored signing key and require its primary key to have the published fingerprint.
 #
 # The key is inspected in a separate GPG home, so the user's keyring does not change.
 # @internal
-_package__download-signing-key() {
+_package.download-signing-key() {
   ( [[ "$#" -eq 3 && "$1" == https://* && "$2" =~ ^[0-9A-F]{40}$ && -n "$3" ]] ) || return 64
   local url="$1" fingerprint="$2" output="$3" directory='' fingerprints='' status=0
-  command__require gpg || return "$?"
-  _package__download "${url}" "${output}" || return "$?"
-  directory="$(_package__temporary-directory)" || return "$?"
+  command.require gpg || return "$?"
+  _package.download "${url}" "${output}" || return "$?"
+  directory="$(_package.temporary-directory)" || return "$?"
   mkdir -m 0700 -- "${directory}/gnupg" || status=74
   if [[ "${status}" -eq 0 ]]; then
     # GnuPG 2.2.4 on Ubuntu 18.04 predates --show-keys, so list the keys with show-only.
@@ -595,7 +595,7 @@ _package__download-signing-key() {
   rm -rf -- "${directory}"
   [[ "${status}" -eq 0 ]] || return "${status}"
   if [[ "${fingerprints}" != "${fingerprint}" ]]; then
-    _console__write-error "The signing key from ${url} is not the published key ${fingerprint}."
+    _console.write-error "The signing key from ${url} is not the published key ${fingerprint}."
     return 65
   fi
 }
@@ -608,18 +608,18 @@ _package__download-signing-key() {
 # @arg $4 string SUITE Suite name, or ./ for a flat repository.
 # @arg $5 string COMPONENTS Space-separated components, or an empty value for a flat repository.
 # @arg $6 string ARCHITECTURE Optional architecture restriction.
-_package__apt-register-repository() {
+_package.apt-register-repository() {
   ( [[ "$#" -ge 5 && "$#" -le 6 && "$1" =~ ^[a-z0-9][a-z0-9.-]*$ && "$2" == https://* && "$3" == https://* && -n "$4" ]] ) || return 64
-  _package__require-platform ubuntu || return "$?"
+  _package.require-platform ubuntu || return "$?"
   local name="$1" key_url="$2" uri="$3" suite="$4" components="$5" architecture="${6:-}"
   local directory='' content='' status=0
-  directory="$(_package__temporary-directory)" || return "$?"
-  _package__download "${key_url}" "${directory}/${name}.asc" || status="$?"
+  directory="$(_package.temporary-directory)" || return "$?"
+  _package.download "${key_url}" "${directory}/${name}.asc" || status="$?"
   if [[ "${status}" -eq 0 ]]; then
-    command__run-as-root install -d -m 0755 /etc/apt/keyrings || status=74
+    command.run-as-root install -d -m 0755 /etc/apt/keyrings || status=74
   fi
   if [[ "${status}" -eq 0 ]]; then
-    command__run-as-root install -m 0644 "${directory}/${name}.asc" "/etc/apt/keyrings/${name}.asc" || status=74
+    command.run-as-root install -m 0644 "${directory}/${name}.asc" "/etc/apt/keyrings/${name}.asc" || status=74
   fi
   rm -rf -- "${directory}"
   [[ "${status}" -eq 0 ]] || return "${status}"
@@ -628,41 +628,41 @@ _package__apt-register-repository() {
   [[ -z "${components}" ]] || content+="Components: ${components}"$'\n'
   [[ -z "${architecture}" ]] || content+="Architectures: ${architecture}"$'\n'
   content+="Signed-By: /etc/apt/keyrings/${name}.asc"$'\n'
-  file__write-text "/etc/apt/sources.list.d/${name}.sources" "${content}" || return "$?"
-  _package__refresh
+  file.write-text "/etc/apt/sources.list.d/${name}.sources" "${content}" || return "$?"
+  _package.refresh
 }
 
 # @description Register a DNF repository by writing one repository file.
 # @internal
-_package__dnf-register-repository() {
+_package.dnf-register-repository() {
   ( [[ "$#" -eq 2 && "$1" =~ ^[a-z0-9][a-z0-9.-]*$ && -n "$2" ]] ) || return 64
-  _package__require-platform fedora || return "$?"
-  file__write-text "/etc/yum.repos.d/$1.repo" "$2" || return "$?"
-  _package__refresh
+  _package.require-platform fedora || return "$?"
+  file.write-text "/etc/yum.repos.d/$1.repo" "$2" || return "$?"
+  _package.refresh
 }
 
 # @description Enable and start one systemd service.
 # @internal
-_package__enable-service() {
+_package.enable-service() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9@._-]+$ ]] ) || return 64
-  command__require systemctl || return "$?"
-  command__run-as-root systemctl enable --now "$1"
+  command.require systemctl || return "$?"
+  command.run-as-root systemctl enable --now "$1"
 }
 
 # @description Add the current user to a group through administrator execution.
 # @internal
-_package__add-current-user-to-group() {
+_package.add-current-user-to-group() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[a-z_][a-z0-9_-]*$ ]] ) || return 64
   local user=''
-  user="$(user__name)" || return "$?"
-  case "$(system__operating-system)" in
+  user="$(user.name)" || return "$?"
+  case "$(system.operating-system)" in
     darwin)
-      command__require dseditgroup || return "$?"
-      command__run-as-root dseditgroup -o edit -a "${user}" -t user "$1"
+      command.require dseditgroup || return "$?"
+      command.run-as-root dseditgroup -o edit -a "${user}" -t user "$1"
       ;;
     linux)
-      command__require usermod || return "$?"
-      command__run-as-root usermod -a -G "$1" "${user}"
+      command.require usermod || return "$?"
+      command.run-as-root usermod -a -G "$1" "${user}"
       ;;
     *)
       return 69
@@ -672,9 +672,9 @@ _package__add-current-user-to-group() {
 
 # @description Sort tab-separated lines by the version in their first field and drop that field.
 # @internal
-_package__sort-by-first-field() {
+_package.sort-by-first-field() {
   [[ "$#" -eq 0 ]] || return 64
-  python__run -c '
+  python.run -c '
 import re
 import sys
 from functools import cmp_to_key

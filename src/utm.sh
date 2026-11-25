@@ -13,10 +13,10 @@
 # @exitcode 69 The system is not macOS.
 # @exitcode other The status of open.
 # @example
-#   utm__open
-utm__open() {
+#   utm.open
+utm.open() {
   [[ "$#" -eq 0 ]] || return 64
-  [[ "$(system__operating-system)" == darwin ]] || return 69
+  [[ "$(system.operating-system)" == darwin ]] || return 69
   open -a UTM
 }
 
@@ -29,10 +29,10 @@ utm__open() {
 # @exitcode 69 Python 3 is unavailable.
 # @exitcode 74 The GitHub release list could not be downloaded or read.
 # @example
-#   utm__versions | tail -n 1
-utm__versions() {
+#   utm.versions | tail -n 1
+utm.versions() {
   [[ "$#" -eq 0 ]] || return 64
-  _package__github-release-versions utmapp/UTM
+  _package.github-release-versions utmapp/UTM
 }
 
 # @description Install UTM from its release disk image on macOS.
@@ -45,26 +45,26 @@ utm__versions() {
 # @exitcode 69 The system is not macOS, or hdiutil is unavailable.
 # @exitcode 74 The disk image could not be downloaded, mounted, or copied.
 # @example
-#   utm__install 4.6.4
-utm__install() {
+#   utm.install 4.6.4
+utm.install() {
   [[ "$#" -le 2 ]] || return 64
-  _package__require-platform darwin || return "$?"
-  command__require hdiutil || return "$?"
+  _package.require-platform darwin || return "$?"
+  command.require hdiutil || return "$?"
   local version="${1:-}" applications="${2:-/Applications}" directory='' mount='' status=0
   [[ -d "${applications}" ]] || return 66
   if [[ -z "${version}" ]]; then
-    version="$(utm__versions | _package__latest-stable-version)" || return "$?"
+    version="$(utm.versions | _package.latest-stable-version)" || return "$?"
   fi
-  directory="$(_package__temporary-directory)" || return "$?"
+  directory="$(_package.temporary-directory)" || return "$?"
   mount="${directory}/mount"
-  _package__download "https://github.com/utmapp/UTM/releases/download/v${version}/UTM.dmg" \
+  _package.download "https://github.com/utmapp/UTM/releases/download/v${version}/UTM.dmg" \
     "${directory}/UTM.dmg" || status="$?"
   if [[ "${status}" -eq 0 ]]; then
     mkdir -p -- "${mount}" && hdiutil attach -nobrowse -readonly -mountpoint "${mount}" \
       "${directory}/UTM.dmg" >/dev/null || status=74
   fi
   if [[ "${status}" -eq 0 ]]; then
-    _utm__copy-application "${mount}/UTM.app" "${applications}" || status="$?"
+    _utm.copy-application "${mount}/UTM.app" "${applications}" || status="$?"
     hdiutil detach "${mount}" >/dev/null 2>&1 || status=74
   fi
   rm -rf -- "${directory}"
@@ -77,14 +77,14 @@ utm__install() {
 # removed only after the new one is in place; on failure the old one stays.
 #
 # @internal
-_utm__copy-application() {
+_utm.copy-application() {
   [[ "$#" -eq 2 && -d "$1" && -d "$2" ]] || return 64
   local runner=() name='' target='' staged='' previous=''
-  name="$(path__base-name "$1")" || return 64
+  name="$(path.base-name "$1")" || return 64
   target="$2/${name}"
   staged="$2/.${name}.bashstock-new"
   previous="$2/.${name}.bashstock-old"
-  [[ -w "$2" ]] || runner=(command__run-as-root)
+  [[ -w "$2" ]] || runner=(command.run-as-root)
   ${runner[@]+"${runner[@]}"} rm -rf -- "${staged}" "${previous}" || return 74
   if ! ${runner[@]+"${runner[@]}"} cp -R -- "$1" "${staged}"; then
     ${runner[@]+"${runner[@]}"} rm -rf -- "${staged}"

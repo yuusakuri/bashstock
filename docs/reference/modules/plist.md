@@ -8,9 +8,9 @@ Values are written with PlistBuddy.
 
 ## Index
 
-* [plist__set](#plist__set)
+* [plist.set](#plistset)
 
-### plist__set
+### plist.set
 
 Set a string value for one top-level key in a macOS property list.
 
@@ -20,7 +20,7 @@ validated with plutil before and after the change.
 #### Example
 
 ```bash
-plist__set "${HOME}/Library/Preferences/com.example.app.plist" Theme dark
+plist.set "${HOME}/Library/Preferences/com.example.app.plist" Theme dark
 ```
 
 #### Arguments

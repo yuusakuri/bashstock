@@ -8,19 +8,19 @@ Operations keep the directory itself and act on its entries.
 
 ## Index
 
-* [dir__diff](#dir__diff)
-* [dir__merge](#dir__merge)
-* [dir__create-with-date-time](#dir__create-with-date-time)
-* [dir__clear](#dir__clear)
+* [dir.diff](#dirdiff)
+* [dir.merge](#dirmerge)
+* [dir.create-with-date-time](#dircreate-with-date-time)
+* [dir.clear](#dirclear)
 
-### dir__diff
+### dir.diff
 
 Run diff for two directories.
 
 #### Example
 
 ```bash
-dir__diff config.orig config > config.patch
+dir.diff config.orig config > config.patch
 ```
 
 #### Arguments
@@ -40,7 +40,7 @@ dir__diff config.orig config > config.patch
 
 * A unified diff that includes new files.
 
-### dir__merge
+### dir.merge
 
 Merge every entry of SOURCE into DESTINATION by moving it, then remove SOURCE.
 
@@ -51,7 +51,7 @@ never followed. The first failure stops the merge.
 #### Example
 
 ```bash
-dir__merge "${HOME}/デスクトップ" "${HOME}/Desktop"
+dir.merge "${HOME}/デスクトップ" "${HOME}/Desktop"
 ```
 
 #### Arguments
@@ -65,7 +65,7 @@ dir__merge "${HOME}/デスクトップ" "${HOME}/Desktop"
 * **64**: SOURCE is not a directory, DESTINATION is a symbolic link or a file, DESTINATION is SOURCE or inside it, or SOURCE holds an entry that would replace SOURCE itself.
 * **74**: An entry could not be moved, or SOURCE could not be removed.
 
-### dir__create-with-date-time
+### dir.create-with-date-time
 
 Create a directory named with the local date and time and write its path.
 
@@ -75,7 +75,7 @@ counting from -2 is added.
 #### Example
 
 ```bash
-backup="$(dir__create-with-date-time /var/backups)"
+backup="$(dir.create-with-date-time /var/backups)"
 ```
 
 #### Arguments
@@ -94,7 +94,7 @@ backup="$(dir__create-with-date-time /var/backups)"
 
 * The path of the new directory, such as ./20261014T120405.
 
-### dir__clear
+### dir.clear
 
 Remove every entry of a directory, including hidden ones, and keep the directory.
 
@@ -104,7 +104,7 @@ link are refused, because a link would empty the directory it points to.
 #### Example
 
 ```bash
-dir__clear ./build
+dir.clear ./build
 ```
 
 #### Arguments

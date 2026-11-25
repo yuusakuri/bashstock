@@ -14,15 +14,15 @@ keyring=/usr/share/keyrings/claude-desktop-archive-keyring.asc
 
 if [[ "${VERSION_ID%%.*}" -lt 22 ]]; then
   status=0
-  claude-desktop__install || status="$?"
+  claude-desktop.install || status="$?"
   [[ "$status" -eq 69 ]]
   [[ ! -e "$source_file" ]]
   if dpkg-query -W claude-desktop >/dev/null 2>&1; then exit 1; fi
   exit 0
 fi
 
-claude-desktop__install
-claude-desktop__install
+claude-desktop.install
+claude-desktop.install
 dpkg-query -W claude-desktop
 command -v claude-desktop
 

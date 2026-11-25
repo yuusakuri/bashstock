@@ -12,10 +12,10 @@
 # @exitcode 1 No function has that name.
 # @exitcode 64 The name is empty, starts with a dash, or contains a newline.
 # @example
-#   shell__is-function-defined node__install && node__install
-shell__is-function-defined() {
+#   shell.is-function-defined node.install && node.install
+shell.is-function-defined() {
   if [[ "$#" -ne 1 || -z "$1" || "$1" == -* ]] ||
-    ! _string__require-one-line "$1"; then
+    ! _string.require-one-line "$1"; then
     return 64
   fi
 
@@ -29,12 +29,12 @@ shell__is-function-defined() {
 # @set EDITOR is exported in the current process.
 # @exitcode 0 The editor was set.
 # @exitcode 64 More than two arguments were given or the shell list is invalid.
-# @exitcode other The status of env__set-variable.
+# @exitcode other The status of env.set-variable.
 # @example
-#   shell__editor__set-default vim bash,zsh
-shell__editor__set-default() {
+#   shell.editor.set-default vim bash,zsh
+shell.editor.set-default() {
   [[ "$#" -le 2 ]] || return 64
-  env__set-variable EDITOR "${1:-code --wait}" "${2:-bash}"
+  env.set-variable EDITOR "${1:-code --wait}" "${2:-bash}"
 }
 
 # @description Make Bash and Zsh completion ignore letter case.
@@ -48,8 +48,8 @@ shell__editor__set-default() {
 # @exitcode 64 More than one argument was given or the shell list is invalid.
 # @exitcode other The status of the file operation that failed.
 # @example
-#   shell__completion__enable-ignore-case bash
-shell__completion__enable-ignore-case() {
+#   shell.completion.enable-ignore-case bash
+shell.completion.enable-ignore-case() {
   [[ "$#" -le 1 ]] || return 64
   local shells="${1:-bash,zsh}" shell='' line=''
   ( [[ "${shells}" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] ) || return 64
@@ -60,15 +60,15 @@ shell__completion__enable-ignore-case() {
       bash)
         if [[ ! -e "${HOME}/.inputrc" ]]; then
           if [[ -r /etc/inputrc ]]; then line=$'$include /etc/inputrc\n'; else line=''; fi
-          file__write-text "${HOME}/.inputrc" "${line}" || return "$?"
+          file.write-text "${HOME}/.inputrc" "${line}" || return "$?"
         fi
-        file__replace-text-or-append "${HOME}/.inputrc" '^set[[:space:]]+completion-ignore-case[[:space:]].*$' \
+        file.replace-text-or-append "${HOME}/.inputrc" '^set[[:space:]]+completion-ignore-case[[:space:]].*$' \
           'set completion-ignore-case on' || return "$?"
         ;;
       zsh)
         line="zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'"
         if [[ ! -f "${HOME}/.zshrc" ]] || ! grep -Fqx -- "${line}" "${HOME}/.zshrc"; then
-          file__append-text "${HOME}/.zshrc" "${line}"$'\n' || return "$?"
+          file.append-text "${HOME}/.zshrc" "${line}"$'\n' || return "$?"
         fi
         ;;
     esac
@@ -84,16 +84,16 @@ shell__completion__enable-ignore-case() {
 # @exitcode 64 An argument was given.
 # @exitcode 74 ~/.zshrc could not be written.
 # @example
-#   shell__zsh__enable-interactive-comments
-shell__zsh__enable-interactive-comments() {
+#   shell.zsh.enable-interactive-comments
+shell.zsh.enable-interactive-comments() {
   [[ "$#" -eq 0 ]] || return 64
-  file__ensure-exists "${HOME}/.zshrc" || return "$?"
-  file__replace-text-or-append "${HOME}/.zshrc" '^setopt interactivecomments.*$' 'setopt interactivecomments'
+  file.ensure-exists "${HOME}/.zshrc" || return "$?"
+  file.replace-text-or-append "${HOME}/.zshrc" '^setopt interactivecomments.*$' 'setopt interactivecomments'
 }
 
 # @description Read one line from standard input and preserve a final partial line.
 # @internal
-_shell__read-answer() {
+_shell.read-answer() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
@@ -123,12 +123,12 @@ _shell__read-answer() {
 # @exitcode 64 The answer or the default is invalid.
 # @exitcode 66 Standard input ended before an answer.
 # @example
-#   if [[ "$(shell__confirm 'Remove the cache?' no)" == yes ]]; then
+#   if [[ "$(shell.confirm 'Remove the cache?' no)" == yes ]]; then
 #     rm -rf -- "${cache}"
 #   fi
-shell__confirm() {
+shell.confirm() {
   if [[ "$#" -lt 1 || "$#" -gt 2 ]] ||
-    ! _string__require-one-line "$1"; then
+    ! _string.require-one-line "$1"; then
     return 64
   fi
 
@@ -141,8 +141,8 @@ shell__confirm() {
   fi
 
   printf '%s [yes/no]: ' "${message}" >&2
-  value="$(_shell__read-answer)" || return "$?"
-  value="$(string__lower "${value}")" || return "$?"
+  value="$(_shell.read-answer)" || return "$?"
+  value="$(string.lower "${value}")" || return "$?"
   case "${value}" in
     y | yes)
       printf 'yes\n'
@@ -172,15 +172,15 @@ shell__confirm() {
 # @exitcode 64 The prompt contains a newline, or the argument count is not two.
 # @exitcode 66 Standard input ended before a line.
 # @example
-#   name="$(shell__read-line 'Branch' main)"
-shell__read-line() {
-  if [[ "$#" -ne 2 ]] || ! _string__require-one-line "$1"; then
+#   name="$(shell.read-line 'Branch' main)"
+shell.read-line() {
+  if [[ "$#" -ne 2 ]] || ! _string.require-one-line "$1"; then
     return 64
   fi
 
   local value=''
   printf '%s: ' "$1" >&2
-  value="$(_shell__read-answer)" || return "$?"
+  value="$(_shell.read-answer)" || return "$?"
   if [[ -z "${value}" ]]; then
     value="$2"
   fi
@@ -199,13 +199,13 @@ shell__read-line() {
 # @exitcode 64 The answer or the default is invalid.
 # @exitcode 66 Standard input ended before an answer.
 # @example
-#   case "$(shell__confirm-or-cancel 'Overwrite settings.json?' cancel)" in
+#   case "$(shell.confirm-or-cancel 'Overwrite settings.json?' cancel)" in
 #     yes) cp new.json settings.json ;;
 #     cancel) return 1 ;;
 #   esac
-shell__confirm-or-cancel() {
+shell.confirm-or-cancel() {
   if [[ "$#" -lt 1 || "$#" -gt 2 ]] ||
-    ! _string__require-one-line "$1"; then
+    ! _string.require-one-line "$1"; then
     return 64
   fi
 
@@ -222,8 +222,8 @@ shell__confirm-or-cancel() {
   esac
 
   printf '%s [yes/no/cancel]: ' "${message}" >&2
-  value="$(_shell__read-answer)" || return "$?"
-  value="$(string__lower "${value}")" || return "$?"
+  value="$(_shell.read-answer)" || return "$?"
+  value="$(string.lower "${value}")" || return "$?"
   case "${value}" in
     y | yes)
       printf 'yes\n'
@@ -256,9 +256,9 @@ shell__confirm-or-cancel() {
 # @exitcode 64 The selection is not a listed number, or an argument is invalid.
 # @exitcode 66 Standard input ended before a selection.
 # @example
-#   version="$(shell__choose-one 'Node.js version' 20.18.0 22.11.0)"
-shell__choose-one() {
-  if [[ "$#" -lt 2 ]] || ! _string__require-one-line "$1"; then
+#   version="$(shell.choose-one 'Node.js version' 20.18.0 22.11.0)"
+shell.choose-one() {
+  if [[ "$#" -lt 2 ]] || ! _string.require-one-line "$1"; then
     return 64
   fi
 
@@ -271,7 +271,7 @@ shell__choose-one() {
   items=("$@")
 
   for item in "${items[@]}"; do
-    if ! _string__require-one-line "${item}"; then
+    if ! _string.require-one-line "${item}"; then
       return 64
     fi
   done
@@ -282,8 +282,8 @@ shell__choose-one() {
   done
   printf 'Selection: ' >&2
 
-  selected="$(_shell__read-answer)" || return "$?"
-  if ! _number__is-positive-integer-at-most "${selected}" 2147483647; then
+  selected="$(_shell.read-answer)" || return "$?"
+  if ! _number.is-positive-integer-at-most "${selected}" 2147483647; then
     return 64
   fi
   if ((10#${selected} > ${#items[@]})); then
@@ -300,11 +300,11 @@ shell__choose-one() {
 # @exitcode 69 No controlling terminal is available.
 # @exitcode 74 The terminal could not be read.
 # @example
-#   shell__pause 'Connect the device, then press Enter.'
-shell__pause() {
+#   shell.pause 'Connect the device, then press Enter.'
+shell.pause() {
   if [[ "$#" -gt 1 ]]; then return 64; fi
   local message="${1:-Press Enter to continue.}"
-  terminal__is-available || return 69
+  terminal.is-available || return 69
   local line=''
   IFS= read -r -p "${message}" line </dev/tty || return 74
 }

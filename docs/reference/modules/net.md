@@ -8,24 +8,24 @@ Static addresses are written to the Netplan configuration of Ubuntu.
 
 ## Index
 
-* [net__ip__set-static](#net__ip__set-static)
-* [net__interface__default](#net__interface__default)
-* [net__gateway__default](#net__gateway__default)
-* [net__ip__private-v4](#net__ip__private-v4)
-* [net__ip__private-v6](#net__ip__private-v6)
-* [net__ip__public](#net__ip__public)
-* [net__dns__test](#net__dns__test)
-* [net__ping](#net__ping)
-* [net__tcp__test](#net__tcp__test)
-* [net__capture-host](#net__capture-host)
-* [net__unused-port](#net__unused-port)
-* [net__dns__servers](#net__dns__servers)
-* [net__dns__manager](#net__dns__manager)
-* [net__dns__use-systemd-resolved](#net__dns__use-systemd-resolved)
-* [net__dns__use-network-manager](#net__dns__use-network-manager)
-* [net__dns__use-google](#net__dns__use-google)
+* [net.ip.set-static](#netipset-static)
+* [net.interface.default](#netinterfacedefault)
+* [net.gateway.default](#netgatewaydefault)
+* [net.ip.private-v4](#netipprivate-v4)
+* [net.ip.private-v6](#netipprivate-v6)
+* [net.ip.public](#netippublic)
+* [net.dns.test](#netdnstest)
+* [net.ping](#netping)
+* [net.tcp.test](#nettcptest)
+* [net.capture-host](#netcapture-host)
+* [net.unused-port](#netunused-port)
+* [net.dns.servers](#netdnsservers)
+* [net.dns.manager](#netdnsmanager)
+* [net.dns.use-systemd-resolved](#netdnsuse-systemd-resolved)
+* [net.dns.use-network-manager](#netdnsuse-network-manager)
+* [net.dns.use-google](#netdnsuse-google)
 
-### net__ip__set-static
+### net.ip.set-static
 
 Replace one Ubuntu Netplan file with a static IPv4 configuration.
 
@@ -37,7 +37,7 @@ file, the previous file is restored and applied again.
 #### Example
 
 ```bash
-net__ip__set-static --interface eth0 --address 192.168.1.20 --prefix-length 24 \
+net.ip.set-static --interface eth0 --address 192.168.1.20 --prefix-length 24 \
   --gateway 192.168.1.1 --dns 192.168.1.1,1.1.1.1
 ```
 
@@ -85,14 +85,14 @@ net__ip__set-static --interface eth0 --address 192.168.1.20 --prefix-length 24 \
 * **75**: Netplan could not apply the configuration, so the previous file was restored, or the host name could not be set.
 * **77**: sudo is unavailable or refused the credentials.
 
-### net__interface__default
+### net.interface.default
 
 Write the first default-route interface.
 
 #### Example
 
 ```bash
-net__ip__private-v4 "$(net__interface__default)"
+net.ip.private-v4 "$(net.interface.default)"
 ```
 
 _Function has no arguments._
@@ -107,14 +107,14 @@ _Function has no arguments._
 
 * The interface name, such as eth0 or en0.
 
-### net__gateway__default
+### net.gateway.default
 
 Write the first default-route gateway.
 
 #### Example
 
 ```bash
-net__ping "$(net__gateway__default)"
+net.ping "$(net.gateway.default)"
 ```
 
 _Function has no arguments._
@@ -129,14 +129,14 @@ _Function has no arguments._
 
 * The gateway address.
 
-### net__ip__private-v4
+### net.ip.private-v4
 
 Write the primary RFC 1918 IPv4 address of an interface.
 
 #### Example
 
 ```bash
-net__ip__private-v4 eth0
+net.ip.private-v4 eth0
 ```
 
 #### Arguments
@@ -154,7 +154,7 @@ net__ip__private-v4 eth0
 
 * The address without a prefix length, such as 192.168.1.20.
 
-### net__ip__private-v6
+### net.ip.private-v6
 
 Write the primary unique local IPv6 address of an interface.
 
@@ -164,7 +164,7 @@ system lists them, after removing the excluded prefixes.
 #### Example
 
 ```bash
-net__ip__private-v6 en0 fe80
+net.ip.private-v6 en0 fe80
 ```
 
 #### Arguments
@@ -183,7 +183,7 @@ net__ip__private-v6 en0 fe80
 
 * The address without a prefix length.
 
-### net__ip__public
+### net.ip.public
 
 Write the public IP address reported by ifconfig.me.
 
@@ -193,7 +193,7 @@ must be one IPv4 or IPv6 address; anything else returns 74.
 #### Example
 
 ```bash
-net__ip__public
+net.ip.public
 ```
 
 _Function has no arguments._
@@ -213,14 +213,14 @@ _Function has no arguments._
 
 * A message when neither curl nor wget is available.
 
-### net__dns__test
+### net.dns.test
 
 Test whether a DNS name resolves.
 
 #### Example
 
 ```bash
-net__dns__test github.com || net__dns__use-google
+net.dns.test github.com || net.dns.use-google
 ```
 
 #### Arguments
@@ -234,14 +234,14 @@ net__dns__test github.com || net__dns__use-google
 * **64**: The name is empty, or the argument count is not one.
 * **69**: Neither getent nor dscacheutil is available.
 
-### net__ping
+### net.ping
 
 Send ICMP echo requests to a host.
 
 #### Example
 
 ```bash
-net__ping 192.168.1.1 1 2
+net.ping 192.168.1.1 1 2
 ```
 
 #### Arguments
@@ -261,14 +261,14 @@ net__ping 192.168.1.1 1 2
 
 * The output of ping.
 
-### net__tcp__test
+### net.tcp.test
 
 Test whether a TCP connection to HOST and PORT succeeds, without output.
 
 #### Example
 
 ```bash
-  net__tcp__test github.com 22 5 && git__fetch
+  net.tcp.test github.com 22 5 && git.fetch
 shellcheck disable=SC2329
 ```
 
@@ -285,7 +285,7 @@ shellcheck disable=SC2329
 * **64**: The arguments are invalid.
 * **69**: nc is unavailable.
 
-### net__capture-host
+### net.capture-host
 
 Capture packets addressed to a host.
 
@@ -294,7 +294,7 @@ tcpdump is retried through sudo when it fails without administrator rights.
 #### Example
 
 ```bash
-net__capture-host 192.168.1.20 eth0
+net.capture-host 192.168.1.20 eth0
 ```
 
 #### Arguments
@@ -313,7 +313,7 @@ net__capture-host 192.168.1.20 eth0
 
 * The packets that tcpdump captures.
 
-### net__unused-port
+### net.unused-port
 
 Write a TCP port number the operating system reports as unused.
 
@@ -323,7 +323,7 @@ system assigned is written before the socket closes.
 #### Example
 
 ```bash
-port="$(net__unused-port)" && python3 -m http.server "${port}"
+port="$(net.unused-port)" && python3 -m http.server "${port}"
 ```
 
 _Function has no arguments._
@@ -338,7 +338,7 @@ _Function has no arguments._
 
 * The port number.
 
-### net__dns__servers
+### net.dns.servers
 
 Write the configured IPv4 and IPv6 DNS servers, one per line.
 
@@ -349,7 +349,7 @@ macOS uses scutil --dns.
 #### Example
 
 ```bash
-net__dns__servers
+net.dns.servers
 ```
 
 _Function has no arguments._
@@ -366,14 +366,14 @@ _Function has no arguments._
 
 * One server address per line without duplicates.
 
-### net__dns__manager
+### net.dns.manager
 
 Write the current DNS manager: systemd-resolved, network-manager, or unknown.
 
 #### Example
 
 ```bash
-[[ "$(net__dns__manager)" == systemd-resolved ]] && resolvectl status
+[[ "$(net.dns.manager)" == systemd-resolved ]] && resolvectl status
 ```
 
 _Function has no arguments._
@@ -387,7 +387,7 @@ _Function has no arguments._
 
 * systemd-resolved, network-manager, or unknown.
 
-### net__dns__use-systemd-resolved
+### net.dns.use-systemd-resolved
 
 Make systemd-resolved manage DNS and /etc/resolv.conf.
 
@@ -396,7 +396,7 @@ The previous /etc/resolv.conf is kept as a backup.
 #### Example
 
 ```bash
-net__dns__use-systemd-resolved
+net.dns.use-systemd-resolved
 ```
 
 _Function has no arguments._
@@ -408,7 +408,7 @@ _Function has no arguments._
 * **74**: /etc/resolv.conf could not be linked.
 * other The status of the service, backup, or verification step that failed.
 
-### net__dns__use-network-manager
+### net.dns.use-network-manager
 
 Make NetworkManager manage DNS and /etc/resolv.conf directly.
 
@@ -417,7 +417,7 @@ The previous /etc/resolv.conf is kept as a backup.
 #### Example
 
 ```bash
-net__dns__use-network-manager
+net.dns.use-network-manager
 ```
 
 _Function has no arguments._
@@ -430,7 +430,7 @@ _Function has no arguments._
 * **74**: The configuration or link could not be written.
 * other The status of the restart, backup, or verification step that failed.
 
-### net__dns__use-google
+### net.dns.use-google
 
 Configure Google Public DNS while keeping the current DNS manager.
 
@@ -439,7 +439,7 @@ systemd-resolved receives a drop-in file, and NetworkManager receives the server
 #### Example
 
 ```bash
-net__dns__use-google && net__dns__servers
+net.dns.use-google && net.dns.servers
 ```
 
 _Function has no arguments._

@@ -9,7 +9,7 @@ readonly project_root
 
 # @description Visit each project shell file.
 # @arg $1 string command The command to run for each file.
-lint__visit-files() {
+lint.visit-files() {
   local command="${1}"
   local file=''
   local status='0'
@@ -31,7 +31,7 @@ lint__visit-files() {
 
 # @description Check the syntax of one shell file.
 # @arg $1 string file The shell file.
-lint__check-syntax() {
+lint.check-syntax() {
   local file="${1}"
 
   if [[ "${file}" == *.bats ]]; then
@@ -43,7 +43,7 @@ lint__check-syntax() {
 
 # @description Run ShellCheck for one shell file.
 # @arg $1 string file The shell file.
-lint__check-shell() {
+lint.check-shell() {
   local file="${1}"
 
   if [[ "${file}" == *.bats ||
@@ -57,15 +57,15 @@ lint__check-shell() {
 # @description Check the shdoc comment of every function in src/ and scripts/.
 #
 # Every function needs an adjacent comment block with @description. A public
-# library function, one in src/ whose name has a __ part, does not start with
+# library function, one in src/ whose name has a . part, does not start with
 # _, and is not marked @internal, also needs @example, @exitcode, and @arg,
-# @option, or @noargs, so that help__show and docs/reference describe how to
+# @option, or @noargs, so that help.show and docs/reference describe how to
 # call it.
 # Each module in src/ starts with @file, @brief, and @description, and no
 # comment block may keep an unfinished to-do marker.
 #
 # @noargs
-lint__check-doc-comments() {
+lint.check-doc-comments() {
   local file=''
   local status='0'
 
@@ -90,7 +90,7 @@ lint__check-doc-comments() {
         if (block ~ /TODO/) fail("shdoc comment has a TODO")
         if (block !~ /# @description/) {
           fail("function lacks an adjacent shdoc comment with @description")
-        } else if (library && name ~ /__/ && name !~ /^_/ && block !~ /# @internal/) {
+        } else if (library && name ~ /\./ && name !~ /^_/ && block !~ /# @internal/) {
           if (block !~ /# @example/) fail("public function lacks @example")
           if (block !~ /# @exitcode/) fail("public function lacks @exitcode")
           if (block !~ /# @(arg|option|noargs)/) fail("public function lacks @arg, @option, or @noargs")
@@ -127,18 +127,18 @@ lint__check-doc-comments() {
 # @noargs
 # @exitcode 0 Every regex test is isolated.
 # @exitcode 1 A regex test can change the caller's BASH_REMATCH.
-lint__check-regex-isolation() {
+lint.check-regex-isolation() {
   local file='' status=0
   for file in "${project_root}"/src/*.sh "${project_root}"/src/runtime/*.sh; do
     awk '
       BEGIN {
-        allowed["_file__replace-line"] = 1
-        allowed["_git__sequence-editor"] = 1
-        allowed["node__versions"] = 1
-        allowed["jdk__version__list"] = 1
-        allowed["regex__capture-group"] = 1
-        allowed["regex__capture-groups"] = 1
-        allowed["_env__dotenv__entries"] = 1
+        allowed["_file.replace-line"] = 1
+        allowed["_git.sequence-editor"] = 1
+        allowed["node.versions"] = 1
+        allowed["jdk.version.list"] = 1
+        allowed["regex.capture-group"] = 1
+        allowed["regex.capture-groups"] = 1
+        allowed["_env.dotenv.entries"] = 1
       }
       /^[A-Za-z_][A-Za-z0-9_:.-]*\(\) *[({]/ { name = $1; sub(/\(\).*/, "", name) }
       /^[[:space:]]*#/ { next }
@@ -160,14 +160,14 @@ main() {
     return 69
   fi
 
-  lint__visit-files lint__check-syntax
-  lint__visit-files lint__check-shell
-  lint__check-doc-comments
-  lint__check-regex-isolation
+  lint.visit-files lint.check-syntax
+  lint.visit-files lint.check-shell
+  lint.check-doc-comments
+  lint.check-regex-isolation
   "${project_root}/scripts/docs" --check
   "${project_root}/scripts/build"
-  lint__check-syntax "${project_root}/dist/bashstock.sh"
-  lint__check-shell "${project_root}/dist/bashstock.sh"
+  lint.check-syntax "${project_root}/dist/bashstock.sh"
+  lint.check-shell "${project_root}/dist/bashstock.sh"
   "${project_root}/scripts/check-completion"
   git -C "${project_root}" diff --check
 }

@@ -14,17 +14,17 @@
 # @exitcode 74 rustup could not be downloaded.
 # @exitcode other The status of the rustup installer.
 # @example
-#   rust__install 1.81.0
-rust__install() {
+#   rust.install 1.81.0
+rust.install() {
   [[ "$#" -le 1 ]] || return 64
   command -v curl >/dev/null 2>&1 || return 69
   local temporary='' platform=''
   local toolchain='stable'
   [[ "$#" -eq 1 ]] && toolchain="$1"
-  platform="$(_package__platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   case "$platform" in
-    ubuntu) _package__install build-essential || return "$?" ;;
-    fedora) _package__install gcc || return "$?" ;;
+    ubuntu) _package.install build-essential || return "$?" ;;
+    fedora) _package.install gcc || return "$?" ;;
     darwin) command -v cc >/dev/null 2>&1 || return 69 ;;
     *) return 69 ;;
   esac
@@ -37,7 +37,7 @@ rust__install() {
   local status="$?"
   rm -f -- "$temporary"
   [[ "$status" -eq 0 ]] || return "$status"
-  env__add-path "$HOME/.cargo/bin"
+  env.add-path "$HOME/.cargo/bin"
 }
 
 # @description Write the stable Rust versions, oldest first, from the rust-lang/rust releases.
@@ -49,11 +49,11 @@ rust__install() {
 # @exitcode 64 An argument was given.
 # @exitcode other The status of the GitHub query.
 # @example
-#   rust__versions | tail -n 1
-rust__versions() {
+#   rust.versions | tail -n 1
+rust.versions() {
   [[ "$#" -eq 0 ]] || return 64
   local versions=''
-  versions="$(_package__github-release-versions rust-lang/rust)" || return "$?"
+  versions="$(_package.github-release-versions rust-lang/rust)" || return "$?"
   [[ -n "${versions}" ]] || return 1
   printf '%s\n' "${versions}"
 }

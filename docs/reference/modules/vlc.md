@@ -8,16 +8,16 @@ VLC is installed from the platform package source.
 
 ## Index
 
-* [vlc__set-default-app](#vlc__set-default-app)
+* [vlc.set-default-app](#vlcset-default-app)
 
-### vlc__set-default-app
+### vlc.set-default-app
 
 Set VLC as the default application for every MIME type it declares.
 
 #### Example
 
 ```bash
-vlc__set-default-app
+vlc.set-default-app
 xdg-mime query default video/mp4
 ```
 

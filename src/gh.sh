@@ -7,11 +7,11 @@
 
 # @description Register GitHub CLI's official APT or DNF repository after checking its key.
 # @internal
-_gh__register-repository() {
+_gh.register-repository() {
   [[ "$#" -eq 0 ]] || return 64
-  command__require gpg || return "$?"
+  command.require gpg || return "$?"
   local platform='' key_url='' keyring='' directory='' status=0 fingerprints='' architecture=''
-  platform="$(_package__platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   case "${platform}" in
     ubuntu)
       key_url=https://cli.github.com/packages/githubcli-archive-keyring.gpg
@@ -23,8 +23,8 @@ _gh__register-repository() {
       ;;
     *) return 69 ;;
   esac
-  directory="$(_package__temporary-directory)" || return "$?"
-  _package__download "${key_url}" "${directory}/key" || status="$?"
+  directory="$(_package.temporary-directory)" || return "$?"
+  _package.download "${key_url}" "${directory}/key" || status="$?"
   if [[ "${status}" -eq 0 ]]; then
     mkdir -m 0700 -- "${directory}/gnupg" || status=74
   fi
@@ -38,24 +38,24 @@ _gh__register-repository() {
       "${directory}/key-info")" || status=65
   fi
   if [[ "${status}" -eq 0 && "${fingerprints}" != $'2C6106201985B60E6C7AC87323F3D4EA75716059\n7F38BBB59D064DBCB3D84D725612B36462313325' ]]; then
-    _console__write-error "The GitHub CLI repository key does not match GitHub's published fingerprints."
+    _console.write-error "The GitHub CLI repository key does not match GitHub's published fingerprints."
     status=65
   fi
   if [[ "${status}" -eq 0 ]]; then
-    command__run-as-root install -d -m 0755 "${keyring%/*}" || status=74
+    command.run-as-root install -d -m 0755 "${keyring%/*}" || status=74
   fi
   if [[ "${status}" -eq 0 ]]; then
-    command__run-as-root install -m 0644 "${directory}/key" "${keyring}" || status=74
+    command.run-as-root install -m 0644 "${directory}/key" "${keyring}" || status=74
   fi
   rm -rf -- "${directory}"
   [[ "${status}" -eq 0 ]] || return "${status}"
   if [[ "${platform}" == ubuntu ]]; then
-    architecture="$(_package__deb-architecture)" || return "$?"
-    file__write-text /etc/apt/sources.list.d/github-cli.sources \
+    architecture="$(_package.deb-architecture)" || return "$?"
+    file.write-text /etc/apt/sources.list.d/github-cli.sources \
       $'Types: deb\nURIs: https://cli.github.com/packages\nSuites: stable\nComponents: main\nArchitectures: '"${architecture}"$'\nSigned-By: '"${keyring}"$'\n' || return "$?"
-    _package__refresh
+    _package.refresh
   else
-    _package__dnf-register-repository gh-cli "[gh-cli]
+    _package.dnf-register-repository gh-cli "[gh-cli]
 name=packages for the GitHub CLI
 baseurl=https://cli.github.com/packages/rpm
 enabled=1
@@ -80,10 +80,10 @@ gpgkey=file://${keyring}
 # @exitcode 77 sudo refused the credentials.
 # @exitcode other The status of the package manager.
 # @example
-#   gh__install
-gh__install() {
+#   gh.install
+gh.install() {
   [[ "$#" -eq 0 ]] || return 64
-  _package__require-platform ubuntu fedora || return "$?"
-  _gh__register-repository || return "$?"
-  _package__install gh
+  _package.require-platform ubuntu fedora || return "$?"
+  _gh.register-repository || return "$?"
+  _package.install gh
 }

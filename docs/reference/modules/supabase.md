@@ -8,17 +8,17 @@ The CLI is installed from its official releases.
 
 ## Index
 
-* [supabase__versions](#supabase__versions)
-* [supabase__install](#supabase__install)
+* [supabase.versions](#supabaseversions)
+* [supabase.install](#supabaseinstall)
 
-### supabase__versions
+### supabase.versions
 
 Write Supabase CLI versions available to the current platform.
 
 #### Example
 
 ```bash
-supabase__versions | tail -n 1
+supabase.versions | tail -n 1
 ```
 
 _Function has no arguments._
@@ -34,20 +34,20 @@ _Function has no arguments._
 
 * Supabase CLI versions, one per line.
 
-### supabase__install
+### supabase.install
 
 Install the Supabase CLI from its Homebrew tap or release packages.
 
 #### Example
 
 ```bash
-supabase__install
+supabase.install
 supabase --version
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from supabase__versions; on macOS only the current tap version. Defaults to the newest one.
+* **$1** (string): Optional version from supabase.versions; on macOS only the current tap version. Defaults to the newest one.
 
 #### Exit codes
 

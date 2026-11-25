@@ -8,22 +8,22 @@ Chrome is installed from Google's package source; profiles live in the Chrome us
 
 ## Index
 
-* [chrome__profile__export-bookmarks](#chrome__profile__export-bookmarks)
-* [chrome__profile__export-preferences](#chrome__profile__export-preferences)
-* [chrome__profile__email](#chrome__profile__email)
-* [chrome__profile__find-by-email](#chrome__profile__find-by-email)
-* [chrome__profile__export-user-data-by-email](#chrome__profile__export-user-data-by-email)
-* [chrome__versions](#chrome__versions)
-* [chrome__install](#chrome__install)
+* [chrome.profile.export-bookmarks](#chromeprofileexport-bookmarks)
+* [chrome.profile.export-preferences](#chromeprofileexport-preferences)
+* [chrome.profile.email](#chromeprofileemail)
+* [chrome.profile.find-by-email](#chromeprofilefind-by-email)
+* [chrome.profile.export-user-data-by-email](#chromeprofileexport-user-data-by-email)
+* [chrome.versions](#chromeversions)
+* [chrome.install](#chromeinstall)
 
-### chrome__profile__export-bookmarks
+### chrome.profile.export-bookmarks
 
 Export a Chrome profile's Bookmarks file.
 
 #### Example
 
 ```bash
-chrome__profile__export-bookmarks "${HOME}/.config/google-chrome/Default" backup/bookmarks.json
+chrome.profile.export-bookmarks "${HOME}/.config/google-chrome/Default" backup/bookmarks.json
 ```
 
 #### Arguments
@@ -38,14 +38,14 @@ chrome__profile__export-bookmarks "${HOME}/.config/google-chrome/Default" backup
 * **66**: The profile has no Bookmarks file.
 * other The status of cp.
 
-### chrome__profile__export-preferences
+### chrome.profile.export-preferences
 
 Export a Chrome profile's Preferences file.
 
 #### Example
 
 ```bash
-chrome__profile__export-preferences "${HOME}/.config/google-chrome/Profile 1"
+chrome.profile.export-preferences "${HOME}/.config/google-chrome/Profile 1"
 ```
 
 #### Arguments
@@ -60,14 +60,14 @@ chrome__profile__export-preferences "${HOME}/.config/google-chrome/Profile 1"
 * **66**: The profile has no Preferences file.
 * other The status of cp.
 
-### chrome__profile__email
+### chrome.profile.email
 
 Write the first known email address from a Chrome profile.
 
 #### Example
 
 ```bash
-chrome__profile__email "${HOME}/.config/google-chrome/Default"
+chrome.profile.email "${HOME}/.config/google-chrome/Default"
 ```
 
 #### Arguments
@@ -86,14 +86,14 @@ chrome__profile__email "${HOME}/.config/google-chrome/Default"
 
 * The email address.
 
-### chrome__profile__find-by-email
+### chrome.profile.find-by-email
 
 Find Chrome profiles whose known email matches literally.
 
 #### Example
 
 ```bash
-chrome__profile__find-by-email developer@example.com
+chrome.profile.find-by-email developer@example.com
 ```
 
 #### Arguments
@@ -112,14 +112,14 @@ chrome__profile__find-by-email developer@example.com
 
 * One matching profile directory per line.
 
-### chrome__profile__export-user-data-by-email
+### chrome.profile.export-user-data-by-email
 
 Export Chrome Preferences and Bookmarks for profiles whose email matches literally.
 
 #### Example
 
 ```bash
-chrome__profile__export-user-data-by-email alice@example.com "${HOME}/chrome-backup"
+chrome.profile.export-user-data-by-email alice@example.com "${HOME}/chrome-backup"
 ```
 
 #### Arguments
@@ -135,14 +135,14 @@ chrome__profile__export-user-data-by-email alice@example.com "${HOME}/chrome-bac
 * **66**: Chrome's user data directory does not exist.
 * **74**: The destination could not be created or a file could not be copied.
 
-### chrome__versions
+### chrome.versions
 
 Write Google Chrome versions available to the current platform.
 
 #### Example
 
 ```bash
-chrome__versions | tail -n 1
+chrome.versions | tail -n 1
 ```
 
 _Function has no arguments._
@@ -158,7 +158,7 @@ _Function has no arguments._
 
 * Google Chrome versions, one per line; on Ubuntu only builds that the installed C library can run.
 
-### chrome__install
+### chrome.install
 
 Install Google Chrome from the Google repository or Homebrew.
 
@@ -168,12 +168,12 @@ and an omitted version selects the newest such build.
 #### Example
 
 ```bash
-chrome__install
+chrome.install
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from chrome__versions; on macOS only the current version. Defaults to the newest runnable one.
+* **$1** (string): Optional version from chrome.versions; on macOS only the current version. Defaults to the newest runnable one.
 
 #### Exit codes
 

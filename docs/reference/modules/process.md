@@ -8,19 +8,19 @@ Processes are matched by executable name or command line.
 
 ## Index
 
-* [process__ids-by-name](#process__ids-by-name)
-* [process__ids-by-name-regex](#process__ids-by-name-regex)
-* [process__threads-by-pid](#process__threads-by-pid)
-* [process__threads-by-name](#process__threads-by-name)
+* [process.ids-by-name](#processids-by-name)
+* [process.ids-by-name-regex](#processids-by-name-regex)
+* [process.threads-by-pid](#processthreads-by-pid)
+* [process.threads-by-name](#processthreads-by-name)
 
-### process__ids-by-name
+### process.ids-by-name
 
 Write the IDs of the processes whose executable name is exactly NAME, one per line.
 
 #### Example
 
 ```bash
-process__ids-by-name sshd
+process.ids-by-name sshd
 ```
 
 #### Arguments
@@ -38,14 +38,14 @@ process__ids-by-name sshd
 
 * One process ID per line.
 
-### process__ids-by-name-regex
+### process.ids-by-name-regex
 
 Write the IDs of the processes whose command line matches an ERE evaluated by pgrep -f.
 
 #### Example
 
 ```bash
-process__ids-by-name-regex 'python3 .*manage\.py runserver'
+process.ids-by-name-regex 'python3 .*manage\.py runserver'
 ```
 
 #### Arguments
@@ -63,7 +63,7 @@ process__ids-by-name-regex 'python3 .*manage\.py runserver'
 
 * One process ID per line.
 
-### process__threads-by-pid
+### process.threads-by-pid
 
 Write the threads of one process.
 
@@ -72,7 +72,7 @@ Linux uses ps -T and macOS ps -M.
 #### Example
 
 ```bash
-process__threads-by-pid "$$"
+process.threads-by-pid "$$"
 ```
 
 #### Arguments
@@ -90,14 +90,14 @@ process__threads-by-pid "$$"
 
 * The ps listing of the threads.
 
-### process__threads-by-name
+### process.threads-by-name
 
 Write the threads of the first process whose executable name is NAME.
 
 #### Example
 
 ```bash
-process__threads-by-name java
+process.threads-by-name java
 ```
 
 #### Arguments
@@ -109,7 +109,7 @@ process__threads-by-name java
 * **0**: The threads were written.
 * **1**: No process has the name.
 * **64**: The argument count is not one.
-* other The status of process__threads-by-pid.
+* other The status of process.threads-by-pid.
 
 #### Output on stdout
 

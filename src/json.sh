@@ -11,9 +11,9 @@
 # @exitcode 0 The value is present.
 # @exitcode 64 The value is empty or null, or the name is invalid.
 # @example
-#   json__require-present .tag_name "${tag}" || return "$?"
-json__require-present() {
-  if [[ "$#" -ne 2 ]] || ! _string__require-non-empty-line "$1"; then
+#   json.require-present .tag_name "${tag}" || return "$?"
+json.require-present() {
+  if [[ "$#" -ne 2 ]] || ! _string.require-non-empty-line "$1"; then
     return 64
   fi
 
@@ -21,6 +21,6 @@ json__require-present() {
     return 0
   fi
 
-  _console__write-error "$1 must be present."
+  _console.write-error "$1 must be present."
   return 64
 }

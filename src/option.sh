@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # @file option
 # @brief Checks for groups of named options.
-# @description option__require-single reports an error unless exactly one option of a group has a value.
+# @description option.require-single reports an error unless exactly one option of a group has a value.
 
 # @description Require exactly one named option value to be non-empty.
 #
@@ -12,8 +12,8 @@
 # @exitcode 0 Exactly one value is non-empty.
 # @exitcode 64 None or several values are set, or the pairs are invalid.
 # @example
-#   option__require-single --file "${file}" --url "${url}" || return "$?"
-option__require-single() {
+#   option.require-single --file "${file}" --url "${url}" || return "$?"
+option.require-single() {
   if [[ "$#" -lt 4 ]] || (($# % 2 != 0)); then
     return 64
   fi
@@ -28,7 +28,7 @@ option__require-single() {
     value="$2"
     shift 2
 
-    if ! _string__require-non-empty-line "${name}"; then
+    if ! _string.require-non-empty-line "${name}"; then
       return 64
     fi
     if [[ -n "${names}" ]]; then
@@ -43,6 +43,6 @@ option__require-single() {
   if [[ "${count}" -eq 1 ]]; then
     return 0
   fi
-  _console__write-error "Exactly one option must be set: ${names}"
+  _console.write-error "Exactly one option must be set: ${names}"
   return 64
 }

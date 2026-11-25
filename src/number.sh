@@ -7,7 +7,7 @@
 
 # @description Test whether a value is an unsigned decimal integer.
 # @internal
-_number__is-non-negative-integer() {
+_number.is-non-negative-integer() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -17,7 +17,7 @@ _number__is-non-negative-integer() {
 
 # @description Test whether a value is a positive unsigned decimal integer.
 # @internal
-_number__is-positive-integer() {
+_number.is-positive-integer() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -27,10 +27,10 @@ _number__is-positive-integer() {
 
 # @description Test whether an unsigned decimal integer does not exceed a maximum.
 # @internal
-_number__is-non-negative-integer-at-most() {
+_number.is-non-negative-integer-at-most() {
   if [[ "$#" -ne 2 ]] ||
-    ! _number__is-non-negative-integer "$1" ||
-    ! _number__is-positive-integer "$2"; then
+    ! _number.is-non-negative-integer "$1" ||
+    ! _number.is-positive-integer "$2"; then
     return 64
   fi
 
@@ -52,12 +52,12 @@ _number__is-non-negative-integer-at-most() {
 
 # @description Test whether a positive decimal integer does not exceed a maximum.
 # @internal
-_number__is-positive-integer-at-most() {
-  if [[ "$#" -ne 2 ]] || ! _number__is-positive-integer "$1"; then
+_number.is-positive-integer-at-most() {
+  if [[ "$#" -ne 2 ]] || ! _number.is-positive-integer "$1"; then
     return 64
   fi
 
-  _number__is-non-negative-integer-at-most "$1" "$2"
+  _number.is-non-negative-integer-at-most "$1" "$2"
 }
 
 # @description Test whether a value is a signed or unsigned decimal integer.
@@ -67,9 +67,9 @@ _number__is-positive-integer-at-most() {
 # @exitcode 1 The value is not an integer.
 # @exitcode 64 The argument count is not one.
 # @example
-#   number__is-integer -7 && printf 'integer\n'
+#   number.is-integer -7 && printf 'integer\n'
 #   # integer
-number__is-integer() {
+number.is-integer() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -84,11 +84,11 @@ number__is-integer() {
 # @exitcode 1 The value is not a decimal fraction.
 # @exitcode 64 The argument count is not one.
 # @example
-#   number__is-decimal 1.5 && printf 'decimal\n'
+#   number.is-decimal 1.5 && printf 'decimal\n'
 #   # decimal
-#   number__is-decimal 15 || printf 'not a fraction\n'
+#   number.is-decimal 15 || printf 'not a fraction\n'
 #   # not a fraction
-number__is-decimal() {
+number.is-decimal() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -103,9 +103,9 @@ number__is-decimal() {
 # @exitcode 1 The value is not a number.
 # @exitcode 64 The argument count is not one.
 # @example
-#   number__is-number abc || printf 'not a number\n'
+#   number.is-number abc || printf 'not a number\n'
 #   # not a number
-number__is-number() {
+number.is-number() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi

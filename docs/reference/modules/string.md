@@ -8,43 +8,43 @@ Each function reads its input from arguments and writes the result to standard o
 
 ## Index
 
-* [string__trim](#string__trim)
-* [string__collapse-whitespace](#string__collapse-whitespace)
-* [string__split](#string__split)
-* [string__lower](#string__lower)
-* [string__upper](#string__upper)
-* [string__swap-case](#string__swap-case)
-* [string__lower-first](#string__lower-first)
-* [string__upper-first](#string__upper-first)
-* [string__strip-surrounding-quotes](#string__strip-surrounding-quotes)
-* [string__remove-all-matches](#string__remove-all-matches)
-* [string__remove-first-match](#string__remove-first-match)
-* [string__remove-prefix](#string__remove-prefix)
-* [string__remove-suffix](#string__remove-suffix)
-* [string__encode-url](#string__encode-url)
-* [string__decode-url](#string__decode-url)
-* [string__contains](#string__contains)
-* [string__starts-with](#string__starts-with)
-* [string__ends-with](#string__ends-with)
-* [string__join](#string__join)
-* [string__byte-length](#string__byte-length)
-* [string__length](#string__length)
-* [string__replace-first](#string__replace-first)
-* [string__replace-all](#string__replace-all)
-* [string__replace-last](#string__replace-last)
-* [string__require-non-empty](#string__require-non-empty)
-* [string__require-empty](#string__require-empty)
-* [string__require-allowed](#string__require-allowed)
-* [string__slice](#string__slice)
+* [string.trim](#stringtrim)
+* [string.collapse-whitespace](#stringcollapse-whitespace)
+* [string.split](#stringsplit)
+* [string.lower](#stringlower)
+* [string.upper](#stringupper)
+* [string.swap-case](#stringswap-case)
+* [string.lower-first](#stringlower-first)
+* [string.upper-first](#stringupper-first)
+* [string.strip-surrounding-quotes](#stringstrip-surrounding-quotes)
+* [string.remove-all-matches](#stringremove-all-matches)
+* [string.remove-first-match](#stringremove-first-match)
+* [string.remove-prefix](#stringremove-prefix)
+* [string.remove-suffix](#stringremove-suffix)
+* [string.encode-url](#stringencode-url)
+* [string.decode-url](#stringdecode-url)
+* [string.contains](#stringcontains)
+* [string.starts-with](#stringstarts-with)
+* [string.ends-with](#stringends-with)
+* [string.join](#stringjoin)
+* [string.byte-length](#stringbyte-length)
+* [string.length](#stringlength)
+* [string.replace-first](#stringreplace-first)
+* [string.replace-all](#stringreplace-all)
+* [string.replace-last](#stringreplace-last)
+* [string.require-non-empty](#stringrequire-non-empty)
+* [string.require-empty](#stringrequire-empty)
+* [string.require-allowed](#stringrequire-allowed)
+* [string.slice](#stringslice)
 
-### string__trim
+### string.trim
 
 Remove leading and trailing whitespace.
 
 #### Example
 
 ```bash
-string__trim '  hello world  '
+string.trim '  hello world  '
 # hello world
 ```
 
@@ -61,14 +61,14 @@ string__trim '  hello world  '
 
 * The value without leading and trailing whitespace.
 
-### string__collapse-whitespace
+### string.collapse-whitespace
 
 Trim whitespace and collapse each interior run to one ASCII space.
 
 #### Example
 
 ```bash
-string__collapse-whitespace $'  a\t b   c '
+string.collapse-whitespace $'  a\t b   c '
 # a b c
 ```
 
@@ -85,14 +85,14 @@ string__collapse-whitespace $'  a\t b   c '
 
 * The trimmed value with single spaces between words.
 
-### string__split
+### string.split
 
 Split a value by a non-empty literal delimiter and preserve empty fields.
 
 #### Example
 
 ```bash
-string__split 'a,,b' ','
+string.split 'a,,b' ','
 # a
 #
 # b
@@ -112,7 +112,7 @@ string__split 'a,,b' ','
 
 * Each field on its own line, including empty fields.
 
-### string__lower
+### string.lower
 
 Convert ASCII uppercase letters to lowercase.
 
@@ -121,7 +121,7 @@ Letters outside ASCII are left unchanged, whatever the locale.
 #### Example
 
 ```bash
-string__lower 'Hello World'
+string.lower 'Hello World'
 # hello world
 ```
 
@@ -138,7 +138,7 @@ string__lower 'Hello World'
 
 * The converted value.
 
-### string__upper
+### string.upper
 
 Convert ASCII lowercase letters to uppercase.
 
@@ -147,7 +147,7 @@ Letters outside ASCII are left unchanged, whatever the locale.
 #### Example
 
 ```bash
-string__upper 'Hello World'
+string.upper 'Hello World'
 # HELLO WORLD
 ```
 
@@ -164,14 +164,14 @@ string__upper 'Hello World'
 
 * The converted value.
 
-### string__swap-case
+### string.swap-case
 
 Swap the case of every ASCII letter.
 
 #### Example
 
 ```bash
-string__swap-case 'Hello World'
+string.swap-case 'Hello World'
 # hELLO wORLD
 ```
 
@@ -188,14 +188,14 @@ string__swap-case 'Hello World'
 
 * The value with uppercase and lowercase ASCII letters swapped.
 
-### string__lower-first
+### string.lower-first
 
 Convert the first ASCII letter to lowercase when applicable.
 
 #### Example
 
 ```bash
-string__lower-first 'Hello'
+string.lower-first 'Hello'
 # hello
 ```
 
@@ -212,14 +212,14 @@ string__lower-first 'Hello'
 
 * The value with its first character lowercased when it is an ASCII letter.
 
-### string__upper-first
+### string.upper-first
 
 Convert the first ASCII letter to uppercase when applicable.
 
 #### Example
 
 ```bash
-string__upper-first 'hello'
+string.upper-first 'hello'
 # Hello
 ```
 
@@ -236,14 +236,14 @@ string__upper-first 'hello'
 
 * The value with its first character uppercased when it is an ASCII letter.
 
-### string__strip-surrounding-quotes
+### string.strip-surrounding-quotes
 
 Remove one matching pair of surrounding single or double quotes.
 
 #### Example
 
 ```bash
-string__strip-surrounding-quotes '"/opt/my app"'
+string.strip-surrounding-quotes '"/opt/my app"'
 # /opt/my app
 ```
 
@@ -260,14 +260,14 @@ string__strip-surrounding-quotes '"/opt/my app"'
 
 * The value without the surrounding pair, or the value unchanged.
 
-### string__remove-all-matches
+### string.remove-all-matches
 
 Remove every substring that matches a Bash pattern.
 
 #### Example
 
 ```bash
-string__remove-all-matches 'a1b2c3' '[0-9]'
+string.remove-all-matches 'a1b2c3' '[0-9]'
 # abc
 ```
 
@@ -285,14 +285,14 @@ string__remove-all-matches 'a1b2c3' '[0-9]'
 
 * The value without the matching substrings.
 
-### string__remove-first-match
+### string.remove-first-match
 
 Remove the first substring that matches a Bash pattern.
 
 #### Example
 
 ```bash
-string__remove-first-match 'a-b-c' '-'
+string.remove-first-match 'a-b-c' '-'
 # ab-c
 ```
 
@@ -310,14 +310,14 @@ string__remove-first-match 'a-b-c' '-'
 
 * The value without the first matching substring.
 
-### string__remove-prefix
+### string.remove-prefix
 
 Remove the longest prefix that matches a Bash pattern.
 
 #### Example
 
 ```bash
-string__remove-prefix '/usr/local/bin/node' '*/'
+string.remove-prefix '/usr/local/bin/node' '*/'
 # node
 ```
 
@@ -335,14 +335,14 @@ string__remove-prefix '/usr/local/bin/node' '*/'
 
 * The value without the longest matching prefix.
 
-### string__remove-suffix
+### string.remove-suffix
 
 Remove the longest suffix that matches a Bash pattern.
 
 #### Example
 
 ```bash
-string__remove-suffix 'archive.tar.gz' '.*'
+string.remove-suffix 'archive.tar.gz' '.*'
 # archive
 ```
 
@@ -360,7 +360,7 @@ string__remove-suffix 'archive.tar.gz' '.*'
 
 * The value without the longest matching suffix.
 
-### string__encode-url
+### string.encode-url
 
 Percent-encode a UTF-8 string byte by byte.
 
@@ -369,7 +369,7 @@ Unreserved characters (letters, digits, -, ., _, ~) are kept; every other byte i
 #### Example
 
 ```bash
-string__encode-url 'a b&c'
+string.encode-url 'a b&c'
 # a%20b%26c
 ```
 
@@ -386,14 +386,14 @@ string__encode-url 'a b&c'
 
 * The percent-encoded value.
 
-### string__decode-url
+### string.decode-url
 
 Decode percent-encoded bytes without translating plus signs.
 
 #### Example
 
 ```bash
-string__decode-url 'a%20b%26c'
+string.decode-url 'a%20b%26c'
 # a b&c
 ```
 
@@ -410,14 +410,14 @@ string__decode-url 'a%20b%26c'
 
 * The decoded value.
 
-### string__contains
+### string.contains
 
 Test whether a value contains a literal substring.
 
 #### Example
 
 ```bash
-string__contains "${PATH}" /usr/local/bin && printf 'on PATH\n'
+string.contains "${PATH}" /usr/local/bin && printf 'on PATH\n'
 ```
 
 #### Arguments
@@ -431,14 +431,14 @@ string__contains "${PATH}" /usr/local/bin && printf 'on PATH\n'
 * **1**: The value does not contain the substring.
 * **64**: The argument count is not two.
 
-### string__starts-with
+### string.starts-with
 
 Test whether a value starts with a literal prefix.
 
 #### Example
 
 ```bash
-string__starts-with "${url}" https:// || return 64
+string.starts-with "${url}" https:// || return 64
 ```
 
 #### Arguments
@@ -452,14 +452,14 @@ string__starts-with "${url}" https:// || return 64
 * **1**: The value does not start with the prefix.
 * **64**: The argument count is not two.
 
-### string__ends-with
+### string.ends-with
 
 Test whether a value ends with a literal suffix.
 
 #### Example
 
 ```bash
-string__ends-with "${file}" .tar.gz && tar -xzf "${file}"
+string.ends-with "${file}" .tar.gz && tar -xzf "${file}"
 ```
 
 #### Arguments
@@ -473,14 +473,14 @@ string__ends-with "${file}" .tar.gz && tar -xzf "${file}"
 * **1**: The value does not end with the suffix.
 * **64**: The argument count is not two.
 
-### string__join
+### string.join
 
 Join values with a literal delimiter.
 
 #### Example
 
 ```bash
-string__join , a b c
+string.join , a b c
 # a,b,c
 ```
 
@@ -498,14 +498,14 @@ string__join , a b c
 
 * The values joined by the delimiter, followed by a newline.
 
-### string__byte-length
+### string.byte-length
 
 Write the byte length of a value.
 
 #### Example
 
 ```bash
-string__byte-length 'あ'
+string.byte-length 'あ'
 # 3
 ```
 
@@ -522,14 +522,14 @@ string__byte-length 'あ'
 
 * The number of bytes.
 
-### string__length
+### string.length
 
 Write the character length of a value in a UTF-8 locale.
 
 #### Example
 
 ```bash
-LC_ALL=C.UTF-8 string__length 'あい'
+LC_ALL=C.UTF-8 string.length 'あい'
 # 2
 ```
 
@@ -547,7 +547,7 @@ LC_ALL=C.UTF-8 string__length 'あい'
 
 * The number of characters.
 
-### string__replace-first
+### string.replace-first
 
 Replace the first substring that matches a Bash pattern.
 
@@ -557,7 +557,7 @@ where patsub_replacement is enabled.
 #### Example
 
 ```bash
-string__replace-first 'a-b-c' '-' '+'
+string.replace-first 'a-b-c' '-' '+'
 # a+b-c
 ```
 
@@ -576,7 +576,7 @@ string__replace-first 'a-b-c' '-' '+'
 
 * The value with the first match replaced.
 
-### string__replace-all
+### string.replace-all
 
 Replace every substring that matches a Bash pattern.
 
@@ -585,7 +585,7 @@ Backslashes and ampersands in the replacement are literal.
 #### Example
 
 ```bash
-string__replace-all 'a-b-c' '-' '+'
+string.replace-all 'a-b-c' '-' '+'
 # a+b+c
 ```
 
@@ -604,14 +604,14 @@ string__replace-all 'a-b-c' '-' '+'
 
 * The value with every match replaced.
 
-### string__replace-last
+### string.replace-last
 
 Replace the rightmost non-empty substring that matches a Bash pattern.
 
 #### Example
 
 ```bash
-string__replace-last 'a-b-c' '-' '+'
+string.replace-last 'a-b-c' '-' '+'
 # a-b+c
 ```
 
@@ -630,14 +630,14 @@ string__replace-last 'a-b-c' '-' '+'
 
 * The value with the last match replaced.
 
-### string__require-non-empty
+### string.require-non-empty
 
 Require a named value to be non-empty.
 
 #### Example
 
 ```bash
-string__require-non-empty USER_NAME "${user_name}" || return "$?"
+string.require-non-empty USER_NAME "${user_name}" || return "$?"
 ```
 
 #### Arguments
@@ -654,14 +654,14 @@ string__require-non-empty USER_NAME "${user_name}" || return "$?"
 
 * A message naming the value when it is empty.
 
-### string__require-empty
+### string.require-empty
 
 Require a named value to be empty.
 
 #### Example
 
 ```bash
-string__require-empty REMAINDER "${remainder}" || return "$?"
+string.require-empty REMAINDER "${remainder}" || return "$?"
 ```
 
 #### Arguments
@@ -678,14 +678,14 @@ string__require-empty REMAINDER "${remainder}" || return "$?"
 
 * A message naming the value when it is not empty.
 
-### string__require-allowed
+### string.require-allowed
 
 Require a named value to equal one of the allowed values.
 
 #### Example
 
 ```bash
-string__require-allowed SOURCE "${source}" os official || return "$?"
+string.require-allowed SOURCE "${source}" os official || return "$?"
 ```
 
 #### Arguments
@@ -703,14 +703,14 @@ string__require-allowed SOURCE "${source}" os official || return "$?"
 
 * A message listing the allowed values when the value is not one of them.
 
-### string__slice
+### string.slice
 
 Write a validated character range from a UTF-8 string.
 
 #### Example
 
 ```bash
-LC_ALL=C.UTF-8 string__slice 'こんにちは' 1 3
+LC_ALL=C.UTF-8 string.slice 'こんにちは' 1 3
 # んに
 ```
 

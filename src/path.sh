@@ -14,9 +14,9 @@
 # @exitcode 0 The directory was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   path__directory-name /usr/local/bin/node
+#   path.directory-name /usr/local/bin/node
 #   # /usr/local/bin
-path__directory-name() {
+path.directory-name() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -53,9 +53,9 @@ path__directory-name() {
 # @exitcode 0 The name was written.
 # @exitcode 64 The argument count is not one or two.
 # @example
-#   path__base-name /tmp/archive.tar.gz .tar.gz
+#   path.base-name /tmp/archive.tar.gz .tar.gz
 #   # archive
-path__base-name() {
+path.base-name() {
   if [[ "$#" -lt 1 || "$#" -gt 2 ]]; then
     return 64
   fi
@@ -77,7 +77,7 @@ path__base-name() {
     name="${path##*/}"
   fi
 
-  if [[ "$#" -eq 2 && -n "${suffix}" ]] && string__ends-with "${name}" "${suffix}"; then
+  if [[ "$#" -eq 2 && -n "${suffix}" ]] && string.ends-with "${name}" "${suffix}"; then
     name="${name:0:$((${#name} - ${#suffix}))}"
   fi
   printf '%s\n' "${name}"
@@ -92,8 +92,8 @@ path__base-name() {
 # @exitcode 1 The path is not a directory or does not exist.
 # @exitcode 64 The argument count is not one.
 # @example
-#   path__is-directory "${HOME}/.ssh" || mkdir -m 700 "${HOME}/.ssh"
-path__is-directory() {
+#   path.is-directory "${HOME}/.ssh" || mkdir -m 700 "${HOME}/.ssh"
+path.is-directory() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -109,8 +109,8 @@ path__is-directory() {
 # @exitcode 1 The path is not a directory or has entries.
 # @exitcode 64 The argument count is not one.
 # @example
-#   path__is-empty-directory build && rmdir build
-path__is-empty-directory() {
+#   path.is-empty-directory build && rmdir build
+path.is-empty-directory() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -133,8 +133,8 @@ path__is-empty-directory() {
 # @exitcode 1 The path cannot be executed or does not exist.
 # @exitcode 64 The argument count is not one.
 # @example
-#   path__is-executable "${HOME}/.local/bin/android"
-path__is-executable() {
+#   path.is-executable "${HOME}/.local/bin/android"
+path.is-executable() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -148,8 +148,8 @@ path__is-executable() {
 # @exitcode 1 The path is not an executable regular file.
 # @exitcode 64 The argument count is not one.
 # @example
-#   path__is-executable-file ./gradlew && ./gradlew build
-path__is-executable-file() {
+#   path.is-executable-file ./gradlew && ./gradlew build
+path.is-executable-file() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -163,8 +163,8 @@ path__is-executable-file() {
 # @exitcode 1 The path is not a regular file or does not exist.
 # @exitcode 64 The argument count is not one.
 # @example
-#   path__is-regular-file "${HOME}/.env" && env__dotenv__import "${HOME}/.env"
-path__is-regular-file() {
+#   path.is-regular-file "${HOME}/.env" && env.dotenv.import "${HOME}/.env"
+path.is-regular-file() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -178,8 +178,8 @@ path__is-regular-file() {
 # @exitcode 1 The path is not a symbolic link.
 # @exitcode 64 The argument count is not one.
 # @example
-#   path__is-symbolic-link "${HOME}/Desktop" && readlink "${HOME}/Desktop"
-path__is-symbolic-link() {
+#   path.is-symbolic-link "${HOME}/Desktop" && readlink "${HOME}/Desktop"
+path.is-symbolic-link() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -193,8 +193,8 @@ path__is-symbolic-link() {
 # @exitcode 1 The path is not readable or does not exist.
 # @exitcode 64 The argument count is not one.
 # @example
-#   path__is-readable /etc/os-release && . /etc/os-release
-path__is-readable() {
+#   path.is-readable /etc/os-release && . /etc/os-release
+path.is-readable() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -208,8 +208,8 @@ path__is-readable() {
 # @exitcode 1 The path is not writable or does not exist.
 # @exitcode 64 The argument count is not one.
 # @example
-#   path__is-writable /etc/hosts || command__run-as-root cp hosts /etc/hosts
-path__is-writable() {
+#   path.is-writable /etc/hosts || command.run-as-root cp hosts /etc/hosts
+path.is-writable() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -226,8 +226,8 @@ path__is-writable() {
 # @exitcode 64 The path is empty, or the argument count is not one.
 # @exitcode 66 The path does not exist.
 # @example
-#   [[ "$(path__mode "${HOME}/.ssh")" == 700 ]] || chmod 700 "${HOME}/.ssh"
-path__mode() {
+#   [[ "$(path.mode "${HOME}/.ssh")" == 700 ]] || chmod 700 "${HOME}/.ssh"
+path.mode() {
   if [[ "$#" -ne 1 || -z "$1" ]]; then
     return 64
   fi
@@ -235,7 +235,7 @@ path__mode() {
     return 66
   fi
 
-  _platform__path-mode "$1"
+  _platform.path-mode "$1"
 }
 
 # @description Write the extension of the final path component.
@@ -247,15 +247,15 @@ path__mode() {
 # @exitcode 0 The extension was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   path__extension /tmp/archive.tar.gz
+#   path.extension /tmp/archive.tar.gz
 #   # .gz
-path__extension() {
+path.extension() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
 
   local name=''
-  name="$(path__base-name "$1")" || return "$?"
+  name="$(path.base-name "$1")" || return "$?"
 
   case "${name}" in
     '' | '/' | '.' | '..')
@@ -287,9 +287,9 @@ path__extension() {
 # @exitcode 0 The path was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   path__normalize /usr//local/./lib/../bin
+#   path.normalize /usr//local/./lib/../bin
 #   # /usr/local/bin
-path__normalize() {
+path.normalize() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -361,9 +361,9 @@ path__normalize() {
 # @exitcode 0 The relative path was written.
 # @exitcode 64 One path is absolute and the other is relative, or the argument count is not two.
 # @example
-#   path__relative /usr/local/bin /usr/share/doc
+#   path.relative /usr/local/bin /usr/share/doc
 #   # ../../share/doc
-path__relative() {
+path.relative() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -380,8 +380,8 @@ path__relative() {
   local index=''
   local result=''
 
-  from="$(path__normalize "$1")" || return "$?"
-  to="$(path__normalize "$2")" || return "$?"
+  from="$(path.normalize "$1")" || return "$?"
+  to="$(path.normalize "$2")" || return "$?"
   [[ "${from}" == /* ]] && from_absolute='1'
   [[ "${to}" == /* ]] && to_absolute='1'
   if [[ "${from_absolute}" -ne "${to_absolute}" ]]; then
@@ -453,15 +453,15 @@ path__relative() {
 # @exitcode 0 The directory was written.
 # @exitcode 64 An argument was given, or XDG_CONFIG_HOME or HOME is not an absolute path.
 # @example
-#   mkdir -p "$(path__config-home)/mozc"
-path__config-home() {
+#   mkdir -p "$(path.config-home)/mozc"
+path.config-home() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
 
   if [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
     if [[ "${XDG_CONFIG_HOME}" != /* ]] ||
-      ! _string__require-one-line "${XDG_CONFIG_HOME}"; then
+      ! _string.require-one-line "${XDG_CONFIG_HOME}"; then
       return 64
     fi
     printf '%s\n' "${XDG_CONFIG_HOME}"
@@ -469,7 +469,7 @@ path__config-home() {
   fi
 
   if [[ -z "${HOME:-}" || "${HOME}" != /* ]] ||
-    ! _string__require-one-line "${HOME:-}"; then
+    ! _string.require-one-line "${HOME:-}"; then
     return 64
   fi
   printf '%s/.config\n' "${HOME%/}"
@@ -488,37 +488,37 @@ path__config-home() {
 # @exitcode 66 The directory does not exist or is a symbolic link.
 # @exitcode other The status of the root helper.
 # @example
-#   path__change-owner-recursively /srv/app deploy
-path__change-owner-recursively() {
+#   path.change-owner-recursively /srv/app deploy
+path.change-owner-recursively() {
   if [[ "$#" -lt 2 || "$#" -gt 3 ]]; then
     return 64
   fi
   if [[ ! -d "$1" || -L "$1" ]]; then
     return 66
   fi
-  if ! _string__require-non-empty-line "$2"; then
+  if ! _string.require-non-empty-line "$2"; then
     return 64
   fi
-  if [[ "$#" -eq 3 ]] && ! _string__require-non-empty-line "$3"; then
+  if [[ "$#" -eq 3 ]] && ! _string.require-non-empty-line "$3"; then
     return 64
   fi
 
-  _path__validate-ownership "$@" || return "$?"
-  _bashstock__run-as-root change-owner-recursively "$@"
+  _path.validate-ownership "$@" || return "$?"
+  _bashstock.run-as-root change-owner-recursively "$@"
 }
 
 # @description Validate a directory and its requested owner and group.
 # @internal
-_path__validate-ownership() {
+_path.validate-ownership() {
   if [[ "$#" -lt 2 || "$#" -gt 3 ]]; then return 64; fi
   if [[ ! -d "$1" || -L "$1" ]]; then return 66; fi
-  _string__require-non-empty-line "$2" || return "$?"
-  if [[ "$#" -eq 3 ]]; then _string__require-non-empty-line "$3" || return "$?"; fi
+  _string.require-non-empty-line "$2" || return "$?"
+  if [[ "$#" -eq 3 ]]; then _string.require-non-empty-line "$3" || return "$?"; fi
 }
 
 # @description Change directory ownership recursively in a separate root process.
 #
-# Same as path__change-owner-recursively; the name states that root is used.
+# Same as path.change-owner-recursively; the name states that root is used.
 #
 # @arg $1 string Existing directory; a symbolic link is refused.
 # @arg $2 string New owner name.
@@ -528,10 +528,10 @@ _path__validate-ownership() {
 # @exitcode 66 The directory does not exist or is a symbolic link.
 # @exitcode other The status of the root helper.
 # @example
-#   path__change-owner-recursively-as-root /srv/app deploy www-data
-path__change-owner-recursively-as-root() {
-  _path__validate-ownership "$@" || return "$?"
-  _bashstock__run-as-root change-owner-recursively "$@"
+#   path.change-owner-recursively-as-root /srv/app deploy www-data
+path.change-owner-recursively-as-root() {
+  _path.validate-ownership "$@" || return "$?"
+  _bashstock.run-as-root change-owner-recursively "$@"
 }
 
 # @description Write the paths below a directory that match a case-insensitive Bash ERE, separated by NUL.
@@ -544,8 +544,8 @@ path__change-owner-recursively-as-root() {
 # @exitcode 64 The arguments are invalid or the expression is not valid.
 # @exitcode 66 The directory does not exist.
 # @example
-#   path__find '\.(jpe?g|png)$' "${HOME}/Pictures" | xargs -0 ls -l
-path__find() {
+#   path.find '\.(jpe?g|png)$' "${HOME}/Pictures" | xargs -0 ls -l
+path.find() {
   [[ "$#" -ge 1 && "$#" -le 2 && -n "$1" ]] || return 64
   local expression="$1" directory="${2:-.}" path='' found=1 status=0
   [[ -d "${directory}" ]] || return 66

@@ -37,15 +37,15 @@ Ubuntuの対象は18.04、20.04、22.04、24.04、26.04と、それ以降のLTS�
 
 対話型Bashでは、最初の読み込み時にTab補完を自動で登録します。
 非対話型Bashでは自動登録しません。
-読み込み後に補完用の関数を定義した場合は、`arg__completion__register-all`を呼び出して登録できます。
+読み込み後に補完用の関数を定義した場合は、`arg.completion.register-all`を呼び出して登録できます。
 
 ## 公開関数の名前空間
 
-公開関数は`domain__action`または`domain__category__action`のどちらかで命名します。
-名前空間の各要素と関数名には小文字の`kebab-case`を使用し、要素の間を`__`（アンダースコア2個）で区切ります。
+公開関数は`domain.action`または`domain.category.action`のどちらかで命名します。
+名前空間の各要素と関数名には小文字の`kebab-case`を使用し、要素の間を`.`で区切ります。
 
 区切りに`::`を使用しない理由は、Bashの補完が`COMP_WORDBREAKS`に含まれる`:`で単語を分割し、関数名の補完で`:`をエスケープして、それ以降の補完が働かなくなるためです。
-`__`は単語の区切りに含まれないため、名前空間を含む関数名を先頭から補完できます。
+`.`は単語の区切りに含まれないため、名前空間を含む関数名を先頭から補完できます。
 
 `domain`は、関数が主に扱う値、資源、または機能を単数形の名詞で表します。
 `action`は、処理を表す動詞句、述語、または取得する値を表す名詞句です。
@@ -58,36 +58,36 @@ Ubuntuの対象は18.04、20.04、22.04、24.04、26.04と、それ以降のLTS�
 
 | 関数 | 区切り方 |
 | --- | --- |
-| `string__upper` | 文字列そのものを変換するため、`string`の直下に置きます。 |
-| `path__config-home` | パスとして返す一つの値を表すため、`path`の直下に置きます。 |
-| `git__commit__edit-via-rebase` | Gitが所有するコミットを操作し、ブランチ、差分、stashとは異なる語彙を持つため、`commit`を下位概念にします。 |
-| `arg__completion__dispatch` | 引数処理が所有する補完機構を操作するため、`completion`を下位概念にします。 |
+| `string.upper` | 文字列そのものを変換するため、`string`の直下に置きます。 |
+| `path.config-home` | パスとして返す一つの値を表すため、`path`の直下に置きます。 |
+| `git.commit.edit-via-rebase` | Gitが所有するコミットを操作し、ブランチ、差分、stashとは異なる語彙を持つため、`commit`を下位概念にします。 |
+| `arg.completion.dispatch` | 引数処理が所有する補完機構を操作するため、`completion`を下位概念にします。 |
 
 ### 関数名
 
 | 種類 | 規則 | 例 |
 | --- | --- | --- |
-| 値の取得 | `get-`を付けず、値を表す名詞句を使用します。 | `system__host-name` |
-| 状態の述語 | `is-`で始め、終了状態で真偽を返します。 | `path__is-directory` |
-| 存在の述語 | `exists`を使用します。 | `command__exists` |
-| 関係の述語 | 関係を表す動詞を使用します。 | `array__contains` |
-| 変換 | 動詞を先頭に置きます。 | `string__encode-url` |
-| 数量 | 要素数と文字数には`length`、バイト数には`byte-length`を使用します。 | `string__byte-length` |
-| 複数結果 | 複数形を使用します。 | `regex__capture-groups` |
-| 単位 | 単位を省略せず複数形で記載します。 | `time__unix-milliseconds` |
+| 値の取得 | `get-`を付けず、値を表す名詞句を使用します。 | `system.host-name` |
+| 状態の述語 | `is-`で始め、終了状態で真偽を返します。 | `path.is-directory` |
+| 存在の述語 | `exists`を使用します。 | `command.exists` |
+| 関係の述語 | 関係を表す動詞を使用します。 | `array.contains` |
+| 変換 | 動詞を先頭に置きます。 | `string.encode-url` |
+| 数量 | 要素数と文字数には`length`、バイト数には`byte-length`を使用します。 | `string.byte-length` |
+| 複数結果 | 複数形を使用します。 | `regex.capture-groups` |
+| 単位 | 単位を省略せず複数形で記載します。 | `time.unix-milliseconds` |
 
 ## 内部関数
 
-Bashには関数の可視性を制限する仕組みがないため、内部関数は名前の先頭に`_`を付けます。
+Bashには関数の可視性を制限する仕組みがないため、内部関数は最上位の名前空間の先頭に`_`を付けます。
 先頭の`_`により、公開関数の名前空間を入力してTab補完したときに内部関数は候補に含まれません。
 公開関数へ従属する内部関数は、公開関数と同じ名前空間に置き、`_<公開関数名>-<役割>`と命名します。
 
 | 用途 | 公開関数 | 内部関数 |
 | --- | --- | --- |
-| 名前付き引数の補完 | `user__create` | `_user__create-args` |
-| 下位名前空間にある関数の補完 | `git__commit__edit-via-rebase` | `_git__commit__edit-via-rebase-args` |
-| 一つの公開関数に従属する検査 | `file__replace-text` | `_file__replace-text-validate` |
-| 名前空間内で共有する検査 | 対象外 | `_file__validate-regular-file` |
+| 名前付き引数の補完 | `user.create` | `_user.create-args` |
+| 下位名前空間にある関数の補完 | `git.commit.edit-via-rebase` | `_git.commit.edit-via-rebase-args` |
+| 一つの公開関数に従属する検査 | `file.replace-text` | `_file.replace-text-validate` |
+| 名前空間内で共有する検査 | 対象外 | `_file.validate-regular-file` |
 
 内部関数は公開APIの互換性保証に含めません。
 
@@ -104,9 +104,9 @@ Docコメントは`# @description`で始まり、関数定義の行まで空行�
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string__trim '  hello world  '
+#   string.trim '  hello world  '
 #   # hello world
-string__trim() {
+string.trim() {
 ```
 
 公開関数は次のタグを持ちます。
@@ -129,7 +129,7 @@ Docコメントに`TODO`は残しません。
 
 `scripts/docs`は、Docコメントから`docs/reference/functions.md`と`docs/reference/modules/`を生成します。
 `scripts/docs --check`は生成結果とcommit済みのファイルを比較し、`scripts/lint`から実行されます。
-読み込んだ関数のDocコメントは、`help__show 関数名`で端末に表示できます。
+読み込んだ関数のDocコメントは、`help.show 関数名`で端末に表示できます。
 
 ## 入出力
 
@@ -160,16 +160,16 @@ Docコメントに`TODO`は残しません。
 
 | 関数 | 正規表現 | 評価範囲 |
 | --- | --- | --- |
-| `regex__is-match` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 入力文字列 |
-| `regex__capture-group` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 入力文字列 |
-| `regex__capture-groups` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 入力文字列 |
-| `file__contains-match` | Pythonの`re`が解釈する正規表現 | ファイルの各行 |
-| `file__replace-text` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の最初の一致 |
-| `file__replace-text-as-root` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の最初の一致 |
-| `file__replace-text-in-files` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各ファイルの各行にある最初の一致 |
-| `file__replace-text-in-files-as-root` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各ファイルの各行にある最初の一致 |
-| `file__replace-or-append-text` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の最初の一致 |
-| `file__replace-or-append-text-as-root` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の最初の一致 |
+| `regex.is-match` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 入力文字列 |
+| `regex.capture-group` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 入力文字列 |
+| `regex.capture-groups` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 入力文字列 |
+| `file.contains-match` | Pythonの`re`が解釈する正規表現 | ファイルの各行 |
+| `file.replace-text` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の最初の一致 |
+| `file.replace-text-as-root` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の最初の一致 |
+| `file.replace-text-in-files` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各ファイルの各行にある最初の一致 |
+| `file.replace-text-in-files-as-root` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各ファイルの各行にある最初の一致 |
+| `file.replace-or-append-text` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の最初の一致 |
+| `file.replace-or-append-text-as-root` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の最初の一致 |
 
 ファイル置換関数は置換値をリテラル文字列として扱います。
 
@@ -179,13 +179,13 @@ Docコメントに`TODO`は残しません。
 一時的な設定は関数のローカル変数またはサブシェルへ閉じ込めます。
 `BASH_REMATCH`は関数内の`local`では保護できないため、正規表現の判定は`( [[ ... =~ ... ]] )`のサブシェルで行います。`scripts/lint`がこの書き方を検査します。
 
-Tab補完の登録は、対話型Bashでの初回読み込み時、または`arg__completion__register-all`を明示的に呼び出した場合に実行します。
+Tab補完の登録は、対話型Bashでの初回読み込み時、または`arg.completion.register-all`を明示的に呼び出した場合に実行します。
 ライブラリは呼び出し元の`set -e`、`set -u`、`pipefail`を変更せず、失敗を終了状態で返します。
 
 ## ファイル更新と権限
 
 通常権限と管理者権限のどちらでも実行できる操作では、管理者権限を使う公開関数を`-as-root`で終わる名前にします。
-管理者権限を使う関数は、`command__run-as-root`から現在のBash実行ファイルを起動し、読み込み時に記録した`bashstock.sh`の絶対パス、`--internal-root`、操作名、引数を渡します。
+管理者権限を使う関数は、`command.run-as-root`から現在のBash実行ファイルを起動し、読み込み時に記録した`bashstock.sh`の絶対パス、`--internal-root`、操作名、引数を渡します。
 同じ配布ファイルを別プロセスで実行するため、配布ファイル自体の実行権限は必要ありません。
 
 実行側は、許可された操作名を固定の一覧で確認し、root権限を確認してから処理を実行します。

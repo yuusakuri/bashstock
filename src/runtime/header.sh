@@ -2,7 +2,7 @@
 
 # Only a completed load in this shell can bypass library initialization.
 if [[ "${BASH_SOURCE[0]}" != "${0}" && "${_BASHSTOCK_LOADED:-}" == '1' ]] &&
-  declare -F _bashstock__run-as-root >/dev/null; then
+  declare -F _bashstock.run-as-root >/dev/null; then
   return 0
 fi
 

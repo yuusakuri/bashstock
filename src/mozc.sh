@@ -13,8 +13,8 @@
 # @exitcode 69 mozc_tool is unavailable.
 # @exitcode other The status of mozc_tool.
 # @example
-#   mozc__config__open
-mozc__config__open() {
+#   mozc.config.open
+mozc.config.open() {
   [[ "$#" -eq 0 ]] || return 64
   local tool=''
   for tool in /usr/lib/mozc/mozc_tool /usr/libexec/mozc/mozc_tool /usr/lib64/mozc/mozc_tool; do
@@ -23,16 +23,16 @@ mozc__config__open() {
       return
     fi
   done
-  command__require mozc_tool || return "$?"
+  command.require mozc_tool || return "$?"
   mozc_tool --mode=config_dialog
 }
 
 # @description Write the platform package name for a Mozc component.
 # @internal
-_mozc__package-name() {
+_mozc.package-name() {
   [[ "$#" -eq 1 ]] || return 64
   local platform=''
-  platform="$(_package__platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   case "${platform}:$1" in
     ubuntu:server) printf 'mozc-server\n' ;;
     ubuntu:ibus) printf 'ibus-mozc\n' ;;
@@ -41,7 +41,7 @@ _mozc__package-name() {
     fedora:ibus) printf 'ibus-mozc\n' ;;
     fedora:tool) printf 'mozc\n' ;;
     *)
-      _console__write-error "Mozc packages are unavailable on ${platform}."
+      _console.write-error "Mozc packages are unavailable on ${platform}."
       return 69
       ;;
   esac
@@ -55,31 +55,31 @@ _mozc__package-name() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 The platform is unsupported.
 # @example
-#   mozc__server__versions
-mozc__server__versions() {
+#   mozc.server.versions
+mozc.server.versions() {
   [[ "$#" -eq 0 ]] || return 64
   local package=''
-  package="$(_mozc__package-name server)" || return "$?"
-  _package__versions "${package}"
+  package="$(_mozc.package-name server)" || return "$?"
+  _package.versions "${package}"
 }
 
 # @description Install the Mozc server, defaulting to the newest version for the running release.
 #
-# @arg $1 string Optional version from mozc__server__versions. Defaults to the newest one.
+# @arg $1 string Optional version from mozc.server.versions. Defaults to the newest one.
 # @exitcode 0 The Mozc server is installed.
 # @exitcode 64 The argument count is wrong.
 # @exitcode 69 The platform is unsupported, or the version is unavailable.
 # @exitcode other The status of the package manager.
 # @example
-#   mozc__server__install
-mozc__server__install() {
+#   mozc.server.install
+mozc.server.install() {
   [[ "$#" -le 1 ]] || return 64
   local package='' version="${1:-}"
-  package="$(_mozc__package-name server)" || return "$?"
+  package="$(_mozc.package-name server)" || return "$?"
   if [[ -z "${version}" ]]; then
-    version="$(_package__latest-version "${package}")" || return "$?"
+    version="$(_package.latest-version "${package}")" || return "$?"
   fi
-  _package__install "${package}=${version}"
+  _package.install "${package}=${version}"
 }
 
 # @description Write IBus Mozc versions provided for the running operating-system release.
@@ -90,42 +90,42 @@ mozc__server__install() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 The platform is unsupported.
 # @example
-#   mozc__ibus__versions
-mozc__ibus__versions() {
+#   mozc.ibus.versions
+mozc.ibus.versions() {
   [[ "$#" -eq 0 ]] || return 64
   local package=''
-  package="$(_mozc__package-name ibus)" || return "$?"
-  _package__versions "${package}"
+  package="$(_mozc.package-name ibus)" || return "$?"
+  _package.versions "${package}"
 }
 
 # @description Install IBus Mozc and the Mozc server of the same version.
 #
-# @arg $1 string Optional version from mozc__ibus__versions. Defaults to the newest one.
+# @arg $1 string Optional version from mozc.ibus.versions. Defaults to the newest one.
 # @exitcode 0 IBus Mozc, and the server of the same version when provided, are installed.
 # @exitcode 64 The argument count is wrong.
 # @exitcode 69 The platform is unsupported, or the version is unavailable.
 # @exitcode other The status of the package manager.
 # @example
-#   mozc__ibus__install
-mozc__ibus__install() {
+#   mozc.ibus.install
+mozc.ibus.install() {
   [[ "$#" -le 1 ]] || return 64
   local package='' server='' version="${1:-}"
-  package="$(_mozc__package-name ibus)" || return "$?"
-  server="$(_mozc__package-name server)" || return "$?"
+  package="$(_mozc.package-name ibus)" || return "$?"
+  server="$(_mozc.package-name server)" || return "$?"
   if [[ -z "${version}" ]]; then
-    version="$(_package__latest-version "${package}")" || return "$?"
+    version="$(_package.latest-version "${package}")" || return "$?"
   fi
-  if _package__versions "${server}" 2>/dev/null | grep -Fqx -- "${version}"; then
-    _package__install "${package}=${version}" "${server}=${version}"
+  if _package.versions "${server}" 2>/dev/null | grep -Fqx -- "${version}"; then
+    _package.install "${package}=${version}" "${server}=${version}"
   else
-    _package__install "${package}=${version}"
+    _package.install "${package}=${version}"
   fi
 }
 
 # @description Install IBus Mozc on Ubuntu, or upgrade it when the release offers a newer version.
 #
-# The newest version from mozc__ibus__versions is installed through
-# mozc__ibus__install, with the Mozc server of the same version when the
+# The newest version from mozc.ibus.versions is installed through
+# mozc.ibus.install, with the Mozc server of the same version when the
 # release provides it. An installed version at least as new is kept, so a
 # newer version is never downgraded. Fedora is not supported yet.
 #
@@ -136,25 +136,25 @@ mozc__ibus__install() {
 # @exitcode 69 The system is not Ubuntu, or the release provides no IBus Mozc version.
 # @exitcode other The status of the package manager.
 # @example
-#   mozc__ibus__upgrade
-mozc__ibus__upgrade() {
+#   mozc.ibus.upgrade
+mozc.ibus.upgrade() {
   [[ "$#" -eq 0 ]] || return 64
-  _package__require-platform ubuntu || return "$?"
+  _package.require-platform ubuntu || return "$?"
   local record='' installed='' versions='' latest=''
   record="$(dpkg-query -W -f='${Status}\t${Version}' ibus-mozc 2>/dev/null)" || record=''
   if [[ "${record}" == 'install ok installed'* ]]; then
     installed="${record#*$'\t'}"
   fi
-  versions="$(mozc__ibus__versions)" || return "$?"
+  versions="$(mozc.ibus.versions)" || return "$?"
   latest="${versions##*$'\n'}"
   if [[ -z "${latest}" ]]; then
-    _console__write-error 'This release provides no IBus Mozc version.'
+    _console.write-error 'This release provides no IBus Mozc version.'
     return 69
   fi
   if [[ -n "${installed}" ]] && dpkg --compare-versions "${installed}" ge "${latest}"; then
     return 0
   fi
-  mozc__ibus__install "${latest}"
+  mozc.ibus.install "${latest}"
 }
 
 # @description Write Mozc GUI tool versions provided for the running operating-system release.
@@ -165,29 +165,29 @@ mozc__ibus__upgrade() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 The platform is unsupported.
 # @example
-#   mozc__tool__versions
-mozc__tool__versions() {
+#   mozc.tool.versions
+mozc.tool.versions() {
   [[ "$#" -eq 0 ]] || return 64
   local package=''
-  package="$(_mozc__package-name tool)" || return "$?"
-  _package__versions "${package}"
+  package="$(_mozc.package-name tool)" || return "$?"
+  _package.versions "${package}"
 }
 
 # @description Install the Mozc GUI tools.
 #
-# @arg $1 string Optional version from mozc__tool__versions. Defaults to the newest one.
+# @arg $1 string Optional version from mozc.tool.versions. Defaults to the newest one.
 # @exitcode 0 The Mozc GUI tools are installed.
 # @exitcode 64 The argument count is wrong.
 # @exitcode 69 The platform is unsupported, or the version is unavailable.
 # @exitcode other The status of the package manager.
 # @example
-#   mozc__tool__install
-#   mozc__config__open
-mozc__tool__install() {
+#   mozc.tool.install
+#   mozc.config.open
+mozc.tool.install() {
   [[ "$#" -le 1 ]] || return 64
   local package=''
-  package="$(_mozc__package-name tool)" || return "$?"
-  _package__install-version "${package}" "${1:-}"
+  package="$(_mozc.package-name tool)" || return "$?"
+  _package.install-version "${package}" "${1:-}"
 }
 
 # @description Make sure the Mozc IBus configuration lists Mozc's engines.
@@ -201,7 +201,7 @@ mozc__tool__install() {
 # @internal
 # @arg $1 string Configuration file.
 # @arg $2 string Optional IBus component file. Defaults to /usr/share/ibus/component/mozc.xml.
-_mozc__ibus__ensure-engines() {
+_mozc.ibus.ensure-engines() {
   [[ ( "$#" -eq 1 || "$#" -eq 2 ) && -n "$1" ]] || return 64
   local file="$1" component="${2:-/usr/share/ibus/component/mozc.xml}" command=''
   local words=()
@@ -220,7 +220,7 @@ _mozc__ibus__ensure-engines() {
   fi
   [[ -f "${file}" ]] && return 0
   # shellcheck disable=SC2016 # Mozc's own comment quotes the commands literally.
-  file__write-text "${file}" '# `ibus write-cache; ibus restart` might be necessary to apply changes.
+  file.write-text "${file}" '# `ibus write-cache; ibus restart` might be necessary to apply changes.
 engines {
   name : "mozc-jp"
   longname : "Mozc"
@@ -247,17 +247,17 @@ active_on_launch: False
 # @exitcode 74 The configuration file could not be created.
 # @exitcode other The status of the settings update or ibus-daemon.
 # @example
-#   mozc__ibus__set-hiragana-as-default
-mozc__ibus__set-hiragana-as-default() {
+#   mozc.ibus.set-hiragana-as-default
+mozc.ibus.set-hiragana-as-default() {
   [[ "$#" -eq 0 ]] || return 64
   local file="${HOME}/.config/mozc/ibus_config.textproto"
-  mkdir -p -- "$(path__directory-name "${file}")" || return 74
-  _mozc__ibus__ensure-engines "${file}" || return "$?"
-  textproto__set-scalar "${file}" active_on_launch True || return "$?"
-  command__require ibus-daemon || return "$?"
+  mkdir -p -- "$(path.directory-name "${file}")" || return 74
+  _mozc.ibus.ensure-engines "${file}" || return "$?"
+  textproto.set-scalar "${file}" active_on_launch True || return "$?"
+  command.require ibus-daemon || return "$?"
   # IBus caches the engine list that Mozc reported, so a list read from an
   # incomplete configuration stays until the cache is written again.
-  if command__exists ibus; then
+  if command.exists ibus; then
     ibus write-cache >/dev/null 2>&1 || return "$?"
   fi
   ibus-daemon -rd

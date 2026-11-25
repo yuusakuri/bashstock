@@ -84,7 +84,7 @@ jobs:
       - name: Build the standalone library
         run: ./scripts/build
 
-      - name: Apply the mac__setup settings twice and read them back
+      - name: Apply the mac.setup settings twice and read them back
         shell: bash
         run: bash ./scripts/test-macos-preferences
 

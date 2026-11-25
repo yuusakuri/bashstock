@@ -8,18 +8,18 @@ Sessions are opened, attached to serial devices, and ended.
 
 ## Index
 
-* [screen__open](#screen__open)
-* [screen__open-serial](#screen__open-serial)
-* [screen__kill-all](#screen__kill-all)
+* [screen.open](#screenopen)
+* [screen.open-serial](#screenopen-serial)
+* [screen.kill-all](#screenkill-all)
 
-### screen__open
+### screen.open
 
 Open a GNU Screen session.
 
 #### Example
 
 ```bash
-screen__open build
+screen.open build
 ```
 
 #### Arguments
@@ -33,14 +33,14 @@ screen__open build
 * **69**: screen is unavailable.
 * other The status of screen.
 
-### screen__open-serial
+### screen.open-serial
 
 Open a serial device in GNU Screen through administrator execution and log the session.
 
 #### Example
 
 ```bash
-TTY_LOG_DIR="${HOME}/logs" screen__open-serial /dev/ttyUSB0
+TTY_LOG_DIR="${HOME}/logs" screen.open-serial /dev/ttyUSB0
 ```
 
 #### Arguments
@@ -57,7 +57,7 @@ TTY_LOG_DIR="${HOME}/logs" screen__open-serial /dev/ttyUSB0
 * **74**: The log directory could not be created.
 * other The status of screen.
 
-### screen__kill-all
+### screen.kill-all
 
 End every GNU Screen process of every user through administrator execution.
 
@@ -66,7 +66,7 @@ Having no Screen process is a success.
 #### Example
 
 ```bash
-screen__kill-all
+screen.kill-all
 ```
 
 _Function has no arguments._

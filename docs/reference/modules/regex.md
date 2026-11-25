@@ -8,18 +8,18 @@ Expressions use the POSIX extended syntax of the Bash =~ operator.
 
 ## Index
 
-* [regex__is-match](#regex__is-match)
-* [regex__capture-group](#regex__capture-group)
-* [regex__capture-groups](#regex__capture-groups)
+* [regex.is-match](#regexis-match)
+* [regex.capture-group](#regexcapture-group)
+* [regex.capture-groups](#regexcapture-groups)
 
-### regex__is-match
+### regex.is-match
 
 Test a value against a Bash POSIX extended regular expression.
 
 #### Example
 
 ```bash
-regex__is-match "${version}" '^[0-9]+\.[0-9]+\.[0-9]+$'
+regex.is-match "${version}" '^[0-9]+\.[0-9]+\.[0-9]+$'
 ```
 
 #### Arguments
@@ -33,14 +33,14 @@ regex__is-match "${version}" '^[0-9]+\.[0-9]+\.[0-9]+$'
 * **1**: The value does not match.
 * **64**: The expression is invalid, or the argument count is not two.
 
-### regex__capture-group
+### regex.capture-group
 
 Write one capture group from a Bash POSIX extended regular expression.
 
 #### Example
 
 ```bash
-regex__capture-group 'v1.22.3' '^v([0-9]+)\.([0-9]+)' 2
+regex.capture-group 'v1.22.3' '^v([0-9]+)\.([0-9]+)' 2
 # 22
 ```
 
@@ -60,14 +60,14 @@ regex__capture-group 'v1.22.3' '^v([0-9]+)\.([0-9]+)' 2
 
 * The captured text.
 
-### regex__capture-groups
+### regex.capture-groups
 
 Write all capture groups from a Bash POSIX extended regular expression.
 
 #### Example
 
 ```bash
-regex__capture-groups 'user@example.com' '^([^@]+)@(.+)$'
+regex.capture-groups 'user@example.com' '^([^@]+)@(.+)$'
 # user
 # example.com
 ```

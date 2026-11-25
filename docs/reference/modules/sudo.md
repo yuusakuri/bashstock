@@ -8,11 +8,11 @@ Rules are written as sudoers drop-in files after validation with visudo.
 
 ## Index
 
-* [sudo__start-keep-alive](#sudo__start-keep-alive)
-* [sudo__passwordless__enable](#sudo__passwordless__enable)
-* [sudo__passwordless__disable](#sudo__passwordless__disable)
+* [sudo.start-keep-alive](#sudostart-keep-alive)
+* [sudo.passwordless.enable](#sudopasswordlessenable)
+* [sudo.passwordless.disable](#sudopasswordlessdisable)
 
-### sudo__start-keep-alive
+### sudo.start-keep-alive
 
 Keep the sudo credentials of the calling process fresh in the background.
 
@@ -22,7 +22,7 @@ credentials every 60 seconds until the calling process exits.
 #### Example
 
 ```bash
-sudo__start-keep-alive && go__install && rust__install
+sudo.start-keep-alive && go.install && rust.install
 ```
 
 _Function has no arguments._
@@ -34,7 +34,7 @@ _Function has no arguments._
 * **69**: sudo is unavailable.
 * **77**: sudo authentication failed.
 
-### sudo__passwordless__enable
+### sudo.passwordless.enable
 
 Let a user run every command through sudo without entering a password.
 
@@ -49,7 +49,7 @@ removed and the function fails. Running it again rewrites the same file.
 #### Example
 
 ```bash
-sudo__passwordless__enable "$(id -un)"
+sudo.passwordless.enable "$(id -un)"
 ```
 
 #### Arguments
@@ -68,9 +68,9 @@ sudo__passwordless__enable "$(id -un)"
 
 * A message when the user does not exist or sudo does not apply the rule.
 
-### sudo__passwordless__disable
+### sudo.passwordless.disable
 
-Remove the passwordless sudo rule that sudo__passwordless__enable added.
+Remove the passwordless sudo rule that sudo.passwordless.enable added.
 
 Only the BashStock drop-in file of the user is removed, so sudo asks for
 the password again unless another sudoers rule also grants NOPASSWD. The
@@ -79,7 +79,7 @@ function succeeds when the file does not exist.
 #### Example
 
 ```bash
-sudo__passwordless__disable
+sudo.passwordless.disable
 ```
 
 #### Arguments

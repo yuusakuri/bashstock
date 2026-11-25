@@ -8,44 +8,44 @@ Functions select a device by serial number and wrap one adb or fastboot command 
 
 ## Index
 
-* [adb__device__wait](#adb__device__wait)
-* [adb__device__pull](#adb__device__pull)
-* [adb__device__push](#adb__device__push)
-* [adb__logcat__clear](#adb__logcat__clear)
-* [adb__logcat__once](#adb__logcat__once)
-* [adb__logcat__continuous](#adb__logcat__continuous)
-* [adb__device__reboot](#adb__device__reboot)
-* [adb__device__first](#adb__device__first)
-* [adb__device__list](#adb__device__list)
-* [adb__device__wait-for-path](#adb__device__wait-for-path)
-* [adb__device__screen__capture-once](#adb__device__screen__capture-once)
-* [adb__device__select-and-pull](#adb__device__select-and-pull)
-* [adb__device__bootloader__enter](#adb__device__bootloader__enter)
-* [adb__device__bootloader__unlock](#adb__device__bootloader__unlock)
-* [adb__device__verity__disable](#adb__device__verity__disable)
-* [adb__device__partition__remount](#adb__device__partition__remount)
-* [adb__device__build__fingerprint](#adb__device__build__fingerprint)
-* [adb__device__build__date](#adb__device__build__date)
-* [adb__device__slot__suffix](#adb__device__slot__suffix)
-* [adb__device__build__kernel-version](#adb__device__build__kernel-version)
-* [adb__device__screen__capture-continuous](#adb__device__screen__capture-continuous)
-* [adb__device__partition__sha256](#adb__device__partition__sha256)
-* [adb__wake__lock](#adb__wake__lock)
-* [adb__wake__unlock](#adb__wake__unlock)
-* [adb__wake__list](#adb__wake__list)
-* [adb__device__set-default](#adb__device__set-default)
-* [adb__server__start](#adb__server__start)
-* [adb__server__stop](#adb__server__stop)
-* [adb__server__restart](#adb__server__restart)
+* [adb.device.wait](#adbdevicewait)
+* [adb.device.pull](#adbdevicepull)
+* [adb.device.push](#adbdevicepush)
+* [adb.logcat.clear](#adblogcatclear)
+* [adb.logcat.once](#adblogcatonce)
+* [adb.logcat.continuous](#adblogcatcontinuous)
+* [adb.device.reboot](#adbdevicereboot)
+* [adb.device.first](#adbdevicefirst)
+* [adb.device.list](#adbdevicelist)
+* [adb.device.wait-for-path](#adbdevicewait-for-path)
+* [adb.device.screen.capture-once](#adbdevicescreencapture-once)
+* [adb.device.select-and-pull](#adbdeviceselect-and-pull)
+* [adb.device.bootloader.enter](#adbdevicebootloaderenter)
+* [adb.device.bootloader.unlock](#adbdevicebootloaderunlock)
+* [adb.device.verity.disable](#adbdeviceveritydisable)
+* [adb.device.partition.remount](#adbdevicepartitionremount)
+* [adb.device.build.fingerprint](#adbdevicebuildfingerprint)
+* [adb.device.build.date](#adbdevicebuilddate)
+* [adb.device.slot.suffix](#adbdeviceslotsuffix)
+* [adb.device.build.kernel-version](#adbdevicebuildkernel-version)
+* [adb.device.screen.capture-continuous](#adbdevicescreencapture-continuous)
+* [adb.device.partition.sha256](#adbdevicepartitionsha256)
+* [adb.wake.lock](#adbwakelock)
+* [adb.wake.unlock](#adbwakeunlock)
+* [adb.wake.list](#adbwakelist)
+* [adb.device.set-default](#adbdeviceset-default)
+* [adb.server.start](#adbserverstart)
+* [adb.server.stop](#adbserverstop)
+* [adb.server.restart](#adbserverrestart)
 
-### adb__device__wait
+### adb.device.wait
 
 Wait for an ADB device to connect, optionally selected with --serial.
 
 #### Example
 
 ```bash
-adb__device__wait --serial emulator-5554
+adb.device.wait --serial emulator-5554
 ```
 
 #### Options
@@ -61,14 +61,14 @@ adb__device__wait --serial emulator-5554
 * **69**: adb is unavailable.
 * other The status of adb wait-for-device.
 
-### adb__device__pull
+### adb.device.pull
 
 Copy files from an ADB device to the host.
 
 #### Example
 
 ```bash
-adb__device__pull /sdcard/DCIM/Camera ./camera --serial emulator-5554
+adb.device.pull /sdcard/DCIM/Camera ./camera --serial emulator-5554
 ```
 
 #### Options
@@ -88,14 +88,14 @@ adb__device__pull /sdcard/DCIM/Camera ./camera --serial emulator-5554
 * **69**: adb is unavailable.
 * other The status of adb pull.
 
-### adb__device__push
+### adb.device.push
 
 Copy files from the host to an ADB device.
 
 #### Example
 
 ```bash
-adb__device__push app-debug.apk /data/local/tmp/
+adb.device.push app-debug.apk /data/local/tmp/
 ```
 
 #### Options
@@ -115,14 +115,14 @@ adb__device__push app-debug.apk /data/local/tmp/
 * **69**: adb is unavailable.
 * other The status of adb push.
 
-### adb__logcat__clear
+### adb.logcat.clear
 
 Clear the selected device log buffers.
 
 #### Example
 
 ```bash
-adb__logcat__clear --serial emulator-5554
+adb.logcat.clear --serial emulator-5554
 ```
 
 #### Options
@@ -138,14 +138,14 @@ adb__logcat__clear --serial emulator-5554
 * **69**: adb is unavailable.
 * other The status of adb logcat.
 
-### adb__logcat__once
+### adb.logcat.once
 
 Write the selected device log buffers once.
 
 #### Example
 
 ```bash
-adb__logcat__once > device.log
+adb.logcat.once > device.log
 ```
 
 #### Options
@@ -165,14 +165,14 @@ adb__logcat__once > device.log
 
 * The current log buffers.
 
-### adb__logcat__continuous
+### adb.logcat.continuous
 
 Stream logs from the selected device.
 
 #### Example
 
 ```bash
-adb__logcat__continuous | grep -i crash
+adb.logcat.continuous | grep -i crash
 ```
 
 #### Options
@@ -192,7 +192,7 @@ adb__logcat__continuous | grep -i crash
 
 * The device log, streamed until interrupted.
 
-### adb__device__reboot
+### adb.device.reboot
 
 Reboot the selected device.
 
@@ -201,7 +201,7 @@ The function returns after the device has disconnected and connected again.
 #### Example
 
 ```bash
-adb__device__reboot 120 --serial emulator-5554
+adb.device.reboot 120 --serial emulator-5554
 ```
 
 #### Options
@@ -223,14 +223,14 @@ adb__device__reboot 120 --serial emulator-5554
 * **75**: The device did not reconnect in time.
 * other The status of adb reboot.
 
-### adb__device__first
+### adb.device.first
 
 Write the first connected ADB device serial.
 
 #### Example
 
 ```bash
-serial="$(adb__device__first)"
+serial="$(adb.device.first)"
 ```
 
 _Function has no arguments._
@@ -247,14 +247,14 @@ _Function has no arguments._
 
 * The serial of the first connected device.
 
-### adb__device__list
+### adb.device.list
 
 List connected ADB device serials.
 
 #### Example
 
 ```bash
-adb__device__list
+adb.device.list
 ```
 
 _Function has no arguments._
@@ -270,14 +270,14 @@ _Function has no arguments._
 
 * One serial per line for devices in the device state.
 
-### adb__device__wait-for-path
+### adb.device.wait-for-path
 
 Wait up to TIMEOUT_SECONDS for a path on the device; return 75 on timeout.
 
 #### Example
 
 ```bash
-adb__device__wait-for-path /sdcard/Download/report.json 60
+adb.device.wait-for-path /sdcard/Download/report.json 60
 ```
 
 #### Options
@@ -298,14 +298,14 @@ adb__device__wait-for-path /sdcard/Download/report.json 60
 * **74**: The clock or sleep failed.
 * **75**: The path did not appear in time.
 
-### adb__device__screen__capture-once
+### adb.device.screen.capture-once
 
 Save one screenshot atomically and print its path.
 
 #### Example
 
 ```bash
-adb__device__screen__capture-once ./screen.png --serial emulator-5554
+adb.device.screen.capture-once ./screen.png --serial emulator-5554
 ```
 
 #### Options
@@ -329,14 +329,14 @@ adb__device__screen__capture-once ./screen.png --serial emulator-5554
 
 * The path of the saved screenshot.
 
-### adb__device__select-and-pull
+### adb.device.select-and-pull
 
 Select one requested device path and pull it to the host.
 
 #### Example
 
 ```bash
-adb__device__select-and-pull /sdcard/Download /sdcard/DCIM --output-directory ./device
+adb.device.select-and-pull /sdcard/Download /sdcard/DCIM --output-directory ./device
 ```
 
 #### Options
@@ -360,14 +360,14 @@ adb__device__select-and-pull /sdcard/Download /sdcard/DCIM --output-directory ./
 * **74**: The output directory could not be created.
 * other The status of the prompt or of adb pull.
 
-### adb__device__bootloader__enter
+### adb.device.bootloader.enter
 
 Reboot the selected device into its bootloader.
 
 #### Example
 
 ```bash
-  adb__device__bootloader__enter --serial 0123456789ABCDEF
+  adb.device.bootloader.enter --serial 0123456789ABCDEF
 shellcheck disable=SC2329
 ```
 
@@ -384,7 +384,7 @@ shellcheck disable=SC2329
 * **69**: adb is unavailable.
 * other The status of adb reboot.
 
-### adb__device__bootloader__unlock
+### adb.device.bootloader.unlock
 
 Request bootloader unlocking and wait for the device to reconnect.
 
@@ -394,7 +394,7 @@ device that stays in fastboot afterwards is rebooted.
 #### Example
 
 ```bash
-adb__device__bootloader__unlock --serial 0123456789ABCDEF
+adb.device.bootloader.unlock --serial 0123456789ABCDEF
 ```
 
 #### Options
@@ -412,14 +412,14 @@ adb__device__bootloader__unlock --serial 0123456789ABCDEF
 * **75**: The device did not reach fastboot or ADB in time.
 * other The status of the adb or fastboot command that failed.
 
-### adb__device__verity__disable
+### adb.device.verity.disable
 
 Disable dm-verity on a rooted device, reboot it, and wait until ADB reconnects.
 
 #### Example
 
 ```bash
-adb__device__verity__disable && adb__device__partition__remount
+adb.device.verity.disable && adb.device.partition.remount
 ```
 
 #### Options
@@ -436,7 +436,7 @@ adb__device__verity__disable && adb__device__partition__remount
 * **75**: The device did not reconnect in time.
 * other The status of the adb command that failed.
 
-### adb__device__partition__remount
+### adb.device.partition.remount
 
 Make the system partitions of a rooted device writable.
 
@@ -446,7 +446,7 @@ remounted read-write.
 #### Example
 
 ```bash
-adb__device__partition__remount --serial emulator-5554
+adb.device.partition.remount --serial emulator-5554
 ```
 
 #### Options
@@ -462,14 +462,14 @@ adb__device__partition__remount --serial emulator-5554
 * **75**: The device did not reconnect in time.
 * other The status of the adb command that failed.
 
-### adb__device__build__fingerprint
+### adb.device.build.fingerprint
 
 Write the selected device build fingerprint.
 
 #### Example
 
 ```bash
-adb__device__build__fingerprint
+adb.device.build.fingerprint
 ```
 
 #### Options
@@ -489,14 +489,14 @@ adb__device__build__fingerprint
 
 * The value of ro.build.fingerprint.
 
-### adb__device__build__date
+### adb.device.build.date
 
 Write the selected device build timestamp as Unix seconds.
 
 #### Example
 
 ```bash
-date -d "@$(adb__device__build__date)"
+date -d "@$(adb.device.build.date)"
 ```
 
 #### Options
@@ -516,14 +516,14 @@ date -d "@$(adb__device__build__date)"
 
 * The value of ro.build.date.utc.
 
-### adb__device__slot__suffix
+### adb.device.slot.suffix
 
 Write the selected device active slot suffix.
 
 #### Example
 
 ```bash
-adb__device__slot__suffix
+adb.device.slot.suffix
 ```
 
 #### Options
@@ -543,14 +543,14 @@ adb__device__slot__suffix
 
 * The value of ro.boot.slot_suffix, such as _a; empty on devices without slots.
 
-### adb__device__build__kernel-version
+### adb.device.build.kernel-version
 
 Write the selected device kernel release.
 
 #### Example
 
 ```bash
-adb__device__build__kernel-version
+adb.device.build.kernel-version
 ```
 
 #### Options
@@ -570,14 +570,14 @@ adb__device__build__kernel-version
 
 * The output of uname -r on the device.
 
-### adb__device__screen__capture-continuous
+### adb.device.screen.capture-continuous
 
 Save repeated screenshots; MAX_COUNT of zero runs until interrupted.
 
 #### Example
 
 ```bash
-adb__device__screen__capture-continuous ./frames 0.5 20
+adb.device.screen.capture-continuous ./frames 0.5 20
 ```
 
 #### Options
@@ -597,20 +597,20 @@ adb__device__screen__capture-continuous ./frames 0.5 20
 * **0**: The requested screenshots were saved.
 * **64**: The arguments are invalid.
 * **74**: The directory could not be created or sleep failed.
-* other The status of adb__device__screen__capture-once.
+* other The status of adb.device.screen.capture-once.
 
 #### Output on stdout
 
 * The path of each saved screenshot.
 
-### adb__device__partition__sha256
+### adb.device.partition.sha256
 
 Write a device partition SHA-256 checksum.
 
 #### Example
 
 ```bash
-adb__device__partition__sha256 /dev/block/by-name/boot_a
+adb.device.partition.sha256 /dev/block/by-name/boot_a
 ```
 
 #### Options
@@ -634,7 +634,7 @@ adb__device__partition__sha256 /dev/block/by-name/boot_a
 
 * The output of sha256sum on the device.
 
-### adb__wake__lock
+### adb.wake.lock
 
 Hold a kernel wake lock using a tag, defaulting to debug.
 
@@ -643,7 +643,7 @@ The device must allow adb root.
 #### Example
 
 ```bash
-adb__wake__lock benchmark
+adb.wake.lock benchmark
 ```
 
 #### Options
@@ -663,7 +663,7 @@ adb__wake__lock benchmark
 * **69**: adb root is unavailable or /sys/power/wake_lock is not writable.
 * other The status of the adb command that failed.
 
-### adb__wake__unlock
+### adb.wake.unlock
 
 Release a kernel wake lock using the same tag.
 
@@ -672,7 +672,7 @@ The device must allow adb root.
 #### Example
 
 ```bash
-adb__wake__unlock benchmark
+adb.wake.unlock benchmark
 ```
 
 #### Options
@@ -692,14 +692,14 @@ adb__wake__unlock benchmark
 * **69**: adb root is unavailable or /sys/power/wake_unlock is not writable.
 * other The status of the adb command that failed.
 
-### adb__wake__list
+### adb.wake.list
 
 Print active kernel wake locks.
 
 #### Example
 
 ```bash
-adb__wake__list
+adb.wake.list
 ```
 
 #### Options
@@ -719,14 +719,14 @@ adb__wake__list
 
 * The active wake lock tags.
 
-### adb__device__set-default
+### adb.device.set-default
 
 Set the default ADB device for later calls in the current shell by exporting ANDROID_SERIAL.
 
 #### Example
 
 ```bash
-adb__device__set-default "$(adb__device__first)"
+adb.device.set-default "$(adb.device.first)"
 ```
 
 #### Arguments
@@ -742,14 +742,14 @@ adb__device__set-default "$(adb__device__first)"
 * **0**: The variable was set.
 * **64**: The argument is not one valid serial.
 
-### adb__server__start
+### adb.server.start
 
 Start the host ADB server.
 
 #### Example
 
 ```bash
-adb__server__start
+adb.server.start
 ```
 
 _Function has no arguments._
@@ -761,14 +761,14 @@ _Function has no arguments._
 * **69**: adb is unavailable.
 * other The status of adb start-server.
 
-### adb__server__stop
+### adb.server.stop
 
 Stop the host ADB server.
 
 #### Example
 
 ```bash
-adb__server__stop
+adb.server.stop
 ```
 
 _Function has no arguments._
@@ -780,14 +780,14 @@ _Function has no arguments._
 * **69**: adb is unavailable.
 * other The status of adb kill-server.
 
-### adb__server__restart
+### adb.server.restart
 
 Stop and then start the host ADB server.
 
 #### Example
 
 ```bash
-adb__server__restart
+adb.server.restart
 ```
 
 _Function has no arguments._

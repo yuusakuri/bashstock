@@ -8,17 +8,17 @@ Colima is installed with Homebrew on macOS.
 
 ## Index
 
-* [colima__versions](#colima__versions)
-* [colima__install](#colima__install)
+* [colima.versions](#colimaversions)
+* [colima.install](#colimainstall)
 
-### colima__versions
+### colima.versions
 
 Write Colima versions available from Homebrew.
 
 #### Example
 
 ```bash
-colima__versions
+colima.versions
 ```
 
 _Function has no arguments._
@@ -34,7 +34,7 @@ _Function has no arguments._
 
 * Colima versions from Homebrew, one per line.
 
-### colima__install
+### colima.install
 
 Install Colima with Homebrew on macOS and start it.
 
@@ -46,8 +46,8 @@ function returns 69 instead of starting it.
 #### Example
 
 ```bash
-colima__install
-docker__install
+colima.install
+docker.install
 ```
 
 #### Arguments

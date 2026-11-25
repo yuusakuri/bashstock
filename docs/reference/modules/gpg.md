@@ -8,21 +8,21 @@ Keys are generated, listed, exported, and removed with gpg.
 
 ## Index
 
-* [gpg__decrypt](#gpg__decrypt)
-* [gpg__public-key__armor](#gpg__public-key__armor)
-* [gpg__secret-key__fingerprints](#gpg__secret-key__fingerprints)
-* [gpg__secret-key__list](#gpg__secret-key__list)
-* [gpg__setup](#gpg__setup)
-* [gpg__key__generate](#gpg__key__generate)
+* [gpg.decrypt](#gpgdecrypt)
+* [gpg.public-key.armor](#gpgpublic-keyarmor)
+* [gpg.secret-key.fingerprints](#gpgsecret-keyfingerprints)
+* [gpg.secret-key.list](#gpgsecret-keylist)
+* [gpg.setup](#gpgsetup)
+* [gpg.key.generate](#gpgkeygenerate)
 
-### gpg__decrypt
+### gpg.decrypt
 
 Decrypt a GPG file to standard output without adding a newline.
 
 #### Example
 
 ```bash
-gpg__decrypt secrets.env.gpg > .env
+gpg.decrypt secrets.env.gpg > .env
 ```
 
 #### Arguments
@@ -40,14 +40,14 @@ gpg__decrypt secrets.env.gpg > .env
 
 * The decrypted content.
 
-### gpg__public-key__armor
+### gpg.public-key.armor
 
 Write a public GPG key in ASCII armor.
 
 #### Example
 
 ```bash
-gpg__public-key__armor > public.asc
+gpg.public-key.armor > public.asc
 ```
 
 #### Arguments
@@ -66,14 +66,14 @@ gpg__public-key__armor > public.asc
 
 * The ASCII-armored public key.
 
-### gpg__secret-key__fingerprints
+### gpg.secret-key.fingerprints
 
 Write the fingerprints of every primary secret GPG key, one per line.
 
 #### Example
 
 ```bash
-gpg__secret-key__fingerprints
+gpg.secret-key.fingerprints
 ```
 
 _Function has no arguments._
@@ -89,14 +89,14 @@ _Function has no arguments._
 
 * One fingerprint per line.
 
-### gpg__secret-key__list
+### gpg.secret-key.list
 
 Write the secret GPG keys in the human-readable GPG format.
 
 #### Example
 
 ```bash
-gpg__secret-key__list
+gpg.secret-key.list
 ```
 
 _Function has no arguments._
@@ -112,11 +112,11 @@ _Function has no arguments._
 
 * The output of gpg --list-secret-keys.
 
-### gpg__setup
+### gpg.setup
 
 Create a GPG key and use it for pass, Git credentials, and Git commit signing.
 
-The options are passed to gpg__key__generate. pass is installed and its
+The options are passed to gpg.key.generate. pass is installed and its
 store initialized with the new key, Git Credential Manager stores
 credentials with GPG, Git signs commits with the key, and the public key is
 written in ASCII armor. The first failing step stops the setup.
@@ -124,12 +124,12 @@ written in ASCII armor. The first failing step stops the setup.
 #### Example
 
 ```bash
-gpg__setup --user-id 'Alex Example <developer@example.com>' --passphrase-fd 3 3<passphrase.txt
+gpg.setup --user-id 'Alex Example <developer@example.com>' --passphrase-fd 3 3<passphrase.txt
 ```
 
 #### Arguments
 
-* **...** (string): Options of gpg__key__generate, such as --user-id and --passphrase-fd.
+* **...** (string): Options of gpg.key.generate, such as --user-id and --passphrase-fd.
 
 #### Exit codes
 
@@ -141,15 +141,15 @@ gpg__setup --user-id 'Alex Example <developer@example.com>' --passphrase-fd 3 3<
 
 * The ASCII-armored public key of the new key.
 
-### gpg__key__generate
+### gpg.key.generate
 
 Generate a GPG primary key and an encryption subkey in one operation.
 
 #### Example
 
 ```bash
-gpg__key__generate --user-id 'Alex Example <developer@example.com>' --pinentry
-gpg__key__generate --algorithm rsa4096 --expires 2y --passphrase-fd 3 3<passphrase.txt
+gpg.key.generate --user-id 'Alex Example <developer@example.com>' --pinentry
+gpg.key.generate --algorithm rsa4096 --expires 2y --passphrase-fd 3 3<passphrase.txt
 ```
 
 #### Options

@@ -18,10 +18,10 @@
 # @exitcode 69 The operating system is not Linux or mkdir is unavailable.
 # @exitcode 74 The setting could not be written.
 # @example
-#   electron__wayland__enable
-electron__wayland__enable() {
+#   electron.wayland.enable
+electron.wayland.enable() {
   [[ "$#" -eq 0 ]] || return 64
-  [[ "$(system__operating-system)" == 'linux' ]] || return 69
+  [[ "$(system.operating-system)" == 'linux' ]] || return 69
   [[ "${XDG_SESSION_TYPE:-}" == 'wayland' && -n "${WAYLAND_DISPLAY:-}" ]] || return 0
   command -v mkdir >/dev/null 2>&1 || return 69
 
@@ -35,7 +35,7 @@ electron__wayland__enable() {
   ((systemd_version >= 246)) || return 0
 
   mkdir -p "${directory}" || return 74
-  file__write-text "${directory}/90-bashstock-electron-wayland.conf" \
+  file.write-text "${directory}/90-bashstock-electron-wayland.conf" \
     $'ELECTRON_OZONE_PLATFORM_HINT=wayland\n' || return "$?"
 
   if systemctl --user show-environment >/dev/null 2>&1; then
@@ -57,10 +57,10 @@ electron__wayland__enable() {
 # @exitcode 66 The setting path exists but is not a regular file or a symlink.
 # @exitcode 74 The setting could not be removed.
 # @example
-#   electron__wayland__disable
-electron__wayland__disable() {
+#   electron.wayland.disable
+electron.wayland.disable() {
   [[ "$#" -eq 0 ]] || return 64
-  [[ "$(system__operating-system)" == 'linux' ]] || return 69
+  [[ "$(system.operating-system)" == 'linux' ]] || return 69
 
   local file="${HOME}/.config/environment.d/90-bashstock-electron-wayland.conf"
   if [[ -e "${file}" || -L "${file}" ]]; then

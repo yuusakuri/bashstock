@@ -8,9 +8,9 @@ IINA is installed with Homebrew on macOS.
 
 ## Index
 
-* [iina__set-default-app](#iina__set-default-app)
+* [iina.set-default-app](#iinaset-default-app)
 
-### iina__set-default-app
+### iina.set-default-app
 
 Set IINA as the default application for video file extensions on macOS.
 
@@ -19,7 +19,7 @@ duti is installed with Homebrew when it is missing.
 #### Example
 
 ```bash
-iina__set-default-app
+iina.set-default-app
 ```
 
 _Function has no arguments._

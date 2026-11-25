@@ -8,21 +8,21 @@ Functions start, attach, or connect GDB in batch or interactive mode.
 
 ## Index
 
-* [gdb__attach-pid](#gdb__attach-pid)
-* [gdb__server__start](#gdb__server__start)
-* [gdb__connect](#gdb__connect)
-* [gdb__run-until](#gdb__run-until)
-* [gdb__core__open](#gdb__core__open)
-* [gdb__attach-by-name](#gdb__attach-by-name)
+* [gdb.attach-pid](#gdbattach-pid)
+* [gdb.server.start](#gdbserverstart)
+* [gdb.connect](#gdbconnect)
+* [gdb.run-until](#gdbrun-until)
+* [gdb.core.open](#gdbcoreopen)
+* [gdb.attach-by-name](#gdbattach-by-name)
 
-### gdb__attach-pid
+### gdb.attach-pid
 
 Attach GDB in batch mode to a process and write the backtrace of every thread.
 
 #### Example
 
 ```bash
-gdb__attach-pid 4242 > backtrace.txt
+gdb.attach-pid 4242 > backtrace.txt
 ```
 
 #### Arguments
@@ -40,14 +40,14 @@ gdb__attach-pid 4242 > backtrace.txt
 
 * The backtrace of every thread.
 
-### gdb__server__start
+### gdb.server.start
 
 Start COMMAND with its arguments under gdbserver listening on PORT.
 
 #### Example
 
 ```bash
-gdb__server__start 2345 ./build/app --verbose
+gdb.server.start 2345 ./build/app --verbose
 ```
 
 #### Arguments
@@ -63,14 +63,14 @@ gdb__server__start 2345 ./build/app --verbose
 * **69**: gdbserver is unavailable.
 * other The status of gdbserver.
 
-### gdb__connect
+### gdb.connect
 
 Load ELF in GDB and connect to the GDB server at HOST and PORT.
 
 #### Example
 
 ```bash
-gdb__connect ./build/app 192.168.1.50 2345
+gdb.connect ./build/app 192.168.1.50 2345
 ```
 
 #### Arguments
@@ -86,14 +86,14 @@ gdb__connect ./build/app 192.168.1.50 2345
 * **69**: gdb is unavailable.
 * other The status of gdb.
 
-### gdb__run-until
+### gdb.run-until
 
 Run ELF in GDB with optional program arguments and stop at SYMBOL.
 
 #### Example
 
 ```bash
-gdb__run-until ./build/app parse_config --config test.ini
+gdb.run-until ./build/app parse_config --config test.ini
 ```
 
 #### Arguments
@@ -109,14 +109,14 @@ gdb__run-until ./build/app parse_config --config test.ini
 * **69**: gdb is unavailable.
 * other The status of gdb.
 
-### gdb__core__open
+### gdb.core.open
 
 Open ELF and a core dump in GDB.
 
 #### Example
 
 ```bash
-gdb__core__open ./build/app core.4242
+gdb.core.open ./build/app core.4242
 ```
 
 #### Arguments
@@ -131,14 +131,14 @@ gdb__core__open ./build/app core.4242
 * **69**: gdb is unavailable.
 * other The status of gdb.
 
-### gdb__attach-by-name
+### gdb.attach-by-name
 
 Attach GDB to the first process whose executable name is NAME.
 
 #### Example
 
 ```bash
-gdb__attach-by-name myapp > backtrace.txt
+gdb.attach-by-name myapp > backtrace.txt
 ```
 
 #### Arguments
@@ -150,7 +150,7 @@ gdb__attach-by-name myapp > backtrace.txt
 * **0**: The backtrace was written.
 * **1**: No process has the name.
 * **64**: The argument count is not one.
-* other The status of gdb__attach-pid.
+* other The status of gdb.attach-pid.
 
 #### Output on stdout
 

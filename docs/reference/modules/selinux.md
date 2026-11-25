@@ -8,16 +8,16 @@ Rules are generated from audit log denials with audit2allow.
 
 ## Index
 
-* [selinux__generate-rule](#selinux__generate-rule)
+* [selinux.generate-rule](#selinuxgenerate-rule)
 
-### selinux__generate-rule
+### selinux.generate-rule
 
 Generate SELinux allow rules from the AVC denials of an audit log.
 
 #### Example
 
 ```bash
-selinux__generate-rule /var/log/audit/audit.log ./allow.te
+selinux.generate-rule /var/log/audit/audit.log ./allow.te
 ```
 
 #### Arguments

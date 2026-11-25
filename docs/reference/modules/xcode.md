@@ -8,9 +8,9 @@ The tools are installed and upgraded with softwareupdate.
 
 ## Index
 
-* [xcode__command-line-tools__upgrade](#xcode__command-line-tools__upgrade)
+* [xcode.command-line-tools.upgrade](#xcodecommand-line-toolsupgrade)
 
-### xcode__command-line-tools__upgrade
+### xcode.command-line-tools.upgrade
 
 Update Xcode Command Line Tools without removing the installed tools.
 
@@ -19,7 +19,7 @@ When softwareupdate offers no Command Line Tools update, nothing changes.
 #### Example
 
 ```bash
-xcode__command-line-tools__upgrade
+xcode.command-line-tools.upgrade
 clang --version
 ```
 

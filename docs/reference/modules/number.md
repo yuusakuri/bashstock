@@ -8,18 +8,18 @@ Each test reads one argument and returns 0 or 1 without output.
 
 ## Index
 
-* [number__is-integer](#number__is-integer)
-* [number__is-decimal](#number__is-decimal)
-* [number__is-number](#number__is-number)
+* [number.is-integer](#numberis-integer)
+* [number.is-decimal](#numberis-decimal)
+* [number.is-number](#numberis-number)
 
-### number__is-integer
+### number.is-integer
 
 Test whether a value is a signed or unsigned decimal integer.
 
 #### Example
 
 ```bash
-number__is-integer -7 && printf 'integer\n'
+number.is-integer -7 && printf 'integer\n'
 # integer
 ```
 
@@ -33,16 +33,16 @@ number__is-integer -7 && printf 'integer\n'
 * **1**: The value is not an integer.
 * **64**: The argument count is not one.
 
-### number__is-decimal
+### number.is-decimal
 
 Test whether a value is a signed or unsigned decimal fraction.
 
 #### Example
 
 ```bash
-number__is-decimal 1.5 && printf 'decimal\n'
+number.is-decimal 1.5 && printf 'decimal\n'
 # decimal
-number__is-decimal 15 || printf 'not a fraction\n'
+number.is-decimal 15 || printf 'not a fraction\n'
 # not a fraction
 ```
 
@@ -56,14 +56,14 @@ number__is-decimal 15 || printf 'not a fraction\n'
 * **1**: The value is not a decimal fraction.
 * **64**: The argument count is not one.
 
-### number__is-number
+### number.is-number
 
 Test whether a value is a decimal integer or fraction.
 
 #### Example
 
 ```bash
-number__is-number abc || printf 'not a number\n'
+number.is-number abc || printf 'not a number\n'
 # not a number
 ```
 

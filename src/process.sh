@@ -14,8 +14,8 @@
 # @exitcode 64 The argument count is not one.
 # @exitcode 69 pgrep is unavailable.
 # @example
-#   process__ids-by-name sshd
-process__ids-by-name() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; _docker__run-command pgrep -x "$1"; }
+#   process.ids-by-name sshd
+process.ids-by-name() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; _docker.run-command pgrep -x "$1"; }
 
 # @description Write the IDs of the processes whose command line matches an ERE evaluated by pgrep -f.
 #
@@ -26,8 +26,8 @@ process__ids-by-name() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; _docker__run-
 # @exitcode 64 The argument count is not one.
 # @exitcode 69 pgrep is unavailable.
 # @example
-#   process__ids-by-name-regex 'python3 .*manage\.py runserver'
-process__ids-by-name-regex() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; _docker__run-command pgrep -f "$1"; }
+#   process.ids-by-name-regex 'python3 .*manage\.py runserver'
+process.ids-by-name-regex() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; _docker.run-command pgrep -f "$1"; }
 
 # @description Write the threads of one process.
 #
@@ -40,11 +40,11 @@ process__ids-by-name-regex() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; _docker
 # @exitcode 64 The argument is not one process ID.
 # @exitcode 69 ps is unavailable or the operating system is unsupported.
 # @example
-#   process__threads-by-pid "$$"
-process__threads-by-pid() {
+#   process.threads-by-pid "$$"
+process.threads-by-pid() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] ) || return 64
-  command__require ps || return "$?"
-  case "$(system__operating-system)" in
+  command.require ps || return "$?"
+  case "$(system.operating-system)" in
     darwin) ps -M -p "$1" ;;
     linux) ps -T -p "$1" ;;
     *) return 69 ;;
@@ -53,10 +53,10 @@ process__threads-by-pid() {
 
 # @description Write the first process ID whose executable name is NAME.
 # @internal
-_process__first-id-by-name() {
+_process.first-id-by-name() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local process_ids=''
-  process_ids="$(process__ids-by-name "$1")" || return 1
+  process_ids="$(process.ids-by-name "$1")" || return 1
   [[ -n "${process_ids}" ]] || return 1
   printf '%s\n' "${process_ids%%$'\n'*}"
 }
@@ -68,14 +68,14 @@ _process__first-id-by-name() {
 # @exitcode 0 The threads were written.
 # @exitcode 1 No process has the name.
 # @exitcode 64 The argument count is not one.
-# @exitcode other The status of process__threads-by-pid.
+# @exitcode other The status of process.threads-by-pid.
 # @example
-#   process__threads-by-name java
-process__threads-by-name() {
+#   process.threads-by-name java
+process.threads-by-name() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local id=''
-  id="$(_process__first-id-by-name "$1")" || return "$?"
-  process__threads-by-pid "${id}"
+  id="$(_process.first-id-by-name "$1")" || return "$?"
+  process.threads-by-pid "${id}"
 }
 
 # @description Test whether tracing a process needs administrator execution.
@@ -83,7 +83,7 @@ process__threads-by-name() {
 # Tracing needs it when another user owns the process, or when Yama allows
 # tracing only of descendants.
 # @internal
-_process__trace-needs-root() {
+_process.trace-needs-root() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] ) || return 64
   local owner='' scope=0
   [[ "${EUID}" -eq 0 ]] && return 1

@@ -8,17 +8,17 @@ PlantUML is installed from its releases.
 
 ## Index
 
-* [plantuml__versions](#plantuml__versions)
-* [plantuml__install](#plantuml__install)
+* [plantuml.versions](#plantumlversions)
+* [plantuml.install](#plantumlinstall)
 
-### plantuml__versions
+### plantuml.versions
 
 Write PlantUML versions available to the current platform.
 
 #### Example
 
 ```bash
-plantuml__versions
+plantuml.versions
 ```
 
 _Function has no arguments._
@@ -33,20 +33,20 @@ _Function has no arguments._
 
 * PlantUML versions from the platform package manager, one per line.
 
-### plantuml__install
+### plantuml.install
 
 Install PlantUML from the platform package manager.
 
 #### Example
 
 ```bash
-plantuml__install
+plantuml.install
 plantuml -tsvg diagram.puml
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from plantuml__versions. Defaults to the newest one.
+* **$1** (string): Optional version from plantuml.versions. Defaults to the newest one.
 
 #### Exit codes
 

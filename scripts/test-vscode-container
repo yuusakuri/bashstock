@@ -4,7 +4,7 @@
 set -euo pipefail
 
 source /opt/bashstock.sh
-latest="$(vscode__versions | tail -n 1)"
+latest="$(vscode.versions | tail -n 1)"
 [[ -n "$latest" ]]
 printf 'VS Code version: %s\n' "$latest"
 source /etc/os-release
@@ -13,8 +13,8 @@ if [[ "$ID" == ubuntu && "$VERSION_ID" == 18.04 ]]; then
   [[ "$latest" == 1.85.* ]]
 fi
 
-vscode__install
-vscode__install "$latest"
+vscode.install
+vscode.install "$latest"
 if [[ "$ID" == ubuntu ]]; then
   installed="$(dpkg-query -W -f='${Version}' code)"
 else

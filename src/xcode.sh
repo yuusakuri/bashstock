@@ -7,16 +7,16 @@
 
 # @description Write the newest Command Line Tools label offered by softwareupdate.
 # @internal
-_xcode__command-line-tools__latest-label() {
+_xcode.command-line-tools.latest-label() {
   [[ "$#" -eq 0 ]] || return 64
-  command__require softwareupdate || return "$?"
+  command.require softwareupdate || return "$?"
   local listing='' labels=''
   # The listing is read on its own so that its failure is not taken for "no update".
   listing="$(softwareupdate --list 2>&1)" || return 74
   labels="$(printf '%s\n' "${listing}" |
     sed -n 's/^[[:space:]]*\*[[:space:]]*Label:[[:space:]]*\(Command Line Tools.*\)$/\1/p')" || return 74
   [[ -n "${labels}" ]] || return 1
-  printf '%s\n' "${labels}" | awk '{print $NF "\t" $0}' | _package__sort-by-first-field | tail -n 1
+  printf '%s\n' "${labels}" | awk '{print $NF "\t" $0}' | _package.sort-by-first-field | tail -n 1
 }
 
 # @description Update Xcode Command Line Tools without removing the installed tools.
@@ -32,20 +32,20 @@ _xcode__command-line-tools__latest-label() {
 # @exitcode 74 softwareupdate could not list updates, or xcode-select finds no tools after the update.
 # @exitcode other The status of softwareupdate or pkgutil.
 # @example
-#   xcode__command-line-tools__upgrade
+#   xcode.command-line-tools.upgrade
 #   clang --version
-xcode__command-line-tools__upgrade() {
+xcode.command-line-tools.upgrade() {
   [[ "$#" -eq 0 ]] || return 64
-  _package__require-platform darwin || return "$?"
-  command__require xcode-select || return "$?"
+  _package.require-platform darwin || return "$?"
+  command.require xcode-select || return "$?"
   local label='' status=0
-  label="$(_xcode__command-line-tools__latest-label)" || status="$?"
+  label="$(_xcode.command-line-tools.latest-label)" || status="$?"
   if [[ "${status}" -eq 1 ]]; then
-    _console__write-error 'No Command Line Tools update is available.'
+    _console.write-error 'No Command Line Tools update is available.'
     return 0
   fi
   [[ "${status}" -eq 0 ]] || return "${status}"
-  command__run-as-root softwareupdate --install "${label}" || return "$?"
+  command.run-as-root softwareupdate --install "${label}" || return "$?"
   xcode-select -p >/dev/null || return 74
   pkgutil --pkg-info=com.apple.pkg.CLTools_Executables
 }

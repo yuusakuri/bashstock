@@ -8,17 +8,17 @@ Rancher Desktop is installed from its official releases.
 
 ## Index
 
-* [rancher-desktop__versions](#rancher-desktop__versions)
-* [rancher-desktop__install](#rancher-desktop__install)
+* [rancher-desktop.versions](#rancher-desktopversions)
+* [rancher-desktop.install](#rancher-desktopinstall)
 
-### rancher-desktop__versions
+### rancher-desktop.versions
 
 Write Rancher Desktop versions available to the current platform.
 
 #### Example
 
 ```bash
-rancher-desktop__versions
+rancher-desktop.versions
 ```
 
 _Function has no arguments._
@@ -34,23 +34,23 @@ _Function has no arguments._
 
 * Rancher Desktop versions, one per line.
 
-### rancher-desktop__install
+### rancher-desktop.install
 
 Install Rancher Desktop and start it.
 
-Rosetta and Colima are installed separately with rosetta__install and colima__install.
+Rosetta and Colima are installed separately with rosetta.install and colima.install.
 Ubuntu 22.04 or later and Fedora 35 or later install from Rancher's
 repository; Fedora uses the packages that Rancher builds for Fedora.
 
 #### Example
 
 ```bash
-rancher-desktop__install
+rancher-desktop.install
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from rancher-desktop__versions; on macOS only the current version.
+* **$1** (string): Optional version from rancher-desktop.versions; on macOS only the current version.
 
 #### Exit codes
 

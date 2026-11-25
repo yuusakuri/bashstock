@@ -11,7 +11,7 @@
 # package into $HOME/.local; its installer picks the build for the CPU and C
 # library, and the glibc builds run on Ubuntu 18.04 and later. Linux needs
 # npm: the Ubuntu nodejs package does not provide it, so install Node.js with
-# `node__install VERSION official` first there.
+# `node.install VERSION official` first there.
 #
 # @noargs
 # @stdout The installed version.
@@ -21,19 +21,19 @@
 # @exitcode 74 $HOME/.local could not be created.
 # @exitcode other The status of the installation.
 # @example
-#   opencode__install
-opencode__install() {
+#   opencode.install
+opencode.install() {
   [[ "$#" -eq 0 ]] || return 64
   local platform=''
-  platform="$(_package__platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   if [[ "${platform}" == darwin ]]; then
-    _package__install anomalyco/tap/opencode || return "$?"
+    _package.install anomalyco/tap/opencode || return "$?"
     opencode --version
   else
-    command__require npm || return "$?"
+    command.require npm || return "$?"
     mkdir -p -- "${HOME}/.local" || return 74
     npm install --global --prefix "${HOME}/.local" opencode-ai || return "$?"
-    env__add-path "${HOME}/.local/bin" || return "$?"
+    env.add-path "${HOME}/.local/bin" || return "$?"
     "${HOME}/.local/bin/opencode" --version
   fi
 }

@@ -15,13 +15,13 @@
 # @exitcode 64 More than three arguments were given.
 # @exitcode other The status of git push.
 # @example
-#   gerrit__push-review main
-gerrit__push-review() {
+#   gerrit.push-review main
+gerrit.push-review() {
   [[ "$#" -le 3 ]] || return 64
   local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
-  [[ -n "${branch}" ]] || branch="$(git__branch__current "${directory}")" || return "$?"
-  _git__require-operands "${remote}" "${branch}" || return 64
-  _git__run-in-directory "${directory}" push "${remote}" "HEAD:refs/for/${branch}"
+  [[ -n "${branch}" ]] || branch="$(git.branch.current "${directory}")" || return "$?"
+  _git.require-operands "${remote}" "${branch}" || return 64
+  _git.run-in-directory "${directory}" push "${remote}" "HEAD:refs/for/${branch}"
 }
 
 # @description Push the current HEAD to a Gerrit review reference as work in progress.
@@ -34,11 +34,11 @@ gerrit__push-review() {
 # @exitcode 64 More than three arguments were given.
 # @exitcode other The status of git push.
 # @example
-#   gerrit__push-review-wip main
-gerrit__push-review-wip() {
+#   gerrit.push-review-wip main
+gerrit.push-review-wip() {
   [[ "$#" -le 3 ]] || return 64
   local branch="${1:-}" remote="${2:-origin}" directory="${3:-.}"
-  [[ -n "${branch}" ]] || branch="$(git__branch__current "${directory}")" || return "$?"
-  _git__require-operands "${remote}" "${branch}" || return 64
-  _git__run-in-directory "${directory}" push "${remote}" "HEAD:refs/for/${branch}%wip"
+  [[ -n "${branch}" ]] || branch="$(git.branch.current "${directory}")" || return "$?"
+  _git.require-operands "${remote}" "${branch}" || return 64
+  _git.run-in-directory "${directory}" push "${remote}" "HEAD:refs/for/${branch}%wip"
 }

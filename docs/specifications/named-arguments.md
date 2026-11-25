@@ -11,18 +11,18 @@
 値を取る引数は`--name VALUE`の形式にする。真偽値を表す引数は値を取らず、指定するだけで真になる。
 
 ```bash
-example__run --name sample --count 3
-example__run --name sample --force
+example.run --name sample --count 3
+example.run --name sample --force
 ```
 
 引数名は`--`に続く小文字のkebab-case形式（例：`--output-directory`）にする。GNUの長いoptionと同じ表記で、`--name=VALUE`の結合形と短いoptionは受け付けない。
 
 ## 関数内の解析
 
-関数内ではBashの`while`と`case`で引数を解析する。値を取る引数では、`case`の中で`arg__require-next "$#" "$1"`を呼び出してから値をローカル変数へ代入する。すべての引数を読み終えた後、`arg__require`などで必須引数を検査する。
+関数内ではBashの`while`と`case`で引数を解析する。値を取る引数では、`case`の中で`arg.require-next "$#" "$1"`を呼び出してから値をローカル変数へ代入する。すべての引数を読み終えた後、`arg.require`などで必須引数を検査する。
 
 ```bash
-user__create() {
+user.create() {
   local name=''
   local shell='/bin/bash'
   local force='false'
@@ -30,12 +30,12 @@ user__create() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --name)
-        arg__require-next "$#" "$1" || return "$?"
+        arg.require-next "$#" "$1" || return "$?"
         name=$2
         shift 2
         ;;
       --shell)
-        arg__require-next "$#" "$1" || return "$?"
+        arg.require-next "$#" "$1" || return "$?"
         shell=$2
         shift 2
         ;;
@@ -44,12 +44,12 @@ user__create() {
         shift
         ;;
       *)
-        arg__unknown "$1" || return "$?"
+        arg.unknown "$1" || return "$?"
         ;;
     esac
   done
 
-  arg__require --name "${name}" || return "$?"
+  arg.require --name "${name}" || return "$?"
 
   # 本処理
 }
@@ -63,22 +63,22 @@ user__create() {
 
 | 関数 | 検査内容 |
 |---|---|
-| `arg__require-next ARGC OPTION` | `OPTION`の次に値が続くことを、残り引数数`ARGC`から検査する。 |
-| `arg__require NAME VALUE` | `VALUE`が空でないことを検査する。 |
-| `arg__integer NAME VALUE` | `VALUE`が10進整数であることを検査する。 |
-| `arg__one-of NAME VALUE CANDIDATE...` | `VALUE`が`CANDIDATE`のいずれかと一致することを検査する。 |
-| `arg__unknown OPTION` | `case`の`*)`分岐で、認識できない引数を報告する。 |
+| `arg.require-next ARGC OPTION` | `OPTION`の次に値が続くことを、残り引数数`ARGC`から検査する。 |
+| `arg.require NAME VALUE` | `VALUE`が空でないことを検査する。 |
+| `arg.integer NAME VALUE` | `VALUE`が10進整数であることを検査する。 |
+| `arg.one-of NAME VALUE CANDIDATE...` | `VALUE`が`CANDIDATE`のいずれかと一致することを検査する。 |
+| `arg.unknown OPTION` | `case`の`*)`分岐で、認識できない引数を報告する。 |
 
 関数ローカル変数への動的代入を目的に`eval`を使う設計は採用しない。
 
 ## Tab補完
 
-名前付き引数を公開する関数は、同じ名前空間に`_<公開関数名>-args`形式のTab補完用内部関数を1つ持つ。公開関数が`user__create`の場合は`_user__create-args`、`service__restart`の場合は`_service__restart-args`とする。下位名前空間を持つ関数（`git__stash__patch`など）は`_git__stash__patch-args`とする。
+名前付き引数を公開する関数は、同じ名前空間に`_<公開関数名>-args`形式のTab補完用内部関数を1つ持つ。公開関数が`user.create`の場合は`_user.create-args`、`service.restart`の場合は`_service.restart-args`とする。下位名前空間を持つ関数（`git.stash.patch`など）は`_git.stash.patch-args`とする。
 
 補完用内部関数は、引数なしで呼び出されると利用可能な引数名を1行ずつ標準出力へ書く。直前の引数名を1つ受け取って呼び出されると、その引数の値候補を1行ずつ標準出力へ書く。候補がない場合は何も書かない。
 
 ```bash
-_user__create-args() {
+_user.create-args() {
   case "${1-}" in
     --shell)
       printf '%s\n' /bin/bash /bin/zsh
@@ -90,9 +90,9 @@ _user__create-args() {
 }
 ```
 
-`src/arg.sh`の`arg__completion__dispatch`は、補完対象の公開関数名から補完用内部関数名を自動的に導出して呼び出す。中央のdispatcherには個別関数の知識を持たせない。`arg__completion__register-all`は、呼び出された時点で定義されているすべての`_*__*-args`関数を検出し、対応する公開関数へ`complete -F arg__completion__dispatch`を登録する。
+`src/arg.sh`の`arg.completion.dispatch`は、補完対象の公開関数名から補完用内部関数名を自動的に導出して呼び出す。中央のdispatcherには個別関数の知識を持たせない。`arg.completion.register-all`は、呼び出された時点で定義されているすべての`_*.*-args`関数を検出し、対応する公開関数へ`complete -F arg.completion.dispatch`を登録する。
 
-対話型Bashでは、最初の読み込み時に`arg__completion__register-all`を自動で呼び出す。非対話型Bashでは自動登録しない。読み込み後に補完用の関数を定義した場合は、`arg__completion__register-all`を明示的に呼び出して登録できる。
+対話型Bashでは、最初の読み込み時に`arg.completion.register-all`を自動で呼び出す。非対話型Bashでは自動登録しない。読み込み後に補完用の関数を定義した場合は、`arg.completion.register-all`を明示的に呼び出して登録できる。
 
 新しい名前付き引数の公開関数を追加するときは、その関数と対応する`_<公開関数名>-args`を同じ機能ファイルへ追加するだけでよい。中央の補完登録一覧を手動で更新する必要はない。
 
@@ -105,7 +105,7 @@ _user__create-args() {
 - `_<公開関数名>-args`が返す引数を対応する公開関数が受理すること。
 - 公開すると定めた名前付き引数がすべて補完候補に含まれること。
 - 値補完が対象引数の直後だけで動作すること。
-- 補完定義を持つ公開関数へ`arg__completion__dispatch`が登録されること。
+- 補完定義を持つ公開関数へ`arg.completion.dispatch`が登録されること。
 
 `scripts/lint`は`scripts/check-completion`を実行し、名前付き引数を解析する公開関数に補完用内部関数があること、補完用内部関数がその引数をすべて列挙することを検査します。
 名前付き引数は、関数と、関数が`"$@"`を渡す内部の解析関数の`case`分岐と`"$1" == '--name'`の比較から読み取ります。

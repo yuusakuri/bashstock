@@ -43,14 +43,14 @@ export PATH="/tmp/bashstock-test-bin:$PATH"
 touch /root/.bashrc /root/.zshrc
 source /opt/bashstock.sh
 
-versions="$(docker__versions)"
+versions="$(docker.versions)"
 [[ -n "$versions" ]]
 version="$(printf '%s\n' "$versions" | tail -n 1)"
 [[ -n "$version" ]]
 older="$(printf '%s\n' "$versions" | tail -n 2 | head -n 1)"
 printf 'Docker selected version: %s\n' "$version"
-docker__install "$version"
-docker__install "$version"
+docker.install "$version"
+docker.install "$version"
 [[ "$(grep -Fxc -- 'enable --now docker' /tmp/bashstock-systemctl.log)" -eq 2 ]]
 docker --version
 docker compose version
@@ -70,7 +70,7 @@ fi
 
 if [[ -n "$older" && "$older" != "$version" ]]; then
   printf 'Docker older version: %s\n' "$older"
-  docker__install "$older"
+  docker.install "$older"
   if [[ -f /etc/fedora-release ]]; then
     installed="$(rpm -q --qf '%{EPOCH}:%{VERSION}-%{RELEASE}\n' docker-ce)"
   else
@@ -78,7 +78,7 @@ if [[ -n "$older" && "$older" != "$version" ]]; then
   fi
   [[ "$installed" == "$older" ]]
   docker --version
-  docker__install "$version"
+  docker.install "$version"
   if [[ -f /etc/fedora-release ]]; then
     installed="$(rpm -q --qf '%{EPOCH}:%{VERSION}-%{RELEASE}\n' docker-ce)"
   else

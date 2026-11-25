@@ -7,15 +7,15 @@
 
 # @description Require one non-empty, single-line AWS argument.
 # @internal
-_aws__require-value() {
-  if [[ "$#" -ne 1 || -z "$1" ]] || ! _string__require-one-line "$1"; then
+_aws.require-value() {
+  if [[ "$#" -ne 1 || -z "$1" ]] || ! _string.require-one-line "$1"; then
     return 64
   fi
 }
 
 # @description Run the AWS CLI and normalize authentication and service failures.
 # @internal
-_aws__cli() {
+_aws.cli() {
   if [[ "$#" -lt 1 ]]; then
     return 64
   fi
@@ -52,7 +52,7 @@ _aws__cli() {
 
 # @description Request one IMDSv2 session token.
 # @internal
-_aws__imds-token() {
+_aws.imds-token() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
@@ -74,7 +74,7 @@ _aws__imds-token() {
 
 # @description Read one metadata path with an IMDSv2 token.
 # @internal
-_aws__imds-get() {
+_aws.imds-get() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -125,7 +125,7 @@ _aws__imds-get() {
 
 # @description Read the EC2 instance identity document with an IMDSv2 token.
 # @internal
-_aws__imds-document() {
+_aws.imds-document() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -151,12 +151,12 @@ _aws__imds-document() {
 # @exitcode 1 The metadata service did not answer.
 # @exitcode 64 An argument was given.
 # @example
-#   aws__is-ec2-instance && region="$(aws__instance-region)"
-aws__is-ec2-instance() {
+#   aws.is-ec2-instance && region="$(aws.instance-region)"
+aws.is-ec2-instance() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
-  _aws__imds-token >/dev/null 2>&1 || return 1
+  _aws.imds-token >/dev/null 2>&1 || return 1
 }
 
 # @description Write one validated EC2 instance metadata value.
@@ -168,8 +168,8 @@ aws__is-ec2-instance() {
 # @exitcode 69 curl is unavailable.
 # @exitcode 75 The metadata service did not answer or returned an invalid value.
 # @example
-#   aws__instance-metadata placement/availability-zone
-aws__instance-metadata() {
+#   aws.instance-metadata placement/availability-zone
+aws.instance-metadata() {
   if [[ "$#" -ne 1 || -z "$1" || "$1" == /* || "$1" == */ ||
     "$1" == *'//'* || "$1" == *'?'* || "$1" == *'#'* ||
     "$1" == *[[:cntrl:]]* ]]; then
@@ -193,8 +193,8 @@ aws__instance-metadata() {
     [[ -z "${remaining}" ]] && break
   done
 
-  token="$(_aws__imds-token)" || return "$?"
-  _aws__imds-get "$1" "${token}"
+  token="$(_aws.imds-token)" || return "$?"
+  _aws.imds-get "$1" "${token}"
 }
 
 # @description Write the current EC2 instance identifier.
@@ -206,10 +206,10 @@ aws__instance-metadata() {
 # @exitcode 69 curl is unavailable.
 # @exitcode 75 The metadata service did not answer.
 # @example
-#   instance_id="$(aws__instance-id)"
-aws__instance-id() {
+#   instance_id="$(aws.instance-id)"
+aws.instance-id() {
   [[ "$#" -eq 0 ]] || return 64
-  aws__instance-metadata instance-id
+  aws.instance-metadata instance-id
 }
 
 # @description Write the current EC2 instance region.
@@ -223,16 +223,16 @@ aws__instance-id() {
 # @exitcode 69 curl or Python 3 is unavailable.
 # @exitcode 75 The metadata service did not answer or the document is invalid.
 # @example
-#   aws__instance-tags "$(aws__instance-id)" "$(aws__instance-region)"
-aws__instance-region() {
+#   aws.instance-tags "$(aws.instance-id)" "$(aws.instance-region)"
+aws.instance-region() {
   [[ "$#" -eq 0 ]] || return 64
 
   local token=''
   local document=''
-  token="$(_aws__imds-token)" || return "$?"
-  document="$(_aws__imds-document "${token}")" || return "$?"
+  token="$(_aws.imds-token)" || return "$?"
+  document="$(_aws.imds-document "${token}")" || return "$?"
   printf '%s' "${document}" |
-    python__run -c '
+    python.run -c '
 import json
 import sys
 try:
@@ -255,10 +255,10 @@ print(value)
 # @exitcode 69 curl is unavailable.
 # @exitcode 75 The metadata service did not answer.
 # @example
-#   aws__instance-availability-zone
-aws__instance-availability-zone() {
+#   aws.instance-availability-zone
+aws.instance-availability-zone() {
   [[ "$#" -eq 0 ]] || return 64
-  aws__instance-metadata placement/availability-zone
+  aws.instance-metadata placement/availability-zone
 }
 
 # @description Write the current EC2 instance private IPv4 address.
@@ -270,10 +270,10 @@ aws__instance-availability-zone() {
 # @exitcode 69 curl is unavailable.
 # @exitcode 75 The metadata service did not answer.
 # @example
-#   printf 'listen %s:8080\n' "$(aws__instance-private-ip)"
-aws__instance-private-ip() {
+#   printf 'listen %s:8080\n' "$(aws.instance-private-ip)"
+aws.instance-private-ip() {
   [[ "$#" -eq 0 ]] || return 64
-  aws__instance-metadata local-ipv4
+  aws.instance-metadata local-ipv4
 }
 
 # @description Write all tags for one EC2 instance.
@@ -287,12 +287,12 @@ aws__instance-private-ip() {
 # @exitcode 75 The AWS CLI failed for a reason other than credentials.
 # @exitcode 77 The credentials were missing, expired, or not allowed.
 # @example
-#   aws__instance-tags i-0123456789abcdef0 ap-northeast-1
-aws__instance-tags() {
-  if [[ "$#" -ne 2 ]] || ! _aws__require-value "$1" || ! _aws__require-value "$2"; then
+#   aws.instance-tags i-0123456789abcdef0 ap-northeast-1
+aws.instance-tags() {
+  if [[ "$#" -ne 2 ]] || ! _aws.require-value "$1" || ! _aws.require-value "$2"; then
     return 64
   fi
-  _aws__cli ec2 describe-tags \
+  _aws.cli ec2 describe-tags \
     --filters "Name=resource-id,Values=$1" \
     --region "$2" --output json
 }
@@ -310,19 +310,19 @@ aws__instance-tags() {
 # @exitcode 75 The AWS CLI failed or returned invalid JSON.
 # @exitcode 77 The credentials were missing, expired, or not allowed.
 # @example
-#   aws__instance-tag i-0123456789abcdef0 ap-northeast-1 Name
-aws__instance-tag() {
+#   aws.instance-tag i-0123456789abcdef0 ap-northeast-1 Name
+aws.instance-tag() {
   if [[ "$#" -ne 3 ]] ||
-    ! _aws__require-value "$1" ||
-    ! _aws__require-value "$2" ||
-    ! _aws__require-value "$3"; then
+    ! _aws.require-value "$1" ||
+    ! _aws.require-value "$2" ||
+    ! _aws.require-value "$3"; then
     return 64
   fi
 
   local tags=''
-  tags="$(aws__instance-tags "$1" "$2")" || return "$?"
+  tags="$(aws.instance-tags "$1" "$2")" || return "$?"
   printf '%s' "${tags}" |
-    python__run -c '
+    python.run -c '
 import json
 import sys
 key = sys.argv[1]
@@ -361,14 +361,14 @@ sys.exit(1)
 # @exitcode 75 The tag did not appear before the timeout, or the AWS CLI failed.
 # @exitcode 77 The credentials were missing, expired, or not allowed.
 # @example
-#   aws__wait-for-instance-tag "$(aws__instance-id)" "$(aws__instance-region)" Role 120 5
-aws__wait-for-instance-tag() {
+#   aws.wait-for-instance-tag "$(aws.instance-id)" "$(aws.instance-region)" Role 120 5
+aws.wait-for-instance-tag() {
   if [[ "$#" -ne 5 ]] ||
-    ! _aws__require-value "$1" ||
-    ! _aws__require-value "$2" ||
-    ! _aws__require-value "$3" ||
-    ! _number__is-positive-integer-at-most "$4" 2147483647 ||
-    ! _number__is-positive-integer-at-most "$5" 2147483647; then
+    ! _aws.require-value "$1" ||
+    ! _aws.require-value "$2" ||
+    ! _aws.require-value "$3" ||
+    ! _number.is-positive-integer-at-most "$4" 2147483647 ||
+    ! _number.is-positive-integer-at-most "$5" 2147483647; then
     return 64
   fi
 
@@ -382,11 +382,11 @@ aws__wait-for-instance-tag() {
   local value=''
   local status=''
 
-  start="$(time__boot-time-milliseconds)" || return "$?"
-  _number__is-non-negative-integer-at-most "${start}" 9223372036854775807 ||
+  start="$(time.boot-time-milliseconds)" || return "$?"
+  _number.is-non-negative-integer-at-most "${start}" 9223372036854775807 ||
     return 69
   while :; do
-    if value="$(aws__instance-tag "${instance_id}" "${region}" "${key}")"; then
+    if value="$(aws.instance-tag "${instance_id}" "${region}" "${key}")"; then
       printf '%s\n' "${value}"
       return 0
     else
@@ -396,8 +396,8 @@ aws__wait-for-instance-tag() {
       return "${status}"
     fi
 
-    current="$(time__boot-time-milliseconds)" || return "$?"
-    _number__is-non-negative-integer-at-most "${current}" 9223372036854775807 ||
+    current="$(time.boot-time-milliseconds)" || return "$?"
+    _number.is-non-negative-integer-at-most "${current}" 9223372036854775807 ||
       return 69
     if ((current - start >= timeout_milliseconds)); then
       return 75
@@ -420,16 +420,16 @@ aws__wait-for-instance-tag() {
 # @exitcode 75 The AWS CLI failed for a reason other than credentials.
 # @exitcode 77 The credentials were missing, expired, or not allowed.
 # @example
-#   aws__instances-with-tag Role web ap-northeast-1
-aws__instances-with-tag() {
+#   aws.instances-with-tag Role web ap-northeast-1
+aws.instances-with-tag() {
   if [[ "$#" -ne 3 ]] ||
-    ! _aws__require-value "$1" ||
-    ! _aws__require-value "$2" ||
-    ! _aws__require-value "$3"; then
+    ! _aws.require-value "$1" ||
+    ! _aws.require-value "$2" ||
+    ! _aws.require-value "$3"; then
     return 64
   fi
 
-  _aws__cli ec2 describe-instances \
+  _aws.cli ec2 describe-instances \
     --filters "Name=tag:$1,Values=$2" \
     'Name=instance-state-name,Values=pending,running' \
     --region "$3" --output json
@@ -447,15 +447,15 @@ aws__instances-with-tag() {
 # @exitcode 75 The AWS CLI failed for a reason other than credentials.
 # @exitcode 77 The credentials were missing, expired, or not allowed.
 # @example
-#   aws__auto-scaling-group web-asg ap-northeast-1
-aws__auto-scaling-group() {
-  if [[ "$#" -ne 2 ]] || ! _aws__require-value "$1" || ! _aws__require-value "$2"; then
+#   aws.auto-scaling-group web-asg ap-northeast-1
+aws.auto-scaling-group() {
+  if [[ "$#" -ne 2 ]] || ! _aws.require-value "$1" || ! _aws.require-value "$2"; then
     return 64
   fi
 
   local result=''
   result="$(
-    _aws__cli autoscaling describe-auto-scaling-groups \
+    _aws.cli autoscaling describe-auto-scaling-groups \
       --auto-scaling-group-names "$1" \
       --region "$2" \
       --query 'AutoScalingGroups[0]' \
@@ -479,9 +479,9 @@ aws__auto-scaling-group() {
 # @exitcode 75 The AWS CLI failed or returned invalid JSON.
 # @exitcode 77 The credentials were missing, expired, or not allowed.
 # @example
-#   aws__instances-in-auto-scaling-group web-asg ap-northeast-1
-aws__instances-in-auto-scaling-group() {
-  if [[ "$#" -ne 2 ]] || ! _aws__require-value "$1" || ! _aws__require-value "$2"; then
+#   aws.instances-in-auto-scaling-group web-asg ap-northeast-1
+aws.instances-in-auto-scaling-group() {
+  if [[ "$#" -ne 2 ]] || ! _aws.require-value "$1" || ! _aws.require-value "$2"; then
     return 64
   fi
 
@@ -489,10 +489,10 @@ aws__instances-in-auto-scaling-group() {
   local instance_ids=''
   local ids=()
   local id=''
-  group="$(aws__auto-scaling-group "$1" "$2")" || return "$?"
+  group="$(aws.auto-scaling-group "$1" "$2")" || return "$?"
   instance_ids="$(
     printf '%s' "${group}" |
-      python__run -c '
+      python.run -c '
 import json
 import sys
 try:
@@ -520,7 +520,7 @@ for instance in instances:
     ids[${#ids[@]}]="${id}"
   done <<<"${instance_ids}"
 
-  _aws__cli ec2 describe-instances \
+  _aws.cli ec2 describe-instances \
     --instance-ids "${ids[@]}" \
     --filters 'Name=instance-state-name,Values=pending,running' \
     --region "$2" --output json
@@ -540,19 +540,19 @@ for instance in instances:
 # @exitcode 75 The metadata service did not answer, or the tag did not appear in time.
 # @exitcode 77 The credentials were missing, expired, or not allowed.
 # @example
-#   group="$(aws__auto-scaling-group-name 300 10)"
-aws__auto-scaling-group-name() {
+#   group="$(aws.auto-scaling-group-name 300 10)"
+aws.auto-scaling-group-name() {
   if [[ "$#" -ne 2 ]] ||
-    ! _number__is-positive-integer-at-most "$1" 2147483647 ||
-    ! _number__is-positive-integer-at-most "$2" 2147483647; then
+    ! _number.is-positive-integer-at-most "$1" 2147483647 ||
+    ! _number.is-positive-integer-at-most "$2" 2147483647; then
     return 64
   fi
 
   local instance_id=''
   local region=''
-  instance_id="$(aws__instance-id)" || return "$?"
-  region="$(aws__instance-region)" || return "$?"
-  aws__wait-for-instance-tag \
+  instance_id="$(aws.instance-id)" || return "$?"
+  region="$(aws.instance-region)" || return "$?"
+  aws.wait-for-instance-tag \
     "${instance_id}" "${region}" 'aws:autoscaling:groupName' "$1" "$2"
 }
 
@@ -568,16 +568,16 @@ aws__auto-scaling-group-name() {
 # @exitcode 75 The AWS CLI failed or returned invalid JSON.
 # @exitcode 77 The credentials were missing, expired, or not allowed.
 # @example
-#   aws__auto-scaling-group-size web-asg ap-northeast-1
-aws__auto-scaling-group-size() {
-  if [[ "$#" -ne 2 ]] || ! _aws__require-value "$1" || ! _aws__require-value "$2"; then
+#   aws.auto-scaling-group-size web-asg ap-northeast-1
+aws.auto-scaling-group-size() {
+  if [[ "$#" -ne 2 ]] || ! _aws.require-value "$1" || ! _aws.require-value "$2"; then
     return 64
   fi
 
   local group=''
-  group="$(aws__auto-scaling-group "$1" "$2")" || return "$?"
+  group="$(aws.auto-scaling-group "$1" "$2")" || return "$?"
   printf '%s' "${group}" |
-    python__run -c '
+    python.run -c '
 import json
 import sys
 try:
@@ -593,7 +593,7 @@ print(size)
 
 # @description Write the default AWS VPN Client log directory.
 # @internal
-_aws__vpn-client__log__default-directory() {
+_aws.vpn-client.log.default-directory() {
   [[ "$#" -eq 0 ]] || return 64
   printf '%s\n' "${HOME}/.config/AWSVPNClient/logs"
 }
@@ -610,13 +610,13 @@ _aws__vpn-client__log__default-directory() {
 # @exitcode 66 The directory does not exist or is a symbolic link.
 # @exitcode 69 find is unavailable.
 # @example
-#   aws__vpn-client__log__files | xargs -0 tail -n 50
-aws__vpn-client__log__files() {
+#   aws.vpn-client.log.files | xargs -0 tail -n 50
+aws.vpn-client.log.files() {
   [[ "$#" -le 1 ]] || return 64
   local directory="${1:-}"
-  [[ -n "${directory}" ]] || directory="$(_aws__vpn-client__log__default-directory)"
+  [[ -n "${directory}" ]] || directory="$(_aws.vpn-client.log.default-directory)"
   [[ -d "${directory}" && ! -L "${directory}" ]] || return 66
-  command__require find || return "$?"
+  command.require find || return "$?"
   find "${directory}" -type f -name '*aws_vpn_client_*' ! -name '*ovpn_aws_vpn_client*' -print0
 }
 
@@ -629,13 +629,13 @@ aws__vpn-client__log__files() {
 # @exitcode 69 find is unavailable.
 # @exitcode 74 A file could not be removed.
 # @example
-#   aws__vpn-client__log__clear
-aws__vpn-client__log__clear() {
+#   aws.vpn-client.log.clear
+aws.vpn-client.log.clear() {
   [[ "$#" -le 1 ]] || return 64
   local directory="${1:-}"
-  [[ -n "${directory}" ]] || directory="$(_aws__vpn-client__log__default-directory)"
+  [[ -n "${directory}" ]] || directory="$(_aws.vpn-client.log.default-directory)"
   [[ -d "${directory}" && ! -L "${directory}" ]] || return 66
-  command__require find || return "$?"
+  command.require find || return "$?"
   find "${directory}" -type f -exec rm -f -- {} + || return 74
 }
 
@@ -650,15 +650,15 @@ aws__vpn-client__log__clear() {
 # @exitcode other The status of the editor.
 # @example
 #   files=()
-#   while IFS= read -r -d '' file; do files+=("${file}"); done < <(aws__vpn-client__log__files)
-#   aws__vpn-client__log__open code "${files[@]}"
-aws__vpn-client__log__open() {
+#   while IFS= read -r -d '' file; do files+=("${file}"); done < <(aws.vpn-client.log.files)
+#   aws.vpn-client.log.open code "${files[@]}"
+aws.vpn-client.log.open() {
   [[ "$#" -ge 2 && -n "$1" ]] || return 64
   local editor="$1" path=''
   shift
   for path in "$@"; do
     [[ -f "${path}" ]] || return 66
   done
-  command__require "${editor}" || return "$?"
+  command.require "${editor}" || return "$?"
   "${editor}" "$@"
 }

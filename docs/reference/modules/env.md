@@ -8,22 +8,22 @@ Persistent settings are written once to the startup files of each shell.
 
 ## Index
 
-* [env__dotenv__import](#env__dotenv__import)
-* [env__set-variable](#env__set-variable)
-* [env__add-path](#env__add-path)
-* [env__dotenv__register](#env__dotenv__register)
+* [env.dotenv.import](#envdotenvimport)
+* [env.set-variable](#envset-variable)
+* [env.add-path](#envadd-path)
+* [env.dotenv.register](#envdotenvregister)
 
-### env__dotenv__import
+### env.dotenv.import
 
 Import the variables of a dotenv file into the current process.
 
 The file is parsed as data and never executed. Every line is validated
-before any variable changes; see _env__dotenv__entries for the syntax.
+before any variable changes; see _env.dotenv.entries for the syntax.
 
 #### Example
 
 ```bash
-env__dotenv__import .env && printf '%s\n' "${DATABASE_URL}"
+env.dotenv.import .env && printf '%s\n' "${DATABASE_URL}"
 ```
 
 #### Arguments
@@ -42,7 +42,7 @@ env__dotenv__import .env && printf '%s\n' "${DATABASE_URL}"
 * **74**: A variable could not be set or exported.
 * other The status of the parser.
 
-### env__set-variable
+### env.set-variable
 
 Set an environment variable for the current shell.
 
@@ -51,7 +51,7 @@ The export line is written to the startup file of each shell, replacing an earli
 #### Example
 
 ```bash
-env__set-variable EDITOR vim bash
+env.set-variable EDITOR vim bash
 ```
 
 #### Arguments
@@ -70,7 +70,7 @@ env__set-variable EDITOR vim bash
 * **64**: The name or the shell list is invalid.
 * other The status of the file operation that failed.
 
-### env__add-path
+### env.add-path
 
 Add a directory to PATH without creating duplicates.
 
@@ -79,7 +79,7 @@ A line that adds the directory once is written to the startup file of each shell
 #### Example
 
 ```bash
-env__add-path "${HOME}/.local/bin"
+env.add-path "${HOME}/.local/bin"
 ```
 
 #### Arguments
@@ -97,11 +97,11 @@ env__add-path "${HOME}/.local/bin"
 * **64**: The directory does not exist or the shell list is invalid.
 * other The status of the file operation that failed.
 
-### env__dotenv__register
+### env.dotenv.register
 
 Load a dotenv file in every new Bash and Zsh session.
 
-Bash startup files load BashStock and call env__dotenv__import. Zsh cannot
+Bash startup files load BashStock and call env.dotenv.import. Zsh cannot
 load a Bash library, so its startup file asks Bash for the parsed values
 and evaluates the resulting export commands. Each startup file receives the
 line once, and the file is always read as data.
@@ -109,7 +109,7 @@ line once, and the file is always read as data.
 #### Example
 
 ```bash
-env__dotenv__register "${HOME}/.config/app/.env" zsh
+env.dotenv.register "${HOME}/.config/app/.env" zsh
 ```
 
 #### Arguments

@@ -7,7 +7,7 @@
 
 # @description Run an ADB command with an optional serial number.
 # @internal
-_adb__run() {
+_adb.run() {
   [[ "$#" -ge 1 ]] || return 64
   local serial='' seen_serial=0
   local args=()
@@ -23,111 +23,111 @@ _adb__run() {
     fi
   done
   [[ "$seen_serial" -eq 0 ]] || args=(-s "$serial" "${args[@]}")
-  _docker__run-command adb "${args[@]}"
+  _docker.run-command adb "${args[@]}"
 }
 
 # @description List --serial and, after it, the serials of the connected devices for Tab completion.
 # @internal
-_adb__complete-serial() {
+_adb.complete-serial() {
   case "${1-}" in
-    --serial) adb__device__list 2>/dev/null || true ;;
+    --serial) adb.device.list 2>/dev/null || true ;;
     '') printf '%s\n' --serial ;;
   esac
 }
 
-# @description List the named arguments and value candidates of adb__device__wait.
+# @description List the named arguments and value candidates of adb.device.wait.
 # @internal
-_adb__device__wait-args() { _adb__complete-serial "$@"; }
+_adb.device.wait-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__device__pull.
+# @description List the named arguments and value candidates of adb.device.pull.
 # @internal
-_adb__device__pull-args() { _adb__complete-serial "$@"; }
+_adb.device.pull-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__device__push.
+# @description List the named arguments and value candidates of adb.device.push.
 # @internal
-_adb__device__push-args() { _adb__complete-serial "$@"; }
+_adb.device.push-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__logcat__clear.
+# @description List the named arguments and value candidates of adb.logcat.clear.
 # @internal
-_adb__logcat__clear-args() { _adb__complete-serial "$@"; }
+_adb.logcat.clear-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__logcat__once.
+# @description List the named arguments and value candidates of adb.logcat.once.
 # @internal
-_adb__logcat__once-args() { _adb__complete-serial "$@"; }
+_adb.logcat.once-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__logcat__continuous.
+# @description List the named arguments and value candidates of adb.logcat.continuous.
 # @internal
-_adb__logcat__continuous-args() { _adb__complete-serial "$@"; }
+_adb.logcat.continuous-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__device__reboot.
+# @description List the named arguments and value candidates of adb.device.reboot.
 # @internal
-_adb__device__reboot-args() { _adb__complete-serial "$@"; }
+_adb.device.reboot-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__device__wait-for-path.
+# @description List the named arguments and value candidates of adb.device.wait-for-path.
 # @internal
-_adb__device__wait-for-path-args() { _adb__complete-serial "$@"; }
+_adb.device.wait-for-path-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__device__screen__capture-once.
+# @description List the named arguments and value candidates of adb.device.screen.capture-once.
 # @internal
-_adb__device__screen__capture-once-args() { _adb__complete-serial "$@"; }
+_adb.device.screen.capture-once-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__device__bootloader__enter.
+# @description List the named arguments and value candidates of adb.device.bootloader.enter.
 # @internal
-_adb__device__bootloader__enter-args() { _adb__complete-serial "$@"; }
+_adb.device.bootloader.enter-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__device__bootloader__unlock.
+# @description List the named arguments and value candidates of adb.device.bootloader.unlock.
 # @internal
-_adb__device__bootloader__unlock-args() { _adb__complete-serial "$@"; }
+_adb.device.bootloader.unlock-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__device__verity__disable.
+# @description List the named arguments and value candidates of adb.device.verity.disable.
 # @internal
-_adb__device__verity__disable-args() { _adb__complete-serial "$@"; }
+_adb.device.verity.disable-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__device__partition__remount.
+# @description List the named arguments and value candidates of adb.device.partition.remount.
 # @internal
-_adb__device__partition__remount-args() { _adb__complete-serial "$@"; }
+_adb.device.partition.remount-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__device__build__fingerprint.
+# @description List the named arguments and value candidates of adb.device.build.fingerprint.
 # @internal
-_adb__device__build__fingerprint-args() { _adb__complete-serial "$@"; }
+_adb.device.build.fingerprint-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__device__build__date.
+# @description List the named arguments and value candidates of adb.device.build.date.
 # @internal
-_adb__device__build__date-args() { _adb__complete-serial "$@"; }
+_adb.device.build.date-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__device__slot__suffix.
+# @description List the named arguments and value candidates of adb.device.slot.suffix.
 # @internal
-_adb__device__slot__suffix-args() { _adb__complete-serial "$@"; }
+_adb.device.slot.suffix-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__device__build__kernel-version.
+# @description List the named arguments and value candidates of adb.device.build.kernel-version.
 # @internal
-_adb__device__build__kernel-version-args() { _adb__complete-serial "$@"; }
+_adb.device.build.kernel-version-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__device__screen__capture-continuous.
+# @description List the named arguments and value candidates of adb.device.screen.capture-continuous.
 # @internal
-_adb__device__screen__capture-continuous-args() { _adb__complete-serial "$@"; }
+_adb.device.screen.capture-continuous-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__device__partition__sha256.
+# @description List the named arguments and value candidates of adb.device.partition.sha256.
 # @internal
-_adb__device__partition__sha256-args() { _adb__complete-serial "$@"; }
+_adb.device.partition.sha256-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__wake__lock.
+# @description List the named arguments and value candidates of adb.wake.lock.
 # @internal
-_adb__wake__lock-args() { _adb__complete-serial "$@"; }
+_adb.wake.lock-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__wake__unlock.
+# @description List the named arguments and value candidates of adb.wake.unlock.
 # @internal
-_adb__wake__unlock-args() { _adb__complete-serial "$@"; }
+_adb.wake.unlock-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__wake__list.
+# @description List the named arguments and value candidates of adb.wake.list.
 # @internal
-_adb__wake__list-args() { _adb__complete-serial "$@"; }
+_adb.wake.list-args() { _adb.complete-serial "$@"; }
 
-# @description List the named arguments and value candidates of adb__device__select-and-pull.
+# @description List the named arguments and value candidates of adb.device.select-and-pull.
 # @internal
-_adb__device__select-and-pull-args() {
+_adb.device.select-and-pull-args() {
   case "${1-}" in
-    --serial) adb__device__list 2>/dev/null || true ;;
+    --serial) adb.device.list 2>/dev/null || true ;;
     '') printf '%s\n' --output-directory --serial ;;
   esac
 }
@@ -140,8 +140,8 @@ _adb__device__select-and-pull-args() {
 # @exitcode 69 adb is unavailable.
 # @exitcode other The status of adb wait-for-device.
 # @example
-#   adb__device__wait --serial emulator-5554
-adb__device__wait() { _adb__run wait-for-device "$@"; }
+#   adb.device.wait --serial emulator-5554
+adb.device.wait() { _adb.run wait-for-device "$@"; }
 
 # @description Copy files from an ADB device to the host.
 #
@@ -152,8 +152,8 @@ adb__device__wait() { _adb__run wait-for-device "$@"; }
 # @exitcode 69 adb is unavailable.
 # @exitcode other The status of adb pull.
 # @example
-#   adb__device__pull /sdcard/DCIM/Camera ./camera --serial emulator-5554
-adb__device__pull() { [[ "$#" -ge 1 ]] || return 64; _adb__run pull "$@"; }
+#   adb.device.pull /sdcard/DCIM/Camera ./camera --serial emulator-5554
+adb.device.pull() { [[ "$#" -ge 1 ]] || return 64; _adb.run pull "$@"; }
 
 # @description Copy files from the host to an ADB device.
 #
@@ -164,8 +164,8 @@ adb__device__pull() { [[ "$#" -ge 1 ]] || return 64; _adb__run pull "$@"; }
 # @exitcode 69 adb is unavailable.
 # @exitcode other The status of adb push.
 # @example
-#   adb__device__push app-debug.apk /data/local/tmp/
-adb__device__push() { [[ "$#" -ge 1 ]] || return 64; _adb__run push "$@"; }
+#   adb.device.push app-debug.apk /data/local/tmp/
+adb.device.push() { [[ "$#" -ge 1 ]] || return 64; _adb.run push "$@"; }
 
 # @description Clear the selected device log buffers.
 #
@@ -175,8 +175,8 @@ adb__device__push() { [[ "$#" -ge 1 ]] || return 64; _adb__run push "$@"; }
 # @exitcode 69 adb is unavailable.
 # @exitcode other The status of adb logcat.
 # @example
-#   adb__logcat__clear --serial emulator-5554
-adb__logcat__clear() { _adb__run logcat -c "$@"; }
+#   adb.logcat.clear --serial emulator-5554
+adb.logcat.clear() { _adb.run logcat -c "$@"; }
 
 # @description Write the selected device log buffers once.
 #
@@ -187,8 +187,8 @@ adb__logcat__clear() { _adb__run logcat -c "$@"; }
 # @exitcode 69 adb is unavailable.
 # @exitcode other The status of adb logcat.
 # @example
-#   adb__logcat__once > device.log
-adb__logcat__once() { _adb__run logcat -d "$@"; }
+#   adb.logcat.once > device.log
+adb.logcat.once() { _adb.run logcat -d "$@"; }
 
 # @description Stream logs from the selected device.
 #
@@ -199,8 +199,8 @@ adb__logcat__once() { _adb__run logcat -d "$@"; }
 # @exitcode 69 adb is unavailable.
 # @exitcode other The status of adb logcat.
 # @example
-#   adb__logcat__continuous | grep -i crash
-adb__logcat__continuous() { _adb__run logcat "$@"; }
+#   adb.logcat.continuous | grep -i crash
+adb.logcat.continuous() { _adb.run logcat "$@"; }
 
 # @description Reboot the selected device.
 #
@@ -215,8 +215,8 @@ adb__logcat__continuous() { _adb__run logcat "$@"; }
 # @exitcode 75 The device did not reconnect in time.
 # @exitcode other The status of adb reboot.
 # @example
-#   adb__device__reboot 120 --serial emulator-5554
-adb__device__reboot() {
+#   adb.device.reboot 120 --serial emulator-5554
+adb.device.reboot() {
   [[ "$#" -le 3 ]] || return 64
   local timeout=60 serial='' start='' state='' disconnected=0
   local serial_args=()
@@ -227,10 +227,10 @@ adb__device__reboot() {
     serial="$2"
     serial_args=(--serial "$serial")
   fi
-  _adb__run reboot "${serial_args[@]}" || return "$?"
+  _adb.run reboot "${serial_args[@]}" || return "$?"
   start="$(date +%s)" || return 74
   while (( $(date +%s) - start < timeout )); do
-    state="$(_adb__run get-state "${serial_args[@]}" 2>/dev/null)" || state=''
+    state="$(_adb.run get-state "${serial_args[@]}" 2>/dev/null)" || state=''
     if [[ "$state" == device ]]; then
       [[ "$disconnected" -eq 0 ]] || return 0
     else
@@ -251,11 +251,11 @@ adb__device__reboot() {
 # @exitcode 69 adb is unavailable.
 # @exitcode other The status of adb devices.
 # @example
-#   serial="$(adb__device__first)"
-adb__device__first() {
+#   serial="$(adb.device.first)"
+adb.device.first() {
   [[ "$#" -eq 0 ]] || return 64
   local devices=''
-  devices="$(adb__device__list)" || return "$?"
+  devices="$(adb.device.list)" || return "$?"
   [[ -n "$devices" ]] || return 1
   printf '%s\n' "${devices%%$'\n'*}"
 }
@@ -269,11 +269,11 @@ adb__device__first() {
 # @exitcode 69 adb is unavailable.
 # @exitcode other The status of adb devices.
 # @example
-#   adb__device__list
-adb__device__list() {
+#   adb.device.list
+adb.device.list() {
   [[ "$#" -eq 0 ]] || return 64
   local devices=''
-  devices="$(_adb__run devices)" || return "$?"
+  devices="$(_adb.run devices)" || return "$?"
   printf '%s\n' "$devices" | awk 'NR>1 && $2=="device" {print $1}'
 }
 
@@ -287,8 +287,8 @@ adb__device__list() {
 # @exitcode 74 The clock or sleep failed.
 # @exitcode 75 The path did not appear in time.
 # @example
-#   adb__device__wait-for-path /sdcard/Download/report.json 60
-adb__device__wait-for-path() {
+#   adb.device.wait-for-path /sdcard/Download/report.json 60
+adb.device.wait-for-path() {
   [[ "$#" -ge 1 && "$#" -le 4 && -n "$1" ]] || return 64
   local path="$1" timeout=30 start='' quoted=''
   local serial_args=()
@@ -303,7 +303,7 @@ adb__device__wait-for-path() {
   printf -v quoted '%q' "$path"
   start="$(date +%s)" || return 74
   while (( $(date +%s) - start < timeout )); do
-    _adb__run shell "test -e $quoted" "${serial_args[@]}" >/dev/null 2>&1 && return 0
+    _adb.run shell "test -e $quoted" "${serial_args[@]}" >/dev/null 2>&1 && return 0
     sleep 1 || return 74
   done
   return 75
@@ -319,8 +319,8 @@ adb__device__wait-for-path() {
 # @exitcode 74 The file could not be written.
 # @exitcode 75 The device returned no image.
 # @example
-#   adb__device__screen__capture-once ./screen.png --serial emulator-5554
-adb__device__screen__capture-once() {
+#   adb.device.screen.capture-once ./screen.png --serial emulator-5554
+adb.device.screen.capture-once() {
   [[ "$#" -le 3 ]] || return 64
   local output='' stamp='' directory='' temporary=''
   local serial_args=()
@@ -336,7 +336,7 @@ adb__device__screen__capture-once() {
   directory="$(dirname -- "$output")" || return 74
   mkdir -p -- "$directory" || return 74
   temporary="$(mktemp "$directory/.bashstock-image.XXXXXX")" || return 74
-  if ! _adb__run exec-out screencap -p "${serial_args[@]}" >"$temporary" || [[ ! -s "$temporary" ]]; then
+  if ! _adb.run exec-out screencap -p "${serial_args[@]}" >"$temporary" || [[ ! -s "$temporary" ]]; then
     rm -f -- "$temporary"
     return 75
   fi
@@ -354,8 +354,8 @@ adb__device__screen__capture-once() {
 # @exitcode 74 The output directory could not be created.
 # @exitcode other The status of the prompt or of adb pull.
 # @example
-#   adb__device__select-and-pull /sdcard/Download /sdcard/DCIM --output-directory ./device
-adb__device__select-and-pull() {
+#   adb.device.select-and-pull /sdcard/Download /sdcard/DCIM --output-directory ./device
+adb.device.select-and-pull() {
   [[ "$#" -ge 1 ]] || return 64
   local output='.' serial='' selected=''
   local paths=() serial_args=()
@@ -369,9 +369,9 @@ adb__device__select-and-pull() {
   done
   [[ "${#paths[@]}" -gt 0 ]] || return 64
   [[ -z "$serial" ]] || serial_args=(--serial "$serial")
-  selected="$(shell__choose-one 'Select a device path' "${paths[@]}")" || return "$?"
+  selected="$(shell.choose-one 'Select a device path' "${paths[@]}")" || return "$?"
   mkdir -p -- "$output" || return 74
-  _adb__run pull "$selected" "$output" "${serial_args[@]}"
+  _adb.run pull "$selected" "$output" "${serial_args[@]}"
 }
 
 # @description Reboot the selected device into its bootloader.
@@ -382,11 +382,11 @@ adb__device__select-and-pull() {
 # @exitcode 69 adb is unavailable.
 # @exitcode other The status of adb reboot.
 # @example
-#   adb__device__bootloader__enter --serial 0123456789ABCDEF
+#   adb.device.bootloader.enter --serial 0123456789ABCDEF
 # shellcheck disable=SC2329
-adb__device__bootloader__enter() {
+adb.device.bootloader.enter() {
   [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
-  _adb__run reboot bootloader "$@"
+  _adb.run reboot bootloader "$@"
 }
 
 # @description Request bootloader unlocking and wait for the device to reconnect.
@@ -402,14 +402,14 @@ adb__device__bootloader__enter() {
 # @exitcode 75 The device did not reach fastboot or ADB in time.
 # @exitcode other The status of the adb or fastboot command that failed.
 # @example
-#   adb__device__bootloader__unlock --serial 0123456789ABCDEF
-adb__device__bootloader__unlock() {
+#   adb.device.bootloader.unlock --serial 0123456789ABCDEF
+adb.device.bootloader.unlock() {
   [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
   command -v fastboot >/dev/null 2>&1 || return 69
   local start='' ready=0
   local fastboot_args=()
   [[ "$#" -eq 0 ]] || fastboot_args=(-s "$2")
-  adb__device__bootloader__enter "$@" || return "$?"
+  adb.device.bootloader.enter "$@" || return "$?"
   start="$(date +%s)" || return 74
   while (( $(date +%s) - start < 30 )); do
     if fastboot ${fastboot_args[@]+"${fastboot_args[@]}"} getvar version >/dev/null 2>&1; then
@@ -422,15 +422,15 @@ adb__device__bootloader__unlock() {
   fastboot ${fastboot_args[@]+"${fastboot_args[@]}"} flashing unlock || return "$?"
   # Some bootloaders stay in fastboot after the unlock. fastboot reboot waits
   # forever for a missing device, so it is sent only while the device is listed.
-  if _adb__fastboot-listed "$@"; then
+  if _adb.fastboot-listed "$@"; then
     fastboot ${fastboot_args[@]+"${fastboot_args[@]}"} reboot || return "$?"
   fi
-  _adb__wait-device 60 "$@"
+  _adb.wait-device 60 "$@"
 }
 
 # @description Succeed when fastboot lists the selected device, or any device without --serial.
 # @internal
-_adb__fastboot-listed() {
+_adb.fastboot-listed() {
   [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
   local devices=''
   devices="$(fastboot devices 2>/dev/null)" || return 1
@@ -443,14 +443,14 @@ _adb__fastboot-listed() {
 
 # @description Wait for the selected device to return to the connected state.
 # @internal
-_adb__wait-device() {
+_adb.wait-device() {
   [[ "$#" -eq 1 || ( "$#" -eq 3 && "$2" == '--serial' && -n "$3" ) ]] || return 64
   local timeout="$1" start='' state=''
   ( [[ "$timeout" =~ ^[1-9][0-9]*$ ]] ) || return 64
   shift
   start="$(date +%s)" || return 74
   while (( $(date +%s) - start < timeout )); do
-    state="$(_adb__run get-state "$@" 2>/dev/null)" || state=''
+    state="$(_adb.run get-state "$@" 2>/dev/null)" || state=''
     [[ "$state" != device ]] || return 0
     sleep 1 || return 74
   done
@@ -466,15 +466,15 @@ _adb__wait-device() {
 # @exitcode 75 The device did not reconnect in time.
 # @exitcode other The status of the adb command that failed.
 # @example
-#   adb__device__verity__disable && adb__device__partition__remount
-adb__device__verity__disable() {
+#   adb.device.verity.disable && adb.device.partition.remount
+adb.device.verity.disable() {
   [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
-  _adb__run root "$@" || return "$?"
-  _adb__wait-device 60 "$@" || return "$?"
-  _adb__run disable-verity "$@" || return "$?"
-  _adb__run reboot "$@" || return "$?"
+  _adb.run root "$@" || return "$?"
+  _adb.wait-device 60 "$@" || return "$?"
+  _adb.run disable-verity "$@" || return "$?"
+  _adb.run reboot "$@" || return "$?"
   sleep 5 || return 74
-  _adb__wait-device 180 "$@"
+  _adb.wait-device 180 "$@"
 }
 
 # @description Make the system partitions of a rooted device writable.
@@ -488,13 +488,13 @@ adb__device__verity__disable() {
 # @exitcode 75 The device did not reconnect in time.
 # @exitcode other The status of the adb command that failed.
 # @example
-#   adb__device__partition__remount --serial emulator-5554
-adb__device__partition__remount() {
+#   adb.device.partition.remount --serial emulator-5554
+adb.device.partition.remount() {
   [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
-  _adb__run root "$@" || return "$?"
-  _adb__wait-device 60 "$@" || return "$?"
-  _adb__run remount "$@" || return "$?"
-  _adb__run shell 'mount -o rw,remount /' "$@"
+  _adb.run root "$@" || return "$?"
+  _adb.wait-device 60 "$@" || return "$?"
+  _adb.run remount "$@" || return "$?"
+  _adb.run shell 'mount -o rw,remount /' "$@"
 }
 
 # @description Write the selected device build fingerprint.
@@ -506,8 +506,8 @@ adb__device__partition__remount() {
 # @exitcode 69 adb is unavailable.
 # @exitcode other The status of adb shell.
 # @example
-#   adb__device__build__fingerprint
-adb__device__build__fingerprint() { _adb__run shell getprop ro.build.fingerprint "$@"; }
+#   adb.device.build.fingerprint
+adb.device.build.fingerprint() { _adb.run shell getprop ro.build.fingerprint "$@"; }
 
 # @description Write the selected device build timestamp as Unix seconds.
 #
@@ -518,8 +518,8 @@ adb__device__build__fingerprint() { _adb__run shell getprop ro.build.fingerprint
 # @exitcode 69 adb is unavailable.
 # @exitcode other The status of adb shell.
 # @example
-#   date -d "@$(adb__device__build__date)"
-adb__device__build__date() { _adb__run shell getprop ro.build.date.utc "$@"; }
+#   date -d "@$(adb.device.build.date)"
+adb.device.build.date() { _adb.run shell getprop ro.build.date.utc "$@"; }
 
 # @description Write the selected device active slot suffix.
 #
@@ -530,8 +530,8 @@ adb__device__build__date() { _adb__run shell getprop ro.build.date.utc "$@"; }
 # @exitcode 69 adb is unavailable.
 # @exitcode other The status of adb shell.
 # @example
-#   adb__device__slot__suffix
-adb__device__slot__suffix() { _adb__run shell getprop ro.boot.slot_suffix "$@"; }
+#   adb.device.slot.suffix
+adb.device.slot.suffix() { _adb.run shell getprop ro.boot.slot_suffix "$@"; }
 
 # @description Write the selected device kernel release.
 #
@@ -542,8 +542,8 @@ adb__device__slot__suffix() { _adb__run shell getprop ro.boot.slot_suffix "$@"; 
 # @exitcode 69 adb is unavailable.
 # @exitcode other The status of adb shell.
 # @example
-#   adb__device__build__kernel-version
-adb__device__build__kernel-version() { _adb__run shell uname -r "$@"; }
+#   adb.device.build.kernel-version
+adb.device.build.kernel-version() { _adb.run shell uname -r "$@"; }
 
 # @description Save repeated screenshots; MAX_COUNT of zero runs until interrupted.
 #
@@ -555,10 +555,10 @@ adb__device__build__kernel-version() { _adb__run shell uname -r "$@"; }
 # @exitcode 0 The requested screenshots were saved.
 # @exitcode 64 The arguments are invalid.
 # @exitcode 74 The directory could not be created or sleep failed.
-# @exitcode other The status of adb__device__screen__capture-once.
+# @exitcode other The status of adb.device.screen.capture-once.
 # @example
-#   adb__device__screen__capture-continuous ./frames 0.5 20
-adb__device__screen__capture-continuous() {
+#   adb.device.screen.capture-continuous ./frames 0.5 20
+adb.device.screen.capture-continuous() {
   [[ "$#" -le 5 ]] || return 64
   local directory='./screencap-loop' interval=1 max=0 index=0
   local serial_args=()
@@ -573,7 +573,7 @@ adb__device__screen__capture-continuous() {
   fi
   mkdir -p -- "$directory" || return 74
   while [[ "$max" -eq 0 || "$index" -lt "$max" ]]; do
-    adb__device__screen__capture-once "$directory/screen-${index}.png" "${serial_args[@]}" || return "$?"
+    adb.device.screen.capture-once "$directory/screen-${index}.png" "${serial_args[@]}" || return "$?"
     index=$((index+1))
     [[ "$max" -ne 0 && "$index" -ge "$max" ]] && break
     sleep "$interval" || return 74
@@ -590,8 +590,8 @@ adb__device__screen__capture-continuous() {
 # @exitcode 69 adb is unavailable.
 # @exitcode other The status of adb shell.
 # @example
-#   adb__device__partition__sha256 /dev/block/by-name/boot_a
-adb__device__partition__sha256() {
+#   adb.device.partition.sha256 /dev/block/by-name/boot_a
+adb.device.partition.sha256() {
   [[ "$#" -eq 1 || "$#" -eq 3 ]] || return 64
   local path="$1"
   ( [[ "$path" =~ ^/dev/block/[A-Za-z0-9._/-]+$ && "$path" != *'..'* ]] ) || return 64
@@ -599,16 +599,16 @@ adb__device__partition__sha256() {
   if [[ "$#" -gt 0 ]]; then
     [[ "$1" == '--serial' && -n "$2" ]] || return 64
   fi
-  _adb__run shell sha256sum "$path" "$@"
+  _adb.run shell sha256sum "$path" "$@"
 }
 
 # @description Require a rooted ADB device for sysfs wake lock operations.
 # @internal
-_adb__wake__require-root() {
-  _adb__run root "$@" || return "$?"
-  _adb__wait-device 30 "$@" || return "$?"
+_adb.wake.require-root() {
+  _adb.run root "$@" || return "$?"
+  _adb.wait-device 30 "$@" || return "$?"
   local user_id=''
-  user_id="$(_adb__run shell id -u "$@")" || return "$?"
+  user_id="$(_adb.run shell id -u "$@")" || return "$?"
   [[ "$user_id" == 0 ]] || return 69
 }
 
@@ -623,16 +623,16 @@ _adb__wake__require-root() {
 # @exitcode 69 adb root is unavailable or /sys/power/wake_lock is not writable.
 # @exitcode other The status of the adb command that failed.
 # @example
-#   adb__wake__lock benchmark
-adb__wake__lock() {
+#   adb.wake.lock benchmark
+adb.wake.lock() {
   [[ "$#" -le 3 ]] || return 64
   local tag=debug
   if [[ "$#" -gt 0 && "$1" != '--serial' ]]; then tag="$1"; shift; fi
   ( [[ "$tag" =~ ^[A-Za-z0-9_.-]+$ ]] ) || return 64
   [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
-  _adb__wake__require-root "$@" || return "$?"
-  _adb__run shell "test -w /sys/power/wake_lock" "$@" || return 69
-  _adb__run shell "printf '%s' '$tag' > /sys/power/wake_lock" "$@"
+  _adb.wake.require-root "$@" || return "$?"
+  _adb.run shell "test -w /sys/power/wake_lock" "$@" || return 69
+  _adb.run shell "printf '%s' '$tag' > /sys/power/wake_lock" "$@"
 }
 
 # @description Release a kernel wake lock using the same tag.
@@ -646,16 +646,16 @@ adb__wake__lock() {
 # @exitcode 69 adb root is unavailable or /sys/power/wake_unlock is not writable.
 # @exitcode other The status of the adb command that failed.
 # @example
-#   adb__wake__unlock benchmark
-adb__wake__unlock() {
+#   adb.wake.unlock benchmark
+adb.wake.unlock() {
   [[ "$#" -le 3 ]] || return 64
   local tag=debug
   if [[ "$#" -gt 0 && "$1" != '--serial' ]]; then tag="$1"; shift; fi
   ( [[ "$tag" =~ ^[A-Za-z0-9_.-]+$ ]] ) || return 64
   [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
-  _adb__wake__require-root "$@" || return "$?"
-  _adb__run shell "test -w /sys/power/wake_unlock" "$@" || return 69
-  _adb__run shell "printf '%s' '$tag' > /sys/power/wake_unlock" "$@"
+  _adb.wake.require-root "$@" || return "$?"
+  _adb.run shell "test -w /sys/power/wake_unlock" "$@" || return 69
+  _adb.run shell "printf '%s' '$tag' > /sys/power/wake_unlock" "$@"
 }
 
 # @description Print active kernel wake locks.
@@ -667,12 +667,12 @@ adb__wake__unlock() {
 # @exitcode 69 adb root is unavailable or /sys/power/wake_lock is not readable.
 # @exitcode other The status of the adb command that failed.
 # @example
-#   adb__wake__list
-adb__wake__list() {
+#   adb.wake.list
+adb.wake.list() {
   [[ "$#" -eq 0 || ( "$#" -eq 2 && "$1" == '--serial' && -n "$2" ) ]] || return 64
-  _adb__wake__require-root "$@" || return "$?"
-  _adb__run shell "test -r /sys/power/wake_lock" "$@" || return 69
-  _adb__run shell "cat /sys/power/wake_lock" "$@"
+  _adb.wake.require-root "$@" || return "$?"
+  _adb.run shell "test -r /sys/power/wake_lock" "$@" || return 69
+  _adb.run shell "cat /sys/power/wake_lock" "$@"
 }
 
 # @description Set the default ADB device for later calls in the current shell by exporting ANDROID_SERIAL.
@@ -682,8 +682,8 @@ adb__wake__list() {
 # @exitcode 0 The variable was set.
 # @exitcode 64 The argument is not one valid serial.
 # @example
-#   adb__device__set-default "$(adb__device__first)"
-adb__device__set-default() {
+#   adb.device.set-default "$(adb.device.first)"
+adb.device.set-default() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9._:-]+$ ]] ) || return 64
   export ANDROID_SERIAL="$1"
 }
@@ -696,8 +696,8 @@ adb__device__set-default() {
 # @exitcode 69 adb is unavailable.
 # @exitcode other The status of adb start-server.
 # @example
-#   adb__server__start
-adb__server__start() { [[ "$#" -eq 0 ]] || return 64; _docker__run-command adb start-server; }
+#   adb.server.start
+adb.server.start() { [[ "$#" -eq 0 ]] || return 64; _docker.run-command adb start-server; }
 
 # @description Stop the host ADB server.
 #
@@ -707,8 +707,8 @@ adb__server__start() { [[ "$#" -eq 0 ]] || return 64; _docker__run-command adb s
 # @exitcode 69 adb is unavailable.
 # @exitcode other The status of adb kill-server.
 # @example
-#   adb__server__stop
-adb__server__stop() { [[ "$#" -eq 0 ]] || return 64; _docker__run-command adb kill-server; }
+#   adb.server.stop
+adb.server.stop() { [[ "$#" -eq 0 ]] || return 64; _docker.run-command adb kill-server; }
 
 # @description Stop and then start the host ADB server.
 #
@@ -718,5 +718,5 @@ adb__server__stop() { [[ "$#" -eq 0 ]] || return 64; _docker__run-command adb ki
 # @exitcode 69 adb is unavailable.
 # @exitcode other The status of adb.
 # @example
-#   adb__server__restart
-adb__server__restart() { [[ "$#" -eq 0 ]] || return 64; adb__server__stop || return "$?"; adb__server__start; }
+#   adb.server.restart
+adb.server.restart() { [[ "$#" -eq 0 ]] || return 64; adb.server.stop || return "$?"; adb.server.start; }

@@ -8,35 +8,35 @@ Settings are written with defaults and take effect after the related process res
 
 ## Index
 
-* [mac__wake-on-lan__enable](#mac__wake-on-lan__enable)
-* [mac__sleep__disable-automatic](#mac__sleep__disable-automatic)
-* [mac__sleep__enable-automatic](#mac__sleep__enable-automatic)
-* [mac__software-update__enable-automatic-install](#mac__software-update__enable-automatic-install)
-* [mac__software-update__disable-automatic-install](#mac__software-update__disable-automatic-install)
-* [mac__keyboard__use-function-keys](#mac__keyboard__use-function-keys)
-* [mac__keyboard__set-repeat](#mac__keyboard__set-repeat)
-* [mac__trackpad__disable-smart-zoom](#mac__trackpad__disable-smart-zoom)
-* [mac__dock__set-autohide-instant](#mac__dock__set-autohide-instant)
-* [mac__dock__hide-recent-applications](#mac__dock__hide-recent-applications)
-* [mac__dock__set-minimize-effect](#mac__dock__set-minimize-effect)
-* [mac__dock__set-position](#mac__dock__set-position)
-* [mac__applications__remove-bundled](#mac__applications__remove-bundled)
-* [mac__quarantine__remove-applications](#mac__quarantine__remove-applications)
-* [mac__full-disk-access__target-paths](#mac__full-disk-access__target-paths)
-* [mac__full-disk-access__open](#mac__full-disk-access__open)
-* [mac__full-disk-access__is-granted](#mac__full-disk-access__is-granted)
-* [mac__gatekeeper__disable](#mac__gatekeeper__disable)
-* [mac__setup](#mac__setup)
-* [mac__keyboard__disable-option-t](#mac__keyboard__disable-option-t)
+* [mac.wake-on-lan.enable](#macwake-on-lanenable)
+* [mac.sleep.disable-automatic](#macsleepdisable-automatic)
+* [mac.sleep.enable-automatic](#macsleepenable-automatic)
+* [mac.software-update.enable-automatic-install](#macsoftware-updateenable-automatic-install)
+* [mac.software-update.disable-automatic-install](#macsoftware-updatedisable-automatic-install)
+* [mac.keyboard.use-function-keys](#mackeyboarduse-function-keys)
+* [mac.keyboard.set-repeat](#mackeyboardset-repeat)
+* [mac.trackpad.disable-smart-zoom](#mactrackpaddisable-smart-zoom)
+* [mac.dock.set-autohide-instant](#macdockset-autohide-instant)
+* [mac.dock.hide-recent-applications](#macdockhide-recent-applications)
+* [mac.dock.set-minimize-effect](#macdockset-minimize-effect)
+* [mac.dock.set-position](#macdockset-position)
+* [mac.applications.remove-bundled](#macapplicationsremove-bundled)
+* [mac.quarantine.remove-applications](#macquarantineremove-applications)
+* [mac.full-disk-access.target-paths](#macfull-disk-accesstarget-paths)
+* [mac.full-disk-access.open](#macfull-disk-accessopen)
+* [mac.full-disk-access.is-granted](#macfull-disk-accessis-granted)
+* [mac.gatekeeper.disable](#macgatekeeperdisable)
+* [mac.setup](#macsetup)
+* [mac.keyboard.disable-option-t](#mackeyboarddisable-option-t)
 
-### mac__wake-on-lan__enable
+### mac.wake-on-lan.enable
 
 Let the Mac wake from sleep through the network (Wake on LAN).
 
 #### Example
 
 ```bash
-mac__wake-on-lan__enable
+mac.wake-on-lan.enable
 ```
 
 _Function has no arguments._
@@ -48,14 +48,14 @@ _Function has no arguments._
 * **69**: The system is not macOS.
 * other The status of pmset.
 
-### mac__sleep__disable-automatic
+### mac.sleep.disable-automatic
 
 Disable automatic system sleep while preserving display sleep timers.
 
 #### Example
 
 ```bash
-mac__sleep__disable-automatic
+mac.sleep.disable-automatic
 ```
 
 _Function has no arguments._
@@ -68,14 +68,14 @@ _Function has no arguments._
 * **77**: sudo refused the credentials.
 * other The status of pmset.
 
-### mac__sleep__enable-automatic
+### mac.sleep.enable-automatic
 
 Enable automatic system sleep after ten minutes while preserving display sleep timers.
 
 #### Example
 
 ```bash
-mac__sleep__enable-automatic
+mac.sleep.enable-automatic
 ```
 
 _Function has no arguments._
@@ -88,7 +88,7 @@ _Function has no arguments._
 * **77**: sudo refused the credentials.
 * other The status of pmset.
 
-### mac__software-update__enable-automatic-install
+### mac.software-update.enable-automatic-install
 
 Let macOS updates install automatically.
 
@@ -98,7 +98,7 @@ The automatic macOS installation preference is enabled for all users.
 #### Example
 
 ```bash
-mac__software-update__enable-automatic-install
+mac.software-update.enable-automatic-install
 ```
 
 _Function has no arguments._
@@ -110,7 +110,7 @@ _Function has no arguments._
 * **69**: The system is not macOS.
 * other The status of defaults or the root command.
 
-### mac__software-update__disable-automatic-install
+### mac.software-update.disable-automatic-install
 
 Keep macOS updates downloading but stop their automatic installation.
 
@@ -120,7 +120,7 @@ The automatic macOS installation preference is disabled for all users.
 #### Example
 
 ```bash
-mac__software-update__disable-automatic-install
+mac.software-update.disable-automatic-install
 ```
 
 _Function has no arguments._
@@ -132,14 +132,14 @@ _Function has no arguments._
 * **69**: The system is not macOS.
 * other The status of defaults or the root command.
 
-### mac__keyboard__use-function-keys
+### mac.keyboard.use-function-keys
 
 Make F1 to F12 act as function keys without the fn key.
 
 #### Example
 
 ```bash
-mac__keyboard__use-function-keys
+mac.keyboard.use-function-keys
 ```
 
 _Function has no arguments._
@@ -151,7 +151,7 @@ _Function has no arguments._
 * **69**: The system is not macOS.
 * other The status of defaults.
 
-### mac__keyboard__set-repeat
+### mac.keyboard.set-repeat
 
 Set the delay before key repeat starts and the repeat interval.
 
@@ -160,7 +160,7 @@ The new values apply after logging in again.
 #### Example
 
 ```bash
-mac__keyboard__set-repeat 15 2
+mac.keyboard.set-repeat 15 2
 ```
 
 #### Arguments
@@ -175,14 +175,14 @@ mac__keyboard__set-repeat 15 2
 * **69**: The system is not macOS.
 * other The status of defaults.
 
-### mac__trackpad__disable-smart-zoom
+### mac.trackpad.disable-smart-zoom
 
 Turn off smart zoom, the two-finger double tap, on built-in and external trackpads.
 
 #### Example
 
 ```bash
-mac__trackpad__disable-smart-zoom
+mac.trackpad.disable-smart-zoom
 ```
 
 _Function has no arguments._
@@ -194,7 +194,7 @@ _Function has no arguments._
 * **69**: The system is not macOS.
 * other The status of defaults.
 
-### mac__dock__set-autohide-instant
+### mac.dock.set-autohide-instant
 
 Show and hide the Dock immediately, without a delay or an animation.
 
@@ -203,7 +203,7 @@ The Dock restarts to apply the change.
 #### Example
 
 ```bash
-mac__dock__set-autohide-instant
+mac.dock.set-autohide-instant
 ```
 
 _Function has no arguments._
@@ -215,14 +215,14 @@ _Function has no arguments._
 * **69**: The system is not macOS.
 * other The status of defaults.
 
-### mac__dock__hide-recent-applications
+### mac.dock.hide-recent-applications
 
 Hide recently used applications in the Dock.
 
 #### Example
 
 ```bash
-mac__dock__hide-recent-applications
+mac.dock.hide-recent-applications
 ```
 
 _Function has no arguments._
@@ -234,14 +234,14 @@ _Function has no arguments._
 * **69**: The system is not macOS.
 * other The status of defaults.
 
-### mac__dock__set-minimize-effect
+### mac.dock.set-minimize-effect
 
 Set the effect used when a window is minimized into the Dock.
 
 #### Example
 
 ```bash
-mac__dock__set-minimize-effect genie
+mac.dock.set-minimize-effect genie
 ```
 
 #### Arguments
@@ -255,14 +255,14 @@ mac__dock__set-minimize-effect genie
 * **69**: The system is not macOS.
 * other The status of defaults.
 
-### mac__dock__set-position
+### mac.dock.set-position
 
 Place the Dock on one edge of the screen.
 
 #### Example
 
 ```bash
-mac__dock__set-position bottom
+mac.dock.set-position bottom
 ```
 
 #### Arguments
@@ -276,7 +276,7 @@ mac__dock__set-position bottom
 * **69**: The system is not macOS.
 * other The status of defaults.
 
-### mac__applications__remove-bundled
+### mac.applications.remove-bundled
 
 Remove the bundled iMovie, Pages, GarageBand, Keynote, and Numbers applications.
 
@@ -285,7 +285,7 @@ GarageBand's sound library is removed with it. Missing applications are skipped.
 #### Example
 
 ```bash
-mac__applications__remove-bundled
+mac.applications.remove-bundled
 ```
 
 _Function has no arguments._
@@ -298,7 +298,7 @@ _Function has no arguments._
 * **77**: sudo refused the credentials.
 * other The status of rm.
 
-### mac__quarantine__remove-applications
+### mac.quarantine.remove-applications
 
 Remove the quarantine attribute from everything below /Applications.
 
@@ -307,7 +307,7 @@ Errors for files without the attribute are ignored.
 #### Example
 
 ```bash
-mac__quarantine__remove-applications
+mac.quarantine.remove-applications
 ```
 
 _Function has no arguments._
@@ -318,7 +318,7 @@ _Function has no arguments._
 * **64**: An argument was given.
 * **69**: The system is not macOS.
 
-### mac__full-disk-access__target-paths
+### mac.full-disk-access.target-paths
 
 Write the programs that Full Disk Access must list for a command, a path, or an application.
 
@@ -332,8 +332,8 @@ in /Applications, /System/Applications, their Utilities folders, and
 #### Example
 
 ```bash
-mac__full-disk-access__target-paths python3.12
-mac__full-disk-access__target-paths Terminal
+mac.full-disk-access.target-paths python3.12
+mac.full-disk-access.target-paths Terminal
 ```
 
 #### Arguments
@@ -352,7 +352,7 @@ mac__full-disk-access__target-paths Terminal
 
 * The absolute paths to add to Full Disk Access, one per line.
 
-### mac__full-disk-access__open
+### mac.full-disk-access.open
 
 Open Full Disk Access in System Settings and show the programs to add in Finder.
 
@@ -364,7 +364,7 @@ update replaces it, which the function reports.
 #### Example
 
 ```bash
-mac__full-disk-access__open python3.12 Terminal
+mac.full-disk-access.open python3.12 Terminal
 ```
 
 #### Arguments
@@ -384,7 +384,7 @@ mac__full-disk-access__open python3.12 Terminal
 
 * Each program to add and a note for each ad hoc signed program.
 
-### mac__full-disk-access__is-granted
+### mac.full-disk-access.is-granted
 
 Test whether the application that runs the current shell has Full Disk Access.
 
@@ -395,7 +395,7 @@ test opens the user's privacy database, which only Full Disk Access permits.
 #### Example
 
 ```bash
-mac__full-disk-access__is-granted || mac__full-disk-access__open Terminal
+mac.full-disk-access.is-granted || mac.full-disk-access.open Terminal
 ```
 
 _Function has no arguments._
@@ -407,7 +407,7 @@ _Function has no arguments._
 * **64**: An argument was given.
 * **69**: The system is not macOS.
 
-### mac__gatekeeper__disable
+### mac.gatekeeper.disable
 
 Ask macOS to allow applications from anywhere and open Privacy & Security.
 
@@ -418,7 +418,7 @@ from spctl is not a failure; the function opens the settings for that step.
 #### Example
 
 ```bash
-mac__gatekeeper__disable
+mac.gatekeeper.disable
 ```
 
 _Function has no arguments._
@@ -434,7 +434,7 @@ _Function has no arguments._
 
 * The step to take in System Settings.
 
-### mac__setup
+### mac.setup
 
 Apply the complete macOS setup, continuing after failed steps.
 
@@ -446,7 +446,7 @@ status of the first failed step after every step has run.
 #### Example
 
 ```bash
-GIT_EMAIL=alice@example.com GIT_USERNAME='Alice Example' mac__setup
+GIT_EMAIL=alice@example.com GIT_USERNAME='Alice Example' mac.setup
 ```
 
 _Function has no arguments._
@@ -462,14 +462,14 @@ _Function has no arguments._
 
 * Each step that failed and the steps to take in System Settings.
 
-### mac__keyboard__disable-option-t
+### mac.keyboard.disable-option-t
 
 Disable the Option+T key binding on macOS.
 
 #### Example
 
 ```bash
-mac__keyboard__disable-option-t
+mac.keyboard.disable-option-t
 ```
 
 _Function has no arguments._

@@ -13,23 +13,23 @@
 # @exitcode 64 An argument was given.
 # @exitcode 69 The platform is unsupported.
 # @example
-#   graphviz__versions
-graphviz__versions() {
+#   graphviz.versions
+graphviz.versions() {
   [[ "$#" -eq 0 ]] || return 64
-  _package__versions graphviz
+  _package.versions graphviz
 }
 
 # @description Install Graphviz from the platform package manager.
 #
-# @arg $1 string Optional version from graphviz__versions. Defaults to the newest one.
+# @arg $1 string Optional version from graphviz.versions. Defaults to the newest one.
 # @exitcode 0 Graphviz is installed.
 # @exitcode 64 The argument count is wrong.
 # @exitcode 69 The platform is unsupported, or the version is unavailable.
 # @exitcode other The status of the package manager.
 # @example
-#   graphviz__install
+#   graphviz.install
 #   dot -Tpng graph.dot -o graph.png
-graphviz__install() {
+graphviz.install() {
   [[ "$#" -le 1 ]] || return 64
-  _package__install-version graphviz "${1:-}"
+  _package.install-version graphviz "${1:-}"
 }

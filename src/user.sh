@@ -13,8 +13,8 @@
 # @exitcode 64 An argument was given.
 # @exitcode 74 id could not report the name.
 # @example
-#   printf 'Installing for %s\n' "$(user__name)"
-user__name() {
+#   printf 'Installing for %s\n' "$(user.name)"
+user.name() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
@@ -29,8 +29,8 @@ user__name() {
 # @exitcode 64 An argument was given.
 # @exitcode 74 id could not report the group.
 # @example
-#   chown "$(user__name):$(user__primary-group)" "${file}"
-user__primary-group() {
+#   chown "$(user.name):$(user.primary-group)" "${file}"
+user.primary-group() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
@@ -44,8 +44,8 @@ user__primary-group() {
 # @exitcode 1 The user is not root.
 # @exitcode 64 An argument was given.
 # @example
-#   user__is-root || printf 'Run this with sudo.\n' >&2
-user__is-root() {
+#   user.is-root || printf 'Run this with sudo.\n' >&2
+user.is-root() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
@@ -59,10 +59,10 @@ user__is-root() {
 # @exitcode 1 No account has that name.
 # @exitcode 64 The name is empty, starts with a dash, or contains a newline.
 # @example
-#   user__exists deploy || user__create-system _deploy
-user__exists() {
+#   user.exists deploy || user.create-system _deploy
+user.exists() {
   if [[ "$#" -ne 1 || -z "$1" || "$1" == -* ]] ||
-    ! _string__require-one-line "$1"; then
+    ! _string.require-one-line "$1"; then
     return 64
   fi
   id -u "$1" >/dev/null 2>&1
@@ -70,11 +70,11 @@ user__exists() {
 
 # @description Validate a system account name and reject an existing account.
 # @internal
-_user__validate-system-creation() {
+_user.validate-system-creation() {
   if [[ "$#" -ne 1 ]] || ! ( [[ "$1" =~ ^_[a-z][a-z0-9_-]*$ ]] ); then
     return 64
   fi
-  if user__exists "$1"; then
+  if user.exists "$1"; then
     return 73
   fi
 }
@@ -87,25 +87,25 @@ _user__validate-system-creation() {
 # @exitcode 73 The account already exists or cannot be created.
 # @exitcode other The status of the root helper.
 # @example
-#   user__create-system-as-root _backup
-user__create-system-as-root() {
-  _user__validate-system-creation "$@" || return "$?"
-  _bashstock__run-as-root create-system-user "$@"
+#   user.create-system-as-root _backup
+user.create-system-as-root() {
+  _user.validate-system-creation "$@" || return "$?"
+  _bashstock.run-as-root create-system-user "$@"
 }
 
 # @description Validate login account arguments and require password input through a terminal.
 # @internal
-_user__validate-login-creation() {
+_user.validate-login-creation() {
   if [[ "$#" -ne 2 ]] ||
     ! ( [[ "$1" =~ ^[a-z][a-z0-9_-]*$ ]] ) ||
     [[ -z "$2" || "$2" == *:* || "$2" == *[[:cntrl:]]* ]]; then
     return 64
   fi
-  if user__exists "$1"; then
+  if user.exists "$1"; then
     return 73
   fi
-  if ! terminal__is-available; then
-    _console__write-error 'A controlling terminal is required to set the password.'
+  if ! terminal.is-available; then
+    _console.write-error 'A controlling terminal is required to set the password.'
     return 66
   fi
 }
@@ -123,10 +123,10 @@ _user__validate-login-creation() {
 # @exitcode 73 The account already exists or cannot be created.
 # @exitcode other The status of the root helper.
 # @example
-#   user__create-login-as-root alice 'Alice Example'
-user__create-login-as-root() {
-  _user__validate-login-creation "$@" || return "$?"
-  _bashstock__run-as-root create-login-user "$@"
+#   user.create-login-as-root alice 'Alice Example'
+user.create-login-as-root() {
+  _user.validate-login-creation "$@" || return "$?"
+  _bashstock.run-as-root create-login-user "$@"
 }
 
 # @description Create a non-login system account.
@@ -137,10 +137,10 @@ user__create-login-as-root() {
 # @exitcode 73 The account already exists or cannot be created.
 # @exitcode other The status of the root helper.
 # @example
-#   user__create-system _backup
-user__create-system() {
-  _user__validate-system-creation "$@" || return "$?"
-  _bashstock__run-as-root create-system-user "$@"
+#   user.create-system _backup
+user.create-system() {
+  _user.validate-system-creation "$@" || return "$?"
+  _bashstock.run-as-root create-system-user "$@"
 }
 
 # @description Create a local login account.
@@ -156,10 +156,10 @@ user__create-system() {
 # @exitcode 73 The account already exists or cannot be created.
 # @exitcode other The status of the root helper.
 # @example
-#   user__create-login alice 'Alice Example'
-user__create-login() {
-  _user__validate-login-creation "$@" || return "$?"
-  _bashstock__run-as-root create-login-user "$@"
+#   user.create-login alice 'Alice Example'
+user.create-login() {
+  _user.validate-login-creation "$@" || return "$?"
+  _bashstock.run-as-root create-login-user "$@"
 }
 
 # @description Add a user to a supplementary group through administrator execution.
@@ -172,14 +172,14 @@ user__create-login() {
 # @exitcode 77 sudo refused the credentials.
 # @exitcode other The status of usermod or dseditgroup.
 # @example
-#   user__add-to-group dialout
-user__add-to-group() {
+#   user.add-to-group dialout
+user.add-to-group() {
   if ( [[ "$#" -lt 1 || "$#" -gt 2 || ! "$1" =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]] ); then return 64; fi
   local user="${2:-}"
-  [[ -n "${user}" ]] || user="$(user__name)" || return "$?"
-  case "$(system__operating-system)" in
-    darwin) command__require dseditgroup || return "$?"; command__run-as-root dseditgroup -o edit -a "${user}" -t user "$1" ;;
-    linux) command__require usermod || return "$?"; command__run-as-root usermod -a -G "$1" "${user}" ;;
+  [[ -n "${user}" ]] || user="$(user.name)" || return "$?"
+  case "$(system.operating-system)" in
+    darwin) command.require dseditgroup || return "$?"; command.run-as-root dseditgroup -o edit -a "${user}" -t user "$1" ;;
+    linux) command.require usermod || return "$?"; command.run-as-root usermod -a -G "$1" "${user}" ;;
     *) return 69 ;;
   esac
 }
@@ -199,14 +199,14 @@ user__add-to-group() {
 # @exitcode 69 xdg-user-dir is unavailable.
 # @exitcode 73 An English name is held by something other than a directory or link.
 # @exitcode 74 A directory could not be resolved, removed, or linked.
-# @exitcode other The status of dir__merge.
+# @exitcode other The status of dir.merge.
 # @example
-#   user__directory__create-english-links
-user__directory__create-english-links() {
+#   user.directory.create-english-links
+user.directory.create-english-links() {
   [[ "$#" -le 1 ]] || return 64
   local home="${1:-${HOME}}" pair='' key='' name='' localized='' english='' status=0
   [[ -d "${home}" ]] || return 66
-  command__require xdg-user-dir || return "$?"
+  command.require xdg-user-dir || return "$?"
   for pair in DESKTOP:Desktop DOWNLOAD:Downloads TEMPLATES:Templates PUBLICSHARE:Public \
     DOCUMENTS:Documents MUSIC:Music PICTURES:Pictures VIDEOS:Videos; do
     key="${pair%%:*}"
@@ -219,9 +219,9 @@ user__directory__create-english-links() {
       [[ "$(readlink -- "${english}")" != "${localized}" ]] || continue
       rm -f -- "${english}" || return 74
     elif [[ -d "${english}" ]]; then
-      dir__merge "${english}" "${localized}" || return "$?"
+      dir.merge "${english}" "${localized}" || return "$?"
     elif [[ -e "${english}" ]]; then
-      _console__write-error "Not linking ${english}: it is not a directory."
+      _console.write-error "Not linking ${english}: it is not a directory."
       status=73
       continue
     fi

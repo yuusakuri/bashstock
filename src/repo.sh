@@ -17,11 +17,11 @@
 # @exitcode 74 The directory could not be created.
 # @exitcode other The status of repo init.
 # @example
-#   repo__init https://android.googlesource.com/platform/manifest android-14.0.0_r1 default.xml aosp
-repo__init() {
+#   repo.init https://android.googlesource.com/platform/manifest android-14.0.0_r1 default.xml aosp
+repo.init() {
   [[ "$#" -ge 3 && "$#" -le 4 && -n "$1" && -n "$2" && -n "$3" ]] || return 64
   local directory="${4:-.}"
-  command__require repo || return "$?"
+  command.require repo || return "$?"
   mkdir -p -- "${directory}" || return 74
   (cd -- "${directory}" && repo init --depth=1 -u "$1" -b "$2" -m "$3")
 }
@@ -36,12 +36,12 @@ repo__init() {
 # @exitcode 69 repo is unavailable.
 # @exitcode other The status of repo sync.
 # @example
-#   repo__sync frameworks/base 8 aosp
-repo__sync() {
+#   repo.sync frameworks/base 8 aosp
+repo.sync() {
   [[ "$#" -ge 1 && "$#" -le 3 && -n "$1" ]] || return 64
   local jobs="${2:-4}" directory="${3:-.}"
   ( [[ "${jobs}" =~ ^[1-9][0-9]*$ ]] ) || return 64
-  command__require repo || return "$?"
+  command.require repo || return "$?"
   (cd -- "${directory}" && repo sync --force-sync -j "${jobs}" "$1")
 }
 
@@ -54,11 +54,11 @@ repo__sync() {
 # @exitcode 69 repo is unavailable.
 # @exitcode other The status of repo manifest.
 # @example
-#   repo__write-manifest pinned.xml aosp
-repo__write-manifest() {
+#   repo.write-manifest pinned.xml aosp
+repo.write-manifest() {
   [[ "$#" -le 2 ]] || return 64
   local output="${1:-./manifest.xml}" directory="${2:-.}"
-  command__require repo || return "$?"
+  command.require repo || return "$?"
   [[ "${output}" == /* ]] || output="${PWD}/${output}"
   (cd -- "${directory}" && repo manifest -r -o "${output}")
 }
@@ -72,10 +72,10 @@ repo__write-manifest() {
 # @exitcode 69 repo is unavailable.
 # @exitcode other The status of repo forall.
 # @example
-#   repo__check aosp
-repo__check() {
+#   repo.check aosp
+repo.check() {
   [[ "$#" -le 1 ]] || return 64
-  command__require repo || return "$?"
+  command.require repo || return "$?"
   (cd -- "${1:-.}" && repo forall -c 'git fsck')
 }
 
@@ -89,9 +89,9 @@ repo__check() {
 # @exitcode 69 repo is unavailable.
 # @exitcode other The status of repo forall.
 # @example
-#   repo__reset aosp
-repo__reset() {
+#   repo.reset aosp
+repo.reset() {
   [[ "$#" -le 1 ]] || return 64
-  command__require repo || return "$?"
+  command.require repo || return "$?"
   (cd -- "${1:-.}" && repo forall -c 'git reset --hard && git clean -fd')
 }

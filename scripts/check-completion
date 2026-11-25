@@ -17,7 +17,7 @@ readonly project_root
 # such as `[[ "$1" == '--serial' ]]`, which is how the library parses them.
 #
 # @arg $1 string Function name.
-completion__parsed-options() {
+completion.parsed-options() {
   declare -f "$1" |
     sed -nE \
       -e 's/^[[:space:]]+(--[a-z][a-z0-9-]*([[:space:]]*\|[[:space:]]*--[a-z][a-z0-9-]*)*)\)$/\1/p' \
@@ -28,13 +28,13 @@ completion__parsed-options() {
 # @description Write the --named arguments of a function and of the internal parsers it passes "$@" to.
 #
 # @arg $1 string Function name.
-completion__accepted-options() {
+completion.accepted-options() {
   local callee=''
   {
-    completion__parsed-options "$1"
+    completion.parsed-options "$1"
     while IFS= read -r callee; do
-      completion__parsed-options "${callee}"
-    done < <(declare -f "$1" | grep -oE '(^|[^[:alnum:]_-])_[a-z][a-z0-9-]*(__[a-z0-9-]+)+ [^;|&]*"\$@"' | awk '{ print $1 }' | sed -E 's/^[^_]+//' | sort -u)
+      completion.parsed-options "${callee}"
+    done < <(declare -f "$1" | grep -oE '(^|[^[:alnum:]_.-])_[a-z][a-z0-9-]*(\.[a-z0-9-]+)+ [^;|&]*"\$@"' | awk '{ print $1 }' | sed -E 's/^[^_]+//' | sort -u)
   } | sort -u
 }
 
@@ -46,9 +46,9 @@ main() {
   source "${project_root}/dist/bashstock.sh"
   local name='' helper='' options='' listed='' option='' status=0
   while IFS= read -r name; do
-    options="$(completion__accepted-options "${name}")"
+    options="$(completion.accepted-options "${name}")"
     [[ -n "${options}" ]] || continue
-    helper="$(_arg__completion__helper-name "${name}")"
+    helper="$(_arg.completion.helper-name "${name}")"
     if ! declare -F "${helper}" >/dev/null; then
       printf 'check-completion: %s takes %s but has no %s.\n' "${name}" "$(tr '\n' ' ' <<<"${options}")" "${helper}" >&2
       status=1
@@ -59,7 +59,7 @@ main() {
       grep -Fqx -- "${option}" <<<"${listed}" ||
         { printf 'check-completion: %s does not list %s of %s.\n' "${helper}" "${option}" "${name}" >&2; status=1; }
     done <<<"${options}"
-  done < <(declare -F | awk '{ print $3 }' | grep -E '^[a-z][a-z0-9-]*(__[a-z0-9-]+)+$')
+  done < <(declare -F | awk '{ print $3 }' | grep -E '^[a-z][a-z0-9-]*(\.[a-z0-9-]+)+$')
   return "${status}"
 }
 

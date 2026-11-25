@@ -12,10 +12,10 @@
 # @exitcode 1 The command does not resolve.
 # @exitcode 64 The name is empty, starts with a dash, or contains a newline.
 # @example
-#   command__exists docker && docker version
-command__exists() {
+#   command.exists docker && docker version
+command.exists() {
   if [[ "$#" -ne 1 || -z "$1" || "$1" == -* ]] ||
-    ! _string__require-one-line "$1"; then
+    ! _string.require-one-line "$1"; then
     return 64
   fi
 
@@ -30,13 +30,13 @@ command__exists() {
 # @exitcode 64 The name is invalid.
 # @exitcode 69 The command is unavailable.
 # @example
-#   command__require curl || return "$?"
-command__require() {
+#   command.require curl || return "$?"
+command.require() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
 
-  if command__exists "$1"; then
+  if command.exists "$1"; then
     return 0
   fi
 
@@ -45,7 +45,7 @@ command__require() {
     return 64
   fi
 
-  _console__write-error "Required command is unavailable: $1"
+  _console.write-error "Required command is unavailable: $1"
   return 69
 }
 
@@ -64,8 +64,8 @@ command__require() {
 # @exitcode 77 sudo refused the credentials or would need a password in a noninteractive shell.
 # @exitcode other The status of the command.
 # @example
-#   command__run-as-root install -m 0644 ./rule /etc/udev/rules.d/90-device.rules
-command__run-as-root() {
+#   command.run-as-root install -m 0644 ./rule /etc/udev/rules.d/90-device.rules
+command.run-as-root() {
   if [[ "$#" -lt 1 || -z "$1" ]]; then
     return 64
   fi
@@ -76,7 +76,7 @@ command__run-as-root() {
   fi
 
   if ! command -v sudo >/dev/null 2>&1; then
-    _console__write-error 'sudo is required for this operation.'
+    _console.write-error 'sudo is required for this operation.'
     return 69
   fi
 
@@ -91,10 +91,10 @@ command__run-as-root() {
 
 # @description Run one step of a setup function, report a failure, and return its status.
 # @internal
-_command__run-step() {
+_command.run-step() {
   [[ "$#" -ge 1 ]] || return 64
   "$@"
   local status="$?"
-  [[ "${status}" -eq 0 ]] || _console__write-error "Setup step failed with status ${status}: $*"
+  [[ "${status}" -eq 0 ]] || _console.write-error "Setup step failed with status ${status}: $*"
   return "${status}"
 }

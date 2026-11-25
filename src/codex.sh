@@ -10,7 +10,7 @@
 # macOS installs the Homebrew cask codex. Linux runs OpenAI's standalone
 # installer, which verifies the release checksum, installs the static musl
 # build into $HOME/.local, and keeps it updated. $HOME/.local/bin is added
-# to PATH through env__add-path, so the installer leaves the shell startup
+# to PATH through env.add-path, so the installer leaves the shell startup
 # files alone. Signing in is left to the first run of codex.
 #
 # @noargs
@@ -21,28 +21,28 @@
 # @exitcode 74 The installer could not be downloaded or $HOME/.local/bin could not be created.
 # @exitcode other The status of the installer or of Homebrew.
 # @example
-#   codex__install && codex --version
-codex__install() {
+#   codex.install && codex --version
+codex.install() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' directory='' status=0
-  platform="$(_package__platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   if [[ "${platform}" == 'darwin' ]]; then
-    _package__install-cask codex
+    _package.install-cask codex
     return
   fi
   case "$(uname -m)" in
     x86_64 | amd64 | aarch64 | arm64) ;;
     *)
-      _console__write-error 'Codex provides Linux builds only for x86_64 and arm64.'
+      _console.write-error 'Codex provides Linux builds only for x86_64 and arm64.'
       return 69
       ;;
   esac
   # The installer unpacks the release with tar.
-  command__require tar || return "$?"
+  command.require tar || return "$?"
   mkdir -p -- "${HOME}/.local/bin" || return 74
-  env__add-path "${HOME}/.local/bin" || return "$?"
-  directory="$(_package__temporary-directory)" || return "$?"
-  _package__download https://chatgpt.com/codex/install.sh "${directory}/install.sh" || status="$?"
+  env.add-path "${HOME}/.local/bin" || return "$?"
+  directory="$(_package.temporary-directory)" || return "$?"
+  _package.download https://chatgpt.com/codex/install.sh "${directory}/install.sh" || status="$?"
   if [[ "${status}" -eq 0 ]]; then
     CODEX_NON_INTERACTIVE=1 sh "${directory}/install.sh" </dev/null || status="$?"
   fi

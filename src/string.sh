@@ -7,7 +7,7 @@
 
 # @description Require one argument that contains no newline.
 # @internal
-_string__require-one-line() {
+_string.require-one-line() {
   if [[ "$#" -ne 1 || "$1" == *$'\n'* ]]; then
     return 64
   fi
@@ -15,28 +15,28 @@ _string__require-one-line() {
 
 # @description Require one non-empty argument that contains no newline.
 # @internal
-_string__require-non-empty-line() {
+_string.require-non-empty-line() {
   if [[ "$#" -ne 1 || -z "$1" ]]; then
     return 64
   fi
 
-  _string__require-one-line "$1"
+  _string.require-one-line "$1"
 }
 
 # @description Require the current locale to use UTF-8.
 # @internal
-_string__require-utf8-locale() {
+_string.require-utf8-locale() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
   if ! command -v locale >/dev/null 2>&1; then
-    _console__write-error 'A UTF-8 locale is required.'
+    _console.write-error 'A UTF-8 locale is required.'
     return 69
   fi
 
   local character_map=''
   character_map="$(locale charmap 2>/dev/null)" || {
-    _console__write-error 'A UTF-8 locale is required.'
+    _console.write-error 'A UTF-8 locale is required.'
     return 69
   }
   case "${character_map}" in
@@ -44,7 +44,7 @@ _string__require-utf8-locale() {
       return 0
       ;;
     *)
-      _console__write-error 'A UTF-8 locale is required.'
+      _console.write-error 'A UTF-8 locale is required.'
       return 69
       ;;
   esac
@@ -57,9 +57,9 @@ _string__require-utf8-locale() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string__trim '  hello world  '
+#   string.trim '  hello world  '
 #   # hello world
-string__trim() {
+string.trim() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -94,9 +94,9 @@ string__trim() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string__collapse-whitespace $'  a\t b   c '
+#   string.collapse-whitespace $'  a\t b   c '
 #   # a b c
-string__collapse-whitespace() {
+string.collapse-whitespace() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -131,14 +131,14 @@ string__collapse-whitespace() {
 # @exitcode 0 The fields were written.
 # @exitcode 64 The delimiter is empty, or a value contains a newline.
 # @example
-#   string__split 'a,,b' ','
+#   string.split 'a,,b' ','
 #   # a
 #   #
 #   # b
-string__split() {
+string.split() {
   if [[ "$#" -ne 2 || -z "$2" ]] ||
-    ! _string__require-one-line "$1" ||
-    ! _string__require-one-line "$2"; then
+    ! _string.require-one-line "$1" ||
+    ! _string.require-one-line "$2"; then
     return 64
   fi
 
@@ -156,7 +156,7 @@ string__split() {
 
 # @description Translate ASCII letter case according to the requested mode.
 # @internal
-_string__translate-ascii() {
+_string.translate-ascii() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -213,13 +213,13 @@ _string__translate-ascii() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string__lower 'Hello World'
+#   string.lower 'Hello World'
 #   # hello world
-string__lower() {
+string.lower() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
-  _string__translate-ascii "$1" lower
+  _string.translate-ascii "$1" lower
 }
 
 # @description Convert ASCII lowercase letters to uppercase.
@@ -231,13 +231,13 @@ string__lower() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string__upper 'Hello World'
+#   string.upper 'Hello World'
 #   # HELLO WORLD
-string__upper() {
+string.upper() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
-  _string__translate-ascii "$1" upper
+  _string.translate-ascii "$1" upper
 }
 
 # @description Swap the case of every ASCII letter.
@@ -247,13 +247,13 @@ string__upper() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string__swap-case 'Hello World'
+#   string.swap-case 'Hello World'
 #   # hELLO wORLD
-string__swap-case() {
+string.swap-case() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
-  _string__translate-ascii "$1" swap
+  _string.translate-ascii "$1" swap
 }
 
 # @description Convert the first ASCII letter to lowercase when applicable.
@@ -263,9 +263,9 @@ string__swap-case() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string__lower-first 'Hello'
+#   string.lower-first 'Hello'
 #   # hello
-string__lower-first() {
+string.lower-first() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -275,7 +275,7 @@ string__lower-first() {
   fi
 
   local first=''
-  first="$(string__lower "${1:0:1}")" || return "$?"
+  first="$(string.lower "${1:0:1}")" || return "$?"
   printf '%s%s\n' "${first}" "${1:1}"
 }
 
@@ -286,9 +286,9 @@ string__lower-first() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string__upper-first 'hello'
+#   string.upper-first 'hello'
 #   # Hello
-string__upper-first() {
+string.upper-first() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -298,7 +298,7 @@ string__upper-first() {
   fi
 
   local first=''
-  first="$(string__upper "${1:0:1}")" || return "$?"
+  first="$(string.upper "${1:0:1}")" || return "$?"
   printf '%s%s\n' "${first}" "${1:1}"
 }
 
@@ -309,9 +309,9 @@ string__upper-first() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string__strip-surrounding-quotes '"/opt/my app"'
+#   string.strip-surrounding-quotes '"/opt/my app"'
 #   # /opt/my app
-string__strip-surrounding-quotes() {
+string.strip-surrounding-quotes() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -334,9 +334,9 @@ string__strip-surrounding-quotes() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not two.
 # @example
-#   string__remove-all-matches 'a1b2c3' '[0-9]'
+#   string.remove-all-matches 'a1b2c3' '[0-9]'
 #   # abc
-string__remove-all-matches() {
+string.remove-all-matches() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -352,9 +352,9 @@ string__remove-all-matches() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not two.
 # @example
-#   string__remove-first-match 'a-b-c' '-'
+#   string.remove-first-match 'a-b-c' '-'
 #   # ab-c
-string__remove-first-match() {
+string.remove-first-match() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -370,9 +370,9 @@ string__remove-first-match() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not two.
 # @example
-#   string__remove-prefix '/usr/local/bin/node' '*/'
+#   string.remove-prefix '/usr/local/bin/node' '*/'
 #   # node
-string__remove-prefix() {
+string.remove-prefix() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -388,9 +388,9 @@ string__remove-prefix() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not two.
 # @example
-#   string__remove-suffix 'archive.tar.gz' '.*'
+#   string.remove-suffix 'archive.tar.gz' '.*'
 #   # archive
-string__remove-suffix() {
+string.remove-suffix() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -407,9 +407,9 @@ string__remove-suffix() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string__encode-url 'a b&c'
+#   string.encode-url 'a b&c'
 #   # a%20b%26c
-string__encode-url() {
+string.encode-url() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -447,9 +447,9 @@ string__encode-url() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one, or an escape is malformed.
 # @example
-#   string__decode-url 'a%20b%26c'
+#   string.decode-url 'a%20b%26c'
 #   # a b&c
-string__decode-url() {
+string.decode-url() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -490,8 +490,8 @@ string__decode-url() {
 # @exitcode 1 The value does not contain the substring.
 # @exitcode 64 The argument count is not two.
 # @example
-#   string__contains "${PATH}" /usr/local/bin && printf 'on PATH\n'
-string__contains() {
+#   string.contains "${PATH}" /usr/local/bin && printf 'on PATH\n'
+string.contains() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -506,8 +506,8 @@ string__contains() {
 # @exitcode 1 The value does not start with the prefix.
 # @exitcode 64 The argument count is not two.
 # @example
-#   string__starts-with "${url}" https:// || return 64
-string__starts-with() {
+#   string.starts-with "${url}" https:// || return 64
+string.starts-with() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -522,8 +522,8 @@ string__starts-with() {
 # @exitcode 1 The value does not end with the suffix.
 # @exitcode 64 The argument count is not two.
 # @example
-#   string__ends-with "${file}" .tar.gz && tar -xzf "${file}"
-string__ends-with() {
+#   string.ends-with "${file}" .tar.gz && tar -xzf "${file}"
+string.ends-with() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -544,9 +544,9 @@ string__ends-with() {
 # @exitcode 0 The joined value was written.
 # @exitcode 64 No delimiter was given.
 # @example
-#   string__join , a b c
+#   string.join , a b c
 #   # a,b,c
-string__join() {
+string.join() {
   if [[ "$#" -lt 1 ]]; then
     return 64
   fi
@@ -573,9 +573,9 @@ string__join() {
 # @exitcode 0 The length was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string__byte-length 'あ'
+#   string.byte-length 'あ'
 #   # 3
-string__byte-length() {
+string.byte-length() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -591,13 +591,13 @@ string__byte-length() {
 # @exitcode 64 The argument count is not one.
 # @exitcode 69 The current locale does not use UTF-8.
 # @example
-#   LC_ALL=C.UTF-8 string__length 'あい'
+#   LC_ALL=C.UTF-8 string.length 'あい'
 #   # 2
-string__length() {
+string.length() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
-  _string__require-utf8-locale || return "$?"
+  _string.require-utf8-locale || return "$?"
   # Bash 3.2 applies a locale given before the function name only when it is assigned again.
   [[ -z "${LANG+set}" ]] || local LANG="${LANG}"
   [[ -z "${LC_CTYPE+set}" ]] || local LC_CTYPE="${LC_CTYPE}"
@@ -617,9 +617,9 @@ string__length() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The pattern is empty, or the argument count is not three.
 # @example
-#   string__replace-first 'a-b-c' '-' '+'
+#   string.replace-first 'a-b-c' '-' '+'
 #   # a+b-c
-string__replace-first() {
+string.replace-first() {
   if [[ "$#" -ne 3 || -z "$2" ]]; then
     return 64
   fi
@@ -645,9 +645,9 @@ string__replace-first() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The pattern is empty, or the argument count is not three.
 # @example
-#   string__replace-all 'a-b-c' '-' '+'
+#   string.replace-all 'a-b-c' '-' '+'
 #   # a+b+c
-string__replace-all() {
+string.replace-all() {
   if [[ "$#" -ne 3 || -z "$2" ]]; then
     return 64
   fi
@@ -671,9 +671,9 @@ string__replace-all() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The pattern is empty, or the argument count is not three.
 # @example
-#   string__replace-last 'a-b-c' '-' '+'
+#   string.replace-last 'a-b-c' '-' '+'
 #   # a-b+c
-string__replace-last() {
+string.replace-last() {
   if [[ "$#" -ne 3 || -z "$2" ]]; then
     return 64
   fi
@@ -712,15 +712,15 @@ string__replace-last() {
 # @exitcode 0 The value is not empty.
 # @exitcode 64 The value is empty, or the name is invalid.
 # @example
-#   string__require-non-empty USER_NAME "${user_name}" || return "$?"
-string__require-non-empty() {
-  if [[ "$#" -ne 2 ]] || ! _string__require-non-empty-line "$1"; then
+#   string.require-non-empty USER_NAME "${user_name}" || return "$?"
+string.require-non-empty() {
+  if [[ "$#" -ne 2 ]] || ! _string.require-non-empty-line "$1"; then
     return 64
   fi
   if [[ -n "$2" ]]; then
     return 0
   fi
-  _console__write-error "$1 must not be empty."
+  _console.write-error "$1 must not be empty."
   return 64
 }
 
@@ -732,15 +732,15 @@ string__require-non-empty() {
 # @exitcode 0 The value is empty.
 # @exitcode 64 The value is not empty, or the name is invalid.
 # @example
-#   string__require-empty REMAINDER "${remainder}" || return "$?"
-string__require-empty() {
-  if [[ "$#" -ne 2 ]] || ! _string__require-non-empty-line "$1"; then
+#   string.require-empty REMAINDER "${remainder}" || return "$?"
+string.require-empty() {
+  if [[ "$#" -ne 2 ]] || ! _string.require-non-empty-line "$1"; then
     return 64
   fi
   if [[ -z "$2" ]]; then
     return 0
   fi
-  _console__write-error "$1 must be empty."
+  _console.write-error "$1 must be empty."
   return 64
 }
 
@@ -753,9 +753,9 @@ string__require-empty() {
 # @exitcode 0 The value equals an allowed value.
 # @exitcode 64 The value is not allowed, or the arguments are invalid.
 # @example
-#   string__require-allowed SOURCE "${source}" os official || return "$?"
-string__require-allowed() {
-  if [[ "$#" -lt 3 ]] || ! _string__require-non-empty-line "$1"; then
+#   string.require-allowed SOURCE "${source}" os official || return "$?"
+string.require-allowed() {
+  if [[ "$#" -lt 3 ]] || ! _string.require-non-empty-line "$1"; then
     return 64
   fi
 
@@ -770,7 +770,7 @@ string__require-allowed() {
     fi
   done
 
-  _console__write-error "${name} has an unsupported value."
+  _console.write-error "${name} has an unsupported value."
   return 64
 }
 
@@ -784,14 +784,14 @@ string__require-allowed() {
 # @exitcode 64 An index is not a non-negative integer, START is after END, or END exceeds the length.
 # @exitcode 69 The current locale does not use UTF-8.
 # @example
-#   LC_ALL=C.UTF-8 string__slice 'こんにちは' 1 3
+#   LC_ALL=C.UTF-8 string.slice 'こんにちは' 1 3
 #   # んに
-string__slice() {
+string.slice() {
   if [[ "$#" -lt 2 || "$#" -gt 3 ]] ||
-    ! _number__is-non-negative-integer-at-most "$2" 2147483647; then
+    ! _number.is-non-negative-integer-at-most "$2" 2147483647; then
     return 64
   fi
-  _string__require-utf8-locale || return "$?"
+  _string.require-utf8-locale || return "$?"
   # Bash 3.2 applies a locale given before the function name only when it is assigned again.
   [[ -z "${LANG+set}" ]] || local LANG="${LANG}"
   [[ -z "${LC_CTYPE+set}" ]] || local LC_CTYPE="${LC_CTYPE}"
@@ -802,7 +802,7 @@ string__slice() {
   local end="${3-${#1}}"
   local length="${#value}"
 
-  if ! _number__is-non-negative-integer-at-most "${end}" 2147483647; then
+  if ! _number.is-non-negative-integer-at-most "${end}" 2147483647; then
     return 64
   fi
   if ((10#${start} > 10#${end} || 10#${end} > length)); then

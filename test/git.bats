@@ -2,7 +2,7 @@
 
 load test_helper
 
-git_test__create-repository() {
+git_test.create-repository() {
   local directory="$1"
 
   mkdir "${directory}"
@@ -11,7 +11,7 @@ git_test__create-repository() {
   git -C "${directory}" config user.email 'bashstock@example.invalid'
 }
 
-git_test__commit() {
+git_test.commit() {
   local directory="$1"
   local content="$2"
   local message="$3"
@@ -22,7 +22,7 @@ git_test__commit() {
   git -C "${directory}" rev-parse HEAD
 }
 
-git_test__edit-via-rebase-preserves-state() {
+git_test.edit-via-rebase-preserves-state() {
   local revision="$1"
   local directory="$2"
   local directory_before="${PWD}"
@@ -34,7 +34,7 @@ git_test__edit-via-rebase-preserves-state() {
   shell_options_before="$(shopt -p)"
   BASH_REMATCH=('caller-value')
   local status=0
-  git__commit__edit-via-rebase "${revision}" "${directory}" || status="$?"
+  git.commit.edit-via-rebase "${revision}" "${directory}" || status="$?"
   if [[ "${status}" -ne 0 ]]; then
     printf 'edit-via-rebase returned %s\n' "${status}"
     git -C "${directory}" status
@@ -48,12 +48,12 @@ git_test__edit-via-rebase-preserves-state() {
   [[ "${BASH_REMATCH[0]}" == 'caller-value' ]] || { printf 'BASH_REMATCH changed\n'; return 1; }
 }
 
-git_test__edit-via-rebase-in-directory() {
+git_test.edit-via-rebase-in-directory() {
   local revision="$1"
   local directory="$2"
 
   cd "${directory}" || return 74
-  git__commit__edit-via-rebase "${revision}"
+  git.commit.edit-via-rebase "${revision}"
 }
 
 @test "the sequence editor marks exactly one target with file replacement" {
@@ -63,10 +63,10 @@ git_test__edit-via-rebase-in-directory() {
   local second=''
   local third=''
 
-  git_test__create-repository "${repository}"
-  first="$(git_test__commit "${repository}" one first)"
-  second="$(git_test__commit "${repository}" two second)"
-  third="$(git_test__commit "${repository}" three third)"
+  git_test.create-repository "${repository}"
+  first="$(git_test.commit "${repository}" one first)"
+  second="$(git_test.commit "${repository}" two second)"
+  third="$(git_test.commit "${repository}" three third)"
   printf 'pick %.12s first\np %.12s second\npick %.12s third\n' \
     "${first}" "${second}" "${third}" >"${todo}"
 
@@ -109,12 +109,12 @@ git_test__edit-via-rebase-in-directory() {
   local second=''
   local third=''
 
-  git_test__create-repository "${repository}"
-  first="$(git_test__commit "${repository}" one first)"
-  second="$(git_test__commit "${repository}" two second)"
-  third="$(git_test__commit "${repository}" three third)"
+  git_test.create-repository "${repository}"
+  first="$(git_test.commit "${repository}" one first)"
+  second="$(git_test.commit "${repository}" two second)"
+  third="$(git_test.commit "${repository}" three third)"
 
-  run git_test__edit-via-rebase-preserves-state "${second}" "${repository}"
+  run git_test.edit-via-rebase-preserves-state "${second}" "${repository}"
 
   [ "${status}" -eq 0 ]
   [ "$(git -C "${repository}" rev-parse REBASE_HEAD)" = "${second}" ]
@@ -129,11 +129,11 @@ git_test__edit-via-rebase-in-directory() {
   local root=''
   local head=''
 
-  git_test__create-repository "${repository}"
-  root="$(git_test__commit "${repository}" one root)"
-  head="$(git_test__commit "${repository}" two second)"
+  git_test.create-repository "${repository}"
+  root="$(git_test.commit "${repository}" one root)"
+  head="$(git_test.commit "${repository}" two second)"
 
-  run git_test__edit-via-rebase-in-directory 'HEAD~1' "${repository}"
+  run git_test.edit-via-rebase-in-directory 'HEAD~1' "${repository}"
 
   [ "${status}" -eq 0 ]
   [ "$(git -C "${repository}" rev-parse REBASE_HEAD)" = "${root}" ]
@@ -150,37 +150,37 @@ git_test__edit-via-rebase-in-directory() {
   local side=''
   local merge=''
 
-  run git__commit__edit-via-rebase
+  run git.commit.edit-via-rebase
   [ "${status}" -eq 64 ]
-  run git__commit__edit-via-rebase ''
+  run git.commit.edit-via-rebase ''
   [ "${status}" -eq 64 ]
-  run git__commit__edit-via-rebase --help
+  run git.commit.edit-via-rebase --help
   [ "${status}" -eq 64 ]
-  run git__commit__edit-via-rebase $'HEAD\nmain'
+  run git.commit.edit-via-rebase $'HEAD\nmain'
   [ "${status}" -eq 64 ]
-  run git__commit__edit-via-rebase HEAD . excess
+  run git.commit.edit-via-rebase HEAD . excess
   [ "${status}" -eq 64 ]
-  run git__commit__edit-via-rebase HEAD "${BATS_TEST_TMPDIR}/missing"
+  run git.commit.edit-via-rebase HEAD "${BATS_TEST_TMPDIR}/missing"
   [ "${status}" -eq 66 ]
 
-  git_test__create-repository "${repository}"
-  root="$(git_test__commit "${repository}" root root)"
+  git_test.create-repository "${repository}"
+  root="$(git_test.commit "${repository}" root root)"
   initial_branch="$(git -C "${repository}" symbolic-ref --short HEAD)"
   git -C "${repository}" switch --quiet -c side
-  side="$(git_test__commit "${repository}" side side)"
+  side="$(git_test.commit "${repository}" side side)"
   git -C "${repository}" switch --quiet "${initial_branch}"
-  main="$(git_test__commit "${repository}" main main)"
+  main="$(git_test.commit "${repository}" main main)"
 
-  run git__commit__edit-via-rebase missing "${repository}"
+  run git.commit.edit-via-rebase missing "${repository}"
   [ "${status}" -eq 65 ]
-  run git__commit__edit-via-rebase "${side}" "${repository}"
+  run git.commit.edit-via-rebase "${side}" "${repository}"
   [ "${status}" -eq 65 ]
 
   git -C "${repository}" merge --quiet --no-ff --strategy=ours side -m merge
   merge="$(git -C "${repository}" rev-parse HEAD)"
-  run git__commit__edit-via-rebase "${merge}" "${repository}"
+  run git.commit.edit-via-rebase "${merge}" "${repository}"
   [ "${status}" -eq 65 ]
-  run git__commit__edit-via-rebase "${main}" "${repository}"
+  run git.commit.edit-via-rebase "${main}" "${repository}"
   [ "${status}" -eq 65 ]
   [ "$(git -C "${repository}" rev-parse HEAD)" = "${merge}" ]
   [ "$(git -C "${repository}" rev-parse "${root}^{commit}")" = "${root}" ]
@@ -189,15 +189,15 @@ git_test__edit-via-rebase-in-directory() {
 }
 
 # @description Create a bare remote with one commit on main and a clone that tracks it.
-git_test__create-remote-and-clone() {
+git_test.create-remote-and-clone() {
   local remote="$1" clone="$2" seed="${BATS_TEST_TMPDIR}/seed"
   # Settings of the machine, such as commit signing, must not change the results.
   export GIT_CONFIG_GLOBAL="${BATS_TEST_TMPDIR}/gitconfig"
   : >"${GIT_CONFIG_GLOBAL}"
   git init --quiet --bare "${remote}"
-  git_test__create-repository "${seed}"
+  git_test.create-repository "${seed}"
   git -C "${seed}" checkout --quiet -b main
-  git_test__commit "${seed}" first first >/dev/null
+  git_test.commit "${seed}" first first >/dev/null
   git -C "${seed}" push --quiet "${remote}" main
   git -C "${remote}" symbolic-ref HEAD refs/heads/main
   git clone --quiet "${remote}" "${clone}"
@@ -207,11 +207,11 @@ git_test__create-remote-and-clone() {
 
 @test "stash push keeps untracked files and the message" {
   local repository="${BATS_TEST_TMPDIR}/repository"
-  git_test__create-repository "${repository}"
-  git_test__commit "${repository}" first first >/dev/null
+  git_test.create-repository "${repository}"
+  git_test.commit "${repository}" first first >/dev/null
   printf 'changed\n' >"${repository}/value"
   printf 'new\n' >"${repository}/untracked"
-  run git__stash__push 'work in progress' "${repository}"
+  run git.stash.push 'work in progress' "${repository}"
   [ "${status}" -eq 0 ]
   [ ! -e "${repository}/untracked" ]
   [ -z "$(git -C "${repository}" status --porcelain)" ]
@@ -222,90 +222,90 @@ git_test__create-remote-and-clone() {
 
 @test "commit patches and cherry-picks fetch a missing commit and verify it" {
   local remote="${BATS_TEST_TMPDIR}/remote.git" clone="${BATS_TEST_TMPDIR}/clone" other="${BATS_TEST_TMPDIR}/other" root='' second=''
-  git_test__create-remote-and-clone "${remote}" "${clone}"
+  git_test.create-remote-and-clone "${remote}" "${clone}"
   git clone --quiet "${remote}" "${other}"
   git -C "${other}" config user.name 'BashStock Test'
   git -C "${other}" config user.email 'bashstock@example.invalid'
   git -C "${other}" checkout --quiet -b topic
-  second="$(git_test__commit "${other}" second second)"
+  second="$(git_test.commit "${other}" second second)"
   git -C "${other}" push --quiet origin topic
   root="$(git -C "${clone}" rev-list --max-parents=0 HEAD)"
 
-  run git__commit__patch "${root}" origin "${clone}"
+  run git.commit.patch "${root}" origin "${clone}"
   [ "${status}" -eq 0 ]
   [[ "${output}" == *'+first'* ]]
-  run git__commit__patch "${second}" origin "${clone}"
+  run git.commit.patch "${second}" origin "${clone}"
   [ "${status}" -eq 0 ]
   [[ "${output}" == *'-first'*'+second'* ]]
-  run git__cherry-pick "${second}" origin "${clone}"
+  run git.cherry-pick "${second}" origin "${clone}"
   [ "${status}" -eq 0 ]
   [ "$(<"${clone}/value")" = second ]
-  run git__cherry-pick 0123456789abcdef0123456789abcdef01234567 origin "${clone}"
+  run git.cherry-pick 0123456789abcdef0123456789abcdef01234567 origin "${clone}"
   [ "${status}" -ne 0 ]
 }
 
 @test "commit patches at a shallow boundary compare with the real parent" {
   local remote="${BATS_TEST_TMPDIR}/remote.git" clone="${BATS_TEST_TMPDIR}/clone" shallow="${BATS_TEST_TMPDIR}/shallow"
-  git_test__create-remote-and-clone "${remote}" "${clone}"
-  git_test__commit "${clone}" second second >/dev/null
+  git_test.create-remote-and-clone "${remote}" "${clone}"
+  git_test.commit "${clone}" second second >/dev/null
   git -C "${clone}" push --quiet origin HEAD
   git clone --quiet --depth 1 "file://${remote}" "${shallow}"
   [ "$(git -C "${shallow}" rev-parse --is-shallow-repository)" = true ]
 
-  run git__commit__patch HEAD origin "${shallow}"
+  run git.commit.patch HEAD origin "${shallow}"
   [ "${status}" -eq 0 ]
   [[ "${output}" == *'-first'*'+second'* ]]
 }
 
 @test "pull, reset, delete, and Gerrit pushes default to the current branch and origin" {
   local remote="${BATS_TEST_TMPDIR}/remote.git" clone="${BATS_TEST_TMPDIR}/clone" other="${BATS_TEST_TMPDIR}/other"
-  git_test__create-remote-and-clone "${remote}" "${clone}"
+  git_test.create-remote-and-clone "${remote}" "${clone}"
   git clone --quiet "${remote}" "${other}"
   git -C "${other}" config user.name 'BashStock Test'
   git -C "${other}" config user.email 'bashstock@example.invalid'
-  git_test__commit "${other}" remote remote >/dev/null
+  git_test.commit "${other}" remote remote >/dev/null
   git -C "${other}" push --quiet origin main
 
   printf 'local\n' >"${clone}/local"
   git -C "${clone}" add local
   git -C "${clone}" commit --quiet -m local
-  run git__pull-rebase '' '' "${clone}"
+  run git.pull-rebase '' '' "${clone}"
   [ "${status}" -eq 0 ]
   [ "$(git -C "${clone}" log --format=%s -n 3 | tr '\n' ' ')" = 'local remote first ' ]
 
   printf 'dirty\n' >"${clone}/value"
-  run git__reset-remote '' "${clone}"
+  run git.reset-remote '' "${clone}"
   [ "${status}" -eq 0 ]
   [ "$(git -C "${clone}" rev-parse HEAD)" = "$(git -C "${remote}" rev-parse main)" ]
 
   git -C "${clone}" checkout --quiet -b topic
   git -C "${clone}" push --quiet origin topic
-  run git__remote__delete-branch '' '' "${clone}"
+  run git.remote.delete-branch '' '' "${clone}"
   [ "${status}" -eq 0 ]
   ! git -C "${remote}" rev-parse --verify --quiet refs/heads/topic
 
   git -C "${clone}" checkout --quiet main
-  run gerrit__push-review '' '' "${clone}"
+  run gerrit.push-review '' '' "${clone}"
   [ "${status}" -eq 0 ]
   git -C "${remote}" rev-parse --verify --quiet refs/for/main
-  git_test__commit "${clone}" wip wip >/dev/null
-  run gerrit__push-review-wip stable '' "${clone}"
+  git_test.commit "${clone}" wip wip >/dev/null
+  run gerrit.push-review-wip stable '' "${clone}"
   [ "${status}" -eq 0 ]
   git -C "${remote}" rev-parse --verify --quiet 'refs/for/stable%wip'
 }
 
 @test "base branch rebase and unshallow fetch use every remote by default" {
   local upstream="${BATS_TEST_TMPDIR}/upstream.git" clone="${BATS_TEST_TMPDIR}/clone" other="${BATS_TEST_TMPDIR}/other" shallow="${BATS_TEST_TMPDIR}/shallow"
-  git_test__create-remote-and-clone "${upstream}" "${clone}"
+  git_test.create-remote-and-clone "${upstream}" "${clone}"
   git -C "${clone}" remote rename origin upstream
   git clone --quiet "${upstream}" "${other}"
   git -C "${other}" config user.name 'BashStock Test'
   git -C "${other}" config user.email 'bashstock@example.invalid'
-  git_test__commit "${other}" second second >/dev/null
-  git_test__commit "${other}" third third >/dev/null
+  git_test.commit "${other}" second second >/dev/null
+  git_test.commit "${other}" third third >/dev/null
   git -C "${other}" push --quiet origin main
   git -C "${clone}" checkout --quiet -b feature
-  run git__rebase-base-branch '' '' "${clone}"
+  run git.rebase-base-branch '' '' "${clone}"
   [ "${status}" -eq 0 ]
   [ "$(git -C "${clone}" branch --show-current)" = main ]
   [ "$(git -C "${clone}" rev-parse HEAD)" = "$(git -C "${upstream}" rev-parse main)" ]
@@ -313,7 +313,7 @@ git_test__create-remote-and-clone() {
   git clone --quiet --depth 1 "file://${upstream}" "${shallow}"
   [ "$(git -C "${shallow}" rev-parse --is-shallow-repository)" = true ]
   git -C "${shallow}" remote add mirror "file://${upstream}"
-  run git__fetch-unshallow '' "${shallow}"
+  run git.fetch-unshallow '' "${shallow}"
   [ "${status}" -eq 0 ]
   [ "$(git -C "${shallow}" rev-parse --is-shallow-repository)" = false ]
   [ "$(git -C "${shallow}" rev-list --count HEAD)" -eq 3 ]
@@ -322,24 +322,24 @@ git_test__create-remote-and-clone() {
 
 @test "Git wrappers refuse operands that Git would read as options" {
   local repository="${BATS_TEST_TMPDIR}/repository"
-  git_test__create-repository "${repository}"
-  git_test__commit "${repository}" first first >/dev/null
+  git_test.create-repository "${repository}"
+  git_test.commit "${repository}" first first >/dev/null
   git -C "${repository}" branch topic
 
-  run git__branch__create -D topic "${repository}"
+  run git.branch.create -D topic "${repository}"
   [ "${status}" -eq 64 ]
   git -C "${repository}" show-ref --verify --quiet refs/heads/topic
-  run git__branch__create 'bad..name' HEAD "${repository}"
+  run git.branch.create 'bad..name' HEAD "${repository}"
   [ "${status}" -eq 64 ]
-  run git__branch__create created HEAD "${repository}"
+  run git.branch.create created HEAD "${repository}"
   [ "${status}" -eq 0 ]
 
-  run git__reset --merge "${repository}"
+  run git.reset --merge "${repository}"
   [ "${status}" -eq 64 ]
-  run git__remote__delete-branch -x origin "${repository}"
+  run git.remote.delete-branch -x origin "${repository}"
   [ "${status}" -eq 64 ]
-  run git__pull-rebase main --all "${repository}"
+  run git.pull-rebase main --all "${repository}"
   [ "${status}" -eq 64 ]
-  run git__commit__patch HEAD --upload-pack=evil "${repository}"
+  run git.commit.patch HEAD --upload-pack=evil "${repository}"
   [ "${status}" -eq 64 ]
 }

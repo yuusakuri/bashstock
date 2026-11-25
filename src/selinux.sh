@@ -16,13 +16,13 @@
 # @exitcode 69 audit2allow is unavailable.
 # @exitcode other The status of audit2allow.
 # @example
-#   selinux__generate-rule /var/log/audit/audit.log ./allow.te
-selinux__generate-rule() {
+#   selinux.generate-rule /var/log/audit/audit.log ./allow.te
+selinux.generate-rule() {
   [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64
-  local output="${2:-$(path__directory-name "$1")/selinux.txt}" denials=''
-  command__require audit2allow || return "$?"
+  local output="${2:-$(path.directory-name "$1")/selinux.txt}" denials=''
+  command.require audit2allow || return "$?"
   denials="$(grep -F 'avc:' -- "$1")" || {
-    _console__write-error "No AVC denial in $1."
+    _console.write-error "No AVC denial in $1."
     return 1
   }
   printf '%s\n' "${denials}" | audit2allow >"${output}"

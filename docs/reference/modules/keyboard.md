@@ -8,10 +8,10 @@ Layouts are set for the system and for USB keyboards.
 
 ## Index
 
-* [keyboard__system-layout__set](#keyboard__system-layout__set)
-* [keyboard__setup-ime-keys](#keyboard__setup-ime-keys)
+* [keyboard.system-layout.set](#keyboardsystem-layoutset)
+* [keyboard.setup-ime-keys](#keyboardsetup-ime-keys)
 
-### keyboard__system-layout__set
+### keyboard.system-layout.set
 
 Set the system keyboard layout.
 
@@ -21,7 +21,7 @@ use localectl.
 #### Example
 
 ```bash
-keyboard__system-layout__set us
+keyboard.system-layout.set us
 ```
 
 #### Arguments
@@ -35,7 +35,7 @@ keyboard__system-layout__set us
 * **69**: Neither /etc/default/keyboard nor localectl is available.
 * other The status of the file update or localectl.
 
-### keyboard__setup-ime-keys
+### keyboard.setup-ime-keys
 
 Map USB Convert, Nonconvert, LANG1, and LANG2 keys to henkan and muhenkan.
 
@@ -44,13 +44,13 @@ KC_LNG2 become muhenkan. This supports the HHKB US ANSI (hhkb/ansi)
 alt_convert_non_convert and alt_lang keymaps in
 https://github.com/yuusakuri/qmk_firmware without remapping held Alt keys.
 The hwdb entry applies to every USB keyboard, or only to VENDOR_ID and
-PRODUCT_ID. Use gnome__input-source__setup-ime-keys to bind the keys to
+PRODUCT_ID. Use gnome.input-source.setup-ime-keys to bind the keys to
 US and Mozc.
 
 #### Example
 
 ```bash
-keyboard__setup-ime-keys 4653 0001
+keyboard.setup-ime-keys 4653 0001
 ```
 
 #### Arguments

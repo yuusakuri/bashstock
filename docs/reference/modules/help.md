@@ -8,9 +8,9 @@ The documentation is read from the shdoc comment block above each function.
 
 ## Index
 
-* [help__show](#help__show)
+* [help.show](#helpshow)
 
-### help__show
+### help.show
 
 Show the documentation of a BashStock function, like Get-Help in PowerShell.
 
@@ -20,12 +20,12 @@ so it is the same text that docs/reference describes.
 #### Example
 
 ```bash
-help__show string__trim
+help.show string.trim
 ```
 
 #### Arguments
 
-* **$1** (string): Name of a loaded function, such as string__trim.
+* **$1** (string): Name of a loaded function, such as string.trim.
 
 #### Exit codes
 

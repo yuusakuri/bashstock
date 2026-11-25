@@ -8,17 +8,17 @@ Thunderbird is installed with Homebrew on macOS and from the system package on U
 
 ## Index
 
-* [thunderbird__versions](#thunderbird__versions)
-* [thunderbird__install](#thunderbird__install)
+* [thunderbird.versions](#thunderbirdversions)
+* [thunderbird.install](#thunderbirdinstall)
 
-### thunderbird__versions
+### thunderbird.versions
 
 Write Thunderbird versions available to the current platform.
 
 #### Example
 
 ```bash
-thunderbird__versions | tail -n 1
+thunderbird.versions | tail -n 1
 ```
 
 _Function has no arguments._
@@ -33,7 +33,7 @@ _Function has no arguments._
 
 * Thunderbird versions, one per line.
 
-### thunderbird__install
+### thunderbird.install
 
 Install the Thunderbird email client.
 
@@ -44,12 +44,12 @@ and later that package installs the Snap.
 #### Example
 
 ```bash
-thunderbird__install
+thunderbird.install
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from thunderbird__versions; on macOS only the current version. Defaults to the newest one.
+* **$1** (string): Optional version from thunderbird.versions; on macOS only the current version. Defaults to the newest one.
 
 #### Exit codes
 

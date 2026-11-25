@@ -8,16 +8,16 @@ The service is controlled through administrator execution.
 
 ## Index
 
-* [jenkins__restart](#jenkins__restart)
+* [jenkins.restart](#jenkinsrestart)
 
-### jenkins__restart
+### jenkins.restart
 
 Restart the Jenkins service through administrator execution.
 
 #### Example
 
 ```bash
-jenkins__restart
+jenkins.restart
 ```
 
 _Function has no arguments._
@@ -26,5 +26,5 @@ _Function has no arguments._
 
 * **0**: Jenkins was restarted.
 * **64**: An argument was given.
-* other The status of systemd__restart.
+* other The status of systemd.restart.
 

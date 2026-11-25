@@ -7,9 +7,9 @@ set -euo pipefail
 source /opt/bashstock.sh
 
 version='16.20.2'
-node__install "${version}" official
+node.install "${version}" official
 test "$(node --version)" = "v${version}"
-node__install "${version}" official
+node.install "${version}" official
 test "$(node --version)" = "v${version}"
 npm --version
 corepack --version
@@ -17,6 +17,6 @@ pnpm --version
 test "$(pnpm config get store-dir)" = "${HOME}/.pnpm-store"
 
 # OpenCode installs from npm into the user's prefix and selects the binary for this CPU and C library.
-opencode__install
-opencode__install
+opencode.install
+opencode.install
 [[ "$("${HOME}/.local/bin/opencode" --version)" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]

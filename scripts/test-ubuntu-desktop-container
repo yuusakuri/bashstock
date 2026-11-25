@@ -21,7 +21,7 @@ in_session() {
 in_session gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'jp')]"
 
 export GIT_EMAIL=tester@example.invalid GIT_USERNAME='Setup Tester'
-in_session ubuntu__setup-desktop
+in_session ubuntu.setup-desktop
 
 printf '== GNOME settings in a new session\n'
 sources="$(in_session gsettings get org.gnome.desktop.input-sources sources)"
@@ -40,7 +40,7 @@ grep -Fx 'KEYBOARD_KEY_70091=muhenkan' <<<"$query"
 
 printf '== IME shortcuts in a new session\n'
 # Reapplying the shortcuts keeps a single entry for each direction.
-in_session gnome__input-source__setup-ime-keys
+in_session gnome.input-source.setup-ime-keys
 schema='org.gnome.settings-daemon.plugins.media-keys'
 base='/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings'
 bindings="$(in_session gsettings get "$schema" custom-keybindings)"

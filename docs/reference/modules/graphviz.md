@@ -8,17 +8,17 @@ Graphviz is installed from the platform package source.
 
 ## Index
 
-* [graphviz__versions](#graphviz__versions)
-* [graphviz__install](#graphviz__install)
+* [graphviz.versions](#graphvizversions)
+* [graphviz.install](#graphvizinstall)
 
-### graphviz__versions
+### graphviz.versions
 
 Write Graphviz versions available to the current platform.
 
 #### Example
 
 ```bash
-graphviz__versions
+graphviz.versions
 ```
 
 _Function has no arguments._
@@ -33,20 +33,20 @@ _Function has no arguments._
 
 * Graphviz versions from the platform package manager, one per line.
 
-### graphviz__install
+### graphviz.install
 
 Install Graphviz from the platform package manager.
 
 #### Example
 
 ```bash
-graphviz__install
+graphviz.install
 dot -Tpng graph.dot -o graph.png
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from graphviz__versions. Defaults to the newest one.
+* **$1** (string): Optional version from graphviz.versions. Defaults to the newest one.
 
 #### Exit codes
 

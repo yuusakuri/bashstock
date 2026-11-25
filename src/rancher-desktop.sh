@@ -14,23 +14,23 @@
 # @exitcode 69 The platform is unsupported.
 # @exitcode 74 The repository index could not be downloaded.
 # @example
-#   rancher-desktop__versions
-rancher-desktop__versions() {
+#   rancher-desktop.versions
+rancher-desktop.versions() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' index_entries=''
-  platform="$(_package__platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   case "${platform}" in
     darwin)
-      _package__cask-versions rancher
+      _package.cask-versions rancher
       ;;
     ubuntu)
-      index_entries="$(_package__deb-index-entries \
+      index_entries="$(_package.deb-index-entries \
         https://download.opensuse.org/repositories/isv:/Rancher:/stable/deb/Packages rancher-desktop)" || return "$?"
-      printf '%s\n' "${index_entries}" | cut -f 1 | _package__sort-versions
+      printf '%s\n' "${index_entries}" | cut -f 1 | _package.sort-versions
       ;;
     fedora)
       # The rpm repository is built for openSUSE; the fedora one is built for Fedora.
-      _package__rpm-repository-versions \
+      _package.rpm-repository-versions \
         https://download.opensuse.org/repositories/isv:/Rancher:/stable/fedora/ rancher-desktop
       ;;
   esac
@@ -38,11 +38,11 @@ rancher-desktop__versions() {
 
 # @description Install Rancher Desktop and start it.
 #
-# Rosetta and Colima are installed separately with rosetta__install and colima__install.
+# Rosetta and Colima are installed separately with rosetta.install and colima.install.
 # Ubuntu 22.04 or later and Fedora 35 or later install from Rancher's
 # repository; Fedora uses the packages that Rancher builds for Fedora.
 #
-# @arg $1 string Optional version from rancher-desktop__versions; on macOS only the current version.
+# @arg $1 string Optional version from rancher-desktop.versions; on macOS only the current version.
 # @stderr On Linux, a reminder to log in again when the user was added to the kvm group.
 # @exitcode 0 Rancher Desktop is installed and was started.
 # @exitcode 64 The argument count is wrong.
@@ -50,39 +50,39 @@ rancher-desktop__versions() {
 # @exitcode 74 The repository or its key could not be downloaded.
 # @exitcode other The status of the package manager.
 # @example
-#   rancher-desktop__install
-rancher-desktop__install() {
+#   rancher-desktop.install
+rancher-desktop.install() {
   [[ "$#" -le 1 ]] || return 64
   local version="${1:-}" platform=''
-  platform="$(_package__platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   case "${platform}" in
     darwin)
-      _package__install-cask rancher "${version}" || return "$?"
-      _rancher-desktop__start-darwin
+      _package.install-cask rancher "${version}" || return "$?"
+      _rancher-desktop.start-darwin
       ;;
     ubuntu | fedora)
-      _rancher-desktop__install-linux "${platform}" "${version}" || return "$?"
-      _rancher-desktop__start-linux
+      _rancher-desktop.install-linux "${platform}" "${version}" || return "$?"
+      _rancher-desktop.start-linux
       ;;
   esac
 }
 
 # @description Register the Rancher Desktop repository and install the package on Linux.
 # @internal
-_rancher-desktop__install-linux() {
+_rancher-desktop.install-linux() {
   [[ "$#" -eq 2 ]] || return 64
   if [[ "$1" == 'ubuntu' ]]; then
     # The packages depend on libgdk-pixbuf-2.0-0, which Ubuntu 20.04 and older name differently.
-    _package__require-release ubuntu 22 'Rancher Desktop' || return "$?"
-    _package__apt-register-repository isv-rancher-stable \
+    _package.require-release ubuntu 22 'Rancher Desktop' || return "$?"
+    _package.apt-register-repository isv-rancher-stable \
       https://download.opensuse.org/repositories/isv:/Rancher:/stable/deb/Release.key \
       https://download.opensuse.org/repositories/isv:/Rancher:/stable/deb/ ./ '' || return "$?"
   else
     # The bundled rdctl needs glibc 2.34, which Fedora 35 introduced.
-    _package__require-release fedora 35 'Rancher Desktop' || return "$?"
+    _package.require-release fedora 35 'Rancher Desktop' || return "$?"
     # Rancher builds the rpm repository for openSUSE, whose package names Fedora
     # lacks, so dnf fell back to version 1.2.1; the fedora repository is built for Fedora.
-    _package__dnf-register-repository isv-rancher-stable \
+    _package.dnf-register-repository isv-rancher-stable \
       "[isv-rancher-stable]
 name=Rancher Desktop
 baseurl=https://download.opensuse.org/repositories/isv:/Rancher:/stable/fedora/
@@ -94,13 +94,13 @@ gpgkey=https://download.opensuse.org/repositories/isv:/Rancher:/stable/fedora/re
   local version="$2" versions=''
   if [[ "$1" == fedora && -z "${version}" ]]; then
     # dnf install keeps an installed older package, so the newest version is named explicitly.
-    versions="$(rancher-desktop__versions)" || return "$?"
-    version="$(_package__select-listed-version "${versions}" '' 'Rancher Desktop')" || return "$?"
+    versions="$(rancher-desktop.versions)" || return "$?"
+    version="$(_package.select-listed-version "${versions}" '' 'Rancher Desktop')" || return "$?"
   fi
-  _package__install-version rancher-desktop "${version}" || return "$?"
+  _package.install-version rancher-desktop "${version}" || return "$?"
   if [[ ! -r /dev/kvm || ! -w /dev/kvm ]]; then
-    _package__add-current-user-to-group kvm || return "$?"
-    _console__write-error 'Log in again so that the kvm group membership takes effect.'
+    _package.add-current-user-to-group kvm || return "$?"
+    _console.write-error 'Log in again so that the kvm group membership takes effect.'
   fi
 }
 
@@ -110,7 +110,7 @@ gpgkey=https://download.opensuse.org/repositories/isv:/Rancher:/stable/fedora/re
 # open waits while macOS shows a first-launch confirmation, so it runs in the
 # background and the setup continues, as on Linux.
 # @internal
-_rancher-desktop__start-darwin() {
+_rancher-desktop.start-darwin() {
   [[ "$#" -eq 0 ]] || return 64
   local application='/Applications/Rancher Desktop.app'
   if [[ -d "${application}" ]]; then
@@ -122,8 +122,8 @@ _rancher-desktop__start-darwin() {
 
 # @description Start Rancher Desktop in the background on Linux.
 # @internal
-_rancher-desktop__start-linux() {
+_rancher-desktop.start-linux() {
   [[ "$#" -eq 0 ]] || return 64
-  command__require rancher-desktop || return "$?"
+  command.require rancher-desktop || return "$?"
   (rancher-desktop >/dev/null 2>&1 &)
 }

@@ -34,7 +34,7 @@ examples_with_output() {
       next
     }
     /^[[:space:]]*#/ { flush(); next }
-    /^[[:space:]]*[a-z][a-z0-9:_-]*\(\)/ {
+    /^[[:space:]]*[a-z][a-z0-9._-]*\(\)/ {
       flush()
       name = $0
       sub(/^[[:space:]]*/, "", name)

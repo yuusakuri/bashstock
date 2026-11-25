@@ -8,26 +8,26 @@ Capacities are written in bytes or gibibytes; swap files are managed through adm
 
 ## Index
 
-* [mem__physical-total-bytes](#mem__physical-total-bytes)
-* [mem__physical-total-gibibytes](#mem__physical-total-gibibytes)
-* [mem__swap__total-bytes](#mem__swap__total-bytes)
-* [mem__swap__total-gibibytes](#mem__swap__total-gibibytes)
-* [mem__total-bytes](#mem__total-bytes)
-* [mem__total-gibibytes](#mem__total-gibibytes)
-* [mem__swap__disable-all](#mem__swap__disable-all)
-* [mem__swap__remove-all-files](#mem__swap__remove-all-files)
-* [mem__swap__create](#mem__swap__create)
-* [mem__swap__list](#mem__swap__list)
-* [mem__swap__ensure-total-size](#mem__swap__ensure-total-size)
+* [mem.physical-total-bytes](#memphysical-total-bytes)
+* [mem.physical-total-gibibytes](#memphysical-total-gibibytes)
+* [mem.swap.total-bytes](#memswaptotal-bytes)
+* [mem.swap.total-gibibytes](#memswaptotal-gibibytes)
+* [mem.total-bytes](#memtotal-bytes)
+* [mem.total-gibibytes](#memtotal-gibibytes)
+* [mem.swap.disable-all](#memswapdisable-all)
+* [mem.swap.remove-all-files](#memswapremove-all-files)
+* [mem.swap.create](#memswapcreate)
+* [mem.swap.list](#memswaplist)
+* [mem.swap.ensure-total-size](#memswapensure-total-size)
 
-### mem__physical-total-bytes
+### mem.physical-total-bytes
 
 Write the total physical memory in bytes.
 
 #### Example
 
 ```bash
-mem__physical-total-bytes
+mem.physical-total-bytes
 ```
 
 _Function has no arguments._
@@ -43,14 +43,14 @@ _Function has no arguments._
 
 * The total physical memory in bytes.
 
-### mem__physical-total-gibibytes
+### mem.physical-total-gibibytes
 
 Write the total physical memory in gibibytes.
 
 #### Example
 
 ```bash
-mem__physical-total-gibibytes
+mem.physical-total-gibibytes
 ```
 
 _Function has no arguments._
@@ -66,14 +66,14 @@ _Function has no arguments._
 
 * The total physical memory in GiB with two decimals, such as 15.53.
 
-### mem__swap__total-bytes
+### mem.swap.total-bytes
 
 Write the total swap capacity in bytes.
 
 #### Example
 
 ```bash
-[[ "$(mem__swap__total-bytes)" -gt 0 ]] || mem__swap__create 4
+[[ "$(mem.swap.total-bytes)" -gt 0 ]] || mem.swap.create 4
 ```
 
 _Function has no arguments._
@@ -89,14 +89,14 @@ _Function has no arguments._
 
 * The total swap capacity in bytes; 0 without swap.
 
-### mem__swap__total-gibibytes
+### mem.swap.total-gibibytes
 
 Write the total swap capacity in gibibytes.
 
 #### Example
 
 ```bash
-mem__swap__total-gibibytes
+mem.swap.total-gibibytes
 ```
 
 _Function has no arguments._
@@ -112,14 +112,14 @@ _Function has no arguments._
 
 * The total swap capacity in GiB with two decimals.
 
-### mem__total-bytes
+### mem.total-bytes
 
 Write the total memory and swap capacity in bytes.
 
 #### Example
 
 ```bash
-mem__total-bytes
+mem.total-bytes
 ```
 
 _Function has no arguments._
@@ -135,14 +135,14 @@ _Function has no arguments._
 
 * The sum of physical memory and swap in bytes.
 
-### mem__total-gibibytes
+### mem.total-gibibytes
 
 Write the total memory and swap capacity in gibibytes.
 
 #### Example
 
 ```bash
-printf 'Memory and swap: %s GiB\n' "$(mem__total-gibibytes)"
+printf 'Memory and swap: %s GiB\n' "$(mem.total-gibibytes)"
 ```
 
 _Function has no arguments._
@@ -158,14 +158,14 @@ _Function has no arguments._
 
 * The sum of physical memory and swap in GiB with two decimals.
 
-### mem__swap__disable-all
+### mem.swap.disable-all
 
 Disable every active swap area through administrator execution.
 
 #### Example
 
 ```bash
-mem__swap__disable-all
+mem.swap.disable-all
 ```
 
 _Function has no arguments._
@@ -177,7 +177,7 @@ _Function has no arguments._
 * **69**: swapoff is unavailable.
 * other The status of swapoff.
 
-### mem__swap__remove-all-files
+### mem.swap.remove-all-files
 
 Disable every swap file, remove its /etc/fstab entry, and delete it.
 
@@ -186,7 +186,7 @@ Swap partitions are kept. The first failure stops the removal and is reported.
 #### Example
 
 ```bash
-mem__swap__remove-all-files && mem__swap__create 4294967296
+mem.swap.remove-all-files && mem.swap.create 4294967296
 ```
 
 _Function has no arguments._
@@ -202,7 +202,7 @@ _Function has no arguments._
 
 * The swap file and step that failed.
 
-### mem__swap__create
+### mem.swap.create
 
 Create a swap file, enable it, and register it in /etc/fstab.
 
@@ -212,7 +212,7 @@ fails, the swap file is disabled and removed again.
 #### Example
 
 ```bash
-mem__swap__create 4294967296
+mem.swap.create 4294967296
 ```
 
 #### Arguments
@@ -233,14 +233,14 @@ mem__swap__create 4294967296
 
 * A message when the path already exists.
 
-### mem__swap__list
+### mem.swap.list
 
 List active swap devices.
 
 #### Example
 
 ```bash
-mem__swap__list
+mem.swap.list
 ```
 
 _Function has no arguments._
@@ -255,14 +255,14 @@ _Function has no arguments._
 
 * The output of swapon --show.
 
-### mem__swap__ensure-total-size
+### mem.swap.ensure-total-size
 
 Extend swap capacity up to a target size.
 
 #### Example
 
 ```bash
-mem__swap__ensure-total-size 8589934592
+mem.swap.ensure-total-size 8589934592
 ```
 
 #### Arguments
@@ -275,5 +275,5 @@ mem__swap__ensure-total-size 8589934592
 
 * **0**: The swap capacity reaches the target, or the allowed addition was made.
 * **64**: The arguments are invalid.
-* other The status of mem__swap__total-bytes or mem__swap__create.
+* other The status of mem.swap.total-bytes or mem.swap.create.
 

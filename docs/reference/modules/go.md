@@ -8,22 +8,22 @@ Go is installed from the official package source of the platform.
 
 ## Index
 
-* [go__version__list](#go__version__list)
-* [go__version__latest](#go__version__latest)
-* [go__repository__register](#go__repository__register)
-* [go__install](#go__install)
+* [go.version.list](#goversionlist)
+* [go.version.latest](#goversionlatest)
+* [go.repository.register](#gorepositoryregister)
+* [go.install](#goinstall)
 
-### go__version__list
+### go.version.list
 
 Write the stable Go versions the platform package source offers, oldest first.
 
 Ubuntu lists the versioned golang-X.Y packages, Fedora the golang package,
-and macOS the Homebrew go formulae. Each value is accepted by go__install.
+and macOS the Homebrew go formulae. Each value is accepted by go.install.
 
 #### Example
 
 ```bash
-go__version__list
+go.version.list
 ```
 
 _Function has no arguments._
@@ -40,14 +40,14 @@ _Function has no arguments._
 
 * One version per line, oldest first.
 
-### go__version__latest
+### go.version.latest
 
-Write the newest stable Go version from go__version__list.
+Write the newest stable Go version from go.version.list.
 
 #### Example
 
 ```bash
-go__install "$(go__version__latest)"
+go.install "$(go.version.latest)"
 ```
 
 _Function has no arguments._
@@ -57,13 +57,13 @@ _Function has no arguments._
 * **0**: The version was written.
 * **1**: No version was found.
 * **64**: An argument was given.
-* other The status of go__version__list.
+* other The status of go.version.list.
 
 #### Output on stdout
 
 * The newest version, such as 1.23.
 
-### go__repository__register
+### go.repository.register
 
 Register the official Go package source for the current platform.
 
@@ -72,7 +72,7 @@ Go comes from the distribution or Homebrew, so this only checks that the package
 #### Example
 
 ```bash
-go__repository__register
+go.repository.register
 ```
 
 _Function has no arguments._
@@ -83,7 +83,7 @@ _Function has no arguments._
 * **64**: An argument was given.
 * **69**: The platform is unsupported or its package tool is unavailable.
 
-### go__install
+### go.install
 
 Install Go from the platform package source.
 
@@ -96,12 +96,12 @@ which also replaces an older one installed earlier.
 #### Example
 
 ```bash
-go__install "$(go__version__latest)"
+go.install "$(go.version.latest)"
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from go__version__list. Defaults to the package source default.
+* **$1** (string): Optional version from go.version.list. Defaults to the package source default.
 
 #### Exit codes
 

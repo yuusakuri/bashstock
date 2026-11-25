@@ -20,13 +20,13 @@
 # @exitcode 69 plutil is unavailable.
 # @exitcode 74 The file could not be created or changed.
 # @example
-#   plist__set "${HOME}/Library/Preferences/com.example.app.plist" Theme dark
-plist__set() {
+#   plist.set "${HOME}/Library/Preferences/com.example.app.plist" Theme dark
+plist.set() {
   [[ "$#" -eq 3 && -n "$1" && -n "$2" && "$2" != *.* && ! -L "$1" ]] || return 64
-  command__require plutil || return "$?"
+  command.require plutil || return "$?"
   if [[ ! -e "$1" ]]; then
-    mkdir -p -- "$(path__directory-name "$1")" || return 74
-    file__write-text "$1" '<?xml version="1.0" encoding="UTF-8"?>
+    mkdir -p -- "$(path.directory-name "$1")" || return 74
+    file.write-text "$1" '<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict/>

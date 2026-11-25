@@ -26,22 +26,22 @@ SCRIPT
 @test "Android SDK rejects conflicting configured directories" {
   export ANDROID_HOME="$BATS_TEST_TMPDIR/first"
   export ANDROID_SDK_ROOT="$BATS_TEST_TMPDIR/second"
-  run android__sdk__directory
+  run android.sdk.directory
   [ "$status" -eq 64 ]
 }
 
 @test "Android CLI rejects unsupported Linux ARM before downloading" {
-  _platform__identifier() { printf 'ubuntu\n'; }
+  _platform.identifier() { printf 'ubuntu\n'; }
   uname() { [[ "$1" == '-m' ]] && printf 'aarch64\n'; }
-  run android__cli__install
+  run android.cli.install
   [ "$status" -eq 69 ]
 }
 
 @test "Android Emulator rejects unsupported Linux ARM before installing dependencies" {
-  _platform__identifier() { printf 'ubuntu\n'; }
+  _platform.identifier() { printf 'ubuntu\n'; }
   uname() { [[ "$1" == '-m' ]] && printf 'aarch64\n'; }
-  _package__install() { printf 'installed\n' >"$BATS_TEST_TMPDIR/package.log"; }
-  run android__emulator__install
+  _package.install() { printf 'installed\n' >"$BATS_TEST_TMPDIR/package.log"; }
+  run android.emulator.install
   [ "$status" -eq 69 ]
   [ ! -e "$BATS_TEST_TMPDIR/package.log" ]
 }
@@ -53,12 +53,12 @@ SCRIPT
   mkdir -p "$HOME" "$ANDROID_HOME"
   write_android_stub
 
-  run android__platform-tools__install
+  run android.platform-tools.install
   [ "$status" -eq 0 ]
   [ -x "$ANDROID_HOME/platform-tools/adb" ]
-  run android__sdk-platform__install 35 2
+  run android.sdk-platform.install 35 2
   [ "$status" -eq 0 ]
-  run android__build-tools__install 35.0.0
+  run android.build-tools.install 35.0.0
   [ "$status" -eq 0 ]
   grep -Fqx -- "--no-metrics --sdk=$ANDROID_HOME sdk install platform-tools" "$ANDROID_TEST_LOG"
   grep -Fqx -- "--no-metrics --sdk=$ANDROID_HOME sdk install --force platforms/android-35@2" "$ANDROID_TEST_LOG"
@@ -72,18 +72,18 @@ SCRIPT
   touch "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
   chmod +x "$ANDROID_HOME/cmdline-tools/latest/bin/"*
   JDK_LOG="$BATS_TEST_TMPDIR/jdk.log"
-  _android__sdk-install() { :; }
-  jdk__install() { printf 'jdk__install %s\n' "$*" >>"$JDK_LOG"; }
+  _android.sdk-install() { :; }
+  jdk.install() { printf 'jdk.install %s\n' "$*" >>"$JDK_LOG"; }
 
   # sdkmanager and avdmanager stop with "JAVA_HOME is not set" without a JDK.
-  command__exists() { [[ "$1" != java ]] && command -v "$1" >/dev/null; }
-  run android__command-line-tools__install
+  command.exists() { [[ "$1" != java ]] && command -v "$1" >/dev/null; }
+  run android.command-line-tools.install
   [ "$status" -eq 0 ]
-  [ "$(<"$JDK_LOG")" = 'jdk__install ' ]
+  [ "$(<"$JDK_LOG")" = 'jdk.install ' ]
 
   : >"$JDK_LOG"
-  command__exists() { [[ "$1" == java ]] || command -v "$1" >/dev/null; }
-  run android__command-line-tools__install
+  command.exists() { [[ "$1" == java ]] || command -v "$1" >/dev/null; }
+  run android.command-line-tools.install
   [ "$status" -eq 0 ]
   [ ! -s "$JDK_LOG" ]
 }

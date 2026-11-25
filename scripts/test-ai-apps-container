@@ -26,12 +26,12 @@ package_version() {
 # Claude Code: the newest stable package, twice, from the signed repository.
 if [[ "${ID}" == ubuntu && "${major}" -lt 20 ]]; then
   status=0
-  claude-code__install || status="$?"
+  claude-code.install || status="$?"
   [[ "${status}" -eq 69 ]]
   [[ ! -e /etc/apt/sources.list.d/claude-code.list ]]
 else
-  claude-code__install
-  claude-code__install
+  claude-code.install
+  claude-code.install
   /usr/bin/claude --version
   if [[ "${ID}" == fedora ]]; then
     [[ "$(stat -c %a /etc/pki/rpm-gpg/RPM-GPG-KEY-claude-code)" == 644 ]]
@@ -45,20 +45,20 @@ else
 fi
 
 # Codex: the newest release, twice, from OpenAI's installer.
-codex__install
-codex__install
+codex.install
+codex.install
 "${HOME}/.local/bin/codex" --version
 grep -Fq "${HOME}/.local/bin" "${HOME}/.bashrc"
 
 # ChatGPT: OpenAI supports Ubuntu 24.04 or later and Fedora 43 or later.
 if [[ ("${ID}" == ubuntu && "${major}" -ge 24) || ("${ID}" == fedora && "${major}" -ge 43) ]]; then
-  chatgpt__install
-  chatgpt__install
+  chatgpt.install
+  chatgpt.install
   package_version chatgpt
   [[ -x /usr/bin/chatgpt ]]
 else
   status=0
-  chatgpt__install || status="$?"
+  chatgpt.install || status="$?"
   [[ "${status}" -eq 69 ]]
   if package_version chatgpt >/dev/null 2>&1; then exit 1; fi
 fi

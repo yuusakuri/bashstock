@@ -16,12 +16,12 @@
 # @example
 #   case "$1" in
 #     --name)
-#       arg__require-next "$#" "$1" || return "$?"
+#       arg.require-next "$#" "$1" || return "$?"
 #       name="$2"
 #       shift 2
 #       ;;
 #   esac
-arg__require-next() {
+arg.require-next() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -30,7 +30,7 @@ arg__require-next() {
   local option="$2"
 
   if [[ "${remaining}" -lt 2 ]]; then
-    _console__write-error "Option ${option} requires a value."
+    _console.write-error "Option ${option} requires a value."
     return 64
   fi
 }
@@ -43,8 +43,8 @@ arg__require-next() {
 # @exitcode 0 The value is not empty.
 # @exitcode 64 The value is empty, or the arguments are invalid.
 # @example
-#   arg__require --name "${name}" || return "$?"
-arg__require() {
+#   arg.require --name "${name}" || return "$?"
+arg.require() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -53,7 +53,7 @@ arg__require() {
   local value="$2"
 
   if [[ -z "${value}" ]]; then
-    _console__write-error "Option ${name} is required."
+    _console.write-error "Option ${name} is required."
     return 64
   fi
 }
@@ -66,8 +66,8 @@ arg__require() {
 # @exitcode 0 The value is a decimal integer.
 # @exitcode 64 The value is not an integer, or the arguments are invalid.
 # @example
-#   arg__integer --count "${count}" || return "$?"
-arg__integer() {
+#   arg.integer --count "${count}" || return "$?"
+arg.integer() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -75,8 +75,8 @@ arg__integer() {
   local name="$1"
   local value="$2"
 
-  if ! number__is-integer "${value}"; then
-    _console__write-error "Option ${name} must be an integer: ${value}"
+  if ! number.is-integer "${value}"; then
+    _console.write-error "Option ${name} must be an integer: ${value}"
     return 64
   fi
 }
@@ -90,8 +90,8 @@ arg__integer() {
 # @exitcode 0 The value equals one candidate.
 # @exitcode 64 The value matches no candidate, or the arguments are invalid.
 # @example
-#   arg__one-of --algorithm "${algorithm}" ed25519 rsa3072 rsa4096 || return "$?"
-arg__one-of() {
+#   arg.one-of --algorithm "${algorithm}" ed25519 rsa3072 rsa4096 || return "$?"
+arg.one-of() {
   if [[ "$#" -lt 3 ]]; then
     return 64
   fi
@@ -107,7 +107,7 @@ arg__one-of() {
     fi
   done
 
-  _console__write-error "Option ${name} must be one of: $*. Got: ${value}"
+  _console.write-error "Option ${name} must be one of: $*. Got: ${value}"
   return 64
 }
 
@@ -120,21 +120,21 @@ arg__one-of() {
 # @exitcode 64 Always, so the caller can return the status.
 # @example
 #   case "$1" in
-#     *) arg__unknown "$1" || return "$?" ;;
+#     *) arg.unknown "$1" || return "$?" ;;
 #   esac
-arg__unknown() {
+arg.unknown() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
 
-  _console__write-error "Unknown option: $1"
+  _console.write-error "Unknown option: $1"
   return 64
 }
 
 # @description Write the completion helper name that corresponds to a public function.
 # @internal
-_arg__completion__helper-name() {
-  if [[ "$#" -ne 1 || "$1" != [a-z]*__?* ]]; then
+_arg.completion.helper-name() {
+  if [[ "$#" -ne 1 || "$1" != [a-z]*.?* ]]; then
     return 64
   fi
 
@@ -143,8 +143,8 @@ _arg__completion__helper-name() {
 
 # @description Write the public function name that corresponds to a completion helper.
 # @internal
-_arg__completion__target-name() {
-  if [[ "$#" -ne 1 || "$1" != _[a-z]*__?*-args ]]; then
+_arg.completion.target-name() {
+  if [[ "$#" -ne 1 || "$1" != _[a-z]*.?*-args ]]; then
     return 64
   fi
 
@@ -155,7 +155,7 @@ _arg__completion__target-name() {
 # @description Dispatch Tab completion to the target function's completion helper.
 #
 # Registered with `complete -F` for every function that has a matching
-# `_<namespace>__<action>-args` helper. Bash calls this with no arguments and reads
+# `_<namespace>.<action>-args` helper. Bash calls this with no arguments and reads
 # COMP_WORDS and COMP_CWORD. When the previous word is a named argument, the
 # helper receives it and writes the values for that argument; otherwise it
 # writes the argument names.
@@ -164,22 +164,22 @@ _arg__completion__target-name() {
 # @set COMPREPLY The candidates that start with the current word.
 # @exitcode 0 Always, also when the function has no helper.
 # @example
-#   example__run() { :; }
-#   _example__run-args() {
+#   example.run() { :; }
+#   _example.run-args() {
 #     case "${1:-}" in
 #       --mode) printf '%s\n' fast safe ;;
 #       *) printf '%s\n' --mode ;;
 #     esac
 #   }
-#   complete -F arg__completion__dispatch example__run
-arg__completion__dispatch() {
+#   complete -F arg.completion.dispatch example.run
+arg.completion.dispatch() {
   local target="${COMP_WORDS[0]}"
   local current="${COMP_WORDS[COMP_CWORD]}"
   local previous=''
   local helper=''
   local candidates=''
 
-  helper="$(_arg__completion__helper-name "${target}")" || return 0
+  helper="$(_arg.completion.helper-name "${target}")" || return 0
   declare -F "${helper}" >/dev/null 2>&1 || return 0
 
   if [[ "${COMP_CWORD}" -gt 0 ]]; then
@@ -206,8 +206,8 @@ arg__completion__dispatch() {
 # @exitcode 64 An argument was given.
 # @example
 #   source my-functions.sh
-#   arg__completion__register-all
-arg__completion__register-all() {
+#   arg.completion.register-all
+arg.completion.register-all() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
@@ -217,8 +217,8 @@ arg__completion__register-all() {
   local target=''
 
   while IFS= read -r name; do
-    target="$(_arg__completion__target-name "${name}")" || continue
+    target="$(_arg.completion.target-name "${name}")" || continue
     declare -F "${target}" >/dev/null 2>&1 || continue
-    complete -F arg__completion__dispatch "${target}"
-  done < <(declare -F | awk '{print $3}' | grep -E '^_[a-z][a-z0-9-]*(__[a-z0-9][a-z0-9-]*)+-args$')
+    complete -F arg.completion.dispatch "${target}"
+  done < <(declare -F | awk '{print $3}' | grep -E '^_[a-z][a-z0-9-]*(\.[a-z0-9][a-z0-9-]*)+-args$')
 }

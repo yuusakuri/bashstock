@@ -11,7 +11,7 @@
 # single compressed files gz, xz, bz2, and zst.
 #
 # @internal
-_archive__format() {
+_archive.format() {
   [[ "$#" -eq 1 ]] || return 64
   case "$1" in
     *.tar.gz) printf '%s %s\n' tar.gz .tar.gz ;;
@@ -36,7 +36,7 @@ _archive__format() {
 
 # @description Write the compression command of a compressed tar or single compressed format.
 # @internal
-_archive__compressor() {
+_archive.compressor() {
   [[ "$#" -eq 1 ]] || return 64
   case "$1" in
     tar.gz | gz) printf 'gzip\n' ;;
@@ -49,7 +49,7 @@ _archive__compressor() {
 
 # @description Write the 7-Zip command: 7zz or 7z.
 # @internal
-_archive__7zip() {
+_archive.7zip() {
   [[ "$#" -eq 0 ]] || return 64
   local name=''
   for name in 7zz 7z; do
@@ -58,7 +58,7 @@ _archive__7zip() {
       return 0
     fi
   done
-  _console__write-error '7-Zip is required: install 7zz or 7z.'
+  _console.write-error '7-Zip is required: install 7zz or 7z.'
   return 69
 }
 
@@ -69,18 +69,18 @@ _archive__7zip() {
 # returns 69.
 #
 # @internal
-_archive__list() {
+_archive.list() {
   [[ "$#" -eq 2 && -f "$1" ]] || return 64
   local file="$1" format="$2" compressor='' seven='' listing=''
   case "${format}" in
     tar)
-      command__require tar || return "$?"
+      command.require tar || return "$?"
       tar -tf "${file}" 2>/dev/null || return 65
       ;;
     tar.*)
-      compressor="$(_archive__compressor "${format}")" || return "$?"
-      command__require "${compressor}" || return "$?"
-      command__require tar || return "$?"
+      compressor="$(_archive.compressor "${format}")" || return "$?"
+      command.require "${compressor}" || return "$?"
+      command.require tar || return "$?"
       "${compressor}" -tq -- "${file}" >/dev/null 2>&1 || return 65
       # tar may stop at the end-of-archive blocks, so only its status counts here.
       (
@@ -89,14 +89,14 @@ _archive__list() {
       ) || return 65
       ;;
     zip)
-      command__require unzip || return "$?"
+      command.require unzip || return "$?"
       unzip -Z1 "${file}" 2>/dev/null || return 65
       ;;
     7z)
-      seven="$(_archive__7zip)" || return "$?"
+      seven="$(_archive.7zip)" || return "$?"
       if ! listing="$("${seven}" l -slt -p -- "${file}" </dev/null 2>&1)"; then
         if [[ "${listing}" == *'Wrong password'* ]]; then
-          _console__write-error "${file} is encrypted; its contents cannot be read without the password."
+          _console.write-error "${file} is encrypted; its contents cannot be read without the password."
           return 69
         fi
         return 65
@@ -116,47 +116,47 @@ _archive__list() {
 # broken.
 #
 # @internal
-_archive__verify-file() {
+_archive.verify-file() {
   [[ "$#" -eq 1 && -f "$1" ]] || return 64
   local file="$1" format='' suffix='' compressor='' seven='' information='' status=0
-  read -r format suffix <<<"$(_archive__format "${file}")" || return 64
+  read -r format suffix <<<"$(_archive.format "${file}")" || return 64
   [[ -n "${format}" ]] || return 64
   if [[ ! -r "${file}" ]]; then
-    _console__write-error "${file} cannot be read."
+    _console.write-error "${file} cannot be read."
     return 66
   fi
   case "${format}" in
     gz | xz | bz2 | zst)
-      compressor="$(_archive__compressor "${format}")" || return "$?"
-      command__require "${compressor}" || return "$?"
+      compressor="$(_archive.compressor "${format}")" || return "$?"
+      command.require "${compressor}" || return "$?"
       "${compressor}" -tq -- "${file}" >/dev/null 2>&1 || return 1
       ;;
     zip)
-      command__require unzip || return "$?"
+      command.require unzip || return "$?"
       information="$(unzip -Zv "${file}" 2>/dev/null)" || return 1
       if grep -Eq 'file security status:[[:space:]]+encrypted' <<<"${information}"; then
-        _console__write-error "${file} is encrypted; it cannot be verified without the password."
+        _console.write-error "${file} is encrypted; it cannot be verified without the password."
         return 69
       fi
       unzip -tqq "${file}" </dev/null >/dev/null 2>&1 || return 1
       ;;
     7z)
-      _archive__list "${file}" 7z >/dev/null || status="$?"
+      _archive.list "${file}" 7z >/dev/null || status="$?"
       case "${status}" in
         0) ;;
         65) return 1 ;;
         *) return "${status}" ;;
       esac
-      seven="$(_archive__7zip)" || return "$?"
+      seven="$(_archive.7zip)" || return "$?"
       information="$("${seven}" l -slt -p -- "${file}" </dev/null 2>/dev/null)" || return 1
       if [[ "${information}" == *'Encrypted = +'* ]]; then
-        _console__write-error "${file} is encrypted; it cannot be verified without the password."
+        _console.write-error "${file} is encrypted; it cannot be verified without the password."
         return 69
       fi
       "${seven}" t -p -bd -- "${file}" </dev/null >/dev/null 2>&1 || return 1
       ;;
     *)
-      _archive__list "${file}" "${format}" >/dev/null || status="$?"
+      _archive.list "${file}" "${format}" >/dev/null || status="$?"
       case "${status}" in
         0) ;;
         65) return 1 ;;
@@ -184,14 +184,14 @@ _archive__verify-file() {
 # @exitcode 66 The path does not exist or cannot be searched.
 # @exitcode 74 The temporary list could not be created.
 # @example
-#   archive__verify "${HOME}/Downloads"
-archive__verify() {
+#   archive.verify "${HOME}/Downloads"
+archive.verify() {
   [[ "$#" -le 1 ]] || return 64
   local file='' list='' result=0 broken=0
-  list="$(_archive__found-list "${1:-.}")" || return "$?"
+  list="$(_archive.found-list "${1:-.}")" || return "$?"
   while IFS= read -r -d '' file; do
     result=0
-    _archive__verify-file "${file}" || result="$?"
+    _archive.verify-file "${file}" || result="$?"
     # Other statuses mean the archive could not be verified; the reason is already reported.
     [[ "${result}" -ne 1 ]] || { printf '%s\n' "${file}" >&2; broken=1; }
   done <"${list}"
@@ -201,7 +201,7 @@ archive__verify() {
 
 # @description Remove archives that fail verification.
 #
-# Only archives that archive__verify reports as broken are removed. An
+# Only archives that archive.verify reports as broken are removed. An
 # archive that cannot be verified is kept and does not change the status.
 #
 # @arg $1 string Optional archive file or directory to search. Defaults to the current directory.
@@ -212,14 +212,14 @@ archive__verify() {
 # @exitcode 66 The path does not exist or cannot be searched.
 # @exitcode 74 A broken archive or the temporary list could not be removed or created.
 # @example
-#   archive__remove-broken "${HOME}/Downloads"
-archive__remove-broken() {
+#   archive.remove-broken "${HOME}/Downloads"
+archive.remove-broken() {
   [[ "$#" -le 1 ]] || return 64
   local file='' list='' result=0 removed=0 status=0
-  list="$(_archive__found-list "${1:-.}")" || return "$?"
+  list="$(_archive.found-list "${1:-.}")" || return "$?"
   while IFS= read -r -d '' file; do
     result=0
-    _archive__verify-file "${file}" || result="$?"
+    _archive.verify-file "${file}" || result="$?"
     # Other statuses mean the archive could not be verified; it is kept.
     [[ "${result}" -eq 1 ]] || continue
     rm -f -- "${file}" || { status=74; break; }
@@ -233,7 +233,7 @@ archive__remove-broken() {
 
 # @description List recognized archive files below a directory as NUL-separated paths.
 # @internal
-_archive__find() {
+_archive.find() {
   [[ "$#" -le 1 ]] || return 64
   find "${1:-.}" -type f \( -name '*.tar' -o -name '*.tgz' -o -name '*.gz' -o -name '*.txz' -o -name '*.xz' \
     -o -name '*.tbz2' -o -name '*.tbz' -o -name '*.bz2' -o -name '*.tzst' -o -name '*.zst' \
@@ -245,13 +245,13 @@ _archive__find() {
 # The list is collected before the archives are read, so a path that does
 # not exist or cannot be searched returns 66 instead of an empty result.
 # @internal
-_archive__found-list() {
+_archive.found-list() {
   [[ "$#" -eq 1 ]] || return 64
   local list=''
   list="$(mktemp "${TMPDIR:-/tmp}/bashstock-archives.XXXXXX")" || return 74
-  if ! _archive__find "$1" >"${list}"; then
+  if ! _archive.find "$1" >"${list}"; then
     rm -f -- "${list}"
-    _console__write-error "$1 cannot be searched for archives."
+    _console.write-error "$1 cannot be searched for archives."
     return 66
   fi
   printf '%s\n' "${list}"
@@ -259,18 +259,18 @@ _archive__found-list() {
 
 # @description Decompress one single compressed file, such as notes.txt.gz.
 # @internal
-_archive__extract-stream() {
+_archive.extract-stream() {
   [[ "$#" -eq 4 && -f "$1" ]] || return 64
   local file="$1" format="$2" suffix="$3" directory="$4" compressor='' name='' output='' temporary=''
-  compressor="$(_archive__compressor "${format}")" || return "$?"
-  command__require "${compressor}" || return "$?"
+  compressor="$(_archive.compressor "${format}")" || return "$?"
+  command.require "${compressor}" || return "$?"
   name="${file##*/}"
   name="${name%"${suffix}"}"
   [[ -n "${name}" ]] || return 64
-  [[ -n "${directory}" ]] || directory="$(path__directory-name "${file}")" || return "$?"
+  [[ -n "${directory}" ]] || directory="$(path.directory-name "${file}")" || return "$?"
   output="${directory%/}/${name}"
   if [[ -d "${output}" ]]; then
-    _console__write-error "Not replacing the directory ${output}."
+    _console.write-error "Not replacing the directory ${output}."
     return 73
   fi
   "${compressor}" -tq -- "${file}" >/dev/null 2>&1 || return 65
@@ -289,13 +289,13 @@ _archive__extract-stream() {
 
 # @description Unpack an archive into an empty staging directory.
 # @internal
-_archive__unpack() {
+_archive.unpack() {
   [[ "$#" -eq 3 && -f "$1" && -d "$3" ]] || return 64
   local file="$1" format="$2" staging="$3" compressor='' seven=''
   case "${format}" in
     tar) tar -xf "${file}" -C "${staging}" || return 65 ;;
     tar.*)
-      compressor="$(_archive__compressor "${format}")" || return "$?"
+      compressor="$(_archive.compressor "${format}")" || return "$?"
       (
         set +o pipefail
         "${compressor}" -dc -- "${file}" 2>/dev/null | tar -xf - -C "${staging}"
@@ -303,7 +303,7 @@ _archive__unpack() {
       ;;
     zip) unzip -oq "${file}" -d "${staging}" || return 65 ;;
     7z)
-      seven="$(_archive__7zip)" || return "$?"
+      seven="$(_archive.7zip)" || return "$?"
       "${seven}" x -y -bd "-o${staging}" -- "${file}" >/dev/null || return 65
       ;;
     *) return 64 ;;
@@ -330,36 +330,36 @@ _archive__unpack() {
 # @exitcode 73 A single compressed file would replace a directory.
 # @exitcode 74 The destination could not be written.
 # @example
-#   archive__extract-file release.tar.xz /opt/release
-#   archive__extract-file access.log.gz
-archive__extract-file() {
+#   archive.extract-file release.tar.xz /opt/release
+#   archive.extract-file access.log.gz
+archive.extract-file() {
   [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64
   local file="$1" destination="${2:-}" format='' suffix='' listing='' entry='' staging='' link='' target='' resolved='' status=0
-  read -r format suffix <<<"$(_archive__format "${file}")" || return 64
+  read -r format suffix <<<"$(_archive.format "${file}")" || return 64
   [[ -n "${format}" ]] || return 64
   case "${format}" in
     gz | xz | bz2 | zst)
-      _archive__extract-stream "${file}" "${format}" "${suffix}" "${destination}"
+      _archive.extract-stream "${file}" "${format}" "${suffix}" "${destination}"
       return "$?"
       ;;
   esac
   destination="${destination:-${file%"${suffix}"}}"
-  listing="$(_archive__list "${file}" "${format}")" || return "$?"
+  listing="$(_archive.list "${file}" "${format}")" || return "$?"
   while IFS= read -r entry; do
     if [[ "${entry}" == /* || "${entry}" == .. || "${entry}" == ../* || "${entry}" == */../* || "${entry}" == */.. ]]; then
-      _console__write-error "Refusing archive entry outside the destination: ${entry}"
+      _console.write-error "Refusing archive entry outside the destination: ${entry}"
       return 65
     fi
   done <<<"${listing}"
   mkdir -p -- "${destination}" || return 74
   staging="$(mktemp -d "${destination%/}/.bashstock-extract.XXXXXX")" || return 74
-  _archive__unpack "${file}" "${format}" "${staging}" || status="$?"
+  _archive.unpack "${file}" "${format}" "${staging}" || status="$?"
   if [[ "${status}" -eq 0 ]]; then
     while IFS= read -r -d '' link; do
       target="$(readlink -- "${link}")" || { status=74; break; }
-      resolved="$(path__normalize "$(path__directory-name "${link#"${staging}"/}")/${target}")" || { status=74; break; }
+      resolved="$(path.normalize "$(path.directory-name "${link#"${staging}"/}")/${target}")" || { status=74; break; }
       if [[ "${target}" == /* || "${resolved}" == .. || "${resolved}" == ../* ]]; then
-        _console__write-error "Refusing symbolic link outside the destination: ${link#"${staging}"/} -> ${target}"
+        _console.write-error "Refusing symbolic link outside the destination: ${link#"${staging}"/} -> ${target}"
         status=65
         break
       fi
@@ -369,7 +369,7 @@ archive__extract-file() {
     rm -rf -- "${staging}"
     return "${status}"
   fi
-  dir__merge "${staging}" "${destination}"
+  dir.merge "${staging}" "${destination}"
 }
 
 # @description Compress paths into a gzip-compressed tar archive.
@@ -381,12 +381,12 @@ archive__extract-file() {
 # @exitcode 69 tar is unavailable.
 # @exitcode other The status of tar.
 # @example
-#   archive__compress-tar-gzip --output backup.tar.gz Documents Pictures
-archive__compress-tar-gzip() { [[ "$#" -ge 1 ]] || return 64; local output='' paths=() path=''; while [[ "$#" -gt 0 ]]; do if [[ "$1" == '--output' ]]; then [[ "$#" -ge 2 ]] || return 64; output="$2"; shift 2; else paths+=("$1"); shift; fi; done; [[ "${#paths[@]}" -gt 0 ]] || return 64; [[ -n "$output" ]] || output="${paths[0]}.tar.gz"; command -v tar >/dev/null 2>&1 || return 69; tar -czf "$output" -- "${paths[@]}"; }
+#   archive.compress-tar-gzip --output backup.tar.gz Documents Pictures
+archive.compress-tar-gzip() { [[ "$#" -ge 1 ]] || return 64; local output='' paths=() path=''; while [[ "$#" -gt 0 ]]; do if [[ "$1" == '--output' ]]; then [[ "$#" -ge 2 ]] || return 64; output="$2"; shift 2; else paths+=("$1"); shift; fi; done; [[ "${#paths[@]}" -gt 0 ]] || return 64; [[ -n "$output" ]] || output="${paths[0]}.tar.gz"; command -v tar >/dev/null 2>&1 || return 69; tar -czf "$output" -- "${paths[@]}"; }
 
-# @description List the named arguments of archive__compress-tar-gzip.
+# @description List the named arguments of archive.compress-tar-gzip.
 # @internal
-_archive__compress-tar-gzip-args() {
+_archive.compress-tar-gzip-args() {
   if [[ -z "${1-}" ]]; then printf '%s\n' --output; fi
 }
 
@@ -397,19 +397,19 @@ _archive__compress-tar-gzip-args() {
 # @exitcode 64 More than one argument was given.
 # @exitcode 66 The directory does not exist or cannot be searched.
 # @exitcode 74 The temporary list could not be created.
-# @exitcode other The status of archive__extract-file for the first archive that failed.
+# @exitcode other The status of archive.extract-file for the first archive that failed.
 # @example
-#   archive__extract "${HOME}/Downloads"
-archive__extract() {
+#   archive.extract "${HOME}/Downloads"
+archive.extract() {
   [[ "$#" -le 1 ]] || return 64
   local path="${1:-.}" file='' list='' status=0
   if [[ -f "${path}" ]]; then
-    archive__extract-file "${path}"
+    archive.extract-file "${path}"
     return
   fi
-  list="$(_archive__found-list "${path}")" || return "$?"
+  list="$(_archive.found-list "${path}")" || return "$?"
   while IFS= read -r -d '' file; do
-    archive__extract-file "${file}" || { status="$?"; break; }
+    archive.extract-file "${file}" || { status="$?"; break; }
   done <"${list}"
   rm -f -- "${list}"
   return "${status}"

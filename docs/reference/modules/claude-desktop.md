@@ -8,21 +8,21 @@ The application is installed from Anthropic's signed packages.
 
 ## Index
 
-* [claude-desktop__install](#claude-desktop__install)
+* [claude-desktop.install](#claude-desktopinstall)
 
-### claude-desktop__install
+### claude-desktop.install
 
 Install the newest Claude Desktop, the app that also runs Claude Code sessions.
 
 macOS installs the Homebrew cask claude, which updates itself. Ubuntu 22.04
 or later installs from Anthropic's APT repository, and later releases
 arrive through the system's regular APT upgrades. Anthropic does not
-publish Claude Desktop for Fedora; use claude-code__install there.
+publish Claude Desktop for Fedora; use claude-code.install there.
 
 #### Example
 
 ```bash
-claude-desktop__install
+claude-desktop.install
 ```
 
 _Function has no arguments._

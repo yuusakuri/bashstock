@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  if _bashstock__main "$@"; then
+  if _bashstock.main "$@"; then
     exit 0
   else
     exit "$?"
@@ -9,7 +9,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 fi
 
 if [[ "$-" == *i* ]]; then
-  arg__completion__register-all || return "$?"
+  arg.completion.register-all || return "$?"
 fi
 
 # Mark the library as loaded only after initialization succeeds.

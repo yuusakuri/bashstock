@@ -15,13 +15,13 @@
 # @exitcode 66 The directory does not exist, is /, or is a symbolic link.
 # @exitcode 74 The directory could not be removed.
 # @example
-#   vscode__remove-user-data
-vscode__remove-user-data() {
+#   vscode.remove-user-data
+vscode.remove-user-data() {
   [[ "$#" -le 1 ]] || return 64
   local directory=''
   if [[ "$#" -eq 1 ]]; then
     directory="$1"
-  elif [[ "$(system__operating-system)" == darwin ]]; then
+  elif [[ "$(system.operating-system)" == darwin ]]; then
     directory="${HOME}/Library/Application Support/Code"
   else
     directory="${HOME}/.config/Code"
@@ -36,13 +36,13 @@ vscode__remove-user-data() {
 # UTI, and a UTI that the running macOS does not define has no hierarchy;
 # LaunchServices refuses both, so they are reported and skipped.
 # @internal
-_vscode__set-handler() {
+_vscode.set-handler() {
   [[ "$#" -eq 2 ]] || return 64
   local output='' status=0
   output="$(duti -s "$1" "$2" all 2>&1)" || status="$?"
   [[ "${status}" -ne 0 ]] || return 0
   if [[ "${output}" == *' for dyn.'* || "${output}" == *'does not conform to any UTI hierarchy'* ]]; then
-    _console__write-error "Skipped $2, which this macOS does not declare as a file type."
+    _console.write-error "Skipped $2, which this macOS does not declare as a file type."
     return 0
   fi
   printf '%s\n' "${output}" >&2
@@ -61,11 +61,11 @@ _vscode__set-handler() {
 # @exitcode 69 The system is not macOS, or duti is unavailable.
 # @exitcode other The status of duti.
 # @example
-#   vscode__set-default-app
-vscode__set-default-app() {
+#   vscode.set-default-app
+vscode.set-default-app() {
   [[ "$#" -eq 0 ]] || return 64
-  _package__require-platform darwin || return "$?"
-  command__require duti || return "$?"
+  _package.require-platform darwin || return "$?"
+  command.require duti || return "$?"
   local bundle='com.microsoft.VSCode' type=''
   local extensions=(
     txt text md markdown mdown mkd json jsonc yaml yml toml ini conf config env log csv tsv
@@ -79,10 +79,10 @@ vscode__set-default-app() {
     public.tab-separated-values-text public.source-code
   )
   for type in "${extensions[@]}"; do
-    _vscode__set-handler "${bundle}" ".${type}" || return "$?"
+    _vscode.set-handler "${bundle}" ".${type}" || return "$?"
   done
   for type in "${types[@]}"; do
-    _vscode__set-handler "${bundle}" "${type}" || return "$?"
+    _vscode.set-handler "${bundle}" "${type}" || return "$?"
   done
   /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
     -kill -r -domain local -domain system -domain user >/dev/null 2>&1
@@ -91,23 +91,23 @@ vscode__set-default-app() {
 
 # @description Register the Microsoft VS Code repository for the current Linux platform.
 # @internal
-_vscode__register-repository() {
+_vscode.register-repository() {
   [[ "$#" -eq 1 ]] || return 64
   if [[ "$1" == 'ubuntu' ]]; then
     local architecture=''
-    architecture="$(_package__deb-architecture)" || return "$?"
+    architecture="$(_package.deb-architecture)" || return "$?"
     # The code package adds its own definition of this repository. Current
     # packages honor the debconf answer; older ones, such as the 1.85 series for
     # Ubuntu 18.04, keep an existing vscode.list. That file therefore holds only
     # comments, which also replaces an earlier entry that would duplicate ours.
     printf 'code code/add-microsoft-repo boolean false\n' |
-      command__run-as-root debconf-set-selections || return 74
-    file__write-text /etc/apt/sources.list.d/vscode.list \
+      command.run-as-root debconf-set-selections || return 74
+    file.write-text /etc/apt/sources.list.d/vscode.list \
       '# BashStock defines the VS Code repository in vscode.sources.'$'\n''# This file stops the code package from adding a second definition.'$'\n' || return "$?"
-    _package__apt-register-repository vscode https://packages.microsoft.com/keys/microsoft.asc \
+    _package.apt-register-repository vscode https://packages.microsoft.com/keys/microsoft.asc \
       https://packages.microsoft.com/repos/code stable main "${architecture}"
   else
-    _package__dnf-register-repository vscode "[code]
+    _package.dnf-register-repository vscode "[code]
 name=Visual Studio Code
 baseurl=https://packages.microsoft.com/yumrepos/vscode
 enabled=1
@@ -128,23 +128,23 @@ gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 # @exitcode 69 The platform is unsupported.
 # @exitcode 74 The repository index could not be downloaded.
 # @example
-#   vscode__versions | tail -n 1
-vscode__versions() {
+#   vscode.versions | tail -n 1
+vscode.versions() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' architecture=''
-  platform="$(_package__platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   case "${platform}" in
     darwin)
-      _package__cask-versions visual-studio-code
+      _package.cask-versions visual-studio-code
       ;;
     ubuntu)
-      architecture="$(_package__deb-architecture)" || return "$?"
-      _package__deb-runnable-versions \
+      architecture="$(_package.deb-architecture)" || return "$?"
+      _package.deb-runnable-versions \
         "https://packages.microsoft.com/repos/code/dists/stable/main/binary-${architecture}/Packages.gz" \
         code
       ;;
     fedora)
-      _package__rpm-repository-versions https://packages.microsoft.com/yumrepos/vscode code
+      _package.rpm-repository-versions https://packages.microsoft.com/yumrepos/vscode code
       ;;
   esac
 }
@@ -154,29 +154,29 @@ vscode__versions() {
 # On Ubuntu, a version is accepted only when the installed C library can run it,
 # and an omitted version selects the newest such build.
 #
-# @arg $1 string Optional version from vscode__versions; on macOS only the current version. Defaults to the newest runnable one.
+# @arg $1 string Optional version from vscode.versions; on macOS only the current version. Defaults to the newest runnable one.
 # @exitcode 0 VS Code is installed.
 # @exitcode 64 The argument count is wrong.
 # @exitcode 69 The platform is unsupported, or the version is unavailable or cannot run here.
 # @exitcode 74 The repository or its key could not be downloaded.
 # @exitcode other The status of the package manager.
 # @example
-#   vscode__install
+#   vscode.install
 #   code --version
-vscode__install() {
+vscode.install() {
   [[ "$#" -le 1 ]] || return 64
   local platform=''
-  platform="$(_package__platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   if [[ "${platform}" == 'darwin' ]]; then
-    _package__install-cask visual-studio-code "${1:-}"
+    _package.install-cask visual-studio-code "${1:-}"
     return
   fi
   local version="${1:-}" versions=''
   if [[ "${platform}" == 'ubuntu' ]]; then
     # APT would pick the newest build even when the installed C library cannot run it.
-    versions="$(vscode__versions)" || return "$?"
-    version="$(_package__select-listed-version "${versions}" "${version}" 'VS Code')" || return "$?"
+    versions="$(vscode.versions)" || return "$?"
+    version="$(_package.select-listed-version "${versions}" "${version}" 'VS Code')" || return "$?"
   fi
-  _vscode__register-repository "${platform}" || return "$?"
-  _package__install-version code "${version}"
+  _vscode.register-repository "${platform}" || return "$?"
+  _package.install-version code "${version}"
 }

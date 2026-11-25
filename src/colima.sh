@@ -14,11 +14,11 @@
 # @exitcode 69 The system is not macOS.
 # @exitcode other The status of brew.
 # @example
-#   colima__versions
-colima__versions() {
+#   colima.versions
+colima.versions() {
   [[ "$#" -eq 0 ]] || return 64
-  _package__require-platform darwin || return "$?"
-  _package__versions colima
+  _package.require-platform darwin || return "$?"
+  _package.versions colima
 }
 
 # @description Install Colima with Homebrew on macOS and start it.
@@ -35,18 +35,18 @@ colima__versions() {
 # @exitcode 69 The system is not macOS, the version is not the current one, or Hypervisor.framework is unavailable.
 # @exitcode other The status of brew or colima start.
 # @example
-#   colima__install
-#   docker__install
-colima__install() {
+#   colima.install
+#   docker.install
+colima.install() {
   [[ "$#" -le 1 ]] || return 64
-  _package__require-platform darwin || return "$?"
-  _package__install-version colima "${1:-}" || return "$?"
-  _package__install docker || return "$?"
+  _package.require-platform darwin || return "$?"
+  _package.install-version colima "${1:-}" || return "$?"
+  _package.install docker || return "$?"
   if colima status >/dev/null 2>&1; then
     return 0
   fi
   if [[ "$(sysctl -n kern.hv_support 2>/dev/null)" != 1 ]]; then
-    _console__write-error 'Colima needs Hypervisor.framework, which this Mac does not provide.'
+    _console.write-error 'Colima needs Hypervisor.framework, which this Mac does not provide.'
     return 69
   fi
   colima start

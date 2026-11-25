@@ -4,8 +4,8 @@
 set -uo pipefail
 
 # Run on a disposable GitHub Actions macOS runner. The settings functions that
-# mac__setup calls are applied twice and read back; nothing is downloaded, so
-# this runs on every push. The full mac__setup with its installers runs only
+# mac.setup calls are applied twice and read back; nothing is downloaded, so
+# this runs on every push. The full mac.setup with its installers runs only
 # when the installer workflow is started by hand (scripts/test-macos-setup).
 [[ "$(uname -s)" == Darwin ]] || exit 69
 [[ -n "${GITHUB_ACTIONS:-}" ]] || exit 64
@@ -41,29 +41,29 @@ output_is() {
   }
 }
 
-# @description Apply the settings that mac__setup applies before it installs anything.
+# @description Apply the settings that mac.setup applies before it installs anything.
 apply_settings() {
-  check sudo__passwordless__enable
-  check env__dotenv__register "${HOME}/.env"
-  check shell__editor__set-default 'code --wait' bash,zsh
-  check shell__zsh__enable-interactive-comments
-  check homebrew__cask__disable-quarantine
-  check env__add-path "${HOME}/.local/bin"
-  check shell__completion__enable-ignore-case
-  check mac__wake-on-lan__enable
-  check mac__keyboard__use-function-keys
-  check mac__keyboard__disable-option-t
-  check mac__keyboard__set-repeat
-  check mac__dock__set-autohide-instant
-  check mac__trackpad__disable-smart-zoom
-  check mac__dock__hide-recent-applications
-  check mac__dock__set-minimize-effect
-  check mac__dock__set-position
-  check mac__applications__remove-bundled
-  check mac__quarantine__remove-applications
-  check mac__gatekeeper__disable
-  check git__config__setup
-  check git__config__use-osx-keychain
+  check sudo.passwordless.enable
+  check env.dotenv.register "${HOME}/.env"
+  check shell.editor.set-default 'code --wait' bash,zsh
+  check shell.zsh.enable-interactive-comments
+  check homebrew.cask.disable-quarantine
+  check env.add-path "${HOME}/.local/bin"
+  check shell.completion.enable-ignore-case
+  check mac.wake-on-lan.enable
+  check mac.keyboard.use-function-keys
+  check mac.keyboard.disable-option-t
+  check mac.keyboard.set-repeat
+  check mac.dock.set-autohide-instant
+  check mac.trackpad.disable-smart-zoom
+  check mac.dock.hide-recent-applications
+  check mac.dock.set-minimize-effect
+  check mac.dock.set-position
+  check mac.applications.remove-bundled
+  check mac.quarantine.remove-applications
+  check mac.gatekeeper.disable
+  check git.config.setup
+  check git.config.use-osx-keychain
 }
 
 printf 'BASHSTOCK_SETUP_VALUE="from dotenv"\n' >"${HOME}/.env"
@@ -82,7 +82,7 @@ apply_settings
 
 printf '== sudo\n'
 check sudo -n true
-check test -f "$(_sudo__passwordless__file "$(id -un)")"
+check test -f "$(_sudo.passwordless.file "$(id -un)")"
 
 printf '== preferences\n'
 check output_is 1 defaults read NSGlobalDomain com.apple.keyboard.fnState
@@ -104,10 +104,10 @@ check output_is 'noop:' plutil -extract '~t' raw -o - "${bindings}"
 
 printf '== startup files\n'
 for pattern in '^setopt interactivecomments$' '^export HOMEBREW_CASK_OPTS=' '^export EDITOR=' \
-  '_env__dotenv__export-commands'; do
+  '_env.dotenv.export-commands'; do
   check output_is 1 grep -c -- "${pattern}" "${HOME}/.zshrc"
 done
-for pattern in '^export HOMEBREW_CASK_OPTS=' '^export EDITOR=' 'env__dotenv__import'; do
+for pattern in '^export HOMEBREW_CASK_OPTS=' '^export EDITOR=' 'env.dotenv.import'; do
   check output_is 1 grep -c -- "${pattern}" "${HOME}/.bashrc"
 done
 check output_is 1 grep -c '^set completion-ignore-case on$' "${HOME}/.inputrc"

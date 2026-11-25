@@ -4,13 +4,13 @@ Checks for groups of named options.
 
 ## Overview
 
-option__require-single reports an error unless exactly one option of a group has a value.
+option.require-single reports an error unless exactly one option of a group has a value.
 
 ## Index
 
-* [option__require-single](#option__require-single)
+* [option.require-single](#optionrequire-single)
 
-### option__require-single
+### option.require-single
 
 Require exactly one named option value to be non-empty.
 
@@ -19,7 +19,7 @@ Use it when mutually exclusive options were parsed into separate variables.
 #### Example
 
 ```bash
-option__require-single --file "${file}" --url "${url}" || return "$?"
+option.require-single --file "${file}" --url "${url}" || return "$?"
 ```
 
 #### Arguments

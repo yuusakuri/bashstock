@@ -14,10 +14,10 @@
 # @exitcode 69 gpiodetect is unavailable.
 # @exitcode other The status of gpiodetect.
 # @example
-#   gpio__chip__list
-gpio__chip__list() {
+#   gpio.chip.list
+gpio.chip.list() {
   [[ "$#" -eq 0 ]] || return 64
-  _docker__run-command gpiodetect
+  _docker.run-command gpiodetect
 }
 
 # @description Write the GPIO lines of one chip, or of every chip, with gpioinfo.
@@ -29,10 +29,10 @@ gpio__chip__list() {
 # @exitcode 69 gpioinfo is unavailable.
 # @exitcode other The status of gpioinfo.
 # @example
-#   gpio__line__list gpiochip0
-gpio__line__list() {
+#   gpio.line.list gpiochip0
+gpio.line.list() {
   [[ "$#" -le 1 ]] || return 64
   local arguments=()
   [[ -z "${1:-}" ]] || arguments+=("$1")
-  _docker__run-command gpioinfo "${arguments[@]}"
+  _docker.run-command gpioinfo "${arguments[@]}"
 }

@@ -8,17 +8,17 @@ Rust is installed with rustup.
 
 ## Index
 
-* [rust__install](#rust__install)
-* [rust__versions](#rust__versions)
+* [rust.install](#rustinstall)
+* [rust.versions](#rustversions)
 
-### rust__install
+### rust.install
 
 Install Rust using rustup and an optional toolchain version.
 
 #### Example
 
 ```bash
-rust__install 1.81.0
+rust.install 1.81.0
 ```
 
 #### Arguments
@@ -33,14 +33,14 @@ rust__install 1.81.0
 * **74**: rustup could not be downloaded.
 * other The status of the rustup installer.
 
-### rust__versions
+### rust.versions
 
 Write the stable Rust versions, oldest first, from the rust-lang/rust releases.
 
 #### Example
 
 ```bash
-rust__versions | tail -n 1
+rust.versions | tail -n 1
 ```
 
 _Function has no arguments._

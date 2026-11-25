@@ -14,8 +14,8 @@
 # @exitcode 69 gpg is unavailable.
 # @exitcode other The status of gpg.
 # @example
-#   gpg__decrypt secrets.env.gpg > .env
-gpg__decrypt() { [[ "$#" -eq 1 && -f "$1" ]] || return 64; _docker__run-command gpg --decrypt "$1"; }
+#   gpg.decrypt secrets.env.gpg > .env
+gpg.decrypt() { [[ "$#" -eq 1 && -f "$1" ]] || return 64; _docker.run-command gpg --decrypt "$1"; }
 
 # @description Write a public GPG key in ASCII armor.
 #
@@ -27,13 +27,13 @@ gpg__decrypt() { [[ "$#" -eq 1 && -f "$1" ]] || return 64; _docker__run-command 
 # @exitcode 69 gpg is unavailable.
 # @exitcode other The status of gpg.
 # @example
-#   gpg__public-key__armor > public.asc
-gpg__public-key__armor() {
+#   gpg.public-key.armor > public.asc
+gpg.public-key.armor() {
   [[ "$#" -le 1 ]] || return 64
   local fingerprint="${1:-}" fingerprints=''
-  command__require gpg || return "$?"
+  command.require gpg || return "$?"
   if [[ -z "${fingerprint}" ]]; then
-    fingerprints="$(gpg__secret-key__fingerprints)" || return "$?"
+    fingerprints="$(gpg.secret-key.fingerprints)" || return "$?"
     fingerprint="${fingerprints%%$'\n'*}"
   fi
   gpg --armor --export -- "${fingerprint}"
@@ -48,10 +48,10 @@ gpg__public-key__armor() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 gpg is unavailable.
 # @example
-#   gpg__secret-key__fingerprints
-gpg__secret-key__fingerprints() {
+#   gpg.secret-key.fingerprints
+gpg.secret-key.fingerprints() {
   [[ "$#" -eq 0 ]] || return 64
-  command__require gpg || return "$?"
+  command.require gpg || return "$?"
   local listing='' fingerprints=''
   listing="$(gpg --batch --list-secret-keys --with-colons 2>/dev/null)" || return 1
   # Each sec record is followed by the fpr record of the primary key.
@@ -69,43 +69,43 @@ gpg__secret-key__fingerprints() {
 # @exitcode 69 gpg is unavailable.
 # @exitcode other The status of gpg.
 # @example
-#   gpg__secret-key__list
-gpg__secret-key__list() { [[ "$#" -eq 0 ]] || return 64; _docker__run-command gpg --list-secret-keys; }
+#   gpg.secret-key.list
+gpg.secret-key.list() { [[ "$#" -eq 0 ]] || return 64; _docker.run-command gpg --list-secret-keys; }
 
 # @description Create a GPG key and use it for pass, Git credentials, and Git commit signing.
 #
-# The options are passed to gpg__key__generate. pass is installed and its
+# The options are passed to gpg.key.generate. pass is installed and its
 # store initialized with the new key, Git Credential Manager stores
 # credentials with GPG, Git signs commits with the key, and the public key is
 # written in ASCII armor. The first failing step stops the setup.
 #
-# @arg $@ string Options of gpg__key__generate, such as --user-id and --passphrase-fd.
+# @arg $@ string Options of gpg.key.generate, such as --user-id and --passphrase-fd.
 # @stdout The ASCII-armored public key of the new key.
 # @exitcode 0 Every step finished.
 # @exitcode 74 The new key could not be identified.
 # @exitcode other The status of the step that failed.
 # @example
-#   gpg__setup --user-id 'Alex Example <developer@example.com>' --passphrase-fd 3 3<passphrase.txt
-gpg__setup() {
+#   gpg.setup --user-id 'Alex Example <developer@example.com>' --passphrase-fd 3 3<passphrase.txt
+gpg.setup() {
   local before='' after='' fingerprint='' candidate=''
-  before="$(gpg__secret-key__fingerprints 2>/dev/null)" || before=''
-  gpg__key__generate "$@" || return "$?"
-  after="$(gpg__secret-key__fingerprints)" || return "$?"
+  before="$(gpg.secret-key.fingerprints 2>/dev/null)" || before=''
+  gpg.key.generate "$@" || return "$?"
+  after="$(gpg.secret-key.fingerprints)" || return "$?"
   while IFS= read -r candidate; do
     grep -Fqx -- "${candidate}" <<<"${before}" || fingerprint="${candidate}"
   done <<<"${after}"
   [[ -n "${fingerprint}" ]] || return 74
-  pass__install || return "$?"
-  pass__store__init "${fingerprint}" || return "$?"
-  git__config__use-gpg-credential-store || return "$?"
+  pass.install || return "$?"
+  pass.store.init "${fingerprint}" || return "$?"
+  git.config.use-gpg-credential-store || return "$?"
   git config --global user.signingkey "${fingerprint}" || return "$?"
   git config --global commit.gpgsign true || return "$?"
-  gpg__public-key__armor "${fingerprint}"
+  gpg.public-key.armor "${fingerprint}"
 }
 
-# @description List the named arguments and value candidates for gpg__key__generate.
+# @description List the named arguments and value candidates for gpg.key.generate.
 # @internal
-_gpg__key__generate-args() {
+_gpg.key.generate-args() {
   case "${1-}" in
     --usage)
       printf '%s\n' sign cert auth sign,auth
@@ -133,14 +133,14 @@ _gpg__key__generate-args() {
 # @exitcode 74 The parameter file could not be written.
 # @exitcode other The status of gpg.
 # @example
-#   gpg__key__generate --user-id 'Alex Example <developer@example.com>' --pinentry
-#   gpg__key__generate --algorithm rsa4096 --expires 2y --passphrase-fd 3 3<passphrase.txt
-gpg__key__generate() {
+#   gpg.key.generate --user-id 'Alex Example <developer@example.com>' --pinentry
+#   gpg.key.generate --algorithm rsa4096 --expires 2y --passphrase-fd 3 3<passphrase.txt
+gpg.key.generate() {
   local usage='sign' algorithm='ed25519' expires='5y' user_id='' pinentry='false' passphrase_fd=''
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
       --usage | --algorithm | --expires | --user-id | --passphrase-fd)
-        arg__require-next "$#" "$1" || return "$?"
+        arg.require-next "$#" "$1" || return "$?"
         case "$1" in
           --usage) usage="$2" ;;
           --algorithm) algorithm="$2" ;;
@@ -155,16 +155,16 @@ gpg__key__generate() {
         shift
         ;;
       *)
-        arg__unknown "$1" || return "$?"
+        arg.unknown "$1" || return "$?"
         ;;
     esac
   done
   ( [[ "${usage}" =~ ^(sign|cert|auth)(,(sign|cert|auth))*$ ]] ) || return 64
-  arg__one-of --algorithm "${algorithm}" ed25519 rsa3072 rsa4096 || return "$?"
+  arg.one-of --algorithm "${algorithm}" ed25519 rsa3072 rsa4096 || return "$?"
   ( [[ "${expires}" =~ ^(0|[1-9][0-9]*[dwmy]?)$ ]] ) || return 64
   ( [[ -z "${passphrase_fd}" || "${passphrase_fd}" =~ ^[0-9]+$ ]] ) || return 64
   [[ "${pinentry}" == 'false' || -z "${passphrase_fd}" ]] || return 64
-  command__require gpg || return "$?"
+  command.require gpg || return "$?"
   if [[ -z "${user_id}" ]]; then
     local name='' email=''
     name="$(git config --get user.name 2>/dev/null)"
@@ -195,7 +195,7 @@ gpg__key__generate() {
   parameters+="Expire-Date: ${expires}"$'\n'
   [[ "${pinentry}" == 'true' || -n "${passphrase_fd}" ]] || parameters+='%no-protection'$'\n'
   parameters+='%commit'$'\n'
-  directory="$(_package__temporary-directory)" || return "$?"
+  directory="$(_package.temporary-directory)" || return "$?"
   chmod 0700 "${directory}" || status=74
   if [[ "${status}" -eq 0 ]]; then
     (umask 077 && printf '%s' "${parameters}" >"${directory}/parameters") || status=74

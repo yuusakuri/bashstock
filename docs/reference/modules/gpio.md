@@ -8,17 +8,17 @@ Chips and lines are listed with the libgpiod tools.
 
 ## Index
 
-* [gpio__chip__list](#gpio__chip__list)
-* [gpio__line__list](#gpio__line__list)
+* [gpio.chip.list](#gpiochiplist)
+* [gpio.line.list](#gpiolinelist)
 
-### gpio__chip__list
+### gpio.chip.list
 
 Write the GPIO chips with gpiodetect.
 
 #### Example
 
 ```bash
-gpio__chip__list
+gpio.chip.list
 ```
 
 _Function has no arguments._
@@ -34,14 +34,14 @@ _Function has no arguments._
 
 * The output of gpiodetect.
 
-### gpio__line__list
+### gpio.line.list
 
 Write the GPIO lines of one chip, or of every chip, with gpioinfo.
 
 #### Example
 
 ```bash
-gpio__line__list gpiochip0
+gpio.line.list gpiochip0
 ```
 
 #### Arguments

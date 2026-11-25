@@ -8,9 +8,9 @@ Top-level scalar fields are replaced or appended.
 
 ## Index
 
-* [textproto__set-scalar](#textproto__set-scalar)
+* [textproto.set-scalar](#textprotoset-scalar)
 
-### textproto__set-scalar
+### textproto.set-scalar
 
 Replace or append one top-level scalar field in a textproto file.
 
@@ -23,8 +23,8 @@ unbalanced braces or strings in the result return 65 without a change.
 #### Example
 
 ```bash
-textproto__set-scalar config.textproto timeout_seconds 30
-textproto__set-scalar config.textproto name '"production"'
+textproto.set-scalar config.textproto timeout_seconds 30
+textproto.set-scalar config.textproto name '"production"'
 ```
 
 #### Arguments
@@ -40,5 +40,5 @@ textproto__set-scalar config.textproto name '"production"'
 * **65**: The field is ambiguous or holds a message, or the file is unbalanced.
 * **66**: The file cannot be read.
 * **69**: Python 3 is unavailable.
-* other The status of file__write-text.
+* other The status of file.write-text.
 
