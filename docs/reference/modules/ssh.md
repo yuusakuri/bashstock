@@ -8,22 +8,22 @@ Keys and host entries live in the user's ~/.ssh directory.
 
 ## Index
 
-* [ssh::setup-directory](#sshsetup-directory)
-* [ssh::config::update](#sshconfigupdate)
-* [ssh::config::set](#sshconfigset)
-* [ssh::config::enable-auto-add-keys](#sshconfigenable-auto-add-keys)
-* [ssh::config::disable-host-key-checking](#sshconfigdisable-host-key-checking)
-* [ssh::key::private-files](#sshkeyprivate-files)
-* [ssh::key::add](#sshkeyadd)
-* [ssh::key::add-all](#sshkeyadd-all)
-* [ssh::key::add-all-private-keys](#sshkeyadd-all-private-keys)
-* [ssh::key::generate-rsa4096](#sshkeygenerate-rsa4096)
-* [ssh::key::generate-ed25519](#sshkeygenerate-ed25519)
-* [ssh::kill-all](#sshkill-all)
-* [ssh::server::versions](#sshserverversions)
-* [ssh::server::install](#sshserverinstall)
+* [ssh__setup-directory](#ssh__setup-directory)
+* [ssh__config__update](#ssh__config__update)
+* [ssh__config__set](#ssh__config__set)
+* [ssh__config__enable-auto-add-keys](#ssh__config__enable-auto-add-keys)
+* [ssh__config__disable-host-key-checking](#ssh__config__disable-host-key-checking)
+* [ssh__key__private-files](#ssh__key__private-files)
+* [ssh__key__add](#ssh__key__add)
+* [ssh__key__add-all](#ssh__key__add-all)
+* [ssh__key__add-all-private-keys](#ssh__key__add-all-private-keys)
+* [ssh__key__generate-rsa4096](#ssh__key__generate-rsa4096)
+* [ssh__key__generate-ed25519](#ssh__key__generate-ed25519)
+* [ssh__kill-all](#ssh__kill-all)
+* [ssh__server__versions](#ssh__server__versions)
+* [ssh__server__install](#ssh__server__install)
 
-### ssh::setup-directory
+### ssh__setup-directory
 
 Create $HOME/.ssh and give it and its files the modes SSH expects.
 
@@ -36,7 +36,7 @@ is ever requested.
 #### Example
 
 ```bash
-ssh::setup-directory
+ssh__setup-directory
 ```
 
 _Function has no arguments._
@@ -47,7 +47,7 @@ _Function has no arguments._
 * **64**: An argument was given.
 * **74**: A mode or owner could not be changed.
 
-### ssh::config::update
+### ssh__config__update
 
 Update one key in a marker-managed SSH Host block.
 
@@ -56,7 +56,7 @@ The Host block is created when missing. Only blocks written by BashStock are cha
 #### Example
 
 ```bash
-ssh::config::update "${HOME}/.ssh/config" github.com IdentityFile '~/.ssh/github'
+ssh__config__update "${HOME}/.ssh/config" github.com IdentityFile '~/.ssh/github'
 ```
 
 #### Arguments
@@ -73,14 +73,14 @@ ssh::config::update "${HOME}/.ssh/config" github.com IdentityFile '~/.ssh/github
 * **65**: The file has a begin marker without an end marker, or ssh rejected the result; the file is unchanged.
 * other The status of the file update.
 
-### ssh::config::set
+### ssh__config__set
 
 Create an SSH configuration file when necessary and update one key.
 
 #### Example
 
 ```bash
-ssh::config::set "${HOME}/.ssh/config" 'build-*' User builder
+ssh__config__set "${HOME}/.ssh/config" 'build-*' User builder
 ```
 
 #### Arguments
@@ -96,16 +96,16 @@ ssh::config::set "${HOME}/.ssh/config" 'build-*' User builder
 * **64**: The arguments are invalid or the file is a symbolic link.
 * **66**: The path exists but is not a regular file.
 * **74**: The file could not be created.
-* other The status of ssh::config::update.
+* other The status of ssh__config__update.
 
-### ssh::config::enable-auto-add-keys
+### ssh__config__enable-auto-add-keys
 
 Enable AddKeysToAgent for an optional SSH Host pattern.
 
 #### Example
 
 ```bash
-ssh::config::enable-auto-add-keys
+ssh__config__enable-auto-add-keys
 ```
 
 #### Arguments
@@ -117,9 +117,9 @@ ssh::config::enable-auto-add-keys
 
 * **0**: AddKeysToAgent is enabled.
 * **64**: More than two arguments were given.
-* other The status of ssh::config::set.
+* other The status of ssh__config__set.
 
-### ssh::config::disable-host-key-checking
+### ssh__config__disable-host-key-checking
 
 Disable SSH host-key checks for an optional Host pattern.
 
@@ -128,7 +128,7 @@ Normal use should register the correct host key in known_hosts instead.
 #### Example
 
 ```bash
-ssh::config::disable-host-key-checking "${HOME}/.ssh/config" '192.168.56.*'
+ssh__config__disable-host-key-checking "${HOME}/.ssh/config" '192.168.56.*'
 ```
 
 #### Arguments
@@ -144,14 +144,14 @@ ssh::config::disable-host-key-checking "${HOME}/.ssh/config" '192.168.56.*'
 * **74**: The file could not be created.
 * other The status of the file update.
 
-### ssh::key::private-files
+### ssh__key__private-files
 
 List regular files that ssh-keygen can read as private keys.
 
 #### Example
 
 ```bash
-ssh::key::private-files
+ssh__key__private-files
 ```
 
 #### Arguments
@@ -169,14 +169,14 @@ ssh::key::private-files
 
 * One private key path per line.
 
-### ssh::key::add
+### ssh__key__add
 
 Add one private key to ssh-agent.
 
 #### Example
 
 ```bash
-ssh::key::add "${HOME}/.ssh/id_ed25519"
+ssh__key__add "${HOME}/.ssh/id_ed25519"
 ```
 
 #### Arguments
@@ -190,14 +190,14 @@ ssh::key::add "${HOME}/.ssh/id_ed25519"
 * **69**: ssh-add is unavailable.
 * other The status of ssh-add.
 
-### ssh::key::add-all
+### ssh__key__add-all
 
 Add every detected private key in a directory to ssh-agent.
 
 #### Example
 
 ```bash
-ssh::key::add-all
+ssh__key__add-all
 ```
 
 #### Arguments
@@ -212,16 +212,16 @@ ssh::key::add-all
 * **69**: ssh-add or ssh-keygen is unavailable.
 * other The status of the last ssh-add that failed.
 
-### ssh::key::add-all-private-keys
+### ssh__key__add-all-private-keys
 
 Add every detected private key in a directory to ssh-agent.
 
-This is an alias of ssh::key::add-all.
+This is an alias of ssh__key__add-all.
 
 #### Example
 
 ```bash
-ssh::key::add-all-private-keys
+ssh__key__add-all-private-keys
 ```
 
 #### Arguments
@@ -231,9 +231,9 @@ ssh::key::add-all-private-keys
 #### Exit codes
 
 * **0**: Every key was added.
-* other The status of ssh::key::add-all.
+* other The status of ssh__key__add-all.
 
-### ssh::key::generate-rsa4096
+### ssh__key__generate-rsa4096
 
 Generate a 4096-bit RSA SSH key and write its public key.
 
@@ -244,7 +244,7 @@ stays in place until the new key has been generated.
 #### Example
 
 ```bash
-ssh::key::generate-rsa4096 --comment 'build server' --output "${HOME}/.ssh/build_rsa"
+ssh__key__generate-rsa4096 --comment 'build server' --output "${HOME}/.ssh/build_rsa"
 ```
 
 #### Options
@@ -275,7 +275,7 @@ ssh::key::generate-rsa4096 --comment 'build server' --output "${HOME}/.ssh/build
 
 * The public key.
 
-### ssh::key::generate-ed25519
+### ssh__key__generate-ed25519
 
 Generate an Ed25519 SSH key and write its public key.
 
@@ -286,7 +286,7 @@ stays in place until the new key has been generated.
 #### Example
 
 ```bash
-ssh::key::generate-ed25519 --comment "$(id -un)@$(hostname)" --passphrase-fd 3 3<passphrase.txt
+ssh__key__generate-ed25519 --comment "$(id -un)@$(hostname)" --passphrase-fd 3 3<passphrase.txt
 ```
 
 #### Options
@@ -317,14 +317,14 @@ ssh::key::generate-ed25519 --comment "$(id -un)@$(hostname)" --passphrase-fd 3 3
 
 * The public key.
 
-### ssh::kill-all
+### ssh__kill-all
 
 End every SSH process of the current user.
 
 #### Example
 
 ```bash
-ssh::kill-all
+ssh__kill-all
 ```
 
 _Function has no arguments._
@@ -336,14 +336,14 @@ _Function has no arguments._
 * **64**: An argument was given.
 * **69**: pkill is unavailable.
 
-### ssh::server::versions
+### ssh__server__versions
 
 Write OpenSSH server versions available to the current platform.
 
 #### Example
 
 ```bash
-ssh::server::versions
+ssh__server__versions
 ```
 
 _Function has no arguments._
@@ -358,19 +358,19 @@ _Function has no arguments._
 
 * OpenSSH server package versions, one per line.
 
-### ssh::server::install
+### ssh__server__install
 
 Install the OpenSSH server, enable it at boot, and start it.
 
 #### Example
 
 ```bash
-ssh::server::install
+ssh__server__install
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from ssh::server::versions. Defaults to the newest one.
+* **$1** (string): Optional version from ssh__server__versions. Defaults to the newest one.
 
 #### Exit codes
 

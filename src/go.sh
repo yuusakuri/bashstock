@@ -8,7 +8,7 @@
 # @description Write the stable Go versions the platform package source offers, oldest first.
 #
 # Ubuntu lists the versioned golang-X.Y packages, Fedora the golang package,
-# and macOS the Homebrew go formulae. Each value is accepted by go::install.
+# and macOS the Homebrew go formulae. Each value is accepted by go__install.
 #
 # @noargs
 # @stdout One version per line, oldest first.
@@ -18,43 +18,43 @@
 # @exitcode 69 The platform or its package tool is unsupported or unavailable.
 # @exitcode other The status of the package query that failed.
 # @example
-#   go::version::list
-go::version::list() {
+#   go__version__list
+go__version__list() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' versions=''
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package__platform)" || return "$?"
   case "${platform}" in
     ubuntu)
-      command::require apt-cache || return "$?"
+      command__require apt-cache || return "$?"
       versions="$(apt-cache pkgnames golang- 2>/dev/null | sed -n 's/^golang-\([0-9][0-9]*\.[0-9][0-9]*\)$/\1/p')"
       ;;
     fedora)
-      versions="$(package::_versions golang)" || return "$?"
+      versions="$(_package__versions golang)" || return "$?"
       versions="$(printf '%s\n' "${versions}" | sed -n 's/^\([0-9][0-9]*\.[0-9][0-9.]*\)-.*$/\1/p')"
       ;;
     darwin)
-      versions="$(package::_brew-formula-versions go)" || return "$?"
+      versions="$(_package__brew-formula-versions go)" || return "$?"
       ;;
   esac
-  versions="$(printf '%s\n' "${versions}" | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' | package::_sort-versions)"
+  versions="$(printf '%s\n' "${versions}" | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' | _package__sort-versions)"
   [[ -n "${versions}" ]] || return 1
   printf '%s\n' "${versions}"
 }
 
-# @description Write the newest stable Go version from go::version::list.
+# @description Write the newest stable Go version from go__version__list.
 #
 # @noargs
 # @stdout The newest version, such as 1.23.
 # @exitcode 0 The version was written.
 # @exitcode 1 No version was found.
 # @exitcode 64 An argument was given.
-# @exitcode other The status of go::version::list.
+# @exitcode other The status of go__version__list.
 # @example
-#   go::install "$(go::version::latest)"
-go::version::latest() {
+#   go__install "$(go__version__latest)"
+go__version__latest() {
   [[ "$#" -eq 0 ]] || return 64
   local versions=''
-  versions="$(go::version::list)" || return "$?"
+  versions="$(go__version__list)" || return "$?"
   printf '%s\n' "${versions##*$'\n'}"
 }
 
@@ -67,13 +67,13 @@ go::version::latest() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 The platform is unsupported or its package tool is unavailable.
 # @example
-#   go::repository::register
-go::repository::register() {
+#   go__repository__register
+go__repository__register() {
   [[ "$#" -eq 0 ]] || return 64
-  case "$(package::_platform)" in
-    darwin) command::require brew ;;
-    ubuntu) command::require apt-get ;;
-    fedora) command::require dnf ;;
+  case "$(_package__platform)" in
+    darwin) command__require brew ;;
+    ubuntu) command__require apt-get ;;
+    fedora) command__require dnf ;;
     *) return 69 ;;
   esac
 }
@@ -85,18 +85,18 @@ go::repository::register() {
 # links its default version. Only links that point into /usr/lib/go-* are removed.
 # @internal
 # @arg $1 string Optional version; an empty value removes the links.
-go::_select-ubuntu-version() {
+_go__select-ubuntu-version() {
   [[ "$#" -eq 1 ]] || return 64
   local tool=''
   if [[ -n "$1" && ! -x "/usr/lib/go-$1/bin/go" ]]; then
-    console::_write-error "golang-$1 did not install /usr/lib/go-$1/bin/go."
+    _console__write-error "golang-$1 did not install /usr/lib/go-$1/bin/go."
     return 69
   fi
   for tool in go gofmt; do
     if [[ -n "$1" ]]; then
-      command::run-as-root ln -sfn "/usr/lib/go-$1/bin/${tool}" "/usr/local/bin/${tool}" || return 74
+      command__run-as-root ln -sfn "/usr/lib/go-$1/bin/${tool}" "/usr/local/bin/${tool}" || return 74
     elif [[ "$(readlink "/usr/local/bin/${tool}" 2>/dev/null)" == /usr/lib/go-*/bin/"${tool}" ]]; then
-      command::run-as-root rm -f -- "/usr/local/bin/${tool}" || return 74
+      command__run-as-root rm -f -- "/usr/local/bin/${tool}" || return 74
     fi
   done
   hash -r
@@ -110,33 +110,33 @@ go::_select-ubuntu-version() {
 # answers again. On Fedora an omitted version installs the newest version,
 # which also replaces an older one installed earlier.
 #
-# @arg $1 string Optional version from go::version::list. Defaults to the package source default.
+# @arg $1 string Optional version from go__version__list. Defaults to the package source default.
 # @exitcode 0 Go was installed.
 # @exitcode 64 More than one argument was given.
 # @exitcode 69 The platform is unsupported or the version is not offered.
 # @exitcode 74 The links in /usr/local/bin could not be changed.
 # @exitcode other The status of the package installation.
 # @example
-#   go::install "$(go::version::latest)"
-go::install() {
+#   go__install "$(go__version__latest)"
+go__install() {
   [[ "$#" -le 1 ]] || return 64
-  go::repository::register || return "$?"
+  go__repository__register || return "$?"
   local platform='' version="${1:-}"
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package__platform)" || return "$?"
   case "${platform}" in
-    darwin) package::_install-version go "${version}" ;;
+    darwin) _package__install-version go "${version}" ;;
     ubuntu)
       if [[ -n "${version}" ]]; then
-        package::_install "golang-${version}" || return "$?"
+        _package__install "golang-${version}" || return "$?"
       else
-        package::_install golang || return "$?"
+        _package__install golang || return "$?"
       fi
-      go::_select-ubuntu-version "${version}"
+      _go__select-ubuntu-version "${version}"
       ;;
     fedora)
       # dnf install keeps an installed older golang, so the newest version is named explicitly.
-      [[ -n "${version}" ]] || version="$(go::version::latest)" || return "$?"
-      package::_install-version golang "${version}"
+      [[ -n "${version}" ]] || version="$(go__version__latest)" || return "$?"
+      _package__install-version golang "${version}"
       ;;
   esac
 }

@@ -8,16 +8,16 @@ Values read from a JSON document are checked for emptiness and null before use.
 
 ## Index
 
-* [json::require-present](#jsonrequire-present)
+* [json__require-present](#json__require-present)
 
-### json::require-present
+### json__require-present
 
 Require a named JSON-derived value to be neither empty nor null.
 
 #### Example
 
 ```bash
-json::require-present .tag_name "${tag}" || return "$?"
+json__require-present .tag_name "${tag}" || return "$?"
 ```
 
 #### Arguments

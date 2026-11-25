@@ -5,7 +5,7 @@
 
 # @description Write every message line with a timestamp, level, and command name.
 # @internal
-log::_write() {
+_log__write() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -17,13 +17,13 @@ log::_write() {
 
   while [[ "${remaining}" == *$'\n'* ]]; do
     line="${remaining%%$'\n'*}"
-    timestamp="$(time::local-date-time-milliseconds-extended)" || return "$?"
+    timestamp="$(time__local-date-time-milliseconds-extended)" || return "$?"
     printf '%s [%s] [%s] %s\n' \
       "${timestamp}" "${level}" "${BASHSTOCK_NAME:-bashstock}" "${line}" >&2
     remaining="${remaining#*$'\n'}"
   done
 
-  timestamp="$(time::local-date-time-milliseconds-extended)" || return "$?"
+  timestamp="$(time__local-date-time-milliseconds-extended)" || return "$?"
   printf '%s [%s] [%s] %s\n' \
     "${timestamp}" "${level}" "${BASHSTOCK_NAME:-bashstock}" "${remaining}" >&2
 }
@@ -39,10 +39,10 @@ log::_write() {
 # @exitcode 64 The argument count is not one.
 # @exitcode 69 The clock provider for the timestamp is unavailable.
 # @example
-#   BASHSTOCK_NAME=deploy log::info 'Uploading the release.'
-log::info() {
+#   BASHSTOCK_NAME=deploy log__info 'Uploading the release.'
+log__info() {
   [[ "$#" -eq 1 ]] || return 64
-  log::_write INFO "$1"
+  _log__write INFO "$1"
 }
 
 # @description Write a warning log message.
@@ -53,10 +53,10 @@ log::info() {
 # @exitcode 64 The argument count is not one.
 # @exitcode 69 The clock provider for the timestamp is unavailable.
 # @example
-#   log::warn 'The cache is older than one day.'
-log::warn() {
+#   log__warn 'The cache is older than one day.'
+log__warn() {
   [[ "$#" -eq 1 ]] || return 64
-  log::_write WARN "$1"
+  _log__write WARN "$1"
 }
 
 # @description Write an error log message without exiting.
@@ -67,8 +67,8 @@ log::warn() {
 # @exitcode 64 The argument count is not one.
 # @exitcode 69 The clock provider for the timestamp is unavailable.
 # @example
-#   docker::install || log::error 'Docker could not be installed.'
-log::error() {
+#   docker__install || log__error 'Docker could not be installed.'
+log__error() {
   [[ "$#" -eq 1 ]] || return 64
-  log::_write ERROR "$1"
+  _log__write ERROR "$1"
 }

@@ -8,24 +8,24 @@ Mozc is installed from the platform package source.
 
 ## Index
 
-* [mozc::config::open](#mozcconfigopen)
-* [mozc::server::versions](#mozcserverversions)
-* [mozc::server::install](#mozcserverinstall)
-* [mozc::ibus::versions](#mozcibusversions)
-* [mozc::ibus::install](#mozcibusinstall)
-* [mozc::ibus::upgrade](#mozcibusupgrade)
-* [mozc::tool::versions](#mozctoolversions)
-* [mozc::tool::install](#mozctoolinstall)
-* [mozc::ibus::set-hiragana-as-default](#mozcibusset-hiragana-as-default)
+* [mozc__config__open](#mozc__config__open)
+* [mozc__server__versions](#mozc__server__versions)
+* [mozc__server__install](#mozc__server__install)
+* [mozc__ibus__versions](#mozc__ibus__versions)
+* [mozc__ibus__install](#mozc__ibus__install)
+* [mozc__ibus__upgrade](#mozc__ibus__upgrade)
+* [mozc__tool__versions](#mozc__tool__versions)
+* [mozc__tool__install](#mozc__tool__install)
+* [mozc__ibus__set-hiragana-as-default](#mozc__ibus__set-hiragana-as-default)
 
-### mozc::config::open
+### mozc__config__open
 
 Open the Mozc settings dialog on a Linux desktop.
 
 #### Example
 
 ```bash
-mozc::config::open
+mozc__config__open
 ```
 
 _Function has no arguments._
@@ -37,14 +37,14 @@ _Function has no arguments._
 * **69**: mozc_tool is unavailable.
 * other The status of mozc_tool.
 
-### mozc::server::versions
+### mozc__server__versions
 
 Write Mozc server versions provided for the running operating-system release.
 
 #### Example
 
 ```bash
-mozc::server::versions
+mozc__server__versions
 ```
 
 _Function has no arguments._
@@ -59,19 +59,19 @@ _Function has no arguments._
 
 * Mozc server package versions, one per line.
 
-### mozc::server::install
+### mozc__server__install
 
 Install the Mozc server, defaulting to the newest version for the running release.
 
 #### Example
 
 ```bash
-mozc::server::install
+mozc__server__install
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from mozc::server::versions. Defaults to the newest one.
+* **$1** (string): Optional version from mozc__server__versions. Defaults to the newest one.
 
 #### Exit codes
 
@@ -80,14 +80,14 @@ mozc::server::install
 * **69**: The platform is unsupported, or the version is unavailable.
 * other The status of the package manager.
 
-### mozc::ibus::versions
+### mozc__ibus__versions
 
 Write IBus Mozc versions provided for the running operating-system release.
 
 #### Example
 
 ```bash
-mozc::ibus::versions
+mozc__ibus__versions
 ```
 
 _Function has no arguments._
@@ -102,19 +102,19 @@ _Function has no arguments._
 
 * IBus Mozc package versions, one per line.
 
-### mozc::ibus::install
+### mozc__ibus__install
 
 Install IBus Mozc and the Mozc server of the same version.
 
 #### Example
 
 ```bash
-mozc::ibus::install
+mozc__ibus__install
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from mozc::ibus::versions. Defaults to the newest one.
+* **$1** (string): Optional version from mozc__ibus__versions. Defaults to the newest one.
 
 #### Exit codes
 
@@ -123,19 +123,19 @@ mozc::ibus::install
 * **69**: The platform is unsupported, or the version is unavailable.
 * other The status of the package manager.
 
-### mozc::ibus::upgrade
+### mozc__ibus__upgrade
 
 Install IBus Mozc on Ubuntu, or upgrade it when the release offers a newer version.
 
-The newest version from mozc::ibus::versions is installed through
-mozc::ibus::install, with the Mozc server of the same version when the
+The newest version from mozc__ibus__versions is installed through
+mozc__ibus__install, with the Mozc server of the same version when the
 release provides it. An installed version at least as new is kept, so a
 newer version is never downgraded. Fedora is not supported yet.
 
 #### Example
 
 ```bash
-mozc::ibus::upgrade
+mozc__ibus__upgrade
 ```
 
 _Function has no arguments._
@@ -151,14 +151,14 @@ _Function has no arguments._
 
 * A message when the release provides no IBus Mozc version.
 
-### mozc::tool::versions
+### mozc__tool__versions
 
 Write Mozc GUI tool versions provided for the running operating-system release.
 
 #### Example
 
 ```bash
-mozc::tool::versions
+mozc__tool__versions
 ```
 
 _Function has no arguments._
@@ -173,20 +173,20 @@ _Function has no arguments._
 
 * Mozc GUI tool package versions, one per line.
 
-### mozc::tool::install
+### mozc__tool__install
 
 Install the Mozc GUI tools.
 
 #### Example
 
 ```bash
-mozc::tool::install
-mozc::config::open
+mozc__tool__install
+mozc__config__open
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from mozc::tool::versions. Defaults to the newest one.
+* **$1** (string): Optional version from mozc__tool__versions. Defaults to the newest one.
 
 #### Exit codes
 
@@ -195,7 +195,7 @@ mozc::config::open
 * **69**: The platform is unsupported, or the version is unavailable.
 * other The status of the package manager.
 
-### mozc::ibus::set-hiragana-as-default
+### mozc__ibus__set-hiragana-as-default
 
 Start Mozc in Hiragana mode and restart IBus.
 
@@ -207,7 +207,7 @@ rewritten so that IBus reads the engine list again.
 #### Example
 
 ```bash
-mozc::ibus::set-hiragana-as-default
+mozc__ibus__set-hiragana-as-default
 ```
 
 _Function has no arguments._

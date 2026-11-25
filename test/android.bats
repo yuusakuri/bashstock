@@ -52,12 +52,12 @@ SCRIPT
       '  platforms/android-35 2.0 Android SDK Platform'
   }
   sdkmanager() { return 99; }
-  run android::build-tools::versions
+  run android__build-tools__versions
   [ "${status}" -eq 0 ]
   [ "${output}" = $'9.0.0\n34.0.0\n35.0.0' ]
   [ "$(<"${log}")" = "$(printf '%s\n' --no-metrics "--sdk=${ANDROID_HOME}" sdk list 'build-tools/*' --all --all-versions)" ]
 
-  run android::build-tools::latest-version
+  run android__build-tools__latest-version
   [ "${status}" -eq 0 ]
   [ "${output}" = '35.0.0' ]
 }
@@ -65,13 +65,13 @@ SCRIPT
 @test "Android Build Tools queries preserve command failures without pipefail" {
   android() { return 49; }
   set +o pipefail
-  run android::build-tools::versions
+  run android__build-tools__versions
   [ "${status}" -eq 49 ]
-  run android::build-tools::latest-version
+  run android__build-tools__latest-version
   [ "${status}" -eq 49 ]
 
   android() { printf '  build-tools/36.0.0-rc1 36.0.0-rc1 Preview\n'; }
-  run android::build-tools::latest-version
+  run android__build-tools__latest-version
   [ "${status}" -eq 1 ]
   [ -z "${output}" ]
 }
@@ -92,10 +92,10 @@ printf '%s\n' \
 SCRIPT
   chmod +x "${tools}/sdkmanager"
   query_with_tools() { (PATH="${tools}"; "$@"); }
-  run query_with_tools android::build-tools::versions
+  run query_with_tools android__build-tools__versions
   [ "${status}" -eq 0 ]
   [ "${output}" = $'9.0.0\n34.0.0\n35.0.0' ]
-  run query_with_tools android::build-tools::latest-version
+  run query_with_tools android__build-tools__latest-version
   [ "${status}" -eq 0 ]
   [ "${output}" = '35.0.0' ]
 }
@@ -105,31 +105,31 @@ SCRIPT
   mkdir -p "${tools}"
   ln -s "$(command -v python3)" "${tools}/python3"
   query_with_tools() { (PATH="${tools}"; "$@"); }
-  run query_with_tools android::build-tools::versions
+  run query_with_tools android__build-tools__versions
   [ "${status}" -eq 69 ]
-  run query_with_tools android::build-tools::latest-version
+  run query_with_tools android__build-tools__latest-version
   [ "${status}" -eq 69 ]
-  run query_with_tools android::build-tools::versions extra
+  run query_with_tools android__build-tools__versions extra
   [ "${status}" -eq 64 ]
-  run query_with_tools android::build-tools::latest-version extra
+  run query_with_tools android__build-tools__latest-version extra
   [ "${status}" -eq 64 ]
 }
 
 @test "ADB device listing returns only connected serials and preserves command failures" {
   write_adb_stub
   export ADB_TEST_MODE=list
-  run adb::device::list
+  run adb__device__list
   [ "$status" -eq 0 ]
   [ "$output" = $'ready-1\nready-2' ]
-  run adb::device::first
+  run adb__device__first
   [ "$status" -eq 0 ]
   [ "$output" = ready-1 ]
 
   export ADB_TEST_MODE=none
-  run adb::device::first
+  run adb__device__first
   [ "$status" -eq 1 ]
   export ADB_TEST_MODE=fail
-  run adb::device::list
+  run adb__device__list
   [ "$status" -eq 49 ]
 }
 
@@ -138,10 +138,10 @@ SCRIPT
   printf 'original image' >"$image"
   write_adb_stub
   export ADB_TEST_MODE=fail
-  run adb::device::screen::capture-once "$image" --serial target-1
+  run adb__device__screen__capture-once "$image" --serial target-1
   [ "$status" -ne 0 ]
   [ "$(cat "$image")" = 'original image' ]
-  run adb::device::screen::capture-once "$image" --serial ''
+  run adb__device__screen__capture-once "$image" --serial ''
   [ "$status" -eq 64 ]
 }
 
@@ -150,7 +150,7 @@ SCRIPT
   export ADB_TEST_COUNT="$BATS_TEST_TMPDIR/count"
   write_adb_stub
   export ADB_TEST_MODE=reboot
-  run adb::device::reboot 5 --serial target-1
+  run adb__device__reboot 5 --serial target-1
   [ "$status" -eq 0 ]
   grep -Fqx -- '-s target-1 reboot' "$ADB_TEST_LOG"
   grep -Fqx -- '-s target-1 get-state' "$ADB_TEST_LOG"
@@ -169,7 +169,7 @@ fi
 SCRIPT
   chmod +x "$BATS_TEST_TMPDIR/bin/fastboot"
   export ADB_TEST_MODE=control
-  run adb::device::bootloader::unlock --serial target-1
+  run adb__device__bootloader__unlock --serial target-1
   [ "$status" -eq 0 ]
   grep -Fqx -- '-s target-1 reboot bootloader' "$ADB_TEST_LOG"
   grep -Fqx -- '-s target-1 getvar version' "$FASTBOOT_TEST_LOG"
@@ -180,7 +180,7 @@ SCRIPT
   # A bootloader that stays in fastboot is rebooted.
   : >"$FASTBOOT_TEST_LOG"
   export FASTBOOT_TEST_LISTED=target-1
-  run adb::device::bootloader::unlock --serial target-1
+  run adb__device__bootloader__unlock --serial target-1
   [ "$status" -eq 0 ]
   grep -Fqx -- '-s target-1 reboot' "$FASTBOOT_TEST_LOG"
 }
@@ -189,10 +189,10 @@ SCRIPT
   export ADB_TEST_LOG="$BATS_TEST_TMPDIR/adb.log"
   write_adb_stub
   export ADB_TEST_MODE=control
-  run adb::device::partition::sha256 '/dev/block/../bad' --serial target-1
+  run adb__device__partition__sha256 '/dev/block/../bad' --serial target-1
   [ "$status" -eq 64 ]
   [ ! -e "$ADB_TEST_LOG" ]
-  run adb::device::partition::sha256 '/dev/block/by-name/system' --serial target-1
+  run adb__device__partition__sha256 '/dev/block/by-name/system' --serial target-1
   [ "$status" -eq 0 ]
   grep -Fqx -- '-s target-1 shell sha256sum /dev/block/by-name/system' "$ADB_TEST_LOG"
 }
@@ -201,7 +201,7 @@ SCRIPT
   export ADB_TEST_LOG="$BATS_TEST_TMPDIR/adb.log"
   write_adb_stub
   export ADB_TEST_MODE=control
-  run adb::wake::lock verify --serial target-1
+  run adb__wake__lock verify --serial target-1
   [ "$status" -eq 0 ]
   grep -Fqx -- '-s target-1 root' "$ADB_TEST_LOG"
   grep -Fqx -- '-s target-1 shell test -w /sys/power/wake_lock' "$ADB_TEST_LOG"

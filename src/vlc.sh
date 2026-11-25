@@ -14,11 +14,11 @@
 # @exitcode 69 xdg-mime is unavailable.
 # @exitcode other The status of xdg-mime.
 # @example
-#   vlc::set-default-app
+#   vlc__set-default-app
 #   xdg-mime query default video/mp4
-vlc::set-default-app() {
+vlc__set-default-app() {
   [[ "$#" -eq 0 ]] || return 64
-  command::require xdg-mime || return "$?"
+  command__require xdg-mime || return "$?"
   local desktop='' candidate='' declared='' mime_type=''
   local mime_types=()
   for candidate in /usr/share/applications/vlc.desktop /usr/share/applications/org.videolan.VLC.desktop; do
@@ -30,6 +30,6 @@ vlc::set-default-app() {
   IFS=';' read -r -a mime_types <<<"${declared}"
   for mime_type in "${mime_types[@]}"; do
     [[ -n "${mime_type}" ]] || continue
-    xdg-mime default "$(path::base-name "${desktop}")" "${mime_type}" || return "$?"
+    xdg-mime default "$(path__base-name "${desktop}")" "${mime_type}" || return "$?"
   done
 }

@@ -8,10 +8,10 @@ pipx is installed from the platform package source.
 
 ## Index
 
-* [pipx::versions](#pipxversions)
-* [pipx::install](#pipxinstall)
+* [pipx__versions](#pipx__versions)
+* [pipx__install](#pipx__install)
 
-### pipx::versions
+### pipx__versions
 
 Write pipx versions available from the selected source.
 
@@ -21,7 +21,7 @@ can run.
 #### Example
 
 ```bash
-pipx::versions official | tail -n 1
+pipx__versions official | tail -n 1
 ```
 
 #### Arguments
@@ -39,7 +39,7 @@ pipx::versions official | tail -n 1
 
 * pipx versions, one per line, oldest first.
 
-### pipx::install
+### pipx__install
 
 Install pipx and add the pipx application directory to PATH.
 
@@ -56,13 +56,13 @@ because pipx creates a virtual environment for every application.
 #### Example
 
 ```bash
-pipx::install
+pipx__install
 pipx install pycowsay
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from pipx::versions for the same source.
+* **$1** (string): Optional version from pipx__versions for the same source.
 * **$2** (string): Optional source: os (default) or official.
 
 #### Exit codes

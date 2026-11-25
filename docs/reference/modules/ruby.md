@@ -8,18 +8,18 @@ Ruby is installed with rbenv.
 
 ## Index
 
-* [ruby::version::list](#rubyversionlist)
-* [ruby::version::latest](#rubyversionlatest)
-* [ruby::install](#rubyinstall)
+* [ruby__version__list](#ruby__version__list)
+* [ruby__version__latest](#ruby__version__latest)
+* [ruby__install](#ruby__install)
 
-### ruby::version::list
+### ruby__version__list
 
 Write stable Ruby versions that rbenv can install in ascending order.
 
 #### Example
 
 ```bash
-ruby::version::list | tail -n 5
+ruby__version__list | tail -n 5
 ```
 
 _Function has no arguments._
@@ -35,14 +35,14 @@ _Function has no arguments._
 
 * One version per line, oldest first.
 
-### ruby::version::latest
+### ruby__version__latest
 
 Write the newest stable Ruby version that rbenv can install.
 
 #### Example
 
 ```bash
-ruby::version::latest
+ruby__version__latest
 ```
 
 _Function has no arguments._
@@ -57,20 +57,20 @@ _Function has no arguments._
 
 * The newest version, such as 3.3.5.
 
-### ruby::install
+### ruby__install
 
 Install rbenv, configure the shell, and install a Ruby version globally.
 
 #### Example
 
 ```bash
-ruby::install 3.4.7
+ruby__install 3.4.7
 ruby --version
 ```
 
 #### Arguments
 
-* **$1** (string): Optional Ruby version such as 3.4.7. Defaults to ruby::version::latest.
+* **$1** (string): Optional Ruby version such as 3.4.7. Defaults to ruby__version__latest.
 
 #### Exit codes
 

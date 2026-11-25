@@ -5,7 +5,7 @@ set -euo pipefail
 
 # Run as root from the checkout in a disposable Ubuntu or Fedora container started with
 # --device /dev/kvm. Only a JDK for sdkmanager and avdmanager is added, so
-# android::emulator::install has to provide the emulator's system libraries.
+# android__emulator__install has to provide the emulator's system libraries.
 source /etc/os-release
 case "${ID}" in
   ubuntu)
@@ -37,7 +37,7 @@ if [[ "$(uname -m)" != x86_64 ]]; then
   export HOME="${RUNNER_TEMP}/bashstock-android-home"
   mkdir -p "${HOME}"
   status=0
-  android::sdk::install 2>/dev/null || status="$?"
+  android__sdk__install 2>/dev/null || status="$?"
   [[ "${status}" -eq 69 ]]
   [[ ! -e "${HOME}/.local/bin/android" && ! -e "${HOME}/Android/Sdk" ]]
   printf 'Android CLI reports this CPU as unsupported with status 69.\n'
@@ -49,17 +49,17 @@ if [[ "$(printf '%s\n' 2.30 "$(getconf GNU_LIBC_VERSION | awk '{print $2}')" | s
   export HOME="${RUNNER_TEMP}/bashstock-android-home"
   export ANDROID_HOME="${HOME}/Android/Sdk"
   mkdir -p "${HOME}"
-  android::sdk::install
-  android::platform-tools::install
-  android::sdk-platform::install 35
-  android::build-tools::install 35.0.0
-  android::command-line-tools::install
+  android__sdk__install
+  android__platform-tools__install
+  android__sdk-platform__install 35
+  android__build-tools__install 35.0.0
+  android__command-line-tools__install
   "${ANDROID_HOME}/platform-tools/adb" version
   "${ANDROID_HOME}/build-tools/35.0.0/aapt2" version
   "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --version
   test -s "${ANDROID_HOME}/platforms/android-35/android.jar"
   status=0
-  android::emulator::install || status="$?"
+  android__emulator__install || status="$?"
   [[ "${status}" -eq 69 ]]
   printf 'The emulator is reported as unsupported with status 69.\n'
   exit 0

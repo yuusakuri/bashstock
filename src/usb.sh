@@ -14,8 +14,8 @@
 # @exitcode 69 lsusb is unavailable.
 # @exitcode other The status of lsusb.
 # @example
-#   usb::device::list
-usb::device::list() { [[ "$#" -eq 0 ]] || return 64; docker::_run-command lsusb; }
+#   usb__device__list
+usb__device__list() { [[ "$#" -eq 0 ]] || return 64; _docker__run-command lsusb; }
 
 # @description Select a USB partition, or a USB disk without partitions, and write its device path.
 #
@@ -29,12 +29,12 @@ usb::device::list() { [[ "$#" -eq 0 ]] || return 64; docker::_run-command lsusb;
 # @exitcode 64 An argument was given.
 # @exitcode other The status of lsblk or the prompt.
 # @example
-#   device="$(usb::partition::select)"
-usb::partition::select() {
+#   device="$(usb__partition__select)"
+usb__partition__select() {
   [[ "$#" -eq 0 ]] || return 64
   local candidates='' line='' selected=''
   local choices=()
-  candidates="$(usb::_candidates)" || return "$?"
+  candidates="$(_usb__candidates)" || return "$?"
   [[ -n "${candidates}" ]] || return 1
   if [[ "${candidates}" != *$'\n'* ]]; then
     printf '%s\n' "${candidates%%$'\t'*}"
@@ -43,15 +43,15 @@ usb::partition::select() {
   while IFS= read -r line; do
     choices+=("${line//$'\t'/ }")
   done <<<"${candidates}"
-  selected="$(shell::choose-one 'Select a USB device' "${choices[@]}")" || return "$?"
+  selected="$(shell__choose-one 'Select a USB device' "${choices[@]}")" || return "$?"
   printf '%s\n' "${selected%% *}"
 }
 
 # @description Unmount every mount point of a block device through administrator execution.
 # @internal
-usb::_unmount() {
+_usb__unmount() {
   [[ "$#" -eq 1 && -b "$1" ]] || return 64
-  command::require findmnt || return "$?"
+  command__require findmnt || return "$?"
   local mount_point='' mount_points='' status=0
   # lsblk's MOUNTPOINT column holds only one location, and MOUNTPOINTS is
   # missing before util-linux 2.37, so findmnt lists every mount of the device.
@@ -64,7 +64,7 @@ usb::_unmount() {
   esac
   while IFS= read -r mount_point; do
     [[ -n "${mount_point}" ]] || continue
-    command::run-as-root umount -- "${mount_point}" || return 74
+    command__run-as-root umount -- "${mount_point}" || return 74
   done <<<"${mount_points}"
   # A second query confirms that nothing is left mounted.
   status=0
@@ -76,10 +76,10 @@ usb::_unmount() {
 #
 # Each line holds the device path, the size, the file system type, and the label, separated by tabs.
 # @internal
-usb::_candidates() {
+_usb__candidates() {
   [[ "$#" -eq 0 ]] || return 64
-  [[ "$(system::operating-system)" == linux ]] || return 69
-  command::require lsblk || return "$?"
+  [[ "$(system__operating-system)" == linux ]] || return 69
+  command__require lsblk || return "$?"
   local disk='' name='' type='' fstype='' size='' label='' found=0
   while IFS= read -r disk; do
     found=0
@@ -105,17 +105,17 @@ usb::_candidates() {
 # @exitcode 74 The file system type could not be read.
 # @exitcode other The status of the unmount or of fsck.
 # @example
-#   usb::filesystem::repair
-usb::filesystem::repair() {
+#   usb__filesystem__repair
+usb__filesystem__repair() {
   [[ "$#" -eq 0 ]] || return 64
   local device='' type=''
-  device="$(usb::partition::select)" || return "$?"
+  device="$(usb__partition__select)" || return "$?"
   type="$(lsblk -no FSTYPE "${device}" | head -n 1)" || return 74
-  usb::_unmount "${device}" || return "$?"
+  _usb__unmount "${device}" || return "$?"
   case "${type}" in
-    vfat | fat | msdos) command::run-as-root fsck.fat -a "${device}" ;;
-    exfat) command::run-as-root fsck.exfat -a "${device}" ;;
-    *) command::run-as-root fsck -y "${device}" ;;
+    vfat | fat | msdos) command__run-as-root fsck.fat -a "${device}" ;;
+    exfat) command__run-as-root fsck.exfat -a "${device}" ;;
+    *) command__run-as-root fsck -y "${device}" ;;
   esac
 }
 
@@ -129,11 +129,11 @@ usb::filesystem::repair() {
 # @exitcode 64 An argument was given.
 # @exitcode other The status of the unmount or of mkfs.vfat.
 # @example
-#   usb::filesystem::format-fat32
-usb::filesystem::format-fat32() {
+#   usb__filesystem__format-fat32
+usb__filesystem__format-fat32() {
   [[ "$#" -eq 0 ]] || return 64
   local device=''
-  device="$(usb::partition::select)" || return "$?"
-  usb::_unmount "${device}" || return "$?"
-  command::run-as-root mkfs.vfat -F 32 "${device}"
+  device="$(usb__partition__select)" || return "$?"
+  _usb__unmount "${device}" || return "$?"
+  command__run-as-root mkfs.vfat -F 32 "${device}"
 }

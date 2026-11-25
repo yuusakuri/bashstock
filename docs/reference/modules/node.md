@@ -8,17 +8,17 @@ Node.js is installed through a version manager.
 
 ## Index
 
-* [node::versions](#nodeversions)
-* [node::install](#nodeinstall)
+* [node__versions](#node__versions)
+* [node__install](#node__install)
 
-### node::versions
+### node__versions
 
 Write complete stable Node.js versions from the selected source.
 
 #### Example
 
 ```bash
-node::versions official | tail -n 3
+node__versions official | tail -n 3
 ```
 
 #### Arguments
@@ -36,7 +36,7 @@ node::versions official | tail -n 3
 
 * Complete versions such as 22.11.0, one per line, oldest first.
 
-### node::install
+### node__install
 
 Install Node.js, enable Corepack, and set the pnpm store directory.
 
@@ -45,13 +45,13 @@ Corepack is enabled with pnpm 8.15.9, installing Corepack through npm when the N
 #### Example
 
 ```bash
-node::install 22.11.0 official
+node__install 22.11.0 official
 pnpm --version
 ```
 
 #### Arguments
 
-* **$1** (string): Optional complete version from node::versions. Defaults to the newest stable version of the source.
+* **$1** (string): Optional complete version from node__versions. Defaults to the newest stable version of the source.
 * **$2** (string): Optional source: os (default) or official.
 
 #### Exit codes

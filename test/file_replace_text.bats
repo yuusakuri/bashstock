@@ -14,13 +14,13 @@ assert_file_content() {
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'value=1 value=2' >"${file}"
 
-  run file::replace-text "${file}" 'value=[0-9]+' 'value=X'
+  run file__replace-text "${file}" 'value=[0-9]+' 'value=X'
   [ "${status}" -eq 0 ]
   [ -z "${output}" ]
   assert_file_content 'value=X value=2' "${file}"
 
   printf 'value=1 value=2' >"${file}"
-  run file::replace-all-text "${file}" 'value=[0-9]+' 'value=X'
+  run file__replace-all-text "${file}" 'value=[0-9]+' 'value=X'
   [ "${status}" -eq 0 ]
   [ -z "${output}" ]
   assert_file_content 'value=X value=X' "${file}"
@@ -32,27 +32,27 @@ assert_file_content() {
   printf 'value=1' >"${file}"
   cp "${file}" "${original}"
 
-  run file::replace-text
+  run file__replace-text
   [ "${status}" -eq 64 ]
-  run file::replace-text "${file}"
+  run file__replace-text "${file}"
   [ "${status}" -eq 64 ]
-  run file::replace-text "${file}" 'value'
+  run file__replace-text "${file}" 'value'
   [ "${status}" -eq 64 ]
-  run file::replace-text "${file}" 'value' 'changed' 'excess'
+  run file__replace-text "${file}" 'value' 'changed' 'excess'
   [ "${status}" -eq 64 ]
-  run file::replace-all-text
+  run file__replace-all-text
   [ "${status}" -eq 64 ]
-  run file::replace-all-text "${file}"
+  run file__replace-all-text "${file}"
   [ "${status}" -eq 64 ]
-  run file::replace-all-text "${file}" 'value'
+  run file__replace-all-text "${file}" 'value'
   [ "${status}" -eq 64 ]
-  run file::replace-all-text "${file}" 'value' 'changed' 'excess'
+  run file__replace-all-text "${file}" 'value' 'changed' 'excess'
   [ "${status}" -eq 64 ]
-  run file::replace-text --unknown "${file}" 'value' 'changed'
+  run file__replace-text --unknown "${file}" 'value' 'changed'
   [ "${status}" -eq 64 ]
-  run file::replace-text --all "${file}" 'value' 'changed'
+  run file__replace-text --all "${file}" 'value' 'changed'
   [ "${status}" -eq 64 ]
-  run file::replace-all-text --all "${file}" 'value' 'changed'
+  run file__replace-all-text --all "${file}" 'value' 'changed'
   [ "${status}" -eq 64 ]
   cmp "${original}" "${file}"
 }
@@ -68,15 +68,15 @@ assert_file_content() {
   ln -s "${target}" "${link}"
   mkfifo "${fifo}"
 
-  run file::replace-text '' 'value' 'changed'
+  run file__replace-text '' 'value' 'changed'
   [ "${status}" -eq 64 ]
-  run file::replace-text "${missing}" 'value' 'changed'
+  run file__replace-text "${missing}" 'value' 'changed'
   [ "${status}" -eq 66 ]
-  run file::replace-text "${directory}" 'value' 'changed'
+  run file__replace-text "${directory}" 'value' 'changed'
   [ "${status}" -eq 66 ]
-  run file::replace-text "${link}" 'value' 'changed'
+  run file__replace-text "${link}" 'value' 'changed'
   [ "${status}" -eq 66 ]
-  run file::replace-text "${fifo}" 'value' 'changed'
+  run file__replace-text "${fifo}" 'value' 'changed'
   [ "${status}" -eq 66 ]
   assert_file_content 'value=1' "${target}"
 }
@@ -85,7 +85,7 @@ assert_file_content() {
   local file="${BATS_TEST_TMPDIR}/file name"$'\n''[*?] --all'
   printf 'before' >"${file}"
 
-  file::replace-text "${file}" '^before$' 'after'
+  file__replace-text "${file}" '^before$' 'after'
   assert_file_content 'after' "${file}"
 }
 
@@ -93,7 +93,7 @@ assert_file_content() {
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'a1 a2 a3\n\ta4  a5\nmissing\n' >"${file}"
 
-  file::replace-text "${file}" 'a[0-9]' 'X'
+  file__replace-text "${file}" 'a[0-9]' 'X'
   assert_file_content $'X a2 a3\n\tX  a5\nmissing\n' "${file}"
 }
 
@@ -101,7 +101,7 @@ assert_file_content() {
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'a1 a2 a3\n\ta4  a5\nmissing\n' >"${file}"
 
-  file::replace-all-text "${file}" 'a[0-9]' 'X'
+  file__replace-all-text "${file}" 'a[0-9]' 'X'
   assert_file_content $'X X X\n\tX  X\nmissing\n' "${file}"
 }
 
@@ -109,11 +109,11 @@ assert_file_content() {
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'aaa' >"${file}"
 
-  file::replace-text "${file}" 'a|aa' 'X'
+  file__replace-text "${file}" 'a|aa' 'X'
   assert_file_content 'Xa' "${file}"
 
   printf 'aaa' >"${file}"
-  file::replace-all-text "${file}" 'a|aa' 'X'
+  file__replace-all-text "${file}" 'a|aa' 'X'
   assert_file_content 'XX' "${file}"
 }
 
@@ -121,13 +121,13 @@ assert_file_content() {
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'foo foo\nfoo\n\n' >"${file}"
 
-  file::replace-text "${file}" 'foo$' 'END'
+  file__replace-text "${file}" 'foo$' 'END'
   assert_file_content $'foo END\nEND\n\n' "${file}"
 
-  file::replace-text "${file}" '^foo' 'START'
+  file__replace-text "${file}" '^foo' 'START'
   assert_file_content $'START END\nEND\n\n' "${file}"
 
-  file::replace-text "${file}" '^$' 'EMPTY'
+  file__replace-text "${file}" '^$' 'EMPTY'
   assert_file_content $'START END\nEND\nEMPTY\n' "${file}"
 }
 
@@ -135,11 +135,11 @@ assert_file_content() {
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'cat12 dog3 bird4 猫45 a.b' >"${file}"
 
-  file::replace-all-text \
+  file__replace-all-text \
     "${file}" '(cat|dog|猫)[[:digit:]]+' 'ANIMAL'
   assert_file_content 'ANIMAL ANIMAL bird4 ANIMAL a.b' "${file}"
 
-  file::replace-text "${file}" 'a[.]b$' 'DOT'
+  file__replace-text "${file}" 'a[.]b$' 'DOT'
   assert_file_content 'ANIMAL ANIMAL bird4 ANIMAL DOT' "${file}"
 }
 
@@ -147,15 +147,15 @@ assert_file_content() {
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'a.b axb a/b' >"${file}"
 
-  file::replace-all-text "${file}" 'a.b' 'ANY'
+  file__replace-all-text "${file}" 'a.b' 'ANY'
   assert_file_content 'ANY ANY ANY' "${file}"
 
   printf 'a.b axb' >"${file}"
-  file::replace-all-text "${file}" 'a\.b' 'ESCAPED'
+  file__replace-all-text "${file}" 'a\.b' 'ESCAPED'
   assert_file_content 'ESCAPED axb' "${file}"
 
   printf 'a.b a+b a?b a/b a(b)' >"${file}"
-  file::replace-all-text \
+  file__replace-all-text \
     "${file}" 'a[.]b|a[+]b|a[?]b|a/b|a[(]b[)]' 'LITERAL'
   assert_file_content \
     'LITERAL LITERAL LITERAL LITERAL LITERAL' "${file}"
@@ -165,10 +165,10 @@ assert_file_content() {
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'A1 b2 c3 d4 _5' >"${file}"
 
-  file::replace-all-text "${file}" '[Abc][[:digit:]]' 'CLASS'
+  file__replace-all-text "${file}" '[Abc][[:digit:]]' 'CLASS'
   assert_file_content 'CLASS CLASS CLASS d4 _5' "${file}"
 
-  file::replace-all-text "${file}" '[^[:space:]_][[:digit:]]' 'NEGATED'
+  file__replace-all-text "${file}" '[^[:space:]_][[:digit:]]' 'NEGATED'
   assert_file_content 'CLASS CLASS CLASS NEGATED _5' "${file}"
 }
 
@@ -176,19 +176,19 @@ assert_file_content() {
   local file="${BATS_TEST_TMPDIR}/input"
 
   printf 'a ab abb abbb abbbb' >"${file}"
-  file::replace-all-text "${file}" 'ab+' 'PLUS'
+  file__replace-all-text "${file}" 'ab+' 'PLUS'
   assert_file_content 'a PLUS PLUS PLUS PLUS' "${file}"
 
   printf 'a ab ac' >"${file}"
-  file::replace-all-text "${file}" 'ab?' 'QUESTION'
+  file__replace-all-text "${file}" 'ab?' 'QUESTION'
   assert_file_content 'QUESTION QUESTION QUESTIONc' "${file}"
 
   printf 'ac abc abbc' >"${file}"
-  file::replace-all-text "${file}" 'ab*c' 'STAR'
+  file__replace-all-text "${file}" 'ab*c' 'STAR'
   assert_file_content 'STAR STAR STAR' "${file}"
 
   printf 'ab abb abbb abbbb' >"${file}"
-  file::replace-all-text "${file}" 'ab{2,3}' 'INTERVAL'
+  file__replace-all-text "${file}" 'ab{2,3}' 'INTERVAL'
   assert_file_content 'ab INTERVAL INTERVAL INTERVALb' "${file}"
 }
 
@@ -196,7 +196,7 @@ assert_file_content() {
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'release/main\nhotfix/bug-1\nfeature/topic\nrelease/\n' >"${file}"
 
-  file::replace-text \
+  file__replace-text \
     "${file}" '^(release|hotfix)/([[:alnum:]_-]+)$' 'ACCEPTED'
   assert_file_content \
     $'ACCEPTED\nACCEPTED\nfeature/topic\nrelease/\n' "${file}"
@@ -207,7 +207,7 @@ assert_file_content() {
   printf 'Value value VALUE' >"${file}"
 
   shopt -s nocasematch
-  file::replace-all-text "${file}" 'value' 'MATCH'
+  file__replace-all-text "${file}" 'value' 'MATCH'
   shopt -u nocasematch
 
   assert_file_content 'Value MATCH VALUE' "${file}"
@@ -218,7 +218,7 @@ assert_file_content() {
   local replacement='$1\1&/$HOME;$(touch file);`id`;*?[]'
   printf 'token token' >"${file}"
 
-  file::replace-all-text "${file}" 'token' "${replacement}"
+  file__replace-all-text "${file}" 'token' "${replacement}"
   assert_file_content "${replacement} ${replacement}" "${file}"
   [ ! -e "${BATS_TEST_TMPDIR}/file" ]
 }
@@ -227,11 +227,11 @@ assert_file_content() {
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'abc abc' >"${file}"
 
-  file::replace-all-text "${file}" 'abc' ''
+  file__replace-all-text "${file}" 'abc' ''
   assert_file_content ' ' "${file}"
 
   printf 'bbb' >"${file}"
-  file::replace-text "${file}" 'a*' 'START'
+  file__replace-text "${file}" 'a*' 'START'
   assert_file_content 'STARTbbb' "${file}"
 }
 
@@ -242,12 +242,12 @@ assert_file_content() {
   printf 'alpha=1' >"${file}"
   cp "${file}" "${original}"
 
-  run file::replace-text "${file}" '' 'changed'
+  run file__replace-text "${file}" '' 'changed'
   [ "${status}" -eq 64 ]
   cmp "${original}" "${file}"
 
   for expression in '[' '(' '(?<=alpha)=[0-9]+' 'a*' 'a?' '^' '$'; do
-    run file::replace-all-text "${file}" "${expression}" 'changed'
+    run file__replace-all-text "${file}" "${expression}" 'changed'
     [ "${status}" -eq 64 ]
     cmp "${original}" "${file}"
   done
@@ -259,11 +259,11 @@ assert_file_content() {
   printf 'alpha=1' >"${file}"
   cp "${file}" "${original}"
 
-  run file::replace-text "${file}" $'alpha\nbeta' 'changed'
+  run file__replace-text "${file}" $'alpha\nbeta' 'changed'
   [ "${status}" -eq 64 ]
   cmp "${original}" "${file}"
 
-  run file::replace-text "${file}" 'alpha' $'changed\nvalue'
+  run file__replace-text "${file}" 'alpha' $'changed\nvalue'
   [ "${status}" -eq 64 ]
   cmp "${original}" "${file}"
 }
@@ -272,15 +272,15 @@ assert_file_content() {
   local file="${BATS_TEST_TMPDIR}/input"
 
   printf 'alpha\nbeta\n' >"${file}"
-  file::replace-text "${file}" 'alpha' 'one'
+  file__replace-text "${file}" 'alpha' 'one'
   assert_file_content $'one\nbeta\n' "${file}"
 
   printf 'alpha\r\nbeta\r\n' >"${file}"
-  file::replace-all-text "${file}" 'alpha|beta' 'value'
+  file__replace-all-text "${file}" 'alpha|beta' 'value'
   assert_file_content $'value\r\nvalue\r\n' "${file}"
 
   printf 'alpha\nbeta' >"${file}"
-  file::replace-text "${file}" 'beta$' 'last'
+  file__replace-text "${file}" 'beta$' 'last'
   assert_file_content $'alpha\nlast' "${file}"
 }
 
@@ -290,13 +290,13 @@ assert_file_content() {
   : >"${file}"
   cp "${file}" "${original}"
 
-  run file::replace-text "${file}" 'value' 'changed'
+  run file__replace-text "${file}" 'value' 'changed'
   [ "${status}" -eq 1 ]
   cmp "${original}" "${file}"
 
   printf 'alpha\nbeta\n' >"${file}"
   cp "${file}" "${original}"
-  run file::replace-all-text "${file}" 'missing' 'changed'
+  run file__replace-all-text "${file}" 'missing' 'changed'
   [ "${status}" -eq 1 ]
   cmp "${original}" "${file}"
 }
@@ -309,7 +309,7 @@ assert_file_content() {
 
   printf '\0alpha' >"${file}"
   cp "${file}" "${original}"
-  run file::replace-text "${file}" 'alpha' 'changed'
+  run file__replace-text "${file}" 'alpha' 'changed'
   [ "${status}" -eq 64 ]
   cmp "${original}" "${file}"
 
@@ -318,7 +318,7 @@ assert_file_content() {
   done
   printf '%s\0tail' "${prefix}" >"${file}"
   cp "${file}" "${original}"
-  run file::replace-text "${file}" '^a' 'changed'
+  run file__replace-text "${file}" '^a' 'changed'
   [ "${status}" -eq 64 ]
   cmp "${original}" "${file}"
 }
@@ -334,13 +334,13 @@ assert_file_content() {
   shell_options_before="$(shopt -p)"
   printf 'value=1' >"${file}"
   chmod 751 "${file}"
-  mode_before="$(path::mode "${file}")"
+  mode_before="$(path__mode "${file}")"
   BASH_REMATCH=('caller-value')
 
-  file::replace-text "${file}" 'value=[0-9]+' 'value=X'
+  file__replace-text "${file}" 'value=[0-9]+' 'value=X'
 
   assert_file_content 'value=X' "${file}"
-  [ "$(path::mode "${file}")" = "${mode_before}" ]
+  [ "$(path__mode "${file}")" = "${mode_before}" ]
   [ "${PWD}" = "${directory_before}" ]
   [ "${IFS}" = "${ifs_before}" ]
   [ "$(set +o)" = "${options_before}" ]
@@ -352,7 +352,7 @@ assert_file_content() {
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'same' >"${file}"
 
-  run file::replace-text "${file}" '^same$' 'same'
+  run file__replace-text "${file}" '^same$' 'same'
   [ "${status}" -eq 0 ]
   [ -z "${output}" ]
   assert_file_content 'same' "${file}"
@@ -364,13 +364,13 @@ assert_file_content() {
     'pick abc123 first commit\np def456 second commit\npick fed789 third commit\n' \
     >"${file}"
 
-  file::replace-text \
+  file__replace-text \
     "${file}" '^(pick|p)[[:space:]]+def456' 'edit def456'
   assert_file_content \
     $'pick abc123 first commit\nedit def456 second commit\npick fed789 third commit\n' \
     "${file}"
 
-  file::replace-text \
+  file__replace-text \
     "${file}" '^(pick|p)[[:space:]]+abc123' 'edit abc123'
   assert_file_content \
     $'edit abc123 first commit\nedit def456 second commit\npick fed789 third commit\n' \
@@ -381,12 +381,12 @@ assert_file_content() {
   local file="${BATS_TEST_TMPDIR}/keyboard"
   printf 'BACKSPACE="guess"\nXKBLAYOUT="jp"\nXKBVARIANT=""\n' >"${file}"
 
-  file::replace-text \
+  file__replace-text \
     "${file}" 'XKBLAYOUT="[^"]*"' 'XKBLAYOUT="us"'
   assert_file_content \
     $'BACKSPACE="guess"\nXKBLAYOUT="us"\nXKBVARIANT=""\n' "${file}"
 
-  file::replace-text \
+  file__replace-text \
     "${file}" 'XKBLAYOUT="[^"]*"' 'XKBLAYOUT="jp"'
   assert_file_content \
     $'BACKSPACE="guess"\nXKBLAYOUT="jp"\nXKBVARIANT=""\n' "${file}"

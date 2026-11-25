@@ -13,8 +13,8 @@
 # @exitcode 69 flutter is unavailable.
 # @exitcode other The status of flutter run or cd.
 # @example
-#   flutter::run-chrome-release apps/mobile
-flutter::run-chrome-release() { [[ "$#" -le 1 ]] || return 64; (cd "${1:-.}" && docker::_run-command flutter run --release -d chrome); }
+#   flutter__run-chrome-release apps/mobile
+flutter__run-chrome-release() { [[ "$#" -le 1 ]] || return 64; (cd "${1:-.}" && _docker__run-command flutter run --release -d chrome); }
 
 # @description Run a Flutter project as a Linux desktop application in release mode.
 #
@@ -24,8 +24,8 @@ flutter::run-chrome-release() { [[ "$#" -le 1 ]] || return 64; (cd "${1:-.}" && 
 # @exitcode 69 flutter is unavailable.
 # @exitcode other The status of flutter run or cd.
 # @example
-#   flutter::run-linux-release apps/desktop
-flutter::run-linux-release() { [[ "$#" -le 1 ]] || return 64; (cd "${1:-.}" && docker::_run-command flutter run --release -d linux); }
+#   flutter__run-linux-release apps/desktop
+flutter__run-linux-release() { [[ "$#" -le 1 ]] || return 64; (cd "${1:-.}" && _docker__run-command flutter run --release -d linux); }
 
 # @description Run the Flutter tests of a project with optional flutter test arguments.
 #
@@ -35,8 +35,8 @@ flutter::run-linux-release() { [[ "$#" -le 1 ]] || return 64; (cd "${1:-.}" && d
 # @exitcode 69 flutter is unavailable.
 # @exitcode other The status of flutter test or cd.
 # @example
-#   flutter::test apps/mobile --name 'login'
-flutter::test() { [[ "$#" -ge 0 ]] || return 64; local directory='.'; [[ "$#" -gt 0 && -d "$1" ]] && { directory="$1"; shift; }; (cd "$directory" && docker::_run-command flutter test "$@"); }
+#   flutter__test apps/mobile --name 'login'
+flutter__test() { [[ "$#" -ge 0 ]] || return 64; local directory='.'; [[ "$#" -gt 0 && -d "$1" ]] && { directory="$1"; shift; }; (cd "$directory" && _docker__run-command flutter test "$@"); }
 
 # @description Run the Flutter tests with coverage and write the LCOV HTML report.
 #
@@ -47,12 +47,12 @@ flutter::test() { [[ "$#" -ge 0 ]] || return 64; local directory='.'; [[ "$#" -g
 # @exitcode 69 flutter or genhtml is unavailable.
 # @exitcode other The status of flutter test or genhtml.
 # @example
-#   flutter::coverage '' apps/mobile
-flutter::coverage() {
+#   flutter__coverage '' apps/mobile
+flutter__coverage() {
   [[ "$#" -le 2 ]] || return 64
   local directory="${2:-.}" output="${1:-}"
-  command::require flutter || return "$?"
-  command::require genhtml || return "$?"
+  command__require flutter || return "$?"
+  command__require genhtml || return "$?"
   [[ -n "${output}" ]] || output="${directory%/}/coverage/html"
   (cd -- "${directory}" && flutter test --coverage) || return "$?"
   genhtml "${directory%/}/coverage/lcov.info" -o "${output}"
@@ -70,14 +70,14 @@ flutter::coverage() {
 # @exitcode 66 The directory is not a Git checkout.
 # @exitcode other The status of the git command that failed.
 # @example
-#   flutter::use-version 3.24.3
-flutter::use-version() {
+#   flutter__use-version 3.24.3
+flutter__use-version() {
   [[ "$#" -le 2 ]] || return 64
   local version='' directory=''
   if [[ "$#" -ge 1 ]]; then version="$1"; fi
   if [[ "$#" -ge 2 ]]; then directory="$2"; else directory="$HOME/.local/flutter"; fi
   [[ -d "$directory/.git" ]] || return 66
-  [[ -n "$version" ]] || version="$(flutter::versions | package::_latest-stable-version)" || return "$?"
+  [[ -n "$version" ]] || version="$(flutter__versions | _package__latest-stable-version)" || return "$?"
   git -C "$directory" fetch --tags origin || return "$?"
   if ! git -C "$directory" stash push --include-untracked; then
     git -C "$directory" reset --hard HEAD || return "$?"
@@ -96,21 +96,21 @@ flutter::use-version() {
 # @exitcode 69 Python 3 is unavailable, or the platform is unsupported.
 # @exitcode 74 The release index could not be downloaded or read.
 # @example
-#   flutter::versions | tail -n 1
-flutter::versions() {
+#   flutter__versions | tail -n 1
+flutter__versions() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' index='linux' json='' versions=''
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package__platform)" || return "$?"
   [[ "${platform}" != 'darwin' ]] || index='macos'
-  json="$(package::_fetch "https://storage.googleapis.com/flutter_infra_release/releases/releases_${index}.json")" || return "$?"
-  versions="$(printf '%s' "${json}" | python::_run-json 74 '
+  json="$(_package__fetch "https://storage.googleapis.com/flutter_infra_release/releases/releases_${index}.json")" || return "$?"
+  versions="$(printf '%s' "${json}" | _python__run-json 74 '
 import re
 for release in data["releases"]:
     version = release.get("version") or ""
     if release.get("channel") == "stable" and re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
         print(version)
 ')" || return "$?"
-  printf '%s\n' "${versions}" | package::_sort-stable-versions
+  printf '%s\n' "${versions}" | _package__sort-stable-versions
 }
 
 # @description Install packages required to build Flutter applications.
@@ -122,28 +122,28 @@ for release in data["releases"]:
 # @exitcode 74 The C++ development package could not be determined.
 # @exitcode other The status of the package manager.
 # @example
-#   flutter::dependencies::install
-flutter::dependencies::install() {
+#   flutter__dependencies__install
+flutter__dependencies__install() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' library=''
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package__platform)" || return "$?"
   case "${platform}" in
     darwin)
-      command::require git || return "$?"
-      command::require curl
+      command__require git || return "$?"
+      command__require curl
       ;;
     ubuntu)
-      package::_refresh || return "$?"
-      command::require apt-cache || return "$?"
+      _package__refresh || return "$?"
+      command__require apt-cache || return "$?"
       library="$(apt-cache pkgnames 'libstdc++-' |
         awk '/^libstdc\+\+-[0-9]+-dev$/ {name=$0; sub(/^libstdc\+\+-/, "", $0); sub(/-dev$/, "", $0); print $0, name}' |
         sort -n | tail -n 1 | awk '{print $2}')" || return 74
       [[ -n "${library}" ]] || return 69
-      package::_install curl git unzip xz-utils zip libglu1-mesa clang cmake ninja-build \
+      _package__install curl git unzip xz-utils zip libglu1-mesa clang cmake ninja-build \
         pkg-config libgtk-3-dev "${library}"
       ;;
     fedora)
-      package::_install curl git unzip xz zip mesa-libGLU clang cmake ninja-build \
+      _package__install curl git unzip xz zip mesa-libGLU clang cmake ninja-build \
         pkgconf-pkg-config gtk3-devel libstdc++-devel
       ;;
   esac
@@ -167,30 +167,30 @@ flutter::dependencies::install() {
 # @exitcode 73 The directory is neither empty nor a Flutter SDK.
 # @exitcode other The status of the dependency installation, git, or flutter.
 # @example
-#   flutter::install 3.35.7
+#   flutter__install 3.35.7
 #   flutter doctor
-flutter::install() {
+flutter__install() {
   [[ "$#" -le 2 ]] || return 64
   local version="${1:-}" directory="${2:-${HOME}/.local/flutter}"
   ( [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ) || return 64
-  flutter::dependencies::install || return "$?"
+  flutter__dependencies__install || return "$?"
   if [[ -z "${version}" ]]; then
-    version="$(flutter::versions | package::_latest-stable-version)" || return "$?"
+    version="$(flutter__versions | _package__latest-stable-version)" || return "$?"
   fi
   if [[ -e "${directory}" ]]; then
     if [[ -x "${directory}/bin/flutter" && -d "${directory}/.git" ]]; then
-      flutter::use-version "${version}" "${directory}" || return "$?"
-    elif ! path::is-empty-directory "${directory}"; then
-      console::_write-error "Directory is not a Flutter SDK: ${directory}"
+      flutter__use-version "${version}" "${directory}" || return "$?"
+    elif ! path__is-empty-directory "${directory}"; then
+      _console__write-error "Directory is not a Flutter SDK: ${directory}"
       return 73
     fi
   fi
-  mkdir -p -- "$(path::directory-name "${directory}")" || return 74
+  mkdir -p -- "$(path__directory-name "${directory}")" || return 74
   if [[ ! -d "${directory}/.git" ]]; then
     git clone --branch "${version}" https://github.com/flutter/flutter.git "${directory}" ||
       return "$?"
   fi
   [[ -x "${directory}/bin/flutter" ]] || return 69
-  env::add-path "${directory}/bin" || return "$?"
+  env__add-path "${directory}/bin" || return "$?"
   "${directory}/bin/flutter" --version
 }

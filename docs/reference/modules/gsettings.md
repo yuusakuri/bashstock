@@ -8,17 +8,17 @@ Values are parsed as GVariant text, so quoted commas and escapes are kept.
 
 ## Index
 
-* [gsettings::string-array::add](#gsettingsstring-arrayadd)
-* [gsettings::string-array::remove](#gsettingsstring-arrayremove)
+* [gsettings__string-array__add](#gsettings__string-array__add)
+* [gsettings__string-array__remove](#gsettings__string-array__remove)
 
-### gsettings::string-array::add
+### gsettings__string-array__add
 
 Add a literal value to a GSettings string array when it is absent.
 
 #### Example
 
 ```bash
-gsettings::string-array::add org.gnome.shell favorite-apps code.desktop
+gsettings__string-array__add org.gnome.shell favorite-apps code.desktop
 ```
 
 #### Arguments
@@ -33,14 +33,14 @@ gsettings::string-array::add org.gnome.shell favorite-apps code.desktop
 * **64**: The value is empty or contains a newline, or the argument count is not three.
 * other The status of gsettings.
 
-### gsettings::string-array::remove
+### gsettings__string-array__remove
 
 Remove every element equal to a literal value from a GSettings string array.
 
 #### Example
 
 ```bash
-gsettings::string-array::remove org.gnome.shell favorite-apps firefox.desktop
+gsettings__string-array__remove org.gnome.shell favorite-apps firefox.desktop
 ```
 
 #### Arguments

@@ -8,10 +8,10 @@ set -euo pipefail
 [[ -n "${GITHUB_ACTIONS:-}" ]] || exit 64
 source ./dist/bashstock.sh
 
-claude-desktop::install
-claude-code::install
-codex::install
-chatgpt::install
+claude-desktop__install
+claude-code__install
+codex__install
+chatgpt__install
 
 [[ -d /Applications/Claude.app ]]
 [[ -d /Applications/ChatGPT.app ]]

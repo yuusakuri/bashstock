@@ -5,9 +5,9 @@ bats_require_minimum_version 1.5.0
 
 @test "write-text and append-text create files as 0644 whatever the umask, and preserve shell state" {
   local mask='' function='' file='' actual=''
-  for function in file::write-text file::append-text; do
+  for function in file__write-text file__append-text; do
     for mask in 0022 0002 0077 0777; do
-      file="${BATS_TEST_TMPDIR}/${function##*::}-${mask}"
+      file="${BATS_TEST_TMPDIR}/${function##*__}-${mask}"
       run bash -c 'source "$1"; umask "$2"; before="$(umask)"; "$4" "$3" "literal text" && test "$(umask)" = "$before"' \
         _ "${PROJECT_ROOT}/dist/bashstock.sh" "${mask}" "${file}" "${function}"
       [ "${status}" -eq 0 ]
@@ -25,7 +25,7 @@ bats_require_minimum_version 1.5.0
   local file="${BATS_TEST_TMPDIR}/private"
   printf 'previous' >"${file}"
   chmod 640 "${file}"
-  run bash -c 'source "$1"; umask 077; file::write-text "$2" ""' _ "${PROJECT_ROOT}/dist/bashstock.sh" "${file}"
+  run bash -c 'source "$1"; umask 077; file__write-text "$2" ""' _ "${PROJECT_ROOT}/dist/bashstock.sh" "${file}"
   [ "${status}" -eq 0 ]
   [ ! -s "${file}" ]
   case "$(uname -s)" in
@@ -38,7 +38,7 @@ bats_require_minimum_version 1.5.0
   local target="${BATS_TEST_TMPDIR}/target" link="${BATS_TEST_TMPDIR}/link"
   printf 'original' >"${target}"
   ln -s "${target}" "${link}"
-  run file::write-text "${link}" 'replacement'
+  run file__write-text "${link}" 'replacement'
   [ "${status}" -eq 64 ]
   [ -L "${link}" ]
   [ "$(<"${target}")" = original ]
@@ -46,27 +46,27 @@ bats_require_minimum_version 1.5.0
 
 @test "utility file and environment functions preserve literal values" {
   local file="${BATS_TEST_TMPDIR}/value file"
-  run file::write-text "$file" 'a$HOME\nvalue'
+  run file__write-text "$file" 'a$HOME\nvalue'
   [ "${status}" -eq 0 ]
   [ "$(<"$file")" = 'a$HOME\nvalue' ]
 
-  run file::replace-text-or-append "$file" '^missing=' 'missing=value'
+  run file__replace-text-or-append "$file" '^missing=' 'missing=value'
   [ "${status}" -eq 0 ]
   [[ "$(<"$file")" == *'missing=value'* ]]
 
   local dotenv="${BATS_TEST_TMPDIR}/env"
   printf 'BASHSTOCK_TEST_VALUE="literal value"\n' >"$dotenv"
-  env::dotenv::import "$dotenv"
+  env__dotenv__import "$dotenv"
   [ "${BASHSTOCK_TEST_VALUE}" = 'literal value' ]
 }
 
 @test "utility time and memory functions return documented forms" {
-  run time::sleep-hours -1
+  run time__sleep-hours -1
   [ "${status}" -eq 64 ]
-  run mem::physical-total-bytes
+  run mem__physical-total-bytes
   [ "${status}" -eq 0 ]
   [[ "${output}" =~ ^[0-9]+$ ]]
-  run mem::physical-total-gibibytes
+  run mem__physical-total-gibibytes
   [ "${status}" -eq 0 ]
   [[ "${output}" =~ ^[0-9]+\.[0-9]{2}$ ]]
 }
@@ -74,14 +74,14 @@ bats_require_minimum_version 1.5.0
 @test "utility symlink and directory functions are safe" {
   local source="${BATS_TEST_TMPDIR}/source" link="${BATS_TEST_TMPDIR}/link" directory="${BATS_TEST_TMPDIR}/directory"
   printf 'source' >"$source"
-  run symlink::create "$source" "$link"
+  run symlink__create "$source" "$link"
   [ "${status}" -eq 0 ]
   [ -L "$link" ]
-  run symlink::remove "$link"
+  run symlink__remove "$link"
   [ "${status}" -eq 0 ]
   mkdir -p "$directory/sub"
   printf 'x' >"$directory/sub/file"
-  run dir::clear "$directory"
+  run dir__clear "$directory"
   [ "${status}" -eq 0 ]
   [ -d "$directory" ]
   [ ! -e "$directory/sub" ]
@@ -92,10 +92,10 @@ bats_require_minimum_version 1.5.0
   mkdir "$repository"
   git -C "$repository" init -q
   git -C "$repository" -c user.name=test -c user.email=test@example.invalid commit --allow-empty -m initial -q
-  run git::branch::current "$repository"
+  run git__branch__current "$repository"
   [ "${status}" -eq 0 ]
   [ "${output}" = "$(git -C "$repository" branch --show-current)" ]
-  run git::branch::create topic HEAD "$repository"
+  run git__branch__create topic HEAD "$repository"
   [ "${status}" -eq 0 ]
   git -C "$repository" show-ref --verify --quiet refs/heads/topic
 }
@@ -107,13 +107,13 @@ bats_require_minimum_version 1.5.0
   chmod 600 "$include"
   printf 'Include %s\nMatch all\n  ForwardAgent no\n' "$include" >"$config"
 
-  run ssh::config::set "$config" '*.example' User alice
+  run ssh__config__set "$config" '*.example' User alice
   [ "${status}" -eq 0 ]
-  run ssh::config::enable-auto-add-keys "$config" '*.example'
+  run ssh__config__enable-auto-add-keys "$config" '*.example'
   [ "${status}" -eq 0 ]
-  run ssh::config::disable-host-key-checking "$config" '*.example'
+  run ssh__config__disable-host-key-checking "$config" '*.example'
   [ "${status}" -eq 0 ]
-  run ssh::config::set "$config" 'foo.example bar.example !bad.example' ProxyJump none
+  run ssh__config__set "$config" 'foo.example bar.example !bad.example' ProxyJump none
   [ "${status}" -eq 0 ]
   [ "$(grep -F -c '# bashstock: begin *.example' "$config")" -eq 1 ]
   grep -Fq '  User alice' "$config"
@@ -132,16 +132,16 @@ bats_require_minimum_version 1.5.0
   local config="${BATS_TEST_TMPDIR}/ssh-config"
   printf 'User alice\nPort 2222\n' >"$config"
 
-  run ssh::config::set "$config" managed.example User bob
+  run ssh__config__set "$config" managed.example User bob
   [ "${status}" -eq 0 ]
   [ "$(ssh -G -F "$config" other.example | grep '^user ')" = 'user alice' ]
   [ "$(ssh -G -F "$config" other.example | grep '^port ')" = 'port 2222' ]
   [ "$(ssh -G -F "$config" managed.example | grep '^user ')" = 'user bob' ]
   [ "$(ssh -G -F "$config" managed.example | grep '^port ')" = 'port 2222' ]
 
-  run ssh::config::set "$config" second.example User carol
+  run ssh__config__set "$config" second.example User carol
   [ "${status}" -eq 0 ]
-  run ssh::config::set "$config" managed.example Port 22
+  run ssh__config__set "$config" managed.example Port 22
   [ "${status}" -eq 0 ]
   [ "$(ssh -G -F "$config" other.example | grep '^user ')" = 'user alice' ]
   [ "$(ssh -G -F "$config" managed.example | grep '^port ')" = 'port 22' ]
@@ -153,7 +153,7 @@ bats_require_minimum_version 1.5.0
   local config="${BATS_TEST_TMPDIR}/ssh-config"
   printf '# bashstock: begin managed.example\nHost managed.example\n  user alice\n# bashstock: end\n' >"$config"
 
-  run ssh::config::set "$config" managed.example User bob
+  run ssh__config__set "$config" managed.example User bob
   [ "${status}" -eq 0 ]
   [ "$(ssh -G -F "$config" managed.example | grep '^user ')" = 'user bob' ]
   ! grep -Fq 'user alice' "$config"
@@ -164,7 +164,7 @@ bats_require_minimum_version 1.5.0
   local config="${BATS_TEST_TMPDIR}/ssh-config" before=''
   printf '# bashstock: begin managed.example\nHost managed.example\n  User alice\nHost other.example\n  Port 2222\n' >"$config"
   before="$(<"$config")"
-  run --separate-stderr ssh::config::set "$config" managed.example User bob
+  run --separate-stderr ssh__config__set "$config" managed.example User bob
   [ "${status}" -eq 65 ]
   [ "$(<"$config")" = "${before}" ]
 }
@@ -175,7 +175,7 @@ bats_require_minimum_version 1.5.0
   mkdir -p "$directory"
   ssh-keygen -q -t ed25519 -N '' -f "$key"
   printf 'not a key\n' >"${directory}/notes.txt"
-  run ssh::key::private-files "$directory"
+  run ssh__key__private-files "$directory"
   [ "${status}" -eq 0 ]
   [ "${output}" = "$key" ]
 }
@@ -191,7 +191,7 @@ bats_require_minimum_version 1.5.0
     'BASHSTOCK_HASH=a#b' \
     'BASHSTOCK_EMPTY=' >"$file"
   printf 'BASHSTOCK_CRLF=value\r\n' >>"$file"
-  env::dotenv::import "$file"
+  env__dotenv__import "$file"
   [ "$BASHSTOCK_PLAIN" = 'plain value' ]
   [ "$BASHSTOCK_SINGLE" = 'a $HOME \n literal' ]
   [ "$BASHSTOCK_DOUBLE" = $'tab\there "quoted" $HOME' ]
@@ -204,13 +204,13 @@ bats_require_minimum_version 1.5.0
   local invalid="${BATS_TEST_TMPDIR}/invalid.env"
   printf 'BASHSTOCK_FIRST=changed\nBASHSTOCK_SECOND="unterminated\n' >"$invalid"
   BASHSTOCK_FIRST=original
-  run --separate-stderr env::dotenv::import "$invalid"
+  run --separate-stderr env__dotenv__import "$invalid"
   [ "$status" -eq 65 ]
   [[ "$stderr" == *'line 2'* ]]
-  env::dotenv::import "$invalid" 2>/dev/null || true
+  env__dotenv__import "$invalid" 2>/dev/null || true
   [ "$BASHSTOCK_FIRST" = original ]
   printf '1BAD=value\n' >"$invalid"
-  run env::dotenv::import "$invalid"
+  run env__dotenv__import "$invalid"
   [ "$status" -eq 65 ]
 }
 
@@ -219,10 +219,10 @@ bats_require_minimum_version 1.5.0
   mkdir -p "$HOME/project"
   printf 'BASHSTOCK_REGISTERED="from dotenv"\n' >"$HOME/project/my values.env"
   cd "$HOME/project"
-  env::dotenv::register 'my values.env'
-  env::dotenv::register "$HOME/project/./my values.env"
-  [ "$(grep -c 'env::dotenv::import' "$HOME/.bashrc")" -eq 1 ]
-  [ "$(grep -c 'env::dotenv::_export-commands' "$HOME/.zshrc")" -eq 1 ]
+  env__dotenv__register 'my values.env'
+  env__dotenv__register "$HOME/project/./my values.env"
+  [ "$(grep -c 'env__dotenv__import' "$HOME/.bashrc")" -eq 1 ]
+  [ "$(grep -c '_env__dotenv__export-commands' "$HOME/.zshrc")" -eq 1 ]
   grep -Fq "$(printf '%q' "$HOME/project/my values.env")" "$HOME/.bashrc"
   run env -i HOME="$HOME" PATH="$PATH" bash -c 'source "$HOME/.bashrc"; printf "%s" "$BASHSTOCK_REGISTERED"'
   [ "$output" = 'from dotenv' ]
@@ -230,28 +230,28 @@ bats_require_minimum_version 1.5.0
     run env -i HOME="$HOME" PATH="$PATH" zsh -c 'source "$HOME/.zshrc"; printf "%s" "$BASHSTOCK_REGISTERED"'
     [ "$output" = 'from dotenv' ]
   fi
-  run env::dotenv::register "$HOME/project/my values.env" fish
+  run env__dotenv__register "$HOME/project/my values.env" fish
   [ "$status" -eq 64 ]
 }
 
 @test "editor and completion settings reach new shells without duplicates" {
   HOME="${BATS_TEST_TMPDIR}/home"
   mkdir -p "$HOME"
-  shell::editor::set-default
-  shell::editor::set-default
+  shell__editor__set-default
+  shell__editor__set-default
   [ "$EDITOR" = 'code --wait' ]
   [ "$(grep -c '^export EDITOR=' "$HOME/.bashrc")" -eq 1 ]
   [ ! -e "$HOME/.zshrc" ]
-  shell::editor::set-default 'code --wait' bash,zsh
+  shell__editor__set-default 'code --wait' bash,zsh
   [ "$(grep -c '^export EDITOR=' "$HOME/.zshrc")" -eq 1 ]
   run env -i HOME="$HOME" bash -c 'source "$HOME/.bashrc"; printf "%s" "$EDITOR"' </dev/null
   [ "$output" = 'code --wait' ]
-  shell::editor::set-default vim bash
+  shell__editor__set-default vim bash
   run env -i HOME="$HOME" bash -c 'source "$HOME/.bashrc"; printf "%s" "$EDITOR"' </dev/null
   [ "$output" = vim ]
 
-  shell::completion::enable-ignore-case
-  shell::completion::enable-ignore-case
+  shell__completion__enable-ignore-case
+  shell__completion__enable-ignore-case
   [ "$(grep -c '^set completion-ignore-case on$' "$HOME/.inputrc")" -eq 1 ]
   if [[ -r /etc/inputrc ]]; then [ "$(head -n 1 "$HOME/.inputrc")" = '$include /etc/inputrc' ]; fi
   [ "$(grep -cF "zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'" "$HOME/.zshrc")" -eq 1 ]
@@ -275,7 +275,7 @@ bats_require_minimum_version 1.5.0
       *) printf '%s\n' "$HOME" ;;
     esac
   }
-  run --separate-stderr user::directory::create-english-links "$home"
+  run --separate-stderr user__directory__create-english-links "$home"
   [ "$status" -eq 73 ]
   [[ "$stderr" == *"$home/Pictures"* ]]
   [ "$(readlink "$home/Desktop")" = "$home/デスクトップ" ]
@@ -288,7 +288,7 @@ bats_require_minimum_version 1.5.0
   [ ! -e "$home/Videos" ] && [ ! -e "$home/ビデオ" ]
 
   rm -f "$home/Pictures"
-  run user::directory::create-english-links "$home"
+  run user__directory__create-english-links "$home"
   [ "$status" -eq 0 ]
   [ "$(readlink "$home/Pictures")" = "$home/画像" ]
 }
@@ -303,7 +303,7 @@ bats_require_minimum_version 1.5.0
   : >"$HOME/.ssh/authorized_keys"
   : >"$HOME/.ssh/known_hosts"
   chmod 777 "$HOME/.ssh" "$HOME/.ssh/sockets" "$HOME/.ssh"/*
-  ssh::setup-directory
+  ssh__setup-directory
   mode() { case "$(uname -s)" in Darwin) stat -f '%Lp' "$1" ;; *) stat -c '%a' "$1" ;; esac; }
   [ "$(mode "$HOME/.ssh")" = 700 ]
   [ "$(mode "$HOME/.ssh/sockets")" = 700 ]
@@ -323,10 +323,10 @@ bats_require_minimum_version 1.5.0
   git config --global --add credential.helper manager
   git config --global --add credential.helper ''
   git config --global --add credential.helper "${HOME}/.local/bin/git-credential-manager"
-  run git::config::use-credential-manager
+  run git__config__use-credential-manager
   [ "${status}" -eq 0 ]
   [ "$(git config --global --get-all credential.helper)" = manager ]
-  run git::config::use-credential-manager
+  run git__config__use-credential-manager
   [ "${status}" -eq 0 ]
   [ "$(git config --global --get-all credential.helper)" = manager ]
 }
@@ -335,32 +335,32 @@ bats_require_minimum_version 1.5.0
   HOME="${BATS_TEST_TMPDIR}/home"
   mkdir -p "$HOME"
   unset GIT_CONFIG_GLOBAL GIT_EMAIL GIT_USERNAME
-  terminal::is-available() { return 1; }
-  run --separate-stderr git::config::set-email
+  terminal__is-available() { return 1; }
+  run --separate-stderr git__config__set-email
   [ "$status" -eq 66 ]
   [[ "$stderr" == *GIT_EMAIL* ]]
-  git::config::set-email first@example.invalid
+  git__config__set-email first@example.invalid
   [ "$(git config --global user.email)" = first@example.invalid ]
-  GIT_EMAIL=second@example.invalid git::config::set-email
+  GIT_EMAIL=second@example.invalid git__config__set-email
   [ "$(git config --global user.email)" = second@example.invalid ]
-  git::config::set-email
+  git__config__set-email
   [ "$(git config --global user.email)" = second@example.invalid ]
-  run git::config::set-email $'two\nlines'
+  run git__config__set-email $'two\nlines'
   [ "$status" -eq 64 ]
 
-  GIT_USERNAME='Test User' git::config::setup
+  GIT_USERNAME='Test User' git__config__setup
   [ "$(git config --global user.name)" = 'Test User' ]
   [ "$(git config --global init.defaultBranch)" = main ]
   [ "$(git config --global pull.rebase)" = true ]
   [ "$(git config --global fetch.prune)" = true ]
-  git::config::set-http-buffer
+  git__config__set-http-buffer
   [ "$(git config --global http.postBuffer)" = 524288000 ]
-  run git::config::set-default-branch 'bad..name'
+  run git__config__set-default-branch 'bad..name'
   [ "$status" -eq 64 ]
-  run --separate-stderr git::config::use-gpg-credential-store
+  run --separate-stderr git__config__use-gpg-credential-store
   [ "$status" -eq 0 ]
   [ "$(git config --global credential.credentialStore)" = gpg ]
-  [[ "$stderr" == *pass::store::init* ]]
+  [[ "$stderr" == *pass__store__init* ]]
 }
 
 @test "directory merge moves every entry, overwrites conflicts, and removes the source" {
@@ -371,21 +371,21 @@ bats_require_minimum_version 1.5.0
   printf 'kept\n' >"$destination/nested/other"
   printf 'hidden\n' >"$source/.hidden"
   ln -s /nonexistent "$source/link"
-  run dir::merge "$source" "$destination"
+  run dir__merge "$source" "$destination"
   [ "$status" -eq 0 ]
   [ ! -e "$source" ]
   [ "$(<"$destination/nested/same")" = new ]
   [ "$(<"$destination/nested/other")" = kept ]
   [ "$(<"$destination/.hidden")" = hidden ]
   [ "$(readlink "$destination/link")" = /nonexistent ]
-  run dir::merge "${BATS_TEST_TMPDIR}/missing" "$destination"
+  run dir__merge "${BATS_TEST_TMPDIR}/missing" "$destination"
   [ "$status" -eq 64 ]
 }
 
 @test "POSIX time zones invert the ISO offset sign and keep minutes" {
   local offset='' expected=''
   while read -r offset expected; do
-    run time::posix-timezone "$offset"
+    run time__posix-timezone "$offset"
     [ "$status" -eq 0 ]
     [ "$output" = "$expected" ]
   done <<'TABLE'
@@ -398,7 +398,7 @@ Z UTC0
 -03:45 UTC+3:45
 TABLE
   for offset in 3600 +24:00 +09:60 +9:00 UTC; do
-    run time::posix-timezone "$offset"
+    run time__posix-timezone "$offset"
     [ "$status" -eq 64 ]
   done
 }
@@ -406,12 +406,12 @@ TABLE
 @test "date-time directories get a numbered suffix when the name exists" {
   local parent="${BATS_TEST_TMPDIR}/parent"
   mkdir -p "$parent"
-  time::local-date-time-seconds-basic() { printf '20260102T030405\n'; }
-  run dir::create-with-date-time "$parent"
+  time__local-date-time-seconds-basic() { printf '20260102T030405\n'; }
+  run dir__create-with-date-time "$parent"
   [ "$output" = "$parent/20260102T030405" ]
-  run dir::create-with-date-time "$parent"
+  run dir__create-with-date-time "$parent"
   [ "$output" = "$parent/20260102T030405-2" ]
-  run dir::create-with-date-time "$parent"
+  run dir__create-with-date-time "$parent"
   [ "$output" = "$parent/20260102T030405-3" ]
   [ -d "$parent/20260102T030405-3" ]
 }
@@ -421,18 +421,18 @@ TABLE
   mkdir -p "$HOME/data/.hidden" "${BATS_TEST_TMPDIR}/target"
   printf 'kept\n' >"${BATS_TEST_TMPDIR}/target/file"
   ln -s "${BATS_TEST_TMPDIR}/target" "${BATS_TEST_TMPDIR}/link"
-  run dir::clear /
+  run dir__clear /
   [ "$status" -eq 64 ]
-  run dir::clear "$HOME"
+  run dir__clear "$HOME"
   [ "$status" -eq 64 ]
-  run dir::clear "$HOME/data/.."
+  run dir__clear "$HOME/data/.."
   [ "$status" -eq 64 ]
-  run dir::clear ''
+  run dir__clear ''
   [ "$status" -eq 64 ]
-  run dir::clear "${BATS_TEST_TMPDIR}/link"
+  run dir__clear "${BATS_TEST_TMPDIR}/link"
   [ "$status" -eq 64 ]
   [ -f "${BATS_TEST_TMPDIR}/target/file" ]
-  run dir::clear "$HOME/data"
+  run dir__clear "$HOME/data"
   [ "$status" -eq 0 ]
   [ -d "$HOME/data" ] && [ -z "$(ls -A "$HOME/data")" ]
 }
@@ -443,24 +443,24 @@ TABLE
   printf 'value\n' >"$work/content/dir/file"
   ln -s file "$work/content/dir/inner-link"
   tar -czf "$work/good.tgz" -C "$work/content" .
-  run archive::extract-file "$work/good.tgz"
+  run archive__extract-file "$work/good.tgz"
   [ "$status" -eq 0 ]
   [ "$(<"$work/good/dir/file")" = value ]
   [ "$(readlink "$work/good/dir/inner-link")" = file ]
   [ -z "$(find "$work/good" -name '.bashstock-extract.*')" ]
   printf 'old\n' >"$work/good/dir/file"
-  run archive::extract-file "$work/good.tgz" "$work/good"
+  run archive__extract-file "$work/good.tgz" "$work/good"
   [ "$(<"$work/good/dir/file")" = value ]
 
   ln -s ../../outside "$work/evil/escape"
   tar -czf "$work/bad.tar.gz" -C "$work/evil" .
-  run --separate-stderr archive::extract-file "$work/bad.tar.gz"
+  run --separate-stderr archive__extract-file "$work/bad.tar.gz"
   [ "$status" -eq 65 ]
   [[ "$stderr" == *escape* ]]
   [ -d "$work/bad" ] && [ -z "$(ls -A "$work/bad")" ]
   if command -v zip >/dev/null 2>&1 && command -v unzip >/dev/null 2>&1; then
     (cd "$work/content" && zip -qry "$work/good.zip" .)
-    run archive::extract-file "$work/good.zip"
+    run archive__extract-file "$work/good.zip"
     [ "$status" -eq 0 ]
     [ "$(<"$work/good/dir/file")" = value ]
   fi
@@ -478,16 +478,16 @@ TABLE
     tar -cf - -C "$work/content" . | "${format%%:*}" -c >"$work/sample.$(cut -d: -f2 <<<"$format")"
     "${format%%:*}" -c "$work/single/note.txt" >"$work/note.txt.${format##*:}"
   done
-  seven="$(archive::_7zip 2>/dev/null)" || seven=''
+  seven="$(_archive__7zip 2>/dev/null)" || seven=''
   if [[ -n "$seven" ]]; then
     (cd "$work/content" && "$seven" a -snl "$work/sample.7z" . >/dev/null)
   fi
   rm -rf "$work/single"
 
-  run archive::verify "$work"
+  run archive__verify "$work"
   [ "$status" -eq 0 ]
   for file in "$work"/sample.* "$work"/note.txt.*; do
-    run archive::extract-file "$file" "$work/out/${file##*/}"
+    run archive__extract-file "$file" "$work/out/${file##*/}"
     [ "$status" -eq 0 ]
     case "$file" in
       */note.txt.*) [ "$(<"$work/out/${file##*/}/note.txt")" = line ] ;;
@@ -498,12 +498,12 @@ TABLE
     esac
   done
 
-  run archive::extract-file "$work/note.txt.gz"
+  run archive__extract-file "$work/note.txt.gz"
   [ "$status" -eq 0 ]
   [ "$(<"$work/note.txt")" = line ]
   mkdir "$work/blocked" "$work/blocked/note.txt"
   cp "$work/note.txt.gz" "$work/blocked/"
-  run archive::extract-file "$work/blocked/note.txt.gz"
+  run archive__extract-file "$work/blocked/note.txt.gz"
   [ "$status" -eq 73 ]
 }
 
@@ -516,17 +516,17 @@ TABLE
   printf 'not gzip' >"$work/plain.gz"
   printf 'not a tar archive' >"$work/random.tar"
 
-  run --separate-stderr archive::verify "$work"
+  run --separate-stderr archive__verify "$work"
   [ "$status" -eq 1 ]
   [[ "$stderr" == *truncated.tgz* && "$stderr" == *plain.gz* && "$stderr" == *random.tar* ]]
   [[ "$stderr" != *good.tar.gz* ]]
   [ -f "$work/truncated.tgz" ]
 
-  run archive::remove-broken "$work"
+  run archive__remove-broken "$work"
   [ "$status" -eq 1 ]
   [ -f "$work/good.tar.gz" ]
   [ ! -e "$work/truncated.tgz" ] && [ ! -e "$work/plain.gz" ] && [ ! -e "$work/random.tar" ]
-  run archive::remove-broken "$work"
+  run archive__remove-broken "$work"
   [ "$status" -eq 0 ]
 
   # Without zstd and 7-Zip the archives cannot be verified, so they stay.
@@ -538,7 +538,7 @@ TABLE
   ln -s "$(command -v mktemp)" "$limited/mktemp"
   ln -s "$(command -v rm)" "$limited/rm"
   status=0
-  (PATH="$limited" && archive::remove-broken "$work") 2>"$work.err" || status="$?"
+  (PATH="$limited" && archive__remove-broken "$work") 2>"$work.err" || status="$?"
   [ "$status" -eq 0 ]
   [ -f "$work/data.zst" ] && [ -f "$work/data.7z" ] && [ -f "$work/good.tar.gz" ]
   [[ "$(<"$work.err")" == *zstd* && "$(<"$work.err")" == *7-Zip* ]]
@@ -546,7 +546,7 @@ TABLE
 
   if command -v zip >/dev/null 2>&1 && command -v unzip >/dev/null 2>&1; then
     (cd "$work/content" && zip -q -P secret "$work/encrypted.zip" file)
-    run --separate-stderr archive::remove-broken "$work"
+    run --separate-stderr archive__remove-broken "$work"
     [ "$status" -eq 0 ]
     [ -f "$work/encrypted.zip" ]
     [[ "$stderr" == *'encrypted.zip is encrypted'* ]]
@@ -559,30 +559,30 @@ TABLE
   printf 'needle here\n' >"$root/Sub Dir/Match.TXT"
   printf 'nothing\n' >"$root/other.txt"
   printf 'needle\0binary' >"$root/binary.bin"
-  [ "$(path::find '\.txt$' "$root" | tr '\0' '\n' | LC_ALL=C sort)" = "$(printf '%s\n%s' "$root/Sub Dir/Match.TXT" "$root/other.txt")" ]
-  run path::find 'absent' "$root"
+  [ "$(path__find '\.txt$' "$root" | tr '\0' '\n' | LC_ALL=C sort)" = "$(printf '%s\n%s' "$root/Sub Dir/Match.TXT" "$root/other.txt")" ]
+  run path__find 'absent' "$root"
   [ "$status" -eq 1 ]
-  run path::find '(' "$root"
+  run path__find '(' "$root"
   [ "$status" -eq 64 ]
 
-  [ "$(file::find-by-content 'need+le' "$root" 2 | tr '\0' '\n')" = "$root/Sub Dir/Match.TXT" ]
-  [ "$(file::find-by-content 'needle' "$root" 1 include | tr '\0' '\n' | wc -l | tr -d ' ')" -eq 2 ]
-  run file::find-by-content 'absent' "$root"
+  [ "$(file__find-by-content 'need+le' "$root" 2 | tr '\0' '\n')" = "$root/Sub Dir/Match.TXT" ]
+  [ "$(file__find-by-content 'needle' "$root" 1 include | tr '\0' '\n' | wc -l | tr -d ' ')" -eq 2 ]
+  run file__find-by-content 'absent' "$root"
   [ "$status" -eq 1 ]
   # A grep that cannot read a file reports status 2; the search must not pass as complete.
   mkdir -p "${BATS_TEST_TMPDIR}/bin"
   printf '#!/bin/sh\ncase "$*" in *other.txt*) exit 2 ;; esac\nexec %s "$@"\n' "$(command -v grep)" >"${BATS_TEST_TMPDIR}/bin/grep"
   chmod +x "${BATS_TEST_TMPDIR}/bin/grep"
-  PATH="${BATS_TEST_TMPDIR}/bin:${PATH}" run file::find-by-content 'needle' "$root" 1
+  PATH="${BATS_TEST_TMPDIR}/bin:${PATH}" run file__find-by-content 'needle' "$root" 1
   [ "$status" -eq 74 ]
   rm "${BATS_TEST_TMPDIR}/bin/grep"
   # find lists the readable files but fails for a directory it cannot read.
   printf '#!/bin/sh\n%s "$@"\nexit 1\n' "$(command -v find)" >"${BATS_TEST_TMPDIR}/bin/find"
   chmod +x "${BATS_TEST_TMPDIR}/bin/find"
-  PATH="${BATS_TEST_TMPDIR}/bin:${PATH}" run file::find-by-content 'needle' "$root" 1
+  PATH="${BATS_TEST_TMPDIR}/bin:${PATH}" run file__find-by-content 'needle' "$root" 1
   [ "$status" -eq 74 ]
   rm "${BATS_TEST_TMPDIR}/bin/find"
-  run file::find-by-content 'needle' "$root" 1 maybe
+  run file__find-by-content 'needle' "$root" 1 maybe
   [ "$status" -eq 64 ]
 }
 
@@ -594,10 +594,10 @@ TABLE
   printf 'a\n' >"$root/old.log"
   touch -t 202601010000 "$root/a.log" "$root/b.log"
   touch -t 202501010000 "$root/old.log"
-  run file::latest-by-name '\.log$' "$root"
+  run file__latest-by-name '\.log$' "$root"
   [ "$output" = "$root/a.log" ]
   touch -t 202602010000 "$root/b.log"
-  run file::latest-by-name '\.log$' "$root"
+  run file__latest-by-name '\.log$' "$root"
   [ "$output" = "$root/b.log" ]
 }
 
@@ -605,16 +605,16 @@ TABLE
   local work="${BATS_TEST_TMPDIR}/links"
   mkdir -p "$work/first" "$work/second"
   cd "$work"
-  run symlink::create first current
+  run symlink__create first current
   [ "$status" -eq 0 ]
   [ "$(readlink "$work/current")" = "$work/first" ]
-  run symlink::create "$work/second" current
+  run symlink__create "$work/second" current
   [ "$status" -eq 0 ]
   [ "$(readlink "$work/current")" = "$work/second" ]
   [ ! -e "$work/second/second" ]
-  run symlink::create first second
+  run symlink__create first second
   [ "$status" -eq 73 ]
-  run symlink::create missing other
+  run symlink__create missing other
   [ "$status" -eq 66 ]
 }
 
@@ -625,13 +625,13 @@ TABLE
   printf 'deep text\n' >"$root/sub/deeper/deep.txt"
   printf '\x00\x01\x02\x03' >"$root/sub/data.bin"
   command -v file >/dev/null 2>&1 || skip 'file is not installed'
-  run file::tree-with-contents "$root"
+  run file__tree-with-contents "$root"
   [ "$status" -eq 0 ]
   [[ "$output" == *"$root/sub"* ]]
   [[ "$output" == *"==> $root/top.txt <=="$'\n''top text'* ]]
   [[ "$output" == *'deep text'* ]]
   [[ "$output" != *data.bin* ]]
-  run file::tree-with-contents "$root" 1 1
+  run file__tree-with-contents "$root" 1 1
   [[ "$output" != *'deep text'* ]]
   [[ "$output" == *'top text'* ]]
 }
@@ -641,11 +641,11 @@ TABLE
   fake-editor() {
     printf '%s\n' "$@" >"${BATS_TEST_TMPDIR}/editor.args"
   }
-  EDITOR='fake-editor --wait --new-window' run file::edit "${file}"
+  EDITOR='fake-editor --wait --new-window' run file__edit "${file}"
   [ "${status}" -eq 0 ]
   [ "$(cat "${BATS_TEST_TMPDIR}/editor.args")" = $'--wait\n--new-window\n'"${file}" ]
 
-  run file::edit "${BATS_TEST_TMPDIR}"
+  run file__edit "${BATS_TEST_TMPDIR}"
   [ "${status}" -eq 66 ]
 }
 
@@ -653,19 +653,19 @@ TABLE
   export HOME="${BATS_TEST_TMPDIR}/home"
   mkdir -p "${HOME}/bin"
   _util_shells=(keep me)
-  env::set-variable BASHSTOCK_TEST_VALUE yes bash
-  env::add-path "${HOME}/bin" bash
+  env__set-variable BASHSTOCK_TEST_VALUE yes bash
+  env__add-path "${HOME}/bin" bash
   [ "${_util_shells[*]}" = 'keep me' ]
 }
 
 @test "archive functions report a path that cannot be searched" {
   local missing="${BATS_TEST_TMPDIR}/missing"
-  run --separate-stderr archive::verify "${missing}"
+  run --separate-stderr archive__verify "${missing}"
   [ "${status}" -eq 66 ]
   [[ "${stderr}" == *'cannot be searched for archives'* ]]
-  run --separate-stderr archive::remove-broken "${missing}"
+  run --separate-stderr archive__remove-broken "${missing}"
   [ "${status}" -eq 66 ]
-  run --separate-stderr archive::extract "${missing}"
+  run --separate-stderr archive__extract "${missing}"
   [ "${status}" -eq 66 ]
 }
 
@@ -673,18 +673,18 @@ TABLE
   local source="${BATS_TEST_TMPDIR}/source"
   mkdir -p "${source}/keep"
   printf 'data\n' >"${source}/file"
-  run dir::merge "${source}" "${source}"
+  run dir__merge "${source}" "${source}"
   [ "${status}" -eq 64 ]
-  run dir::merge "${source}" "${source}/."
+  run dir__merge "${source}" "${source}/."
   [ "${status}" -eq 64 ]
-  run dir::merge "${source}" "${source}/keep/inner"
+  run dir__merge "${source}" "${source}/keep/inner"
   [ "${status}" -eq 64 ]
   [ ! -e "${source}/keep/inner" ]
   [ "$(<"${source}/file")" = data ]
 
   # An entry named like SOURCE would replace SOURCE in its parent.
   mkdir -p "${source}/source"
-  run dir::merge "${source}" "${BATS_TEST_TMPDIR}"
+  run dir__merge "${source}" "${BATS_TEST_TMPDIR}"
   [ "${status}" -eq 64 ]
   [ "$(<"${source}/file")" = data ]
 }
@@ -695,7 +695,7 @@ TABLE
   cd "${work}"
   printf 'data\n' >./--checkpoint=1
   printf 'plain\n' >plain.txt
-  run archive::compress-tar-gzip --output archive.tar.gz --checkpoint=1 plain.txt
+  run archive__compress-tar-gzip --output archive.tar.gz --checkpoint=1 plain.txt
   [ "${status}" -eq 0 ]
   [ "$(tar -tzf archive.tar.gz | sort | tr '\n' ' ')" = '--checkpoint=1 plain.txt ' ]
 }
@@ -704,9 +704,9 @@ TABLE
   local dotenv="${BATS_TEST_TMPDIR}/readonly.env"
   printf 'BASHSTOCK_FIRST=1\nUID=0\n' >"${dotenv}"
   unset BASHSTOCK_FIRST
-  run --separate-stderr env::dotenv::import "${dotenv}"
+  run --separate-stderr env__dotenv__import "${dotenv}"
   [ "${status}" -eq 65 ]
   [[ "${stderr}" == *'UID'*'readonly'* ]]
-  env::dotenv::import "${dotenv}" 2>/dev/null || true
+  env__dotenv__import "${dotenv}" 2>/dev/null || true
   [ -z "${BASHSTOCK_FIRST+set}" ]
 }

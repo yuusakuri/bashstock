@@ -8,9 +8,9 @@ Rosetta is installed on Apple silicon when it is missing.
 
 ## Index
 
-* [rosetta::install](#rosettainstall)
+* [rosetta__install](#rosetta__install)
 
-### rosetta::install
+### rosetta__install
 
 Install Rosetta when it is missing, accepting its license.
 
@@ -19,7 +19,7 @@ A Mac that already runs x86_64 code succeeds without changes.
 #### Example
 
 ```bash
-rosetta::install
+rosetta__install
 ```
 
 _Function has no arguments._

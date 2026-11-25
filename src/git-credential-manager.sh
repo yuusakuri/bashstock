@@ -14,14 +14,14 @@
 # @exitcode 69 git-credential-manager is unavailable.
 # @exitcode other The status of git-credential-manager.
 # @example
-#   git-credential-manager::version::list
-git-credential-manager::version::list() { [[ "$#" -eq 0 ]] || return 64; docker::_run-command git-credential-manager --version; }
+#   git-credential-manager__version__list
+git-credential-manager__version__list() { [[ "$#" -eq 0 ]] || return 64; _docker__run-command git-credential-manager --version; }
 
 # @description Write the release asset names that may hold one Git Credential Manager version.
 #
 # Releases before 2.7 name the Linux x64 archive gcm-linux_amd64.VERSION.tar.gz.
 # @internal
-git-credential-manager::_asset-names() {
+_git-credential-manager__asset-names() {
   [[ "$#" -eq 3 ]] || return 64
   printf 'gcm-%s-%s-%s.tar.gz\n' "$1" "$2" "$3"
   [[ "$1" != linux || "$2" != x64 ]] || printf 'gcm-linux_amd64.%s.tar.gz\n' "$3"
@@ -32,20 +32,20 @@ git-credential-manager::_asset-names() {
 # @arg $1 string PLATFORM osx or linux.
 # @arg $2 string ARCHITECTURE x64 or arm64.
 # @arg $3 string VERSION Release version.
-git-credential-manager::_install-version() {
+_git-credential-manager__install-version() {
   [[ "$#" -eq 3 ]] || return 64
   local version="$3" destination='' temporary='' asset='' downloaded=0 actual_version=''
   destination="${HOME}/.local/lib/git-credential-manager/${version}"
   [[ ! -x "${destination}/git-credential-manager" ]] || return 0
-  temporary="$(package::_temporary-directory)" || return "$?"
+  temporary="$(_package__temporary-directory)" || return "$?"
   while IFS= read -r asset; do
-    if package::_download \
+    if _package__download \
       "https://github.com/git-ecosystem/git-credential-manager/releases/download/v${version}/${asset}" \
       "${temporary}/gcm.tar.gz" 2>/dev/null; then
       downloaded=1
       break
     fi
-  done < <(git-credential-manager::_asset-names "$1" "$2" "${version}")
+  done < <(_git-credential-manager__asset-names "$1" "$2" "${version}")
   if [[ "${downloaded}" -eq 0 ]]; then
     rm -rf -- "${temporary}"
     return 69
@@ -69,23 +69,23 @@ git-credential-manager::_install-version() {
 
 # @description Install the ICU library that Git Credential Manager, a .NET program, needs on Linux.
 # @internal
-git-credential-manager::_install-icu() {
+_git-credential-manager__install-icu() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' name=''
   if command -v ldconfig >/dev/null 2>&1 && ldconfig -p 2>/dev/null | grep -q 'libicuuc\.so'; then
     return 0
   fi
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package__platform)" || return "$?"
   case "${platform}" in
     ubuntu)
-      package::_refresh || return "$?"
+      _package__refresh || return "$?"
       # The package name carries the ICU major version, such as libicu60 on Ubuntu 18.04.
       name="$(apt-cache pkgnames libicu 2>/dev/null | grep -E '^libicu[0-9]+$' | sort -V | tail -n 1)"
       [[ -n "${name}" ]] || return 69
-      package::_install "${name}"
+      _package__install "${name}"
       ;;
     fedora)
-      package::_install libicu
+      _package__install libicu
       ;;
   esac
 }
@@ -106,12 +106,12 @@ git-credential-manager::_install-icu() {
 # @exitcode 74 A download or file operation failed.
 # @exitcode other The status of the step that failed.
 # @example
-#   git-credential-manager::install 2.6.1
-git-credential-manager::install() {
+#   git-credential-manager__install 2.6.1
+git-credential-manager__install() {
   [[ "$#" -le 1 ]] || return 64
   local version="${1:-}" platform='' architecture='' candidates='' candidate='' status=69
   ( [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ) || return 64
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package__platform)" || return "$?"
   case "${platform}" in
     darwin) platform='osx' ;;
     ubuntu | fedora) platform='linux' ;;
@@ -123,20 +123,20 @@ git-credential-manager::install() {
     *) return 69 ;;
   esac
   if [[ "${platform}" == linux ]]; then
-    git-credential-manager::_install-icu || return "$?"
+    _git-credential-manager__install-icu || return "$?"
   fi
   if [[ -n "${version}" ]]; then
-    git-credential-manager::_install-version "${platform}" "${architecture}" "${version}" || return "$?"
+    _git-credential-manager__install-version "${platform}" "${architecture}" "${version}" || return "$?"
   else
-    candidates="$(package::_github-release-versions git-ecosystem/git-credential-manager)" || return "$?"
+    candidates="$(_package__github-release-versions git-ecosystem/git-credential-manager)" || return "$?"
     while IFS= read -r candidate; do
       [[ -n "${candidate}" ]] || continue
       status=0
-      git-credential-manager::_install-version "${platform}" "${architecture}" "${candidate}" || status="$?"
+      _git-credential-manager__install-version "${platform}" "${architecture}" "${candidate}" || status="$?"
       [[ "${status}" -eq 69 ]] || break
     done < <(printf '%s\n' "${candidates}" | sed '1!G;h;$!d')
     if [[ "${status}" -ne 0 ]]; then
-      [[ "${status}" -ne 69 ]] || console::_write-error 'No Git Credential Manager release starts on this system.'
+      [[ "${status}" -ne 69 ]] || _console__write-error 'No Git Credential Manager release starts on this system.'
       return "${status}"
     fi
     version="${candidate}"
@@ -144,6 +144,6 @@ git-credential-manager::install() {
   mkdir -p -- "${HOME}/.local/bin" || return 74
   ln -sfn -- "${HOME}/.local/lib/git-credential-manager/${version}/git-credential-manager" \
     "${HOME}/.local/bin/git-credential-manager" || return 74
-  env::add-path "${HOME}/.local/bin" || return "$?"
+  env__add-path "${HOME}/.local/bin" || return "$?"
   "${HOME}/.local/bin/git-credential-manager" configure
 }

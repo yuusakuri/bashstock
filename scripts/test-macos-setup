@@ -3,7 +3,7 @@
 
 set -uo pipefail
 
-# Run on a disposable GitHub Actions macOS runner. mac::setup removes bundled
+# Run on a disposable GitHub Actions macOS runner. mac__setup removes bundled
 # applications, disables Gatekeeper, and installs many applications, so this
 # script never runs on a Mac in daily use.
 [[ "$(uname -s)" == Darwin ]] || exit 69
@@ -48,24 +48,24 @@ output_is() {
   }
 }
 
-# @description Write the steps that failed in one mac::setup log, one per line.
+# @description Write the steps that failed in one mac__setup log, one per line.
 failed_steps() {
   sed -n 's/^.*Setup step failed with status [0-9]*: \(.*\)$/\1/p' "$1"
 }
 
-# @description Run mac::setup, keep its error output, and check its failed steps.
+# @description Run mac__setup, keep its error output, and check its failed steps.
 #
 # Runners without Hypervisor.framework cannot start the Colima VM, so Colima
 # and the Docker CLI that waits for a running engine are the only steps that
 # may fail there. The returned status must be the first failed step's status.
 run_setup() {
   local log="$1" status=0 first='' unexpected=''
-  mac::setup 2> >(tee "${log}" >&2) || status="$?"
+  mac__setup 2> >(tee "${log}" >&2) || status="$?"
   sleep 1
-  printf '== mac::setup returned %s; failed steps:\n' "${status}"
+  printf '== mac__setup returned %s; failed steps:\n' "${status}"
   failed_steps "${log}"
   first="$(sed -n 's/^.*Setup step failed with status \([0-9]*\): .*$/\1/p' "${log}" | head -n 1)"
-  unexpected="$(failed_steps "${log}" | grep -vx -e 'colima::install' -e 'docker::install' || true)"
+  unexpected="$(failed_steps "${log}" | grep -vx -e 'colima__install' -e 'docker__install' || true)"
   if [[ "$(sysctl -n kern.hv_support 2>/dev/null)" == 1 ]]; then
     unexpected="$(failed_steps "${log}")"
   fi
@@ -103,15 +103,15 @@ bindings="${HOME}/Library/KeyBindings/DefaultKeyBinding.dict"
 check plutil -lint "${bindings}"
 check output_is 'noop:' plutil -extract '~t' raw -o - "${bindings}"
 cp "${bindings}" "${RUNNER_TEMP}/bindings.before"
-check mac::keyboard::disable-option-t
+check mac__keyboard__disable-option-t
 check cmp "${RUNNER_TEMP}/bindings.before" "${bindings}"
 
 printf '== startup files\n'
-for pattern in '^setopt interactivecomments$' '^export HOMEBREW_CASK_OPTS=' '^export EDITOR=' 'env::dotenv::_export-commands'; do
+for pattern in '^setopt interactivecomments$' '^export HOMEBREW_CASK_OPTS=' '^export EDITOR=' '_env__dotenv__export-commands'; do
   check output_is 1 grep -c -- "${pattern}" "${HOME}/.zshrc"
 done
 check output_is 1 grep -c '^set completion-ignore-case on$' "${HOME}/.inputrc"
-# A new login shell reads the startup files that mac::setup wrote.
+# A new login shell reads the startup files that mac__setup wrote.
 check output_is 'from dotenv|code --wait|--no-quarantine' \
   zsh -lic 'print -r -- "$BASHSTOCK_SETUP_VALUE|$EDITOR|$HOMEBREW_CASK_OPTS"'
 # Without a terminal, bash -i reports on stderr that job control is off.
@@ -164,17 +164,17 @@ for extension in md json sh; do
   check output_is com.microsoft.VSCode handler_of "${extension}"
 done
 check output_is com.colliderli.iina handler_of mkv
-check vscode::set-default-app
-check iina::set-default-app
+check vscode__set-default-app
+check iina__set-default-app
 check output_is com.microsoft.VSCode handler_of md
 check output_is com.colliderli.iina handler_of mkv
 
 printf '== QMK Toolbox\n'
-check qmk::toolbox::install
-current="$(package::_brew-cask-version qmk-toolbox)"
-check qmk::toolbox::install "${current}"
+check qmk__toolbox__install
+current="$(_package__brew-cask-version qmk-toolbox)"
+check qmk__toolbox__install "${current}"
 status=0
-qmk::toolbox::install 0.0.1 2>/dev/null || status="$?"
+qmk__toolbox__install 0.0.1 2>/dev/null || status="$?"
 check test "${status}" -eq 69
 for app in 'QMK Toolbox' IINA; do
   open -a "${app}"
@@ -190,13 +190,13 @@ for app in 'QMK Toolbox' IINA; do
 done
 
 printf '== Xcode Command Line Tools and Rosetta\n'
-check xcode::command-line-tools::upgrade
+check xcode__command-line-tools__upgrade
 check xcode-select -p
 clang --version
 printf '#include <stdio.h>\nint main(void) { puts("built"); return 0; }\n' >"${RUNNER_TEMP}/hello.c"
 check clang -o "${RUNNER_TEMP}/hello" "${RUNNER_TEMP}/hello.c"
 check output_is built "${RUNNER_TEMP}/hello"
-check rosetta::install
+check rosetta__install
 check /usr/bin/arch -x86_64 /usr/bin/true
 
 # The log is long, so the output before each failed setup step is repeated here.

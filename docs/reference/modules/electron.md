@@ -8,10 +8,10 @@ Configure the rendering platform used by Electron applications.
 
 ## Index
 
-* [electron::wayland::enable](#electronwaylandenable)
-* [electron::wayland::disable](#electronwaylanddisable)
+* [electron__wayland__enable](#electron__wayland__enable)
+* [electron__wayland__disable](#electron__wayland__disable)
 
-### electron::wayland::enable
+### electron__wayland__enable
 
 Prefer native Wayland rendering for Electron applications in a Wayland session.
 
@@ -23,7 +23,7 @@ a supported Linux Wayland session.
 #### Example
 
 ```bash
-electron::wayland::enable
+electron__wayland__enable
 ```
 
 _Function has no arguments._
@@ -35,7 +35,7 @@ _Function has no arguments._
 * **69**: The operating system is not Linux or mkdir is unavailable.
 * **74**: The setting could not be written.
 
-### electron::wayland::disable
+### electron__wayland__disable
 
 Remove BashStock's native Wayland preference for Electron applications.
 
@@ -46,7 +46,7 @@ applications are unchanged; start them again to use their default backend.
 #### Example
 
 ```bash
-electron::wayland::disable
+electron__wayland__disable
 ```
 
 _Function has no arguments._

@@ -8,26 +8,26 @@ Lexical functions never touch the file system; tests follow the Bash test semant
 
 ## Index
 
-* [path::directory-name](#pathdirectory-name)
-* [path::base-name](#pathbase-name)
-* [path::is-directory](#pathis-directory)
-* [path::is-empty-directory](#pathis-empty-directory)
-* [path::is-executable](#pathis-executable)
-* [path::is-executable-file](#pathis-executable-file)
-* [path::is-regular-file](#pathis-regular-file)
-* [path::is-symbolic-link](#pathis-symbolic-link)
-* [path::is-readable](#pathis-readable)
-* [path::is-writable](#pathis-writable)
-* [path::mode](#pathmode)
-* [path::extension](#pathextension)
-* [path::normalize](#pathnormalize)
-* [path::relative](#pathrelative)
-* [path::config-home](#pathconfig-home)
-* [path::change-owner-recursively](#pathchange-owner-recursively)
-* [path::change-owner-recursively-as-root](#pathchange-owner-recursively-as-root)
-* [path::find](#pathfind)
+* [path__directory-name](#path__directory-name)
+* [path__base-name](#path__base-name)
+* [path__is-directory](#path__is-directory)
+* [path__is-empty-directory](#path__is-empty-directory)
+* [path__is-executable](#path__is-executable)
+* [path__is-executable-file](#path__is-executable-file)
+* [path__is-regular-file](#path__is-regular-file)
+* [path__is-symbolic-link](#path__is-symbolic-link)
+* [path__is-readable](#path__is-readable)
+* [path__is-writable](#path__is-writable)
+* [path__mode](#path__mode)
+* [path__extension](#path__extension)
+* [path__normalize](#path__normalize)
+* [path__relative](#path__relative)
+* [path__config-home](#path__config-home)
+* [path__change-owner-recursively](#path__change-owner-recursively)
+* [path__change-owner-recursively-as-root](#path__change-owner-recursively-as-root)
+* [path__find](#path__find)
 
-### path::directory-name
+### path__directory-name
 
 Write the lexical directory portion of a path.
 
@@ -36,7 +36,7 @@ Like dirname, but without running a command or reading the file system.
 #### Example
 
 ```bash
-path::directory-name /usr/local/bin/node
+path__directory-name /usr/local/bin/node
 # /usr/local/bin
 ```
 
@@ -53,14 +53,14 @@ path::directory-name /usr/local/bin/node
 
 * The directory part; . for a bare name and / for the root.
 
-### path::base-name
+### path__base-name
 
 Write the final component of a path with an optional suffix removed.
 
 #### Example
 
 ```bash
-path::base-name /tmp/archive.tar.gz .tar.gz
+path__base-name /tmp/archive.tar.gz .tar.gz
 # archive
 ```
 
@@ -78,7 +78,7 @@ path::base-name /tmp/archive.tar.gz .tar.gz
 
 * The final component.
 
-### path::is-directory
+### path__is-directory
 
 Test whether a path names a directory.
 
@@ -87,7 +87,7 @@ A symbolic link to a directory counts.
 #### Example
 
 ```bash
-path::is-directory "${HOME}/.ssh" || mkdir -m 700 "${HOME}/.ssh"
+path__is-directory "${HOME}/.ssh" || mkdir -m 700 "${HOME}/.ssh"
 ```
 
 #### Arguments
@@ -100,7 +100,7 @@ path::is-directory "${HOME}/.ssh" || mkdir -m 700 "${HOME}/.ssh"
 * **1**: The path is not a directory or does not exist.
 * **64**: The argument count is not one.
 
-### path::is-empty-directory
+### path__is-empty-directory
 
 Test whether a path names an empty directory.
 
@@ -109,7 +109,7 @@ Hidden entries count, so a directory with only .gitkeep is not empty.
 #### Example
 
 ```bash
-path::is-empty-directory build && rmdir build
+path__is-empty-directory build && rmdir build
 ```
 
 #### Arguments
@@ -122,14 +122,14 @@ path::is-empty-directory build && rmdir build
 * **1**: The path is not a directory or has entries.
 * **64**: The argument count is not one.
 
-### path::is-executable
+### path__is-executable
 
 Test whether the current user may execute a path.
 
 #### Example
 
 ```bash
-path::is-executable "${HOME}/.local/bin/android"
+path__is-executable "${HOME}/.local/bin/android"
 ```
 
 #### Arguments
@@ -142,14 +142,14 @@ path::is-executable "${HOME}/.local/bin/android"
 * **1**: The path cannot be executed or does not exist.
 * **64**: The argument count is not one.
 
-### path::is-executable-file
+### path__is-executable-file
 
 Test whether a path names an executable regular file.
 
 #### Example
 
 ```bash
-path::is-executable-file ./gradlew && ./gradlew build
+path__is-executable-file ./gradlew && ./gradlew build
 ```
 
 #### Arguments
@@ -162,14 +162,14 @@ path::is-executable-file ./gradlew && ./gradlew build
 * **1**: The path is not an executable regular file.
 * **64**: The argument count is not one.
 
-### path::is-regular-file
+### path__is-regular-file
 
 Test whether a path names a regular file.
 
 #### Example
 
 ```bash
-path::is-regular-file "${HOME}/.env" && env::dotenv::import "${HOME}/.env"
+path__is-regular-file "${HOME}/.env" && env__dotenv__import "${HOME}/.env"
 ```
 
 #### Arguments
@@ -182,14 +182,14 @@ path::is-regular-file "${HOME}/.env" && env::dotenv::import "${HOME}/.env"
 * **1**: The path is not a regular file or does not exist.
 * **64**: The argument count is not one.
 
-### path::is-symbolic-link
+### path__is-symbolic-link
 
 Test whether a path names a symbolic link.
 
 #### Example
 
 ```bash
-path::is-symbolic-link "${HOME}/Desktop" && readlink "${HOME}/Desktop"
+path__is-symbolic-link "${HOME}/Desktop" && readlink "${HOME}/Desktop"
 ```
 
 #### Arguments
@@ -202,14 +202,14 @@ path::is-symbolic-link "${HOME}/Desktop" && readlink "${HOME}/Desktop"
 * **1**: The path is not a symbolic link.
 * **64**: The argument count is not one.
 
-### path::is-readable
+### path__is-readable
 
 Test whether the current user may read a path.
 
 #### Example
 
 ```bash
-path::is-readable /etc/os-release && . /etc/os-release
+path__is-readable /etc/os-release && . /etc/os-release
 ```
 
 #### Arguments
@@ -222,14 +222,14 @@ path::is-readable /etc/os-release && . /etc/os-release
 * **1**: The path is not readable or does not exist.
 * **64**: The argument count is not one.
 
-### path::is-writable
+### path__is-writable
 
 Test whether the current user may write a path.
 
 #### Example
 
 ```bash
-path::is-writable /etc/hosts || command::run-as-root cp hosts /etc/hosts
+path__is-writable /etc/hosts || command__run-as-root cp hosts /etc/hosts
 ```
 
 #### Arguments
@@ -242,7 +242,7 @@ path::is-writable /etc/hosts || command::run-as-root cp hosts /etc/hosts
 * **1**: The path is not writable or does not exist.
 * **64**: The argument count is not one.
 
-### path::mode
+### path__mode
 
 Write a path's permission mode as an octal number.
 
@@ -251,7 +251,7 @@ A symbolic link reports the mode of the link itself.
 #### Example
 
 ```bash
-[[ "$(path::mode "${HOME}/.ssh")" == 700 ]] || chmod 700 "${HOME}/.ssh"
+[[ "$(path__mode "${HOME}/.ssh")" == 700 ]] || chmod 700 "${HOME}/.ssh"
 ```
 
 #### Arguments
@@ -268,7 +268,7 @@ A symbolic link reports the mode of the link itself.
 
 * The mode, such as 644 or 4755.
 
-### path::extension
+### path__extension
 
 Write the extension of the final path component.
 
@@ -277,7 +277,7 @@ A leading dot does not start an extension, so .bashrc has none.
 #### Example
 
 ```bash
-path::extension /tmp/archive.tar.gz
+path__extension /tmp/archive.tar.gz
 # .gz
 ```
 
@@ -294,7 +294,7 @@ path::extension /tmp/archive.tar.gz
 
 * The extension with its dot, or an empty line when there is none.
 
-### path::normalize
+### path__normalize
 
 Normalize a path lexically without accessing the file system.
 
@@ -304,7 +304,7 @@ component. Leading .. components of a relative path are kept.
 #### Example
 
 ```bash
-path::normalize /usr//local/./lib/../bin
+path__normalize /usr//local/./lib/../bin
 # /usr/local/bin
 ```
 
@@ -321,7 +321,7 @@ path::normalize /usr//local/./lib/../bin
 
 * The normalized path; . for an empty relative result.
 
-### path::relative
+### path__relative
 
 Write the lexical relative path from one path to another.
 
@@ -330,7 +330,7 @@ Both paths are normalized first and must both be absolute or both be relative.
 #### Example
 
 ```bash
-path::relative /usr/local/bin /usr/share/doc
+path__relative /usr/local/bin /usr/share/doc
 # ../../share/doc
 ```
 
@@ -348,7 +348,7 @@ path::relative /usr/local/bin /usr/share/doc
 
 * The path that leads from the first path to the second.
 
-### path::config-home
+### path__config-home
 
 Write the absolute configuration-home directory.
 
@@ -357,7 +357,7 @@ XDG_CONFIG_HOME is used when set; otherwise $HOME/.config.
 #### Example
 
 ```bash
-mkdir -p "$(path::config-home)/mozc"
+mkdir -p "$(path__config-home)/mozc"
 ```
 
 _Function has no arguments._
@@ -371,7 +371,7 @@ _Function has no arguments._
 
 * The configuration directory.
 
-### path::change-owner-recursively
+### path__change-owner-recursively
 
 Change directory ownership recursively through the root helper.
 
@@ -381,7 +381,7 @@ not follow symbolic links or cross file systems.
 #### Example
 
 ```bash
-path::change-owner-recursively /srv/app deploy
+path__change-owner-recursively /srv/app deploy
 ```
 
 #### Arguments
@@ -397,16 +397,16 @@ path::change-owner-recursively /srv/app deploy
 * **66**: The directory does not exist or is a symbolic link.
 * other The status of the root helper.
 
-### path::change-owner-recursively-as-root
+### path__change-owner-recursively-as-root
 
 Change directory ownership recursively in a separate root process.
 
-Same as path::change-owner-recursively; the name states that root is used.
+Same as path__change-owner-recursively; the name states that root is used.
 
 #### Example
 
 ```bash
-path::change-owner-recursively-as-root /srv/app deploy www-data
+path__change-owner-recursively-as-root /srv/app deploy www-data
 ```
 
 #### Arguments
@@ -422,14 +422,14 @@ path::change-owner-recursively-as-root /srv/app deploy www-data
 * **66**: The directory does not exist or is a symbolic link.
 * other The status of the root helper.
 
-### path::find
+### path__find
 
 Write the paths below a directory that match a case-insensitive Bash ERE, separated by NUL.
 
 #### Example
 
 ```bash
-path::find '\.(jpe?g|png)$' "${HOME}/Pictures" | xargs -0 ls -l
+path__find '\.(jpe?g|png)$' "${HOME}/Pictures" | xargs -0 ls -l
 ```
 
 #### Arguments

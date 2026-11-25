@@ -5,7 +5,7 @@
 
 # @description Create a non-login Ubuntu system account.
 # @internal
-platform::_create-system-user() {
+_platform__create-system-user() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -16,7 +16,7 @@ platform::_create-system-user() {
 
 # @description Create an Ubuntu login account and roll it back after password failure.
 # @internal
-platform::_create-login-user() {
+_platform__create-login-user() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -30,7 +30,7 @@ platform::_create-login-user() {
   fi
 
   if ! userdel --remove "$1" >/dev/null 2>&1; then
-    console::_write-error \
+    _console__write-error \
       "Failed to restore the account after password setup: $1, /home/$1"
     return 74
   fi
@@ -39,7 +39,7 @@ platform::_create-login-user() {
 
 # @description Change ownership recursively without crossing Ubuntu mount points.
 # @internal
-platform::_change-owner-recursively() {
+_platform__change-owner-recursively() {
   if [[ "$#" -lt 2 || "$#" -gt 3 ]]; then
     return 64
   fi
@@ -55,7 +55,7 @@ platform::_change-owner-recursively() {
 
 # @description Write a path's permission mode with GNU stat.
 # @internal
-platform::_path-mode() {
+_platform__path-mode() {
   if [[ "$#" -ne 1 || -z "$1" ]]; then
     return 64
   fi

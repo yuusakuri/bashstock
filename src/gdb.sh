@@ -14,10 +14,10 @@
 # @exitcode 69 gdb is unavailable.
 # @exitcode other The status of gdb.
 # @example
-#   gdb::attach-pid 4242 > backtrace.txt
-gdb::attach-pid() {
+#   gdb__attach-pid 4242 > backtrace.txt
+gdb__attach-pid() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] ) || return 64
-  command::require gdb || return "$?"
+  command__require gdb || return "$?"
   gdb -q -batch -p "$1" -ex 'thread apply all bt'
 }
 
@@ -31,8 +31,8 @@ gdb::attach-pid() {
 # @exitcode 69 gdbserver is unavailable.
 # @exitcode other The status of gdbserver.
 # @example
-#   gdb::server::start 2345 ./build/app --verbose
-gdb::server::start() { ( [[ "$#" -ge 2 && "$1" =~ ^[0-9]+$ && -n "$2" ]] ) || return 64; docker::_run-command gdbserver ":$1" "${@:2}"; }
+#   gdb__server__start 2345 ./build/app --verbose
+gdb__server__start() { ( [[ "$#" -ge 2 && "$1" =~ ^[0-9]+$ && -n "$2" ]] ) || return 64; _docker__run-command gdbserver ":$1" "${@:2}"; }
 
 # @description Load ELF in GDB and connect to the GDB server at HOST and PORT.
 #
@@ -44,8 +44,8 @@ gdb::server::start() { ( [[ "$#" -ge 2 && "$1" =~ ^[0-9]+$ && -n "$2" ]] ) || re
 # @exitcode 69 gdb is unavailable.
 # @exitcode other The status of gdb.
 # @example
-#   gdb::connect ./build/app 192.168.1.50 2345
-gdb::connect() { ( [[ "$#" -eq 3 && -f "$1" && "$3" =~ ^[0-9]+$ ]] ) || return 64; docker::_run-command gdb "$1" -ex "target remote $2:$3"; }
+#   gdb__connect ./build/app 192.168.1.50 2345
+gdb__connect() { ( [[ "$#" -eq 3 && -f "$1" && "$3" =~ ^[0-9]+$ ]] ) || return 64; _docker__run-command gdb "$1" -ex "target remote $2:$3"; }
 
 # @description Run ELF in GDB with optional program arguments and stop at SYMBOL.
 #
@@ -57,8 +57,8 @@ gdb::connect() { ( [[ "$#" -eq 3 && -f "$1" && "$3" =~ ^[0-9]+$ ]] ) || return 6
 # @exitcode 69 gdb is unavailable.
 # @exitcode other The status of gdb.
 # @example
-#   gdb::run-until ./build/app parse_config --config test.ini
-gdb::run-until() { [[ "$#" -ge 2 && -f "$1" && -n "$2" ]] || return 64; docker::_run-command gdb -ex "break $2" -ex run --args "$1" "${@:3}"; }
+#   gdb__run-until ./build/app parse_config --config test.ini
+gdb__run-until() { [[ "$#" -ge 2 && -f "$1" && -n "$2" ]] || return 64; _docker__run-command gdb -ex "break $2" -ex run --args "$1" "${@:3}"; }
 
 # @description Open ELF and a core dump in GDB.
 #
@@ -69,8 +69,8 @@ gdb::run-until() { [[ "$#" -ge 2 && -f "$1" && -n "$2" ]] || return 64; docker::
 # @exitcode 69 gdb is unavailable.
 # @exitcode other The status of gdb.
 # @example
-#   gdb::core::open ./build/app core.4242
-gdb::core::open() { [[ "$#" -eq 2 && -f "$1" && -f "$2" ]] || return 64; docker::_run-command gdb "$1" "$2"; }
+#   gdb__core__open ./build/app core.4242
+gdb__core__open() { [[ "$#" -eq 2 && -f "$1" && -f "$2" ]] || return 64; _docker__run-command gdb "$1" "$2"; }
 
 # @description Attach GDB to the first process whose executable name is NAME.
 #
@@ -79,12 +79,12 @@ gdb::core::open() { [[ "$#" -eq 2 && -f "$1" && -f "$2" ]] || return 64; docker:
 # @exitcode 0 The backtrace was written.
 # @exitcode 1 No process has the name.
 # @exitcode 64 The argument count is not one.
-# @exitcode other The status of gdb::attach-pid.
+# @exitcode other The status of gdb__attach-pid.
 # @example
-#   gdb::attach-by-name myapp > backtrace.txt
-gdb::attach-by-name() {
+#   gdb__attach-by-name myapp > backtrace.txt
+gdb__attach-by-name() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local id=''
-  id="$(process::_first-id-by-name "$1")" || return "$?"
-  gdb::attach-pid "${id}"
+  id="$(_process__first-id-by-name "$1")" || return "$?"
+  gdb__attach-pid "${id}"
 }

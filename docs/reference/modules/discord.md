@@ -8,9 +8,9 @@ The application is installed from Discord's official downloads.
 
 ## Index
 
-* [discord::install](#discordinstall)
+* [discord__install](#discord__install)
 
-### discord::install
+### discord__install
 
 Install the newest Discord desktop app.
 
@@ -20,7 +20,7 @@ package, and Fedora installs its RPM package.
 #### Example
 
 ```bash
-discord::install
+discord__install
 ```
 
 _Function has no arguments._

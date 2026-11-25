@@ -8,13 +8,13 @@ Setup functions configure a fresh Ubuntu installation.
 
 ## Index
 
-* [ubuntu::server-iso-versions](#ubuntuserver-iso-versions)
-* [ubuntu::download-server-iso](#ubuntudownload-server-iso)
-* [ubuntu::setup](#ubuntusetup)
-* [ubuntu::setup-external](#ubuntusetup-external)
-* [ubuntu::setup-desktop](#ubuntusetup-desktop)
+* [ubuntu__server-iso-versions](#ubuntu__server-iso-versions)
+* [ubuntu__download-server-iso](#ubuntu__download-server-iso)
+* [ubuntu__setup](#ubuntu__setup)
+* [ubuntu__setup-external](#ubuntu__setup-external)
+* [ubuntu__setup-desktop](#ubuntu__setup-desktop)
 
-### ubuntu::server-iso-versions
+### ubuntu__server-iso-versions
 
 Write the Ubuntu Server LTS versions whose live server ISO is published for an architecture.
 
@@ -25,7 +25,7 @@ can be downloaded.
 #### Example
 
 ```bash
-ubuntu::server-iso-versions arm64
+ubuntu__server-iso-versions arm64
 ```
 
 #### Arguments
@@ -43,7 +43,7 @@ ubuntu::server-iso-versions arm64
 
 * Ubuntu Server versions such as 24.04.3, one per line, oldest first.
 
-### ubuntu::download-server-iso
+### ubuntu__download-server-iso
 
 Download an Ubuntu Server live ISO and check it against the official SHA256SUMS.
 
@@ -54,12 +54,12 @@ image leaves an existing file unchanged.
 #### Example
 
 ```bash
-ubuntu::download-server-iso 24.04.3 amd64 "${HOME}/iso/ubuntu.iso"
+ubuntu__download-server-iso 24.04.3 amd64 "${HOME}/iso/ubuntu.iso"
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from ubuntu::server-iso-versions. Defaults to the newest one.
+* **$1** (string): Optional version from ubuntu__server-iso-versions. Defaults to the newest one.
 * **$2** (string): Optional architecture: amd64 or arm64. Defaults to the current machine.
 * **$3** (string): Optional destination file. Defaults to the official file name in the current directory.
 
@@ -70,7 +70,7 @@ ubuntu::download-server-iso 24.04.3 amd64 "${HOME}/iso/ubuntu.iso"
 * **69**: The version is not published for the architecture.
 * **74**: The download failed, the checksum does not match, or the file could not be moved.
 
-### ubuntu::setup
+### ubuntu__setup
 
 Apply the common Ubuntu user configuration, stopping at the first failure.
 
@@ -79,13 +79,13 @@ The steps then register ~/.env, set the editor of Bash and Zsh to
 code --wait, ignore case in completion, link English names to localized
 user directories, add the user to dialout, configure Git, and fix ~/.ssh
 permissions. External tools can be installed separately with
-ubuntu::setup-external. Electron applications prefer native Wayland rendering
+ubuntu__setup-external. Electron applications prefer native Wayland rendering
 in supported Wayland sessions.
 
 #### Example
 
 ```bash
-GIT_EMAIL=alice@example.com GIT_USERNAME='Alice Example' ubuntu::setup
+GIT_EMAIL=alice@example.com GIT_USERNAME='Alice Example' ubuntu__setup
 ```
 
 _Function has no arguments._
@@ -102,7 +102,7 @@ _Function has no arguments._
 
 * The step that failed.
 
-### ubuntu::setup-external
+### ubuntu__setup-external
 
 Install GnuPG, GitHub CLI, and Git Credential Manager when they are not already available.
 
@@ -113,7 +113,7 @@ to use Git Credential Manager after the missing external tools are installed.
 #### Example
 
 ```bash
-ubuntu::setup-external
+ubuntu__setup-external
 ```
 
 _Function has no arguments._
@@ -126,11 +126,11 @@ _Function has no arguments._
 * **77**: sudo refused the credentials.
 * other A package installation or repository setup failed.
 
-### ubuntu::setup-desktop
+### ubuntu__setup-desktop
 
 Apply the Ubuntu user configuration and desktop settings, stopping at the first failure.
 
-After ubuntu::setup, mozc::ibus::upgrade installs IBus Mozc or upgrades it
+After ubuntu__setup, mozc__ibus__upgrade installs IBus Mozc or upgrades it
 when the release offers a newer version, and the IME keys, Mozc and US input
 sources, and Hiragana start are set. Nonconvert/LANG2 selects US, and Convert/LANG1
 selects Mozc through GNOME shortcuts. The GNOME title-bar layout is also set.
@@ -140,7 +140,7 @@ sessions.
 #### Example
 
 ```bash
-ubuntu::setup-desktop
+ubuntu__setup-desktop
 ```
 
 _Function has no arguments._

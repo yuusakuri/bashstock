@@ -10,7 +10,7 @@
 # Releases newer than the last upgrade-supported release are included because
 # Write the Ubuntu Server ISO architecture for the current machine, or validate one.
 # @internal
-ubuntu::_server-iso-architecture() {
+_ubuntu__server-iso-architecture() {
   [[ "$#" -le 1 ]] || return 64
   local architecture="${1:-}"
   if [[ -z "${architecture}" ]]; then
@@ -26,7 +26,7 @@ ubuntu::_server-iso-architecture() {
 
 # @description Write the directory URL that publishes Ubuntu Server ISOs of one LTS series.
 # @internal
-ubuntu::_server-iso-directory() {
+_ubuntu__server-iso-directory() {
   ( [[ "$#" -eq 2 && "$1" =~ ^[0-9]+\.[0-9]+$ ]] ) || return 64
   case "$2" in
     amd64) printf 'https://releases.ubuntu.com/%s/\n' "$1" ;;
@@ -37,11 +37,11 @@ ubuntu::_server-iso-directory() {
 
 # @description Write SHA-256 and file name pairs of the live server ISOs that one LTS series publishes.
 # @internal
-ubuntu::_server-iso-checksums() {
+_ubuntu__server-iso-checksums() {
   [[ "$#" -eq 2 ]] || return 64
   local directory='' sums=''
-  directory="$(ubuntu::_server-iso-directory "$1" "$2")" || return "$?"
-  sums="$(package::_fetch "${directory}SHA256SUMS" 2>/dev/null)" || return 0
+  directory="$(_ubuntu__server-iso-directory "$1" "$2")" || return "$?"
+  sums="$(_package__fetch "${directory}SHA256SUMS" 2>/dev/null)" || return 0
   printf '%s\n' "${sums}" |
     awk -v arch="$2" '$2 ~ ("^\\*?ubuntu-[0-9.]+-live-server-" arch "\\.iso$") { sub(/^\*/, "", $2); print $1 "\t" $2 }'
 }
@@ -59,18 +59,18 @@ ubuntu::_server-iso-checksums() {
 # @exitcode 69 No image is published for the architecture.
 # @exitcode 74 The release metadata could not be downloaded.
 # @example
-#   ubuntu::server-iso-versions arm64
-ubuntu::server-iso-versions() {
+#   ubuntu__server-iso-versions arm64
+ubuntu__server-iso-versions() {
   [[ "$#" -le 1 ]] || return 64
   local architecture='' metadata='' series='' versions=''
-  architecture="$(ubuntu::_server-iso-architecture "${1:-}")" || return "$?"
-  metadata="$(package::_fetch https://changelogs.ubuntu.com/meta-release-lts)" || return "$?"
+  architecture="$(_ubuntu__server-iso-architecture "${1:-}")" || return "$?"
+  metadata="$(_package__fetch https://changelogs.ubuntu.com/meta-release-lts)" || return "$?"
   while IFS= read -r series; do
     [[ -n "${series}" ]] || continue
-    versions+="$(ubuntu::_server-iso-checksums "${series}" "${architecture}" |
+    versions+="$(_ubuntu__server-iso-checksums "${series}" "${architecture}" |
       sed -E 's/^[^\t]*\tubuntu-([0-9.]+)-live-server-.*/\1/')"$'\n'
   done < <(printf '%s\n' "${metadata}" | sed -nE 's/^Version:[[:space:]]*([0-9]+\.[0-9]+).*/\1/p' | sort -u)
-  versions="$(printf '%s' "${versions}" | package::_sort-versions)"
+  versions="$(printf '%s' "${versions}" | _package__sort-versions)"
   [[ -n "${versions}" ]] || return 69
   printf '%s\n' "${versions}"
 }
@@ -81,7 +81,7 @@ ubuntu::server-iso-versions() {
 # place only after its checksum matches, so a failed download or a corrupted
 # image leaves an existing file unchanged.
 #
-# @arg $1 string Optional version from ubuntu::server-iso-versions. Defaults to the newest one.
+# @arg $1 string Optional version from ubuntu__server-iso-versions. Defaults to the newest one.
 # @arg $2 string Optional architecture: amd64 or arm64. Defaults to the current machine.
 # @arg $3 string Optional destination file. Defaults to the official file name in the current directory.
 # @exitcode 0 The verified image is at the destination.
@@ -89,24 +89,24 @@ ubuntu::server-iso-versions() {
 # @exitcode 69 The version is not published for the architecture.
 # @exitcode 74 The download failed, the checksum does not match, or the file could not be moved.
 # @example
-#   ubuntu::download-server-iso 24.04.3 amd64 "${HOME}/iso/ubuntu.iso"
-ubuntu::download-server-iso() {
+#   ubuntu__download-server-iso 24.04.3 amd64 "${HOME}/iso/ubuntu.iso"
+ubuntu__download-server-iso() {
   [[ "$#" -le 3 ]] || return 64
   local version="${1:-}" architecture='' output="${3:-}" versions='' series='' name='' directory=''
   local checksum='' temporary='' status=0
-  architecture="$(ubuntu::_server-iso-architecture "${2:-}")" || return "$?"
-  versions="$(ubuntu::server-iso-versions "${architecture}")" || return "$?"
-  version="$(package::_select-listed-version "${versions}" "${version}" 'Ubuntu Server ISO')" || return "$?"
+  architecture="$(_ubuntu__server-iso-architecture "${2:-}")" || return "$?"
+  versions="$(ubuntu__server-iso-versions "${architecture}")" || return "$?"
+  version="$(_package__select-listed-version "${versions}" "${version}" 'Ubuntu Server ISO')" || return "$?"
   series="$(printf '%s' "${version}" | cut -d . -f 1-2)"
   name="ubuntu-${version}-live-server-${architecture}.iso"
-  checksum="$(ubuntu::_server-iso-checksums "${series}" "${architecture}" | awk -F '\t' -v name="${name}" '$2 == name {print $1}')"
+  checksum="$(_ubuntu__server-iso-checksums "${series}" "${architecture}" | awk -F '\t' -v name="${name}" '$2 == name {print $1}')"
   ( [[ "${checksum}" =~ ^[0-9a-f]{64}$ ]] ) || return 74
-  directory="$(ubuntu::_server-iso-directory "${series}" "${architecture}")" || return "$?"
+  directory="$(_ubuntu__server-iso-directory "${series}" "${architecture}")" || return "$?"
   [[ -n "${output}" ]] || output="./${name}"
   temporary="$(mktemp "${output}.XXXXXX")" || return 74
-  package::_download "${directory}${name}" "${temporary}" || status="$?"
-  if [[ "${status}" -eq 0 ]] && ! file::verify-sha256 "${temporary}" "${checksum}"; then
-    console::_write-error "The downloaded ${name} does not match the official SHA256SUMS."
+  _package__download "${directory}${name}" "${temporary}" || status="$?"
+  if [[ "${status}" -eq 0 ]] && ! file__verify-sha256 "${temporary}" "${checksum}"; then
+    _console__write-error "The downloaded ${name} does not match the official SHA256SUMS."
     status=65
   fi
   if [[ "${status}" -eq 0 ]]; then
@@ -124,7 +124,7 @@ ubuntu::download-server-iso() {
 # code --wait, ignore case in completion, link English names to localized
 # user directories, add the user to dialout, configure Git, and fix ~/.ssh
 # permissions. External tools can be installed separately with
-# ubuntu::setup-external. Electron applications prefer native Wayland rendering
+# ubuntu__setup-external. Electron applications prefer native Wayland rendering
 # in supported Wayland sessions.
 #
 # @noargs
@@ -135,11 +135,11 @@ ubuntu::download-server-iso() {
 # @exitcode 77 sudo refused the credentials.
 # @exitcode other The status of the first step that failed.
 # @example
-#   GIT_EMAIL=alice@example.com GIT_USERNAME='Alice Example' ubuntu::setup
-ubuntu::setup() {
+#   GIT_EMAIL=alice@example.com GIT_USERNAME='Alice Example' ubuntu__setup
+ubuntu__setup() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform ubuntu || return "$?"
-  linux::setup || return "$?"
+  _package__require-platform ubuntu || return "$?"
+  linux__setup || return "$?"
 }
 
 # @description Install GnuPG, GitHub CLI, and Git Credential Manager when they are not already available.
@@ -155,16 +155,16 @@ ubuntu::setup() {
 # @exitcode 77 sudo refused the credentials.
 # @exitcode other A package installation or repository setup failed.
 # @example
-#   ubuntu::setup-external
-ubuntu::setup-external() {
+#   ubuntu__setup-external
+ubuntu__setup-external() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform ubuntu || return "$?"
-  linux::_setup-external gnupg
+  _package__require-platform ubuntu || return "$?"
+  _linux__setup-external gnupg
 }
 
 # @description Apply the Ubuntu user configuration and desktop settings, stopping at the first failure.
 #
-# After ubuntu::setup, mozc::ibus::upgrade installs IBus Mozc or upgrades it
+# After ubuntu__setup, mozc__ibus__upgrade installs IBus Mozc or upgrades it
 # when the release offers a newer version, and the IME keys, Mozc and US input
 # sources, and Hiragana start are set. Nonconvert/LANG2 selects US, and Convert/LANG1
 # selects Mozc through GNOME shortcuts. The GNOME title-bar layout is also set.
@@ -178,16 +178,16 @@ ubuntu::setup-external() {
 # @exitcode 69 The system is not Ubuntu.
 # @exitcode other The status of the first step that failed.
 # @example
-#   ubuntu::setup-desktop
-ubuntu::setup-desktop() {
+#   ubuntu__setup-desktop
+ubuntu__setup-desktop() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform ubuntu || return "$?"
-  ubuntu::setup || return "$?"
-  command::_run-step mozc::ibus::upgrade || return "$?"
-  command::_run-step keyboard::setup-ime-keys || return "$?"
-  command::_run-step gnome::input-source::set-mozc-first || return "$?"
-  command::_run-step gnome::keyboard-layout::set-us || return "$?"
-  command::_run-step mozc::ibus::set-hiragana-as-default || return "$?"
-  command::_run-step gnome::input-source::setup-ime-keys || return "$?"
-  command::_run-step gnome::window::set-button-layout
+  _package__require-platform ubuntu || return "$?"
+  ubuntu__setup || return "$?"
+  _command__run-step mozc__ibus__upgrade || return "$?"
+  _command__run-step keyboard__setup-ime-keys || return "$?"
+  _command__run-step gnome__input-source__set-mozc-first || return "$?"
+  _command__run-step gnome__keyboard-layout__set-us || return "$?"
+  _command__run-step mozc__ibus__set-hiragana-as-default || return "$?"
+  _command__run-step gnome__input-source__setup-ime-keys || return "$?"
+  _command__run-step gnome__window__set-button-layout
 }

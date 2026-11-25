@@ -8,18 +8,18 @@ Sizes are written in human-readable units.
 
 ## Index
 
-* [storage::usage](#storageusage)
-* [storage::largest-entries](#storagelargest-entries)
-* [storage::clear-trash](#storageclear-trash)
+* [storage__usage](#storage__usage)
+* [storage__largest-entries](#storage__largest-entries)
+* [storage__clear-trash](#storage__clear-trash)
 
-### storage::usage
+### storage__usage
 
 Show human-readable filesystem usage for a path.
 
 #### Example
 
 ```bash
-storage::usage "${HOME}"
+storage__usage "${HOME}"
 ```
 
 #### Arguments
@@ -37,7 +37,7 @@ storage::usage "${HOME}"
 
 * The df -h report for the file system that holds the path.
 
-### storage::largest-entries
+### storage__largest-entries
 
 Write the largest entries of a directory, including the directory itself, in human-readable sizes.
 
@@ -46,7 +46,7 @@ Directory sizes include everything below them.
 #### Example
 
 ```bash
-storage::largest-entries "${HOME}/Library/Caches" 5
+storage__largest-entries "${HOME}/Library/Caches" 5
 ```
 
 #### Arguments
@@ -64,7 +64,7 @@ storage::largest-entries "${HOME}/Library/Caches" 5
 
 * Lines of size and path, largest first.
 
-### storage::clear-trash
+### storage__clear-trash
 
 Empty the Linux desktop trash of the current user through administrator execution.
 
@@ -73,7 +73,7 @@ The entries directly under Trash/files and Trash/info are removed.
 #### Example
 
 ```bash
-storage::clear-trash
+storage__clear-trash
 ```
 
 _Function has no arguments._

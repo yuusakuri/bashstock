@@ -13,8 +13,8 @@
 # @exitcode 69 screen is unavailable.
 # @exitcode other The status of screen.
 # @example
-#   screen::open build
-screen::open() { if [[ "$#" -gt 1 ]]; then return 64; fi; command -v screen >/dev/null 2>&1 || return 69; screen "${1:-default}"; }
+#   screen__open build
+screen__open() { if [[ "$#" -gt 1 ]]; then return 64; fi; command -v screen >/dev/null 2>&1 || return 69; screen "${1:-default}"; }
 
 # @description Open a serial device in GNU Screen through administrator execution and log the session.
 #
@@ -27,18 +27,18 @@ screen::open() { if [[ "$#" -gt 1 ]]; then return 64; fi; command -v screen >/de
 # @exitcode 74 The log directory could not be created.
 # @exitcode other The status of screen.
 # @example
-#   TTY_LOG_DIR="${HOME}/logs" screen::open-serial /dev/ttyUSB0
-screen::open-serial() {
+#   TTY_LOG_DIR="${HOME}/logs" screen__open-serial /dev/ttyUSB0
+screen__open-serial() {
   [[ "$#" -ge 1 && "$#" -le 3 && -e "$1" ]] || return 64
   local device="$1" baud="${2:-115200}" log="${3:-}" stamp=''
   ( [[ "${baud}" =~ ^[1-9][0-9]*$ ]] ) || return 64
-  command::require screen || return "$?"
+  command__require screen || return "$?"
   if [[ -z "${log}" ]]; then
-    stamp="$(time::local-date-time-seconds-basic)" || return "$?"
+    stamp="$(time__local-date-time-seconds-basic)" || return "$?"
     log="${TTY_LOG_DIR:-.}/${stamp}-screen.log"
   fi
-  mkdir -p -- "$(path::directory-name "${log}")" || return 74
-  command::run-as-root screen -L -Logfile "${log}" "${device}" "${baud}"
+  mkdir -p -- "$(path__directory-name "${log}")" || return 74
+  command__run-as-root screen -L -Logfile "${log}" "${device}" "${baud}"
 }
 
 # @description End every GNU Screen process of every user through administrator execution.
@@ -51,12 +51,12 @@ screen::open-serial() {
 # @exitcode 69 pkill is unavailable.
 # @exitcode other The status of pkill.
 # @example
-#   screen::kill-all
-screen::kill-all() {
+#   screen__kill-all
+screen__kill-all() {
   [[ "$#" -eq 0 ]] || return 64
-  command::require pkill || return "$?"
+  command__require pkill || return "$?"
   local status=0
-  command::run-as-root pkill screen || status="$?"
+  command__run-as-root pkill screen || status="$?"
   # pkill returns 1 when no process matched.
   [[ "${status}" -eq 1 ]] && return 0
   return "${status}"

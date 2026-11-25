@@ -21,15 +21,15 @@
 # @exitcode 65 The field is ambiguous or holds a message, or the file is unbalanced.
 # @exitcode 66 The file cannot be read.
 # @exitcode 69 Python 3 is unavailable.
-# @exitcode other The status of file::write-text.
+# @exitcode other The status of file__write-text.
 # @example
-#   textproto::set-scalar config.textproto timeout_seconds 30
-#   textproto::set-scalar config.textproto name '"production"'
-textproto::set-scalar() {
+#   textproto__set-scalar config.textproto timeout_seconds 30
+#   textproto__set-scalar config.textproto name '"production"'
+textproto__set-scalar() {
   ( [[ "$#" -eq 3 && -f "$1" && ! -L "$1" && "$2" =~ ^[A-Za-z_][A-Za-z0-9_]*$ && -n "$3" ]] ) || return 64
-  string::_require-one-line "$3" || return "$?"
+  _string__require-one-line "$3" || return "$?"
   local content=''
-  content="$(python::run -c '
+  content="$(python__run -c '
 import re
 import sys
 path, field, value = sys.argv[1:]
@@ -97,5 +97,5 @@ if depth != 0:
 sys.stdout.write("".join(lines) + "x")
 ' "$1" "$2" "$3")" || return "$?"
   # The trailing x keeps the final newline through command substitution.
-  file::write-text "$1" "${content%x}"
+  file__write-text "$1" "${content%x}"
 }

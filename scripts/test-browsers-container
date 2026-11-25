@@ -58,12 +58,12 @@ expect_unavailable() {
 }
 
 printf '== VS Code\n'
-vscode::install
+vscode__install
 expect_window code code --no-sandbox --disable-gpu --user-data-dir "$work/code" --new-window
 
 printf '== Google Chrome\n'
-[[ -n "$(chrome::versions)" ]]
-chrome::install
+[[ -n "$(chrome__versions)" ]]
+chrome__install
 google-chrome --version
 google-chrome --headless --no-sandbox --disable-gpu --dump-dom 'data:text/html,<p>bashstock</p>' |
   grep -F '<p>bashstock</p>'
@@ -71,14 +71,14 @@ expect_window google-chrome google-chrome --no-sandbox --disable-gpu --no-first-
   --user-data-dir="$work/chrome" about:blank
 
 printf '== Microsoft Edge\n'
-edge_versions="$(microsoft-edge::versions)"
+edge_versions="$(microsoft-edge__versions)"
 if [[ "$architecture" != x86_64 ]]; then
   # Microsoft builds Edge for Linux on amd64 only.
   [[ -z "$edge_versions" ]]
-  expect_unavailable microsoft-edge::install
+  expect_unavailable microsoft-edge__install
 else
   [[ -n "$edge_versions" ]]
-  microsoft-edge::install
+  microsoft-edge__install
   microsoft-edge --version
   expect_window microsoft-edge microsoft-edge --no-sandbox --disable-gpu --no-first-run \
     --user-data-dir="$work/edge" about:blank

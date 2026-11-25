@@ -7,10 +7,10 @@
 
 # @description Write the artifact suffix used by official Node.js downloads.
 # @internal
-node::_official-platform() {
+_node__official-platform() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' architecture=''
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package__platform)" || return "$?"
   case "${platform}" in
     darwin) platform='darwin' ;;
     ubuntu | fedora) platform='linux' ;;
@@ -33,17 +33,17 @@ node::_official-platform() {
 # @exitcode 69 The platform is unsupported, or Python 3 is missing for the official source.
 # @exitcode 74 The release index could not be downloaded or read.
 # @example
-#   node::versions official | tail -n 3
-node::versions() {
+#   node__versions official | tail -n 3
+node__versions() {
   [[ "$#" -le 1 ]] || return 64
   local source="${1:-os}" platform='' versions='' raw='' artifact='' json=''
   [[ "${source}" == os || "${source}" == official ]] || return 64
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package__platform)" || return "$?"
   if [[ "${source}" == official ]]; then
-    artifact="$(node::_official-platform)" || return "$?"
+    artifact="$(_node__official-platform)" || return "$?"
     if [[ "${artifact}" == darwin-* ]]; then artifact="osx-${artifact#darwin-}-tar"; fi
-    json="$(package::_fetch https://nodejs.org/dist/index.json)" || return "$?"
-    versions="$(printf '%s' "${json}" | python::_run-json 74 '
+    json="$(_package__fetch https://nodejs.org/dist/index.json)" || return "$?"
+    versions="$(printf '%s' "${json}" | _python__run-json 74 '
 import re
 import sys
 artifact = sys.argv[1]
@@ -55,36 +55,36 @@ for release in data:
         print(match.group(1))
 ' "${artifact}")" || return "$?"
   elif [[ "${platform}" == darwin ]]; then
-    versions="$(package::_brew-formula-stable-version node)" || return "$?"
+    versions="$(_package__brew-formula-stable-version node)" || return "$?"
     local formula='' versioned_formulae=''
     versioned_formulae="$(brew info --json=v2 --formula node |
-      python::_run-json 74 '
+      _python__run-json 74 '
 for formula in data["formulae"][:1]:
     for name in formula.get("versioned_formulae") or []:
         print(name)
 ')" || return "$?"
     while IFS= read -r formula; do
       [[ -n "${formula}" ]] || continue
-      raw="$(package::_brew-formula-stable-version "${formula}")" || return "$?"
+      raw="$(_package__brew-formula-stable-version "${formula}")" || return "$?"
       versions+=$'\n'"${raw}"
     done <<<"${versioned_formulae}"
   else
-    versions="$(package::_versions nodejs)" || return "$?"
+    versions="$(_package__versions nodejs)" || return "$?"
     while IFS= read -r raw; do
       [[ "${raw}" =~ ([0-9]+\.[0-9]+\.[0-9]+) ]] &&
         printf '%s\n' "${BASH_REMATCH[1]}"
-    done <<<"${versions}" | package::_sort-versions
+    done <<<"${versions}" | _package__sort-versions
     return
   fi
   [[ -n "${versions}" ]] || return 69
-  printf '%s\n' "${versions}" | package::_sort-versions
+  printf '%s\n' "${versions}" | _package__sort-versions
 }
 
 # @description Install Node.js, enable Corepack, and set the pnpm store directory.
 #
 # Corepack is enabled with pnpm 8.15.9, installing Corepack through npm when the Node.js release no longer bundles it.
 #
-# @arg $1 string Optional complete version from node::versions. Defaults to the newest stable version of the source.
+# @arg $1 string Optional complete version from node__versions. Defaults to the newest stable version of the source.
 # @arg $2 string Optional source: os (default) or official.
 # @stderr A message when the version is unavailable or too old for Corepack.
 # @exitcode 0 Node.js, Corepack, and pnpm are ready.
@@ -93,62 +93,62 @@ for formula in data["formulae"][:1]:
 # @exitcode 74 The official archive could not be downloaded or unpacked.
 # @exitcode other The status of the package manager, npm, or Corepack.
 # @example
-#   node::install 22.11.0 official
+#   node__install 22.11.0 official
 #   pnpm --version
-node::install() {
+node__install() {
   [[ "$#" -le 2 ]] || return 64
   local version="${1:-}" source="${2:-os}" platform='' available='' raw='' selected=''
   ( [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ) || return 64
   [[ "${source}" == os || "${source}" == official ]] || return 64
-  platform="$(package::_platform)" || return "$?"
-  available="$(node::versions "${source}")" || return "$?"
+  platform="$(_package__platform)" || return "$?"
+  available="$(node__versions "${source}")" || return "$?"
   if [[ -z "${version}" ]]; then
-    version="$(printf '%s\n' "${available}" | package::_latest-stable-version)" || return "$?"
+    version="$(printf '%s\n' "${available}" | _package__latest-stable-version)" || return "$?"
   fi
   if ! grep -Fqx -- "${version}" <<<"${available}"; then
-    console::_write-error "Node.js ${version} is unavailable from ${source}."
+    _console__write-error "Node.js ${version} is unavailable from ${source}."
     return 69
   fi
   local major="${version%%.*}" minor="${version#*.}"
   minor="${minor%%.*}"
   if (( major < 16 || (major == 16 && minor < 14) )); then
-    console::_write-error "Node.js ${version} cannot run the required Corepack and pnpm releases."
+    _console__write-error "Node.js ${version} cannot run the required Corepack and pnpm releases."
     return 69
   fi
   if [[ "${source}" == official ]]; then
-    node::_install-official "${version}" || return "$?"
+    _node__install-official "${version}" || return "$?"
   elif [[ "${platform}" == darwin ]]; then
     local formula='node' stable='' versioned_formulae='' candidate=''
-    stable="$(package::_brew-formula-stable-version node)" || return "$?"
+    stable="$(_package__brew-formula-stable-version node)" || return "$?"
     if [[ "${version}" != "${stable}" ]]; then
       formula=''
       versioned_formulae="$(brew info --json=v2 --formula node |
-        python::_run-json 74 '
+        _python__run-json 74 '
 for formula in data["formulae"][:1]:
     for name in formula.get("versioned_formulae") or []:
         print(name)
 ')" || return "$?"
       while IFS= read -r candidate; do
         [[ -n "${candidate}" ]] || continue
-        stable="$(package::_brew-formula-stable-version "${candidate}")" || return "$?"
+        stable="$(_package__brew-formula-stable-version "${candidate}")" || return "$?"
         if [[ "${version}" == "${stable}" ]]; then formula="${candidate}"; break; fi
       done <<<"${versioned_formulae}"
       [[ -n "${formula}" ]] || return 69
     fi
-    package::_install "${formula}" || return "$?"
+    _package__install "${formula}" || return "$?"
     [[ "${formula}" == node ]] || brew link --overwrite --force "${formula}" || return "$?"
   else
-    available="$(package::_versions nodejs)" || return "$?"
+    available="$(_package__versions nodejs)" || return "$?"
     while IFS= read -r raw; do
       if ( [[ "${raw}" =~ (^|[^0-9])${version}([^0-9]|$) ]] ); then selected="${raw}"; fi
     done <<<"${available}"
     [[ -n "${selected}" ]] || return 69
     if [[ "${platform}" == ubuntu ]]; then
-      [[ -n "$(package::_versions npm)" ]] || return 69
+      [[ -n "$(_package__versions npm)" ]] || return 69
     fi
-    package::_install "nodejs=${selected}" npm || return "$?"
+    _package__install "nodejs=${selected}" npm || return "$?"
   fi
-  node::_enable-corepack "${platform}" "${source}" || return "$?"
+  _node__enable-corepack "${platform}" "${source}" || return "$?"
   COREPACK_ENABLE_DOWNLOAD_PROMPT=0 pnpm config set store-dir "${HOME}/.pnpm-store"
 }
 
@@ -158,13 +158,13 @@ for formula in data["formulae"][:1]:
 # shared bin directory. Corepack replaces that link, as corepack enable does
 # for a bundled Corepack, so npm is allowed to overwrite it there.
 # @internal
-node::_enable-corepack() {
+_node__enable-corepack() {
   [[ "$#" -eq 2 ]] || return 64
   local runner=() options=()
-  [[ "$1" == 'darwin' || "$2" == official ]] || runner=(command::run-as-root)
+  [[ "$1" == 'darwin' || "$2" == official ]] || runner=(command__run-as-root)
   [[ "$1" != 'darwin' || "$2" == official ]] || options=(--force)
   if ! command -v corepack >/dev/null 2>&1; then
-    command::require npm || return "$?"
+    command__require npm || return "$?"
     ${runner[@]+"${runner[@]}"} npm install --global ${options[@]+"${options[@]}"} corepack@0.20.0 ||
       return "$?"
   fi
@@ -174,15 +174,15 @@ node::_enable-corepack() {
 
 # @description Install an official Node.js archive after confirming that its executables start.
 # @internal
-node::_install-official() {
+_node__install-official() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ) || return 64
   local version="$1" artifact='' temporary='' destination=''
-  artifact="$(node::_official-platform)" || return "$?"
+  artifact="$(_node__official-platform)" || return "$?"
   destination="${HOME}/.local/lib/node/${version}"
   if [[ ! -x "${destination}/bin/node" ]]; then
-    temporary="$(package::_temporary-directory)" || return "$?"
+    temporary="$(_package__temporary-directory)" || return "$?"
     # The gzip archive avoids requiring xz, which minimal systems do not install.
-    package::_download \
+    _package__download \
       "https://nodejs.org/dist/v${version}/node-v${version}-${artifact}.tar.gz" \
       "${temporary}/node.tar.gz" || { rm -rf -- "${temporary}"; return 74; }
     mkdir -p -- "${temporary}/unpacked" || { rm -rf -- "${temporary}"; return 74; }
@@ -207,8 +207,8 @@ node::_install-official() {
   printf -v escaped '%q' "${binary_directory}"
   line="__bashstock_node_bin=${escaped}; case \"\$PATH\" in \"\$__bashstock_node_bin\"|\"\$__bashstock_node_bin\":*) ;; *) PATH=\"\$__bashstock_node_bin:\$PATH\"; export PATH ;; esac; unset __bashstock_node_bin"
   for startup in "${HOME}/.bashrc" "${HOME}/.zshrc"; do
-    [[ -e "${startup}" ]] || file::write-text "${startup}" '' || return "$?"
-    file::replace-text-or-append "${startup}" \
+    [[ -e "${startup}" ]] || file__write-text "${startup}" '' || return "$?"
+    file__replace-text-or-append "${startup}" \
       '^(__bashstock_node_bin=|__bashstock_path=.*\.local/lib/node/current/bin).*$' \
       "${line}" || return "$?"
   done

@@ -5,7 +5,7 @@
 
 # @description Write the identifier of the supported operating-system provider.
 # @internal
-platform::_identifier() {
+_platform__identifier() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
@@ -13,7 +13,7 @@ platform::_identifier() {
   local operating_system=''
   local key=''
   local value=''
-  operating_system="$(system::operating-system)" || return "$?"
+  operating_system="$(system__operating-system)" || return "$?"
   if [[ "${operating_system}" == 'darwin' ]]; then
     printf 'darwin\n'
     return 0
@@ -44,7 +44,7 @@ platform::_identifier() {
 
 # @description Write one value from /etc/os-release without evaluating the file.
 # @internal
-platform::_os-release-value() {
+_platform__os-release-value() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[A-Z_]+$ ]] ) || return 64
   [[ -r /etc/os-release ]] || return 66
   local key='' value=''
@@ -60,18 +60,18 @@ platform::_os-release-value() {
 
 # @description Return unavailable until an operating-system provider defines user creation.
 # @internal
-platform::_create-system-user() {
+_platform__create-system-user() {
   return 69
 }
 
 # @description Return unavailable until an operating-system provider defines login creation.
 # @internal
-platform::_create-login-user() {
+_platform__create-login-user() {
   return 69
 }
 
 # @description Return unavailable until an operating-system provider defines ownership changes.
 # @internal
-platform::_change-owner-recursively() {
+_platform__change-owner-recursively() {
   return 69
 }

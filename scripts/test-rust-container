@@ -7,8 +7,8 @@ source /opt/bashstock.sh
 directory="$(mktemp -d)"
 trap 'rm -rf -- "$directory"' EXIT
 
-rust::install
-rust::install
+rust__install
+rust__install
 rustc --version
 cargo --version
 cat >"${directory}/hello.rs" <<'RUST'

@@ -15,13 +15,13 @@ load test_helper
   printf 'value=1' >"${replacement_file}"
   BASH_REMATCH=('caller-value')
 
-  string::lower 'VALUE' >/dev/null
-  regex::is-match 'value' '^val' >/dev/null
-  number::is-number '12.5'
-  path::normalize '/one/../two' >/dev/null
-  array::unique one two one >/dev/null
-  file::contains-match "${PROJECT_ROOT}/README.md" '^# ' >/dev/null
-  file::replace-text "${replacement_file}" 'value=[0-9]+' 'value=X'
+  string__lower 'VALUE' >/dev/null
+  regex__is-match 'value' '^val' >/dev/null
+  number__is-number '12.5'
+  path__normalize '/one/../two' >/dev/null
+  array__unique one two one >/dev/null
+  file__contains-match "${PROJECT_ROOT}/README.md" '^# ' >/dev/null
+  file__replace-text "${replacement_file}" 'value=[0-9]+' 'value=X'
 
   [ "${PWD}" = "${directory_before}" ]
   [ "${IFS}" = "${ifs_before}" ]
@@ -37,9 +37,9 @@ load test_helper
   shell_options_before="$(shopt -p)"
   BASH_REMATCH=('caller-value')
 
-  ! string::contains value missing
-  ! number::is-integer decimal
-  ! path::is-regular-file "${BATS_TEST_TMPDIR}/missing"
+  ! string__contains value missing
+  ! number__is-integer decimal
+  ! path__is-regular-file "${BATS_TEST_TMPDIR}/missing"
 
   [ "$(set +o)" = "${options_before}" ]
   [ "$(shopt -p)" = "${shell_options_before}" ]
@@ -51,11 +51,11 @@ load test_helper
   printf 'export BASHSTOCK_STATE_VALUE=1 # comment\n' >"${dotenv}"
   [[ 'caller-value' =~ (caller)-(value) ]]
 
-  time::posix-timezone +09:30 >/dev/null
-  number::is-integer 12
-  env::dotenv::import "${dotenv}"
-  git::branch::create -D topic . 2>/dev/null || true
-  ssh::config::update "${BATS_TEST_TMPDIR}/missing" host User x 2>/dev/null || true
+  time__posix-timezone +09:30 >/dev/null
+  number__is-integer 12
+  env__dotenv__import "${dotenv}"
+  git__branch__create -D topic . 2>/dev/null || true
+  ssh__config__update "${BATS_TEST_TMPDIR}/missing" host User x 2>/dev/null || true
 
   [ "${BASH_REMATCH[0]}" = 'caller-value' ]
   [ "${BASH_REMATCH[2]}" = 'value' ]

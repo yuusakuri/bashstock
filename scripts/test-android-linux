@@ -13,38 +13,38 @@ export ANDROID_USER_HOME="${HOME}/.android"
 mkdir -p "${HOME}"
 source ./dist/bashstock.sh
 
-android::sdk::install
-android::platform-tools::install
-android::sdk-platform::install 35
-android::build-tools::install 35.0.0
-android::command-line-tools::install
-android::emulator::install
-android::platform-tools::install
+android__sdk__install
+android__platform-tools__install
+android__sdk-platform__install 35
+android__build-tools__install 35.0.0
+android__command-line-tools__install
+android__emulator__install
+android__platform-tools__install
 
-"$(android::_cli-command)" --version
+"$(_android__cli-command)" --version
 "${ANDROID_HOME}/platform-tools/adb" version
 "${ANDROID_HOME}/build-tools/35.0.0/aapt2" version
 "${ANDROID_HOME}/emulator/emulator" -version
 test -s "${ANDROID_HOME}/platforms/android-35/android.jar"
 
 name="bashstock_ci_${GITHUB_RUN_ID:-local}"
-android::avd::create "${name}" 35
-test "$(android::avd::list | grep -Fxc -- "${name}")" -eq 1
-serial="$(android::avd::start "${name}" '' 300 --headless)"
+android__avd__create "${name}" 35
+test "$(android__avd__list | grep -Fxc -- "${name}")" -eq 1
+serial="$(android__avd__start "${name}" '' 300 --headless)"
 test -n "${serial}"
-test "$(adb::device::first)" = "${serial}"
-test -n "$(adb::device::build::fingerprint --serial "${serial}")"
+test "$(adb__device__first)" = "${serial}"
+test -n "$(adb__device__build__fingerprint --serial "${serial}")"
 printf 'adb transfer verified\n' >"${RUNNER_TEMP}/host file.txt"
-adb::device::push "${RUNNER_TEMP}/host file.txt" '/data/local/tmp/bashstock ci file.txt' --serial "${serial}"
-adb::device::wait-for-path '/data/local/tmp/bashstock ci file.txt' 30 --serial "${serial}"
-adb::device::pull '/data/local/tmp/bashstock ci file.txt' "${RUNNER_TEMP}/pulled file.txt" --serial "${serial}"
+adb__device__push "${RUNNER_TEMP}/host file.txt" '/data/local/tmp/bashstock ci file.txt' --serial "${serial}"
+adb__device__wait-for-path '/data/local/tmp/bashstock ci file.txt' 30 --serial "${serial}"
+adb__device__pull '/data/local/tmp/bashstock ci file.txt' "${RUNNER_TEMP}/pulled file.txt" --serial "${serial}"
 cmp "${RUNNER_TEMP}/host file.txt" "${RUNNER_TEMP}/pulled file.txt"
-adb::device::screen::capture-once "${RUNNER_TEMP}/screen.png" --serial "${serial}"
+adb__device__screen__capture-once "${RUNNER_TEMP}/screen.png" --serial "${serial}"
 test -s "${RUNNER_TEMP}/screen.png"
-adb::device::reboot 120 --serial "${serial}"
-android::avd::stop "${name}"
-android::avd::delete "${name}"
-if android::avd::list | grep -Fqx -- "${name}"; then
+adb__device__reboot 120 --serial "${serial}"
+android__avd__stop "${name}"
+android__avd__delete "${name}"
+if android__avd__list | grep -Fqx -- "${name}"; then
   printf 'AVD was not removed.\n' >&2
   exit 1
 fi

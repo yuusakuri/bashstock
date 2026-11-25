@@ -8,18 +8,18 @@ UTM is installed from its release disk image on macOS.
 
 ## Index
 
-* [utm::open](#utmopen)
-* [utm::versions](#utmversions)
-* [utm::install](#utminstall)
+* [utm__open](#utm__open)
+* [utm__versions](#utm__versions)
+* [utm__install](#utm__install)
 
-### utm::open
+### utm__open
 
 Open the UTM application on macOS.
 
 #### Example
 
 ```bash
-utm::open
+utm__open
 ```
 
 _Function has no arguments._
@@ -31,14 +31,14 @@ _Function has no arguments._
 * **69**: The system is not macOS.
 * other The status of open.
 
-### utm::versions
+### utm__versions
 
 Write UTM release versions.
 
 #### Example
 
 ```bash
-utm::versions | tail -n 1
+utm__versions | tail -n 1
 ```
 
 _Function has no arguments._
@@ -54,14 +54,14 @@ _Function has no arguments._
 
 * Stable UTM release versions, one per line, oldest first.
 
-### utm::install
+### utm__install
 
 Install UTM from its release disk image on macOS.
 
 #### Example
 
 ```bash
-utm::install 4.6.4
+utm__install 4.6.4
 ```
 
 #### Arguments

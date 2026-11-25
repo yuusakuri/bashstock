@@ -8,22 +8,22 @@ Bash 3.2 cannot pass arrays by reference, so the elements are passed as separate
 
 ## Index
 
-* [array::contains](#arraycontains)
-* [array::reverse](#arrayreverse)
-* [array::length](#arraylength)
-* [array::first](#arrayfirst)
-* [array::last](#arraylast)
-* [array::unique](#arrayunique)
-* [array::prepend-to-each](#arrayprepend-to-each)
+* [array__contains](#array__contains)
+* [array__reverse](#array__reverse)
+* [array__length](#array__length)
+* [array__first](#array__first)
+* [array__last](#array__last)
+* [array__unique](#array__unique)
+* [array__prepend-to-each](#array__prepend-to-each)
 
-### array::contains
+### array__contains
 
 Test whether the remaining arguments contain the expected value.
 
 #### Example
 
 ```bash
-array::contains main "${branches[@]}" && printf 'main exists\n'
+array__contains main "${branches[@]}" && printf 'main exists\n'
 ```
 
 #### Arguments
@@ -37,14 +37,14 @@ array::contains main "${branches[@]}" && printf 'main exists\n'
 * **1**: No value equals the expected value.
 * **64**: No expected value was given.
 
-### array::reverse
+### array__reverse
 
 Write the arguments in reverse order, one value per line.
 
 #### Example
 
 ```bash
-array::reverse a b c
+array__reverse a b c
 # c
 # b
 # a
@@ -63,14 +63,14 @@ array::reverse a b c
 
 * The values from last to first, one per line.
 
-### array::length
+### array__length
 
 Write the number of arguments.
 
 #### Example
 
 ```bash
-array::length "${files[@]}"
+array__length "${files[@]}"
 ```
 
 #### Arguments
@@ -85,14 +85,14 @@ array::length "${files[@]}"
 
 * The number of values.
 
-### array::first
+### array__first
 
 Write the first argument when one is available.
 
 #### Example
 
 ```bash
-array::first "${hosts[@]}"
+array__first "${hosts[@]}"
 ```
 
 #### Arguments
@@ -109,14 +109,14 @@ array::first "${hosts[@]}"
 
 * The first value.
 
-### array::last
+### array__last
 
 Write the last argument when one is available.
 
 #### Example
 
 ```bash
-array::last "${versions[@]}"
+array__last "${versions[@]}"
 ```
 
 #### Arguments
@@ -133,14 +133,14 @@ array::last "${versions[@]}"
 
 * The last value.
 
-### array::unique
+### array__unique
 
 Write each distinct argument once in its original order.
 
 #### Example
 
 ```bash
-array::unique b a b c a
+array__unique b a b c a
 # b
 # a
 # c
@@ -159,14 +159,14 @@ array::unique b a b c a
 
 * Each distinct value once, one per line, in the order it first appeared.
 
-### array::prepend-to-each
+### array__prepend-to-each
 
 Prefix every value and write one result per line.
 
 #### Example
 
 ```bash
-array::prepend-to-each --exclude= .git node_modules
+array__prepend-to-each --exclude= .git node_modules
 # --exclude=.git
 # --exclude=node_modules
 ```

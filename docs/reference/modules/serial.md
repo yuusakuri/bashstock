@@ -8,19 +8,19 @@ Devices are configured with stty and written to directly.
 
 ## Index
 
-* [serial::configure](#serialconfigure)
-* [serial::write](#serialwrite)
-* [serial::write-command](#serialwrite-command)
-* [serial::release](#serialrelease)
+* [serial__configure](#serial__configure)
+* [serial__write](#serial__write)
+* [serial__write-command](#serial__write-command)
+* [serial__release](#serial__release)
 
-### serial::configure
+### serial__configure
 
 Open a serial device with a configured baud rate.
 
 #### Example
 
 ```bash
-serial::configure /dev/ttyUSB0 9600
+serial__configure /dev/ttyUSB0 9600
 ```
 
 #### Arguments
@@ -35,14 +35,14 @@ serial::configure /dev/ttyUSB0 9600
 * **69**: stty is unavailable.
 * other The status of stty.
 
-### serial::write
+### serial__write
 
 Write literal data to a serial device.
 
 #### Example
 
 ```bash
-serial::write /dev/ttyUSB0 'AT'
+serial__write /dev/ttyUSB0 'AT'
 ```
 
 #### Arguments
@@ -56,14 +56,14 @@ serial::write /dev/ttyUSB0 'AT'
 * **1**: The device could not be written.
 * **64**: The argument count is not two or the device does not exist.
 
-### serial::write-command
+### serial__write-command
 
 Write a command and terminator to a serial device.
 
 #### Example
 
 ```bash
-serial::write-command /dev/ttyUSB0 'AT+GMR' crlf 0.5
+serial__write-command /dev/ttyUSB0 'AT+GMR' crlf 0.5
 ```
 
 #### Arguments
@@ -79,18 +79,18 @@ serial::write-command /dev/ttyUSB0 'AT+GMR' crlf 0.5
 * **64**: The arguments, terminator, or wait time are invalid.
 * **74**: The device could not be written.
 
-### serial::release
+### serial__release
 
 Release a serial device so another process, such as a Python tool, can open it.
 
 The reference implementation called file-close on the device, which
-killed every holder at once; this follows file::release instead: SIGTERM
+killed every holder at once; this follows file__release instead: SIGTERM
 first, SIGKILL only for holders left after the timeout.
 
 #### Example
 
 ```bash
-serial::release /dev/ttyACM0 && esptool.py --port /dev/ttyACM0 chip_id
+serial__release /dev/ttyACM0 && esptool.py --port /dev/ttyACM0 chip_id
 ```
 
 #### Arguments
@@ -102,5 +102,5 @@ serial::release /dev/ttyACM0 && esptool.py --port /dev/ttyACM0 chip_id
 
 * **0**: No process holds the device.
 * **64**: The arguments are invalid or the device does not exist.
-* other The status of file::release.
+* other The status of file__release.
 

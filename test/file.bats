@@ -6,11 +6,11 @@ load test_helper
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'alpha=1\nbeta=2' >"${file}"
 
-  file::contains-match "${file}" '^alpha=[0-9]+$'
-  file::contains-match "${file}" '(?<=alpha)=[0-9]+'
-  ! file::contains-match "${file}" '^gamma='
+  file__contains-match "${file}" '^alpha=[0-9]+$'
+  file__contains-match "${file}" '(?<=alpha)=[0-9]+'
+  ! file__contains-match "${file}" '^gamma='
 
-  run file::contains-match "${file}" '['
+  run file__contains-match "${file}" '['
   [ "${status}" -eq 64 ]
 }
 
@@ -20,9 +20,9 @@ load test_helper
   # Python 3.6 reads arguments as ASCII in the C locale; later versions do the same without UTF-8 mode.
   export LC_ALL=C PYTHONUTF8=0
 
-  file::contains-match "${file}" '^name=値$'
-  file::contains-match "${file}" '日本語'
-  ! file::contains-match "${file}" '^name=別$'
+  file__contains-match "${file}" '^name=値$'
+  file__contains-match "${file}" '日本語'
+  ! file__contains-match "${file}" '^name=別$'
 }
 
 @test "SHA-256 verification is case-insensitive" {
@@ -30,28 +30,28 @@ load test_helper
   local expected=''
   local incorrect=''
   printf 'content' >"${file}"
-  if [[ "$(system::operating-system)" = 'darwin' ]]; then
+  if [[ "$(system__operating-system)" = 'darwin' ]]; then
     expected="$(shasum -a 256 "${file}")"
   else
     expected="$(sha256sum "${file}")"
   fi
   expected="${expected%% *}"
 
-  file::verify-sha256 "${file}" "${expected}"
-  file::verify-sha256 "${file}" "$(string::upper "${expected}")"
+  file__verify-sha256 "${file}" "${expected}"
+  file__verify-sha256 "${file}" "$(string__upper "${expected}")"
   if [[ "${expected:0:1}" = '0' ]]; then
     incorrect="1${expected:1}"
   else
     incorrect="0${expected:1}"
   fi
-  ! file::verify-sha256 "${file}" "${incorrect}"
+  ! file__verify-sha256 "${file}" "${incorrect}"
 }
 
 @test "append-text writes bytes without conversion" {
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'first' >"${file}"
 
-  file::append-text "${file}" $'\nsecond\\value'
+  file__append-text "${file}" $'\nsecond\\value'
   run command cat "${file}"
   [ "${output}" = $'first\nsecond\\value' ]
 }
@@ -62,12 +62,12 @@ load test_helper
   local mode_after=''
   printf 'value=1 value=2\nvalue=3' >"${file}"
   chmod 640 "${file}"
-  mode_before="$(path::mode "${file}")"
+  mode_before="$(path__mode "${file}")"
 
-  file::replace-text "${file}" 'value=[0-9]+' 'value=X'
+  file__replace-text "${file}" 'value=[0-9]+' 'value=X'
   [ "$(<"${file}")" = $'value=X value=2\nvalue=X' ]
 
-  mode_after="$(path::mode "${file}")"
+  mode_after="$(path__mode "${file}")"
   [ "${mode_after}" = "${mode_before}" ]
 }
 
@@ -75,10 +75,10 @@ load test_helper
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'alpha=1 alpha=2\nfoo foo' >"${file}"
 
-  file::replace-all-text "${file}" 'alpha=[0-9]+' '$1\1&'
+  file__replace-all-text "${file}" 'alpha=[0-9]+' '$1\1&'
   [ "$(<"${file}")" = $'$1\\1& $1\\1&\nfoo foo' ]
 
-  file::replace-text "${file}" 'foo$' 'end'
+  file__replace-text "${file}" 'foo$' 'end'
   [ "$(<"${file}")" = $'$1\\1& $1\\1&\nfoo end' ]
 }
 
@@ -86,11 +86,11 @@ load test_helper
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'alpha=1' >"${file}"
 
-  run file::replace-text "${file}" '(?<=alpha)=[0-9]+' 'changed'
+  run file__replace-text "${file}" '(?<=alpha)=[0-9]+' 'changed'
   [ "${status}" -eq 64 ]
   [ "$(<"${file}")" = 'alpha=1' ]
 
-  run file::replace-all-text "${file}" 'a*' 'changed'
+  run file__replace-all-text "${file}" 'a*' 'changed'
   [ "${status}" -eq 64 ]
   [ "$(<"${file}")" = 'alpha=1' ]
 }
@@ -101,7 +101,7 @@ load test_helper
   printf 'alpha\0beta\n' >"${file}"
   cp "${file}" "${original}"
 
-  run file::replace-text "${file}" 'alpha' 'changed'
+  run file__replace-text "${file}" 'alpha' 'changed'
   [ "${status}" -eq 64 ]
   cmp "${file}" "${original}"
 }
@@ -110,7 +110,7 @@ load test_helper
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'value=1' >"${file}"
 
-  run file::replace-text "${file}" '^missing=' replacement
+  run file__replace-text "${file}" '^missing=' replacement
   [ "${status}" -eq 1 ]
   [ "$(<"${file}")" = 'value=1' ]
 }
@@ -119,14 +119,14 @@ load test_helper
   local file="${BATS_TEST_TMPDIR}/input"
   printf 'value=1' >"${file}"
 
-  file::replace-text-or-append "${file}" '^other=.*$' 'other=2'
+  file__replace-text-or-append "${file}" '^other=.*$' 'other=2'
   [ "$(<"${file}")" = $'value=1\nother=2' ]
 
-  file::replace-text-or-append "${file}" '^other=.*$' 'other=3'
+  file__replace-text-or-append "${file}" '^other=.*$' 'other=3'
   [ "$(<"${file}")" = $'value=1\nother=3' ]
 
   printf 'other=1 other=2' >"${file}"
-  file::replace-text-or-append "${file}" 'other=[0-9]+' 'other=X'
+  file__replace-text-or-append "${file}" 'other=[0-9]+' 'other=X'
   [ "$(<"${file}")" = 'other=X other=X' ]
 }
 
@@ -136,19 +136,19 @@ load test_helper
   printf 'value=1' >"${first}"
   printf 'missing=2' >"${second}"
 
-  run file::replace-text-in-files '^value=' 'value=X' "${first}" "${second}"
+  run file__replace-text-in-files '^value=' 'value=X' "${first}" "${second}"
   [ "${status}" -eq 1 ]
   [ "$(<"${first}")" = 'value=1' ]
   [ "$(<"${second}")" = 'missing=2' ]
 
   printf 'value=2' >"${second}"
-  file::replace-text-in-files '^value=' 'value=X' "${first}" "${second}"
+  file__replace-text-in-files '^value=' 'value=X' "${first}" "${second}"
   [ "$(<"${first}")" = 'value=X1' ]
   [ "$(<"${second}")" = 'value=X2' ]
 
   printf 'value=1 value=2' >"${first}"
   printf 'value=3 value=4' >"${second}"
-  file::replace-all-text-in-files \
+  file__replace-all-text-in-files \
     'value=[0-9]+' 'value=X' "${first}" "${second}"
   [ "$(<"${first}")" = 'value=X value=X' ]
   [ "$(<"${second}")" = 'value=X value=X' ]
@@ -160,8 +160,8 @@ load test_helper
   printf 'value' >"${file}"
   ln -s "${file}" "${link}"
 
-  run file::append-text "${link}" text
+  run file__append-text "${link}" text
   [ "${status}" -eq 64 ]
-  run file::replace-text "${link}" value replacement
+  run file__replace-text "${link}" value replacement
   [ "${status}" -eq 66 ]
 }

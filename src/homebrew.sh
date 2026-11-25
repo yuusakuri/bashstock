@@ -17,22 +17,22 @@
 # @exitcode 74 The installer could not be downloaded.
 # @exitcode other The status of the official installer.
 # @example
-#   homebrew::install
+#   homebrew__install
 #   brew --version
-homebrew::install() {
+homebrew__install() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform darwin || return "$?"
+  _package__require-platform darwin || return "$?"
   command -v brew >/dev/null 2>&1 && return 0
   local directory='' status=0
-  directory="$(package::_temporary-directory)" || return "$?"
-  package::_download https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh \
+  directory="$(_package__temporary-directory)" || return "$?"
+  _package__download https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh \
     "${directory}/install.sh" || status="$?"
   [[ "${status}" -ne 0 ]] || /bin/bash "${directory}/install.sh" || status="$?"
   rm -rf -- "${directory}"
   [[ "${status}" -eq 0 ]] || return "${status}"
   local prefix=/opt/homebrew
-  file::ensure-exists "${HOME}/.zshrc" || return "$?"
-  file::replace-text-or-append "${HOME}/.zshrc" '^.*brew shellenv.*$' \
+  file__ensure-exists "${HOME}/.zshrc" || return "$?"
+  file__replace-text-or-append "${HOME}/.zshrc" '^.*brew shellenv.*$' \
     "eval \"\$(${prefix}/bin/brew shellenv)\"" || return "$?"
   PATH="${prefix}/bin:${prefix}/sbin:${PATH}"
   export PATH
@@ -48,8 +48,8 @@ homebrew::install() {
 # @exitcode 64 An argument was given.
 # @exitcode 74 A startup file could not be written.
 # @example
-#   homebrew::cask::disable-quarantine
-homebrew::cask::disable-quarantine() {
+#   homebrew__cask__disable-quarantine
+homebrew__cask__disable-quarantine() {
   [[ "$#" -eq 0 ]] || return 64
-  env::set-variable HOMEBREW_CASK_OPTS --no-quarantine
+  env__set-variable HOMEBREW_CASK_OPTS --no-quarantine
 }

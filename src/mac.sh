@@ -13,11 +13,11 @@
 # @exitcode 69 The system is not macOS.
 # @exitcode other The status of pmset.
 # @example
-#   mac::wake-on-lan::enable
-mac::wake-on-lan::enable() {
+#   mac__wake-on-lan__enable
+mac__wake-on-lan__enable() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform darwin || return "$?"
-  command::run-as-root pmset -a womp 1
+  _package__require-platform darwin || return "$?"
+  command__run-as-root pmset -a womp 1
 }
 
 # @description Disable automatic system sleep while preserving display sleep timers.
@@ -29,12 +29,12 @@ mac::wake-on-lan::enable() {
 # @exitcode 77 sudo refused the credentials.
 # @exitcode other The status of pmset.
 # @example
-#   mac::sleep::disable-automatic
-mac::sleep::disable-automatic() {
+#   mac__sleep__disable-automatic
+mac__sleep__disable-automatic() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform darwin || return "$?"
-  command::require pmset || return "$?"
-  command::run-as-root pmset -a sleep 0
+  _package__require-platform darwin || return "$?"
+  command__require pmset || return "$?"
+  command__run-as-root pmset -a sleep 0
 }
 
 # @description Enable automatic system sleep after ten minutes while preserving display sleep timers.
@@ -46,12 +46,12 @@ mac::sleep::disable-automatic() {
 # @exitcode 77 sudo refused the credentials.
 # @exitcode other The status of pmset.
 # @example
-#   mac::sleep::enable-automatic
-mac::sleep::enable-automatic() {
+#   mac__sleep__enable-automatic
+mac__sleep__enable-automatic() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform darwin || return "$?"
-  command::require pmset || return "$?"
-  command::run-as-root pmset -a sleep 10
+  _package__require-platform darwin || return "$?"
+  command__require pmset || return "$?"
+  command__run-as-root pmset -a sleep 10
 }
 
 # @description Let macOS updates install automatically.
@@ -65,11 +65,11 @@ mac::sleep::enable-automatic() {
 # @exitcode 69 The system is not macOS.
 # @exitcode other The status of defaults or the root command.
 # @example
-#   mac::software-update::enable-automatic-install
-mac::software-update::enable-automatic-install() {
+#   mac__software-update__enable-automatic-install
+mac__software-update__enable-automatic-install() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform darwin || return "$?"
-  command::run-as-root defaults write /Library/Preferences/com.apple.SoftwareUpdate \
+  _package__require-platform darwin || return "$?"
+  command__run-as-root defaults write /Library/Preferences/com.apple.SoftwareUpdate \
     AutomaticallyInstallMacOSUpdates -bool true
 }
 
@@ -84,11 +84,11 @@ mac::software-update::enable-automatic-install() {
 # @exitcode 69 The system is not macOS.
 # @exitcode other The status of defaults or the root command.
 # @example
-#   mac::software-update::disable-automatic-install
-mac::software-update::disable-automatic-install() {
+#   mac__software-update__disable-automatic-install
+mac__software-update__disable-automatic-install() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform darwin || return "$?"
-  command::run-as-root defaults write /Library/Preferences/com.apple.SoftwareUpdate \
+  _package__require-platform darwin || return "$?"
+  command__run-as-root defaults write /Library/Preferences/com.apple.SoftwareUpdate \
     AutomaticallyInstallMacOSUpdates -bool false
 }
 
@@ -100,10 +100,10 @@ mac::software-update::disable-automatic-install() {
 # @exitcode 69 The system is not macOS.
 # @exitcode other The status of defaults.
 # @example
-#   mac::keyboard::use-function-keys
-mac::keyboard::use-function-keys() {
+#   mac__keyboard__use-function-keys
+mac__keyboard__use-function-keys() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform darwin || return "$?"
+  _package__require-platform darwin || return "$?"
   defaults write NSGlobalDomain com.apple.keyboard.fnState -bool true
 }
 
@@ -118,12 +118,12 @@ mac::keyboard::use-function-keys() {
 # @exitcode 69 The system is not macOS.
 # @exitcode other The status of defaults.
 # @example
-#   mac::keyboard::set-repeat 15 2
-mac::keyboard::set-repeat() {
+#   mac__keyboard__set-repeat 15 2
+mac__keyboard__set-repeat() {
   [[ "$#" -le 2 ]] || return 64
   local initial="${1:-30}" repeat="${2:-1}"
   ( [[ "${initial}" =~ ^[0-9]+$ && "${repeat}" =~ ^[0-9]+$ ]] ) || return 64
-  package::_require-platform darwin || return "$?"
+  _package__require-platform darwin || return "$?"
   defaults write NSGlobalDomain InitialKeyRepeat -int "${initial}" || return "$?"
   defaults write NSGlobalDomain KeyRepeat -int "${repeat}"
 }
@@ -136,10 +136,10 @@ mac::keyboard::set-repeat() {
 # @exitcode 69 The system is not macOS.
 # @exitcode other The status of defaults.
 # @example
-#   mac::trackpad::disable-smart-zoom
-mac::trackpad::disable-smart-zoom() {
+#   mac__trackpad__disable-smart-zoom
+mac__trackpad__disable-smart-zoom() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform darwin || return "$?"
+  _package__require-platform darwin || return "$?"
   defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadTwoFingerDoubleTapGesture -int 0 ||
     return "$?"
   defaults write com.apple.AppleMultitouchTrackpad TrackpadTwoFingerDoubleTapGesture -int 0 || return "$?"
@@ -148,7 +148,7 @@ mac::trackpad::disable-smart-zoom() {
 
 # @description Restart the Dock so that it reads changed preferences.
 # @internal
-mac::dock::_restart() {
+_mac__dock__restart() {
   [[ "$#" -eq 0 ]] || return 64
   killall Dock >/dev/null 2>&1 || true
 }
@@ -163,13 +163,13 @@ mac::dock::_restart() {
 # @exitcode 69 The system is not macOS.
 # @exitcode other The status of defaults.
 # @example
-#   mac::dock::set-autohide-instant
-mac::dock::set-autohide-instant() {
+#   mac__dock__set-autohide-instant
+mac__dock__set-autohide-instant() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform darwin || return "$?"
+  _package__require-platform darwin || return "$?"
   defaults write com.apple.dock autohide-time-modifier -float 0 || return "$?"
   defaults write com.apple.dock autohide-delay -float 0 || return "$?"
-  mac::dock::_restart
+  _mac__dock__restart
 }
 
 # @description Hide recently used applications in the Dock.
@@ -180,12 +180,12 @@ mac::dock::set-autohide-instant() {
 # @exitcode 69 The system is not macOS.
 # @exitcode other The status of defaults.
 # @example
-#   mac::dock::hide-recent-applications
-mac::dock::hide-recent-applications() {
+#   mac__dock__hide-recent-applications
+mac__dock__hide-recent-applications() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform darwin || return "$?"
+  _package__require-platform darwin || return "$?"
   defaults write com.apple.dock show-recents -bool false || return "$?"
-  mac::dock::_restart
+  _mac__dock__restart
 }
 
 # @description Set the effect used when a window is minimized into the Dock.
@@ -196,14 +196,14 @@ mac::dock::hide-recent-applications() {
 # @exitcode 69 The system is not macOS.
 # @exitcode other The status of defaults.
 # @example
-#   mac::dock::set-minimize-effect genie
-mac::dock::set-minimize-effect() {
+#   mac__dock__set-minimize-effect genie
+mac__dock__set-minimize-effect() {
   [[ "$#" -le 1 ]] || return 64
   local effect="${1:-scale}"
   [[ "${effect}" == genie || "${effect}" == scale || "${effect}" == suck ]] || return 64
-  package::_require-platform darwin || return "$?"
+  _package__require-platform darwin || return "$?"
   defaults write com.apple.dock mineffect -string "${effect}" || return "$?"
-  mac::dock::_restart
+  _mac__dock__restart
 }
 
 # @description Place the Dock on one edge of the screen.
@@ -214,14 +214,14 @@ mac::dock::set-minimize-effect() {
 # @exitcode 69 The system is not macOS.
 # @exitcode other The status of defaults.
 # @example
-#   mac::dock::set-position bottom
-mac::dock::set-position() {
+#   mac__dock__set-position bottom
+mac__dock__set-position() {
   [[ "$#" -le 1 ]] || return 64
   local position="${1:-left}"
   [[ "${position}" == left || "${position}" == bottom || "${position}" == right ]] || return 64
-  package::_require-platform darwin || return "$?"
+  _package__require-platform darwin || return "$?"
   defaults write com.apple.dock orientation -string "${position}" || return "$?"
-  mac::dock::_restart
+  _mac__dock__restart
 }
 
 # @description Remove the bundled iMovie, Pages, GarageBand, Keynote, and Numbers applications.
@@ -235,11 +235,11 @@ mac::dock::set-position() {
 # @exitcode 77 sudo refused the credentials.
 # @exitcode other The status of rm.
 # @example
-#   mac::applications::remove-bundled
-mac::applications::remove-bundled() {
+#   mac__applications__remove-bundled
+mac__applications__remove-bundled() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform darwin || return "$?"
-  command::run-as-root rm -rf -- \
+  _package__require-platform darwin || return "$?"
+  command__run-as-root rm -rf -- \
     /Applications/iMovie.app \
     /Applications/Pages.app \
     /Applications/GarageBand.app \
@@ -260,12 +260,12 @@ mac::applications::remove-bundled() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 The system is not macOS.
 # @example
-#   mac::quarantine::remove-applications
-mac::quarantine::remove-applications() {
+#   mac__quarantine__remove-applications
+mac__quarantine__remove-applications() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform darwin || return "$?"
+  _package__require-platform darwin || return "$?"
   # Files without the attribute make xattr report errors, which are not failures here.
-  command::run-as-root xattr -r -d com.apple.quarantine /Applications 2>/dev/null || true
+  command__run-as-root xattr -r -d com.apple.quarantine /Applications 2>/dev/null || true
 }
 
 # @description Write the programs that Full Disk Access must list for a command, a path, or an application.
@@ -285,9 +285,9 @@ mac::quarantine::remove-applications() {
 # @exitcode 66 The path does not exist.
 # @exitcode 69 readlink is unavailable.
 # @example
-#   mac::full-disk-access::target-paths python3.12
-#   mac::full-disk-access::target-paths Terminal
-mac::full-disk-access::target-paths() {
+#   mac__full-disk-access__target-paths python3.12
+#   mac__full-disk-access__target-paths Terminal
+mac__full-disk-access__target-paths() {
   [[ "$#" -eq 1 && -n "$1" && "$1" != *$'\n'* ]] || return 64
   local target='' directory='' bundle=''
   if [[ "$1" == */* ]]; then
@@ -304,7 +304,7 @@ mac::full-disk-access::target-paths() {
     [[ -n "${target}" ]] || return 1
   fi
   [[ -e "${target}" ]] || return 66
-  command::require readlink || return "$?"
+  command__require readlink || return "$?"
   target="$(readlink -f -- "${target}")" || return 66
 
   case "${target}" in
@@ -322,7 +322,7 @@ mac::full-disk-access::target-paths() {
 
 # @description Test whether a program has an ad hoc code signature.
 # @internal
-mac::full-disk-access::_is-ad-hoc-signed() {
+_mac__full-disk-access__is-ad-hoc-signed() {
   [[ "$#" -eq 1 ]] || return 64
   command -v codesign >/dev/null 2>&1 || return 1
   local details=''
@@ -346,13 +346,13 @@ mac::full-disk-access::_is-ad-hoc-signed() {
 # @exitcode 69 The system is not macOS.
 # @exitcode other The status of open.
 # @example
-#   mac::full-disk-access::open python3.12 Terminal
-mac::full-disk-access::open() {
-  package::_require-platform darwin || return "$?"
+#   mac__full-disk-access__open python3.12 Terminal
+mac__full-disk-access__open() {
+  _package__require-platform darwin || return "$?"
   local name='' output='' path=''
   local paths=()
   for name in "$@"; do
-    output="$(mac::full-disk-access::target-paths "${name}")" || return "$?"
+    output="$(mac__full-disk-access__target-paths "${name}")" || return "$?"
     while IFS= read -r path; do
       paths+=("${path}")
     done <<<"${output}"
@@ -360,9 +360,9 @@ mac::full-disk-access::open() {
 
   open 'x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles' || return "$?"
   for path in ${paths[@]+"${paths[@]}"}; do
-    console::_write-error "Add to Full Disk Access: ${path}"
-    if mac::full-disk-access::_is-ad-hoc-signed "${path}"; then
-      console::_write-error "Ad hoc signed, so an update removes the access: ${path}"
+    _console__write-error "Add to Full Disk Access: ${path}"
+    if _mac__full-disk-access__is-ad-hoc-signed "${path}"; then
+      _console__write-error "Ad hoc signed, so an update removes the access: ${path}"
     fi
     open -R "${path}" || return "$?"
   done
@@ -380,10 +380,10 @@ mac::full-disk-access::open() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 The system is not macOS.
 # @example
-#   mac::full-disk-access::is-granted || mac::full-disk-access::open Terminal
-mac::full-disk-access::is-granted() {
+#   mac__full-disk-access__is-granted || mac__full-disk-access__open Terminal
+mac__full-disk-access__is-granted() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform darwin || return "$?"
+  _package__require-platform darwin || return "$?"
   { : <"${HOME}/Library/Application Support/com.apple.TCC/TCC.db"; } 2>/dev/null
 }
 
@@ -400,12 +400,12 @@ mac::full-disk-access::is-granted() {
 # @exitcode 69 The system is not macOS.
 # @exitcode other The status of open.
 # @example
-#   mac::gatekeeper::disable
-mac::gatekeeper::disable() {
+#   mac__gatekeeper__disable
+mac__gatekeeper__disable() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform darwin || return "$?"
-  command::run-as-root spctl --master-disable 2>/dev/null || true
-  console::_write-error 'Select "Allow applications from anywhere" in Privacy & Security.'
+  _package__require-platform darwin || return "$?"
+  command__run-as-root spctl --master-disable 2>/dev/null || true
+  _console__write-error 'Select "Allow applications from anywhere" in Privacy & Security.'
   killall 'System Settings' >/dev/null 2>&1 || true
   sleep 1
   open 'x-apple.systempreferences:com.apple.settings.PrivacySecurity'
@@ -425,10 +425,10 @@ mac::gatekeeper::disable() {
 # @exitcode 69 The system is not macOS.
 # @exitcode other The status of the first step that failed.
 # @example
-#   GIT_EMAIL=alice@example.com GIT_USERNAME='Alice Example' mac::setup
-mac::setup() {
+#   GIT_EMAIL=alice@example.com GIT_USERNAME='Alice Example' mac__setup
+mac__setup() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform darwin || return "$?"
+  _package__require-platform darwin || return "$?"
   # Each failed step replaces status only while it is still 0.
   local status=0 formula='' cask=''
   local formulae=(
@@ -440,55 +440,55 @@ mac::setup() {
     antigravity antigravity-ide
   )
 
-  command::_run-step sudo::passwordless::enable || status="${status/#0/$?}"
-  file::ensure-exists "${HOME}/.env" 0600 || status="${status/#0/$?}"
-  command::_run-step env::dotenv::register "${HOME}/.env" || status="${status/#0/$?}"
+  _command__run-step sudo__passwordless__enable || status="${status/#0/$?}"
+  file__ensure-exists "${HOME}/.env" 0600 || status="${status/#0/$?}"
+  _command__run-step env__dotenv__register "${HOME}/.env" || status="${status/#0/$?}"
   # Zsh is the default macOS shell, so the editor also goes into .zshrc.
-  command::_run-step shell::editor::set-default 'code --wait' bash,zsh || status="${status/#0/$?}"
-  command::_run-step shell::zsh::enable-interactive-comments || status="${status/#0/$?}"
-  command::_run-step homebrew::cask::disable-quarantine || status="${status/#0/$?}"
+  _command__run-step shell__editor__set-default 'code --wait' bash,zsh || status="${status/#0/$?}"
+  _command__run-step shell__zsh__enable-interactive-comments || status="${status/#0/$?}"
+  _command__run-step homebrew__cask__disable-quarantine || status="${status/#0/$?}"
   mkdir -p -- "${HOME}/.local/bin" || status="${status/#0/$?}"
-  command::_run-step env::add-path "${HOME}/.local/bin" || status="${status/#0/$?}"
-  command::_run-step shell::completion::enable-ignore-case || status="${status/#0/$?}"
-  command::_run-step mac::wake-on-lan::enable || status="${status/#0/$?}"
-  command::_run-step mac::keyboard::use-function-keys || status="${status/#0/$?}"
-  command::_run-step mac::keyboard::disable-option-t || status="${status/#0/$?}"
-  command::_run-step mac::keyboard::set-repeat || status="${status/#0/$?}"
-  command::_run-step mac::dock::set-autohide-instant || status="${status/#0/$?}"
-  command::_run-step mac::trackpad::disable-smart-zoom || status="${status/#0/$?}"
-  command::_run-step mac::dock::hide-recent-applications || status="${status/#0/$?}"
-  command::_run-step mac::dock::set-minimize-effect || status="${status/#0/$?}"
-  command::_run-step mac::dock::set-position || status="${status/#0/$?}"
-  command::_run-step mac::applications::remove-bundled || status="${status/#0/$?}"
-  command::_run-step homebrew::install || status="${status/#0/$?}"
-  command::_run-step brew update || status="${status/#0/$?}"
-  command::_run-step brew upgrade || status="${status/#0/$?}"
-  command::_run-step brew install python || status="${status/#0/$?}"
+  _command__run-step env__add-path "${HOME}/.local/bin" || status="${status/#0/$?}"
+  _command__run-step shell__completion__enable-ignore-case || status="${status/#0/$?}"
+  _command__run-step mac__wake-on-lan__enable || status="${status/#0/$?}"
+  _command__run-step mac__keyboard__use-function-keys || status="${status/#0/$?}"
+  _command__run-step mac__keyboard__disable-option-t || status="${status/#0/$?}"
+  _command__run-step mac__keyboard__set-repeat || status="${status/#0/$?}"
+  _command__run-step mac__dock__set-autohide-instant || status="${status/#0/$?}"
+  _command__run-step mac__trackpad__disable-smart-zoom || status="${status/#0/$?}"
+  _command__run-step mac__dock__hide-recent-applications || status="${status/#0/$?}"
+  _command__run-step mac__dock__set-minimize-effect || status="${status/#0/$?}"
+  _command__run-step mac__dock__set-position || status="${status/#0/$?}"
+  _command__run-step mac__applications__remove-bundled || status="${status/#0/$?}"
+  _command__run-step homebrew__install || status="${status/#0/$?}"
+  _command__run-step brew update || status="${status/#0/$?}"
+  _command__run-step brew upgrade || status="${status/#0/$?}"
+  _command__run-step brew install python || status="${status/#0/$?}"
   for formula in "${formulae[@]}"; do
-    command::_run-step brew install "${formula}" || status="${status/#0/$?}"
+    _command__run-step brew install "${formula}" || status="${status/#0/$?}"
   done
-  command::_run-step pipx::install || status="${status/#0/$?}"
-  command::_run-step node::install || status="${status/#0/$?}"
-  command::_run-step jdk::install || status="${status/#0/$?}"
-  command::_run-step ruby::install || status="${status/#0/$?}"
-  command::_run-step colima::install || status="${status/#0/$?}"
-  command::_run-step docker::install || status="${status/#0/$?}"
-  command::_run-step rancher-desktop::install || status="${status/#0/$?}"
+  _command__run-step pipx__install || status="${status/#0/$?}"
+  _command__run-step node__install || status="${status/#0/$?}"
+  _command__run-step jdk__install || status="${status/#0/$?}"
+  _command__run-step ruby__install || status="${status/#0/$?}"
+  _command__run-step colima__install || status="${status/#0/$?}"
+  _command__run-step docker__install || status="${status/#0/$?}"
+  _command__run-step rancher-desktop__install || status="${status/#0/$?}"
   for cask in "${casks[@]}"; do
-    command::_run-step brew install --cask "${cask}" || status="${status/#0/$?}"
+    _command__run-step brew install --cask "${cask}" || status="${status/#0/$?}"
   done
-  command::_run-step opencode::install || status="${status/#0/$?}"
-  command::_run-step qmk::toolbox::install || status="${status/#0/$?}"
-  command::_run-step qmk::cli::install || status="${status/#0/$?}"
-  command::_run-step supabase::install || status="${status/#0/$?}"
-  command::_run-step mac::quarantine::remove-applications || status="${status/#0/$?}"
-  console::_write-error 'Enable Full Disk Access for Visual Studio Code and Terminal in Privacy & Security.'
-  command::_run-step mac::gatekeeper::disable || status="${status/#0/$?}"
-  command::_run-step git::config::setup || status="${status/#0/$?}"
-  command::_run-step git::config::use-osx-keychain || status="${status/#0/$?}"
-  command::_run-step code --command workbench.view.extensions || status="${status/#0/$?}"
-  command::_run-step vscode::set-default-app || status="${status/#0/$?}"
-  command::_run-step iina::set-default-app || status="${status/#0/$?}"
+  _command__run-step opencode__install || status="${status/#0/$?}"
+  _command__run-step qmk__toolbox__install || status="${status/#0/$?}"
+  _command__run-step qmk__cli__install || status="${status/#0/$?}"
+  _command__run-step supabase__install || status="${status/#0/$?}"
+  _command__run-step mac__quarantine__remove-applications || status="${status/#0/$?}"
+  _console__write-error 'Enable Full Disk Access for Visual Studio Code and Terminal in Privacy & Security.'
+  _command__run-step mac__gatekeeper__disable || status="${status/#0/$?}"
+  _command__run-step git__config__setup || status="${status/#0/$?}"
+  _command__run-step git__config__use-osx-keychain || status="${status/#0/$?}"
+  _command__run-step code --command workbench.view.extensions || status="${status/#0/$?}"
+  _command__run-step vscode__set-default-app || status="${status/#0/$?}"
+  _command__run-step iina__set-default-app || status="${status/#0/$?}"
   return "${status}"
 }
 
@@ -501,9 +501,9 @@ mac::setup() {
 # @exitcode 69 The system is not macOS, or plutil is unavailable.
 # @exitcode 74 The property list could not be written.
 # @example
-#   mac::keyboard::disable-option-t
-mac::keyboard::disable-option-t() {
+#   mac__keyboard__disable-option-t
+mac__keyboard__disable-option-t() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform darwin || return "$?"
-  plist::set "${HOME}/Library/KeyBindings/DefaultKeyBinding.dict" '~t' 'noop:'
+  _package__require-platform darwin || return "$?"
+  plist__set "${HOME}/Library/KeyBindings/DefaultKeyBinding.dict" '~t' 'noop:'
 }

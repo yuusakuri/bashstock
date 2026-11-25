@@ -18,13 +18,13 @@
 # @exitcode 64 An argument was given.
 # @exitcode 74 A mode or owner could not be changed.
 # @example
-#   ssh::setup-directory
-ssh::setup-directory() {
+#   ssh__setup-directory
+ssh__setup-directory() {
   [[ "$#" -eq 0 ]] || return 64
   local directory="${HOME}/.ssh" path='' header=''
   mkdir -p -- "${directory}" || return 74
   if [[ -n "$(find "${directory}" ! -user "$(id -u)" -print 2>/dev/null | head -n 1)" ]]; then
-    command::run-as-root chown -R "$(id -u):$(id -g)" "${directory}" || return 74
+    command__run-as-root chown -R "$(id -u):$(id -g)" "${directory}" || return 74
   fi
   find "${directory}" -type d -exec chmod 700 {} + || return 74
   while IFS= read -r -d '' path; do
@@ -44,7 +44,7 @@ ssh::setup-directory() {
 # names are compared case-insensitively, as SSH does.
 #
 # @internal
-ssh::config::_write-block() {
+_ssh__config__write-block() {
   [[ "$#" -eq 3 && -n "$1" && -n "$2" && -n "$3" ]] || return 64
   local file="$1" pattern="$2" host_options="$3" begin='' end='' line='' content='' preserved='' old_content='' keys='' option='' key='' validation_host='localhost' token=''
   [[ -f "$file" && ! -L "$file" ]] || return 66
@@ -55,7 +55,7 @@ ssh::config::_write-block() {
   while IFS= read -r option || [[ -n "$option" ]]; do
     [[ "$option" == '  '* ]] || continue
     key="${option#  }"
-    key="$(string::lower "${key%% *}")"
+    key="$(string__lower "${key%% *}")"
     keys+="|$key|"
   done <<<"$host_options"
   begin="# bashstock: begin $pattern"
@@ -70,7 +70,7 @@ ssh::config::_write-block() {
       [[ "$line" == "$end" ]] && in_block=0
       if ((in_block)) && [[ "$line" == '  '* ]]; then
         key="${line#  }"
-        key="$(string::lower "${key%% *}")"
+        key="$(string__lower "${key%% *}")"
         [[ "$keys" == *"|$key|"* ]] && continue
         preserved+="$line"$'\n'
       fi
@@ -80,14 +80,14 @@ ssh::config::_write-block() {
   done <"$file"
   # Without the end marker every later line would look like part of the block.
   if ((in_block)); then
-    console::_write-error "$file has '$begin' without '$end'; it is not changed."
+    _console__write-error "$file has '$begin' without '$end'; it is not changed."
     return 65
   fi
   local block=''
   block="$begin"$'\n'"Host $pattern"$'\n'
   # Host * ends the managed context so later global directives apply to every host.
   block+="$preserved$host_options"$'\n'"Host *"$'\n'"$end"$'\n'
-  file::write-text "$file" "$block$content" || return "$?"
+  file__write-text "$file" "$block$content" || return "$?"
   local pattern_parts=()
   read -r -a pattern_parts <<<"$pattern"
   for token in "${pattern_parts[@]}"; do
@@ -96,7 +96,7 @@ ssh::config::_write-block() {
     break
   done
   if ! ssh -G -F "$file" "$validation_host" >/dev/null 2>&1; then
-    file::write-text "$file" "$old_content" >/dev/null 2>&1 || true
+    file__write-text "$file" "$old_content" >/dev/null 2>&1 || true
     return 65
   fi
 }
@@ -114,11 +114,11 @@ ssh::config::_write-block() {
 # @exitcode 65 The file has a begin marker without an end marker, or ssh rejected the result; the file is unchanged.
 # @exitcode other The status of the file update.
 # @example
-#   ssh::config::update "${HOME}/.ssh/config" github.com IdentityFile '~/.ssh/github'
-ssh::config::update() {
+#   ssh__config__update "${HOME}/.ssh/config" github.com IdentityFile '~/.ssh/github'
+ssh__config__update() {
   ( [[ "$#" -eq 4 && -n "$1" && -n "$2" && "$3" =~ ^[A-Za-z][A-Za-z0-9]*$ && -n "$4" ]] ) || return 64
   [[ "$4" != *$'\n'* && "$4" != *$'\r'* ]] || return 64
-  ssh::config::_write-block "$1" "$2" "  $3 $4"
+  _ssh__config__write-block "$1" "$2" "  $3 $4"
 }
 
 # @description Create an SSH configuration file when necessary and update one key.
@@ -131,18 +131,18 @@ ssh::config::update() {
 # @exitcode 64 The arguments are invalid or the file is a symbolic link.
 # @exitcode 66 The path exists but is not a regular file.
 # @exitcode 74 The file could not be created.
-# @exitcode other The status of ssh::config::update.
+# @exitcode other The status of ssh__config__update.
 # @example
-#   ssh::config::set "${HOME}/.ssh/config" 'build-*' User builder
-ssh::config::set() {
+#   ssh__config__set "${HOME}/.ssh/config" 'build-*' User builder
+ssh__config__set() {
   [[ "$#" -eq 4 && -n "$1" ]] || return 64
   [[ ! -L "$1" ]] || return 64
   if [[ -e "$1" && ! -f "$1" ]]; then return 66; fi
   if [[ ! -e "$1" ]]; then
-    mkdir -p -- "$(path::directory-name "$1")" || return 74
+    mkdir -p -- "$(path__directory-name "$1")" || return 74
     : >"$1" || return 74
   fi
-  ssh::config::update "$@"
+  ssh__config__update "$@"
 }
 
 # @description Enable AddKeysToAgent for an optional SSH Host pattern.
@@ -151,15 +151,15 @@ ssh::config::set() {
 # @arg $2 string Optional Host pattern. Defaults to *.
 # @exitcode 0 AddKeysToAgent is enabled.
 # @exitcode 64 More than two arguments were given.
-# @exitcode other The status of ssh::config::set.
+# @exitcode other The status of ssh__config__set.
 # @example
-#   ssh::config::enable-auto-add-keys
-ssh::config::enable-auto-add-keys() {
+#   ssh__config__enable-auto-add-keys
+ssh__config__enable-auto-add-keys() {
   [[ "$#" -le 2 ]] || return 64
   local file='' pattern=''
   if [[ "$#" -ge 1 ]]; then file="$1"; else file="$HOME/.ssh/config"; fi
   if [[ "$#" -ge 2 ]]; then pattern="$2"; else pattern='*'; fi
-  ssh::config::set "$file" "$pattern" AddKeysToAgent yes
+  ssh__config__set "$file" "$pattern" AddKeysToAgent yes
 }
 
 # @description Disable SSH host-key checks for an optional Host pattern.
@@ -174,8 +174,8 @@ ssh::config::enable-auto-add-keys() {
 # @exitcode 74 The file could not be created.
 # @exitcode other The status of the file update.
 # @example
-#   ssh::config::disable-host-key-checking "${HOME}/.ssh/config" '192.168.56.*'
-ssh::config::disable-host-key-checking() {
+#   ssh__config__disable-host-key-checking "${HOME}/.ssh/config" '192.168.56.*'
+ssh__config__disable-host-key-checking() {
   [[ "$#" -le 2 ]] || return 64
   local file='' pattern=''
   if [[ "$#" -ge 1 ]]; then file="$1"; else file="$HOME/.ssh/config"; fi
@@ -183,10 +183,10 @@ ssh::config::disable-host-key-checking() {
   [[ ! -L "$file" ]] || return 64
   if [[ -e "$file" && ! -f "$file" ]]; then return 66; fi
   if [[ ! -e "$file" ]]; then
-    mkdir -p -- "$(path::directory-name "$file")" || return 74
+    mkdir -p -- "$(path__directory-name "$file")" || return 74
     : >"$file" || return 74
   fi
-  ssh::config::_write-block "$file" "$pattern" $'  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null'
+  _ssh__config__write-block "$file" "$pattern" $'  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null'
 }
 
 # @description List regular files that ssh-keygen can read as private keys.
@@ -198,8 +198,8 @@ ssh::config::disable-host-key-checking() {
 # @exitcode 66 The directory does not exist or is a symbolic link.
 # @exitcode 69 ssh-keygen is unavailable.
 # @example
-#   ssh::key::private-files
-ssh::key::private-files() {
+#   ssh__key__private-files
+ssh__key__private-files() {
   [[ "$#" -le 1 ]] || return 64
   local directory='' path=''
   if [[ "$#" -ge 1 ]]; then directory="$1"; else directory="$HOME/.ssh"; fi
@@ -223,8 +223,8 @@ ssh::key::private-files() {
 # @exitcode 69 ssh-add is unavailable.
 # @exitcode other The status of ssh-add.
 # @example
-#   ssh::key::add "${HOME}/.ssh/id_ed25519"
-ssh::key::add() {
+#   ssh__key__add "${HOME}/.ssh/id_ed25519"
+ssh__key__add() {
   [[ "$#" -eq 1 && -f "$1" && ! -L "$1" ]] || return 64
   command -v ssh-add >/dev/null 2>&1 || return 69
   ssh-add "$1"
@@ -239,32 +239,32 @@ ssh::key::add() {
 # @exitcode 69 ssh-add or ssh-keygen is unavailable.
 # @exitcode other The status of the last ssh-add that failed.
 # @example
-#   ssh::key::add-all
-ssh::key::add-all() {
+#   ssh__key__add-all
+ssh__key__add-all() {
   [[ "$#" -le 1 ]] || return 64
   local directory='' path='' key_list='' status=0
   if [[ "$#" -ge 1 ]]; then directory="$1"; else directory="$HOME/.ssh"; fi
   [[ -d "$directory" && ! -L "$directory" ]] || return 66
   command -v ssh-add >/dev/null 2>&1 || return 69
   # The list is read first, so a failure to detect keys is not reported as success.
-  key_list="$(ssh::key::private-files "$directory")" || return "$?"
+  key_list="$(ssh__key__private-files "$directory")" || return "$?"
   while IFS= read -r path; do
     [[ -n "$path" ]] || continue
-    ssh::key::add "$path" || status="$?"
+    ssh__key__add "$path" || status="$?"
   done <<<"$key_list"
   return "$status"
 }
 
 # @description Add every detected private key in a directory to ssh-agent.
 #
-# This is an alias of ssh::key::add-all.
+# This is an alias of ssh__key__add-all.
 #
 # @arg $1 string Optional directory. Defaults to $HOME/.ssh.
 # @exitcode 0 Every key was added.
-# @exitcode other The status of ssh::key::add-all.
+# @exitcode other The status of ssh__key__add-all.
 # @example
-#   ssh::key::add-all-private-keys
-ssh::key::add-all-private-keys() { ssh::key::add-all "$@"; }
+#   ssh__key__add-all-private-keys
+ssh__key__add-all-private-keys() { ssh__key__add-all "$@"; }
 
 # @description Generate a 4096-bit RSA SSH key and write its public key.
 #
@@ -284,27 +284,27 @@ ssh::key::add-all-private-keys() { ssh::key::add-all "$@"; }
 # @exitcode 74 The directory or the temporary key could not be created, or the new key could not replace the old one.
 # @exitcode other The status of ssh-keygen.
 # @example
-#   ssh::key::generate-rsa4096 --comment 'build server' --output "${HOME}/.ssh/build_rsa"
-ssh::key::generate-rsa4096() {
-  ssh::key::_generate rsa id_rsa "$@"
+#   ssh__key__generate-rsa4096 --comment 'build server' --output "${HOME}/.ssh/build_rsa"
+ssh__key__generate-rsa4096() {
+  _ssh__key__generate rsa id_rsa "$@"
 }
 
-# @description List the named arguments of ssh::key::generate-rsa4096.
+# @description List the named arguments of ssh__key__generate-rsa4096.
 # @internal
-ssh::key::_generate-rsa4096-args() {
+_ssh__key__generate-rsa4096-args() {
   if [[ -z "${1-}" ]]; then printf '%s\n' --comment --output --passphrase-fd; fi
 }
 
 # @description Generate an SSH key and write its public key.
 # @internal
-ssh::key::_generate() {
+_ssh__key__generate() {
   local type="$1" default_name="$2" comment='' output='' passphrase_fd='' passphrase=''
   local arguments=()
   shift 2
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
       --comment | --output | --passphrase-fd)
-        arg::require-next "$#" "$1" || return "$?"
+        arg__require-next "$#" "$1" || return "$?"
         case "$1" in
           --comment) comment="$2" ;;
           --output) output="$2" ;;
@@ -312,19 +312,19 @@ ssh::key::_generate() {
         esac
         shift 2
         ;;
-      *) arg::unknown "$1" || return "$?" ;;
+      *) arg__unknown "$1" || return "$?" ;;
     esac
   done
   ( [[ -z "${passphrase_fd}" || "${passphrase_fd}" =~ ^[0-9]+$ ]] ) || return 64
-  command::require ssh-keygen || return "$?"
+  command__require ssh-keygen || return "$?"
   output="${output:-${HOME}/.ssh/${default_name}}"
-  mkdir -p -- "$(path::directory-name "${output}")" || return 74
+  mkdir -p -- "$(path__directory-name "${output}")" || return 74
   if [[ -e "${output}" || -e "${output}.pub" ]]; then
-    if ! terminal::is-available; then
-      console::_write-error "${output} exists; run in a terminal to confirm overwriting it."
+    if ! terminal__is-available; then
+      _console__write-error "${output} exists; run in a terminal to confirm overwriting it."
       return 73
     fi
-    [[ "$(shell::confirm "Overwrite ${output}?" no </dev/tty)" == yes ]] || return 73
+    [[ "$(shell__confirm "Overwrite ${output}?" no </dev/tty)" == yes ]] || return 73
   fi
   case "${type}" in
     rsa) arguments=(-t rsa -b 4096) ;;
@@ -336,7 +336,7 @@ ssh::key::_generate() {
   # The pair is generated beside the destination and replaces an existing pair
   # only after ssh-keygen succeeds.
   local temporary='' status=0
-  temporary="$(mktemp -d "$(path::directory-name "${output}")/.bashstock-key.XXXXXX")" || return 74
+  temporary="$(mktemp -d "$(path__directory-name "${output}")/.bashstock-key.XXXXXX")" || return 74
   if [[ -n "${passphrase_fd}" ]]; then
     # ssh-keygen reads the passphrase and its confirmation from a standard input that is not a terminal.
     printf '%s\n%s\n' "${passphrase}" "${passphrase}" |
@@ -346,7 +346,7 @@ ssh::key::_generate() {
     ssh-keygen "${arguments[@]}" -C "${comment}" -f "${temporary}/key" -N '' -q </dev/null || status="$?"
   fi
   if [[ "${status}" -eq 0 ]]; then
-    ssh::key::_replace-pair "${temporary}" "${output}" || status="$?"
+    _ssh__key__replace-pair "${temporary}" "${output}" || status="$?"
   fi
   rm -rf -- "${temporary}"
   [[ "${status}" -eq 0 ]] || return "${status}"
@@ -359,13 +359,13 @@ ssh::key::_generate() {
 # keys are either both new or both old when the function returns.
 #
 # @internal
-ssh::key::_replace-pair() {
+_ssh__key__replace-pair() {
   [[ "$#" -eq 2 && -f "$1/key" && -f "$1/key.pub" ]] || return 64
   local directory="$1" output="$2" suffix=''
   for suffix in '' .pub; do
     if [[ -e "${output}${suffix}" || -L "${output}${suffix}" ]]; then
       if ! mv -f -- "${output}${suffix}" "${directory}/old${suffix}"; then
-        ssh::key::_restore-pair "${directory}" "${output}"
+        _ssh__key__restore-pair "${directory}" "${output}"
         return 74
       fi
     fi
@@ -375,13 +375,13 @@ ssh::key::_replace-pair() {
     return 0
   fi
   rm -f -- "${output}" "${output}.pub"
-  ssh::key::_restore-pair "${directory}" "${output}"
+  _ssh__key__restore-pair "${directory}" "${output}"
   return 74
 }
 
-# @description Move the old key pair saved by ssh::key::_replace-pair back into place.
+# @description Move the old key pair saved by _ssh__key__replace-pair back into place.
 # @internal
-ssh::key::_restore-pair() {
+_ssh__key__restore-pair() {
   [[ "$#" -eq 2 ]] || return 64
   local suffix=''
   for suffix in '' .pub; do
@@ -409,14 +409,14 @@ ssh::key::_restore-pair() {
 # @exitcode 74 The directory or the temporary key could not be created, or the new key could not replace the old one.
 # @exitcode other The status of ssh-keygen.
 # @example
-#   ssh::key::generate-ed25519 --comment "$(id -un)@$(hostname)" --passphrase-fd 3 3<passphrase.txt
-ssh::key::generate-ed25519() {
-  ssh::key::_generate ed25519 id_ed25519 "$@"
+#   ssh__key__generate-ed25519 --comment "$(id -un)@$(hostname)" --passphrase-fd 3 3<passphrase.txt
+ssh__key__generate-ed25519() {
+  _ssh__key__generate ed25519 id_ed25519 "$@"
 }
 
-# @description List the named arguments of ssh::key::generate-ed25519.
+# @description List the named arguments of ssh__key__generate-ed25519.
 # @internal
-ssh::key::_generate-ed25519-args() {
+_ssh__key__generate-ed25519-args() {
   if [[ -z "${1-}" ]]; then printf '%s\n' --comment --output --passphrase-fd; fi
 }
 
@@ -428,8 +428,8 @@ ssh::key::_generate-ed25519-args() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 pkill is unavailable.
 # @example
-#   ssh::kill-all
-ssh::kill-all() {
+#   ssh__kill-all
+ssh__kill-all() {
   [[ "$#" -eq 0 ]] || return 64
   command -v pkill >/dev/null 2>&1 || return 69
   pkill -u "$(id -un)" ssh
@@ -437,15 +437,15 @@ ssh::kill-all() {
 
 # @description Write the OpenSSH server package and service names for the current platform.
 # @internal
-ssh::server::_names() {
+_ssh__server__names() {
   [[ "$#" -eq 0 ]] || return 64
   local platform=''
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package__platform)" || return "$?"
   case "${platform}" in
     ubuntu) printf 'openssh-server ssh\n' ;;
     fedora) printf 'openssh-server sshd\n' ;;
     *)
-      console::_write-error 'Install the OpenSSH server on Ubuntu or Fedora.'
+      _console__write-error 'Install the OpenSSH server on Ubuntu or Fedora.'
       return 69
       ;;
   esac
@@ -459,27 +459,27 @@ ssh::server::_names() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 The platform is unsupported.
 # @example
-#   ssh::server::versions
-ssh::server::versions() {
+#   ssh__server__versions
+ssh__server__versions() {
   [[ "$#" -eq 0 ]] || return 64
   local server_names=''
-  server_names="$(ssh::server::_names)" || return "$?"
-  package::_versions "${server_names%% *}"
+  server_names="$(_ssh__server__names)" || return "$?"
+  _package__versions "${server_names%% *}"
 }
 
 # @description Install the OpenSSH server, enable it at boot, and start it.
 #
-# @arg $1 string Optional version from ssh::server::versions. Defaults to the newest one.
+# @arg $1 string Optional version from ssh__server__versions. Defaults to the newest one.
 # @exitcode 0 The server is installed, enabled at boot, and running.
 # @exitcode 64 The argument count is wrong.
 # @exitcode 69 The platform is unsupported, or the version is unavailable.
 # @exitcode other The status of the package manager or systemctl.
 # @example
-#   ssh::server::install
-ssh::server::install() {
+#   ssh__server__install
+ssh__server__install() {
   [[ "$#" -le 1 ]] || return 64
   local server_names=''
-  server_names="$(ssh::server::_names)" || return "$?"
-  package::_install-version "${server_names%% *}" "${1:-}" || return "$?"
-  package::_enable-service "${server_names#* }"
+  server_names="$(_ssh__server__names)" || return "$?"
+  _package__install-version "${server_names%% *}" "${1:-}" || return "$?"
+  _package__enable-service "${server_names#* }"
 }

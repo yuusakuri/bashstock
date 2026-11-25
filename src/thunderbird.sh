@@ -13,15 +13,15 @@
 # @exitcode 64 An argument was given.
 # @exitcode 69 The platform is unsupported.
 # @example
-#   thunderbird::versions | tail -n 1
-thunderbird::versions() {
+#   thunderbird__versions | tail -n 1
+thunderbird__versions() {
   [[ "$#" -eq 0 ]] || return 64
   local platform=''
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package__platform)" || return "$?"
   if [[ "${platform}" == 'darwin' ]]; then
-    package::_cask-versions thunderbird
+    _package__cask-versions thunderbird
   else
-    package::_versions thunderbird
+    _package__versions thunderbird
   fi
 }
 
@@ -31,20 +31,20 @@ thunderbird::versions() {
 # and Fedora install the thunderbird package of the system; on Ubuntu 24.04
 # and later that package installs the Snap.
 #
-# @arg $1 string Optional version from thunderbird::versions; on macOS only the current version. Defaults to the newest one.
+# @arg $1 string Optional version from thunderbird__versions; on macOS only the current version. Defaults to the newest one.
 # @exitcode 0 Thunderbird is installed.
 # @exitcode 64 The argument count is wrong.
 # @exitcode 69 The platform is unsupported, or the version is unavailable.
 # @exitcode other The status of the package manager.
 # @example
-#   thunderbird::install
-thunderbird::install() {
+#   thunderbird__install
+thunderbird__install() {
   [[ "$#" -le 1 ]] || return 64
   local platform=''
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package__platform)" || return "$?"
   if [[ "${platform}" == 'darwin' ]]; then
-    package::_install-cask thunderbird "${1:-}"
+    _package__install-cask thunderbird "${1:-}"
     return
   fi
-  package::_install-version thunderbird "${1:-}"
+  _package__install-version thunderbird "${1:-}"
 }

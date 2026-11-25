@@ -8,17 +8,17 @@ Changes are pushed from the current HEAD to refs/for.
 
 ## Index
 
-* [gerrit::push-review](#gerritpush-review)
-* [gerrit::push-review-wip](#gerritpush-review-wip)
+* [gerrit__push-review](#gerrit__push-review)
+* [gerrit__push-review-wip](#gerrit__push-review-wip)
 
-### gerrit::push-review
+### gerrit__push-review
 
 Push the current HEAD to a Gerrit review reference.
 
 #### Example
 
 ```bash
-gerrit::push-review main
+gerrit__push-review main
 ```
 
 #### Arguments
@@ -34,14 +34,14 @@ gerrit::push-review main
 * **64**: More than three arguments were given.
 * other The status of git push.
 
-### gerrit::push-review-wip
+### gerrit__push-review-wip
 
 Push the current HEAD to a Gerrit review reference as work in progress.
 
 #### Example
 
 ```bash
-gerrit::push-review-wip main
+gerrit__push-review-wip main
 ```
 
 #### Arguments

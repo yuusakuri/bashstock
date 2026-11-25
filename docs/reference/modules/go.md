@@ -8,22 +8,22 @@ Go is installed from the official package source of the platform.
 
 ## Index
 
-* [go::version::list](#goversionlist)
-* [go::version::latest](#goversionlatest)
-* [go::repository::register](#gorepositoryregister)
-* [go::install](#goinstall)
+* [go__version__list](#go__version__list)
+* [go__version__latest](#go__version__latest)
+* [go__repository__register](#go__repository__register)
+* [go__install](#go__install)
 
-### go::version::list
+### go__version__list
 
 Write the stable Go versions the platform package source offers, oldest first.
 
 Ubuntu lists the versioned golang-X.Y packages, Fedora the golang package,
-and macOS the Homebrew go formulae. Each value is accepted by go::install.
+and macOS the Homebrew go formulae. Each value is accepted by go__install.
 
 #### Example
 
 ```bash
-go::version::list
+go__version__list
 ```
 
 _Function has no arguments._
@@ -40,14 +40,14 @@ _Function has no arguments._
 
 * One version per line, oldest first.
 
-### go::version::latest
+### go__version__latest
 
-Write the newest stable Go version from go::version::list.
+Write the newest stable Go version from go__version__list.
 
 #### Example
 
 ```bash
-go::install "$(go::version::latest)"
+go__install "$(go__version__latest)"
 ```
 
 _Function has no arguments._
@@ -57,13 +57,13 @@ _Function has no arguments._
 * **0**: The version was written.
 * **1**: No version was found.
 * **64**: An argument was given.
-* other The status of go::version::list.
+* other The status of go__version__list.
 
 #### Output on stdout
 
 * The newest version, such as 1.23.
 
-### go::repository::register
+### go__repository__register
 
 Register the official Go package source for the current platform.
 
@@ -72,7 +72,7 @@ Go comes from the distribution or Homebrew, so this only checks that the package
 #### Example
 
 ```bash
-go::repository::register
+go__repository__register
 ```
 
 _Function has no arguments._
@@ -83,7 +83,7 @@ _Function has no arguments._
 * **64**: An argument was given.
 * **69**: The platform is unsupported or its package tool is unavailable.
 
-### go::install
+### go__install
 
 Install Go from the platform package source.
 
@@ -96,12 +96,12 @@ which also replaces an older one installed earlier.
 #### Example
 
 ```bash
-go::install "$(go::version::latest)"
+go__install "$(go__version__latest)"
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from go::version::list. Defaults to the package source default.
+* **$1** (string): Optional version from go__version__list. Defaults to the package source default.
 
 #### Exit codes
 

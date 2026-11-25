@@ -14,8 +14,8 @@
 # @exitcode 66 The profile has no Bookmarks file.
 # @exitcode other The status of cp.
 # @example
-#   chrome::profile::export-bookmarks "${HOME}/.config/google-chrome/Default" backup/bookmarks.json
-chrome::profile::export-bookmarks() {
+#   chrome__profile__export-bookmarks "${HOME}/.config/google-chrome/Default" backup/bookmarks.json
+chrome__profile__export-bookmarks() {
   [[ "$#" -ge 1 && "$#" -le 2 && -d "$1" && ! -L "$1" ]] || return 64
   local output=''
   if [[ "$#" -eq 2 ]]; then output="$2"; else output='./bookmarks.json'; fi
@@ -32,8 +32,8 @@ chrome::profile::export-bookmarks() {
 # @exitcode 66 The profile has no Preferences file.
 # @exitcode other The status of cp.
 # @example
-#   chrome::profile::export-preferences "${HOME}/.config/google-chrome/Profile 1"
-chrome::profile::export-preferences() {
+#   chrome__profile__export-preferences "${HOME}/.config/google-chrome/Profile 1"
+chrome__profile__export-preferences() {
   [[ "$#" -ge 1 && "$#" -le 2 && -d "$1" && ! -L "$1" ]] || return 64
   local output=''
   if [[ "$#" -eq 2 ]]; then output="$2"; else output='./preferences.json'; fi
@@ -51,8 +51,8 @@ chrome::profile::export-preferences() {
 # @exitcode 69 jq is unavailable.
 # @exitcode 74 Preferences could not be read.
 # @example
-#   chrome::profile::email "${HOME}/.config/google-chrome/Default"
-chrome::profile::email() {
+#   chrome__profile__email "${HOME}/.config/google-chrome/Default"
+chrome__profile__email() {
   [[ "$#" -eq 1 && -d "$1" && -f "$1/Preferences" && ! -L "$1/Preferences" ]] || return 64
   command -v jq >/dev/null 2>&1 || return 69
   local email=''
@@ -71,18 +71,18 @@ chrome::profile::email() {
 # @exitcode 64 The arguments are invalid.
 # @exitcode 66 The user data directory does not exist.
 # @example
-#   chrome::profile::find-by-email developer@example.com
-chrome::profile::find-by-email() {
+#   chrome__profile__find-by-email developer@example.com
+chrome__profile__find-by-email() {
   [[ "$#" -ge 1 && "$#" -le 2 && -n "$1" ]] || return 64
   local email="$1" root='' path=''
-  if [[ "$#" -eq 2 ]]; then root="$2"; elif [[ "$(system::operating-system)" == darwin ]]; then root="$HOME/Library/Application Support/Google/Chrome"; else root="$HOME/.config/google-chrome"; fi
+  if [[ "$#" -eq 2 ]]; then root="$2"; elif [[ "$(system__operating-system)" == darwin ]]; then root="$HOME/Library/Application Support/Google/Chrome"; else root="$HOME/.config/google-chrome"; fi
   [[ -d "$root" ]] || return 66
   (
     shopt -s nullglob
     found=1
     for path in "$root"/Default "$root"/Profile\ *; do
       [[ -d "$path" ]] || continue
-      if [[ "$(chrome::profile::email "$path" 2>/dev/null)" == "$email" ]]; then
+      if [[ "$(chrome__profile__email "$path" 2>/dev/null)" == "$email" ]]; then
         printf '%s\n' "$path"
         found=0
       fi
@@ -102,34 +102,34 @@ chrome::profile::find-by-email() {
 # @exitcode 66 Chrome's user data directory does not exist.
 # @exitcode 74 The destination could not be created or a file could not be copied.
 # @example
-#   chrome::profile::export-user-data-by-email alice@example.com "${HOME}/chrome-backup"
-chrome::profile::export-user-data-by-email() {
+#   chrome__profile__export-user-data-by-email alice@example.com "${HOME}/chrome-backup"
+chrome__profile__export-user-data-by-email() {
   [[ "$#" -ge 1 && "$#" -le 2 && -n "$1" ]] || return 64
   local output="${2:-.}" profiles='' profile='' name='' status=0
-  profiles="$(chrome::profile::find-by-email "$1")" || return "$?"
+  profiles="$(chrome__profile__find-by-email "$1")" || return "$?"
   [[ -n "${profiles}" ]] || return 1
   mkdir -p -- "${output}" || return 74
   while IFS= read -r profile; do
-    name="$(path::base-name "${profile}")" || return "$?"
-    chrome::profile::export-preferences "${profile}" "${output}/${name}_preferences.json" || status="$?"
-    chrome::profile::export-bookmarks "${profile}" "${output}/${name}_bookmarks.json" || status="$?"
+    name="$(path__base-name "${profile}")" || return "$?"
+    chrome__profile__export-preferences "${profile}" "${output}/${name}_preferences.json" || status="$?"
+    chrome__profile__export-bookmarks "${profile}" "${output}/${name}_bookmarks.json" || status="$?"
   done <<<"${profiles}"
   return "${status}"
 }
 
 # @description Register the Google Chrome repository for the current Linux platform.
 # @internal
-chrome::_register-repository() {
+_chrome__register-repository() {
   [[ "$#" -eq 1 ]] || return 64
   if [[ "$1" == 'ubuntu' ]]; then
     local architecture=''
-    architecture="$(package::_deb-architecture)" || return "$?"
-    package::_apt-register-repository google-chrome https://dl.google.com/linux/linux_signing_key.pub \
+    architecture="$(_package__deb-architecture)" || return "$?"
+    _package__apt-register-repository google-chrome https://dl.google.com/linux/linux_signing_key.pub \
       https://dl.google.com/linux/chrome/deb/ stable main "${architecture}"
   else
     local architecture=''
-    architecture="$(package::_rpm-architecture)" || return "$?"
-    package::_dnf-register-repository google-chrome "[google-chrome]
+    architecture="$(_package__rpm-architecture)" || return "$?"
+    _package__dnf-register-repository google-chrome "[google-chrome]
 name=google-chrome
 baseurl=https://dl.google.com/linux/chrome/rpm/stable/${architecture}
 enabled=1
@@ -148,24 +148,24 @@ gpgkey=https://dl.google.com/linux/linux_signing_key.pub
 # @exitcode 69 The platform is unsupported.
 # @exitcode 74 The repository index could not be downloaded.
 # @example
-#   chrome::versions | tail -n 1
-chrome::versions() {
+#   chrome__versions | tail -n 1
+chrome__versions() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' architecture=''
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package__platform)" || return "$?"
   case "${platform}" in
     darwin)
-      package::_cask-versions google-chrome
+      _package__cask-versions google-chrome
       ;;
     ubuntu)
-      architecture="$(package::_deb-architecture)" || return "$?"
-      package::_deb-runnable-versions \
+      architecture="$(_package__deb-architecture)" || return "$?"
+      _package__deb-runnable-versions \
         "https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-${architecture}/Packages" \
         google-chrome-stable
       ;;
     fedora)
-      architecture="$(package::_rpm-architecture)" || return "$?"
-      package::_rpm-repository-versions \
+      architecture="$(_package__rpm-architecture)" || return "$?"
+      _package__rpm-repository-versions \
         "https://dl.google.com/linux/chrome/rpm/stable/${architecture}" google-chrome-stable
       ;;
   esac
@@ -176,28 +176,28 @@ chrome::versions() {
 # On Ubuntu, a version is accepted only when the installed C library can run it,
 # and an omitted version selects the newest such build.
 #
-# @arg $1 string Optional version from chrome::versions; on macOS only the current version. Defaults to the newest runnable one.
+# @arg $1 string Optional version from chrome__versions; on macOS only the current version. Defaults to the newest runnable one.
 # @exitcode 0 Google Chrome is installed.
 # @exitcode 64 The argument count is wrong.
 # @exitcode 69 The platform is unsupported, or the version is unavailable or cannot run here.
 # @exitcode 74 The repository or its key could not be downloaded.
 # @exitcode other The status of the package manager.
 # @example
-#   chrome::install
-chrome::install() {
+#   chrome__install
+chrome__install() {
   [[ "$#" -le 1 ]] || return 64
   local platform=''
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package__platform)" || return "$?"
   if [[ "${platform}" == 'darwin' ]]; then
-    package::_install-cask google-chrome "${1:-}"
+    _package__install-cask google-chrome "${1:-}"
     return
   fi
   local version="${1:-}" versions=''
   if [[ "${platform}" == 'ubuntu' ]]; then
     # APT would pick the newest build even when the installed C library cannot run it.
-    versions="$(chrome::versions)" || return "$?"
-    version="$(package::_select-listed-version "${versions}" "${version}" 'Google Chrome')" || return "$?"
+    versions="$(chrome__versions)" || return "$?"
+    version="$(_package__select-listed-version "${versions}" "${version}" 'Google Chrome')" || return "$?"
   fi
-  chrome::_register-repository "${platform}" || return "$?"
-  package::_install-version google-chrome-stable "${version}"
+  _chrome__register-repository "${platform}" || return "$?"
+  _package__install-version google-chrome-stable "${version}"
 }

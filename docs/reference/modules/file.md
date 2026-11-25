@@ -8,31 +8,31 @@ Text is written to a temporary file in the target directory and then moved into 
 
 ## Index
 
-* [file::ensure-exists](#fileensure-exists)
-* [file::contains-match](#filecontains-match)
-* [file::verify-sha256](#fileverify-sha256)
-* [file::append-text](#fileappend-text)
-* [file::replace-text](#filereplace-text)
-* [file::replace-all-text](#filereplace-all-text)
-* [file::replace-text-in-files](#filereplace-text-in-files)
-* [file::replace-all-text-in-files](#filereplace-all-text-in-files)
-* [file::replace-text-or-append](#filereplace-text-or-append)
-* [file::replace-or-append-text](#filereplace-or-append-text)
-* [file::append-text-as-root](#fileappend-text-as-root)
-* [file::replace-text-as-root](#filereplace-text-as-root)
-* [file::replace-all-text-as-root](#filereplace-all-text-as-root)
-* [file::replace-text-in-files-as-root](#filereplace-text-in-files-as-root)
-* [file::replace-all-text-in-files-as-root](#filereplace-all-text-in-files-as-root)
-* [file::replace-or-append-text-as-root](#filereplace-or-append-text-as-root)
-* [file::write-text](#filewrite-text)
-* [file::find-by-content](#filefind-by-content)
-* [file::latest-by-name](#filelatest-by-name)
-* [file::edit](#fileedit)
-* [file::release](#filerelease)
-* [file::tree-with-contents](#filetree-with-contents)
-* [file::modified-time-unix-seconds](#filemodified-time-unix-seconds)
+* [file__ensure-exists](#file__ensure-exists)
+* [file__contains-match](#file__contains-match)
+* [file__verify-sha256](#file__verify-sha256)
+* [file__append-text](#file__append-text)
+* [file__replace-text](#file__replace-text)
+* [file__replace-all-text](#file__replace-all-text)
+* [file__replace-text-in-files](#file__replace-text-in-files)
+* [file__replace-all-text-in-files](#file__replace-all-text-in-files)
+* [file__replace-text-or-append](#file__replace-text-or-append)
+* [file__replace-or-append-text](#file__replace-or-append-text)
+* [file__append-text-as-root](#file__append-text-as-root)
+* [file__replace-text-as-root](#file__replace-text-as-root)
+* [file__replace-all-text-as-root](#file__replace-all-text-as-root)
+* [file__replace-text-in-files-as-root](#file__replace-text-in-files-as-root)
+* [file__replace-all-text-in-files-as-root](#file__replace-all-text-in-files-as-root)
+* [file__replace-or-append-text-as-root](#file__replace-or-append-text-as-root)
+* [file__write-text](#file__write-text)
+* [file__find-by-content](#file__find-by-content)
+* [file__latest-by-name](#file__latest-by-name)
+* [file__edit](#file__edit)
+* [file__release](#file__release)
+* [file__tree-with-contents](#file__tree-with-contents)
+* [file__modified-time-unix-seconds](#file__modified-time-unix-seconds)
 
-### file::ensure-exists
+### file__ensure-exists
 
 Create an empty regular file when it does not exist.
 
@@ -42,7 +42,7 @@ caller's umask. An existing regular file is left unchanged.
 #### Example
 
 ```bash
-file::ensure-exists "${HOME}/.env" 0600
+file__ensure-exists "${HOME}/.env" 0600
 ```
 
 #### Arguments
@@ -57,14 +57,14 @@ file::ensure-exists "${HOME}/.env" 0600
 * **66**: The path is not a regular file.
 * **74**: The file could not be created with the requested mode.
 
-### file::contains-match
+### file__contains-match
 
 Test whether any file line matches a Python regular expression.
 
 #### Example
 
 ```bash
-file::contains-match /etc/hosts '^127\.0\.0\.1\s+localhost\b'
+file__contains-match /etc/hosts '^127\.0\.0\.1\s+localhost\b'
 ```
 
 #### Arguments
@@ -80,7 +80,7 @@ file::contains-match /etc/hosts '^127\.0\.0\.1\s+localhost\b'
 * **66**: The file is missing, unreadable, or a symbolic link.
 * **69**: Python 3 is unavailable.
 
-### file::verify-sha256
+### file__verify-sha256
 
 Test a file against an expected SHA-256 digest.
 
@@ -89,7 +89,7 @@ sha256sum is used on Linux and shasum on macOS; the digest is compared without r
 #### Example
 
 ```bash
-file::verify-sha256 node.tar.gz "${expected_sha256}" || rm -f node.tar.gz
+file__verify-sha256 node.tar.gz "${expected_sha256}" || rm -f node.tar.gz
 ```
 
 #### Arguments
@@ -106,7 +106,7 @@ file::verify-sha256 node.tar.gz "${expected_sha256}" || rm -f node.tar.gz
 * **69**: sha256sum or shasum is unavailable.
 * **74**: The digest could not be computed.
 
-### file::append-text
+### file__append-text
 
 Append text without conversion, elevating only when permissions require it.
 
@@ -116,7 +116,7 @@ A missing file is created with mode 0644 whatever the caller's umask is.
 #### Example
 
 ```bash
-file::append-text "${HOME}/.bashrc" $'export EDITOR=vim\n'
+file__append-text "${HOME}/.bashrc" $'export EDITOR=vim\n'
 ```
 
 #### Arguments
@@ -132,7 +132,7 @@ file::append-text "${HOME}/.bashrc" $'export EDITOR=vim\n'
 * **74**: The file could not be written.
 * other The status of the root helper when elevation was needed.
 
-### file::replace-text
+### file__replace-text
 
 Replace the first Bash ERE match on every file line.
 
@@ -142,7 +142,7 @@ the current user cannot write it.
 #### Example
 
 ```bash
-file::replace-text /etc/ssh/sshd_config '^#?PasswordAuthentication .*$' 'PasswordAuthentication no'
+file__replace-text /etc/ssh/sshd_config '^#?PasswordAuthentication .*$' 'PasswordAuthentication no'
 ```
 
 #### Arguments
@@ -159,14 +159,14 @@ file::replace-text /etc/ssh/sshd_config '^#?PasswordAuthentication .*$' 'Passwor
 * **74**: The file could not be rewritten.
 * other The status of the root helper when elevation was needed.
 
-### file::replace-all-text
+### file__replace-all-text
 
 Replace every nonempty Bash ERE match on every file line.
 
 #### Example
 
 ```bash
-file::replace-all-text settings.ini 'http://' 'https://'
+file__replace-all-text settings.ini 'http://' 'https://'
 ```
 
 #### Arguments
@@ -183,7 +183,7 @@ file::replace-all-text settings.ini 'http://' 'https://'
 * **74**: The file could not be rewritten.
 * other The status of the root helper when elevation was needed.
 
-### file::replace-text-in-files
+### file__replace-text-in-files
 
 Replace line matches across multiple files.
 
@@ -193,7 +193,7 @@ of them cannot be written by the current user.
 #### Example
 
 ```bash
-file::replace-text-in-files '^version=.*$' 'version=2.0.0' app/a.properties app/b.properties
+file__replace-text-in-files '^version=.*$' 'version=2.0.0' app/a.properties app/b.properties
 ```
 
 #### Arguments
@@ -210,14 +210,14 @@ file::replace-text-in-files '^version=.*$' 'version=2.0.0' app/a.properties app/
 * **74**: A file could not be rewritten.
 * other The status of the root helper when elevation was needed.
 
-### file::replace-all-text-in-files
+### file__replace-all-text-in-files
 
 Replace every line match across multiple files.
 
 #### Example
 
 ```bash
-file::replace-all-text-in-files 'example\.org' 'example.com' docs/*.md
+file__replace-all-text-in-files 'example\.org' 'example.com' docs/*.md
 ```
 
 #### Arguments
@@ -234,7 +234,7 @@ file::replace-all-text-in-files 'example\.org' 'example.com' docs/*.md
 * **74**: A file could not be rewritten.
 * other The status of the root helper when elevation was needed.
 
-### file::replace-text-or-append
+### file__replace-text-or-append
 
 Replace every line match or append one line when no match exists.
 
@@ -244,7 +244,7 @@ replace a whole line.
 #### Example
 
 ```bash
-file::replace-text-or-append "${HOME}/.zshrc" '^export EDITOR=.*$' 'export EDITOR=vim'
+file__replace-text-or-append "${HOME}/.zshrc" '^export EDITOR=.*$' 'export EDITOR=vim'
 ```
 
 #### Arguments
@@ -261,16 +261,16 @@ file::replace-text-or-append "${HOME}/.zshrc" '^export EDITOR=.*$' 'export EDITO
 * **74**: The file could not be rewritten.
 * other The status of the root helper when elevation was needed.
 
-### file::replace-or-append-text
+### file__replace-or-append-text
 
 Replace matching text or append it using the established API name.
 
-Same as file::replace-text-or-append.
+Same as file__replace-text-or-append.
 
 #### Example
 
 ```bash
-file::replace-or-append-text /etc/environment '^LANG=.*$' 'LANG=en_US.UTF-8'
+file__replace-or-append-text /etc/environment '^LANG=.*$' 'LANG=en_US.UTF-8'
 ```
 
 #### Arguments
@@ -286,16 +286,16 @@ file::replace-or-append-text /etc/environment '^LANG=.*$' 'LANG=en_US.UTF-8'
 * **66**: The file is missing, not a regular file, or a symbolic link.
 * **74**: The file could not be rewritten.
 
-### file::append-text-as-root
+### file__append-text-as-root
 
 Append text through the root execution dispatcher.
 
-Same as file::append-text, but always in a separate root process.
+Same as file__append-text, but always in a separate root process.
 
 #### Example
 
 ```bash
-file::append-text-as-root /etc/hosts $'192.0.2.10 build-server\n'
+file__append-text-as-root /etc/hosts $'192.0.2.10 build-server\n'
 ```
 
 #### Arguments
@@ -310,16 +310,16 @@ file::append-text-as-root /etc/hosts $'192.0.2.10 build-server\n'
 * **74**: The file could not be written.
 * **77**: sudo refused the credentials.
 
-### file::replace-text-as-root
+### file__replace-text-as-root
 
 Replace the first expression match through the root execution dispatcher.
 
-Same as file::replace-text, but always in a separate root process.
+Same as file__replace-text, but always in a separate root process.
 
 #### Example
 
 ```bash
-file::replace-text-as-root /etc/default/grub '^GRUB_TIMEOUT=.*$' 'GRUB_TIMEOUT=3'
+file__replace-text-as-root /etc/default/grub '^GRUB_TIMEOUT=.*$' 'GRUB_TIMEOUT=3'
 ```
 
 #### Arguments
@@ -336,16 +336,16 @@ file::replace-text-as-root /etc/default/grub '^GRUB_TIMEOUT=.*$' 'GRUB_TIMEOUT=3
 * **74**: The file could not be rewritten.
 * **77**: sudo refused the credentials.
 
-### file::replace-all-text-as-root
+### file__replace-all-text-as-root
 
 Replace every expression match through the root execution dispatcher.
 
-Same as file::replace-all-text, but always in a separate root process.
+Same as file__replace-all-text, but always in a separate root process.
 
 #### Example
 
 ```bash
-file::replace-all-text-as-root /etc/apt/sources.list 'http://archive' 'https://archive'
+file__replace-all-text-as-root /etc/apt/sources.list 'http://archive' 'https://archive'
 ```
 
 #### Arguments
@@ -362,16 +362,16 @@ file::replace-all-text-as-root /etc/apt/sources.list 'http://archive' 'https://a
 * **74**: The file could not be rewritten.
 * **77**: sudo refused the credentials.
 
-### file::replace-text-in-files-as-root
+### file__replace-text-in-files-as-root
 
 Replace expression matches in files through the root execution dispatcher.
 
-Same as file::replace-text-in-files, but always in a separate root process.
+Same as file__replace-text-in-files, but always in a separate root process.
 
 #### Example
 
 ```bash
-file::replace-text-in-files-as-root '^Port .*$' 'Port 2222' /etc/ssh/sshd_config
+file__replace-text-in-files-as-root '^Port .*$' 'Port 2222' /etc/ssh/sshd_config
 ```
 
 #### Arguments
@@ -388,16 +388,16 @@ file::replace-text-in-files-as-root '^Port .*$' 'Port 2222' /etc/ssh/sshd_config
 * **74**: A file could not be rewritten.
 * **77**: sudo refused the credentials.
 
-### file::replace-all-text-in-files-as-root
+### file__replace-all-text-in-files-as-root
 
 Replace all expression matches in files through the root execution dispatcher.
 
-Same as file::replace-all-text-in-files, but always in a separate root process.
+Same as file__replace-all-text-in-files, but always in a separate root process.
 
 #### Example
 
 ```bash
-file::replace-all-text-in-files-as-root 'old-mirror' 'new-mirror' /etc/apt/sources.list.d/*.list
+file__replace-all-text-in-files-as-root 'old-mirror' 'new-mirror' /etc/apt/sources.list.d/*.list
 ```
 
 #### Arguments
@@ -414,16 +414,16 @@ file::replace-all-text-in-files-as-root 'old-mirror' 'new-mirror' /etc/apt/sourc
 * **74**: A file could not be rewritten.
 * **77**: sudo refused the credentials.
 
-### file::replace-or-append-text-as-root
+### file__replace-or-append-text-as-root
 
 Replace matching text or append it through the root execution dispatcher.
 
-Same as file::replace-text-or-append, but always in a separate root process.
+Same as file__replace-text-or-append, but always in a separate root process.
 
 #### Example
 
 ```bash
-file::replace-or-append-text-as-root /etc/sysctl.conf '^vm\.swappiness=.*$' 'vm.swappiness=10'
+file__replace-or-append-text-as-root /etc/sysctl.conf '^vm\.swappiness=.*$' 'vm.swappiness=10'
 ```
 
 #### Arguments
@@ -440,7 +440,7 @@ file::replace-or-append-text-as-root /etc/sysctl.conf '^vm\.swappiness=.*$' 'vm.
 * **74**: The file could not be rewritten.
 * **77**: sudo refused the credentials.
 
-### file::write-text
+### file__write-text
 
 Write text to a regular file using an atomic replacement.
 
@@ -450,7 +450,7 @@ root writes them; existing metadata is preserved.
 #### Example
 
 ```bash
-file::write-text /etc/udev/rules.d/90-device.rules $'SUBSYSTEM=="usb", MODE="0666"\n'
+file__write-text /etc/udev/rules.d/90-device.rules $'SUBSYSTEM=="usb", MODE="0666"\n'
 ```
 
 #### Arguments
@@ -466,7 +466,7 @@ file::write-text /etc/udev/rules.d/90-device.rules $'SUBSYSTEM=="usb", MODE="066
 * **74**: The temporary file could not be written or moved into place.
 * other The status of the root helper when elevation was needed.
 
-### file::find-by-content
+### file__find-by-content
 
 Write the regular files below a directory whose content matches an ERE, separated by NUL.
 
@@ -475,7 +475,7 @@ The files are searched in parallel by grep -E.
 #### Example
 
 ```bash
-file::find-by-content 'FIXME|XXX' src | xargs -0 grep -nE 'FIXME|XXX'
+file__find-by-content 'FIXME|XXX' src | xargs -0 grep -nE 'FIXME|XXX'
 ```
 
 #### Arguments
@@ -498,7 +498,7 @@ file::find-by-content 'FIXME|XXX' src | xargs -0 grep -nE 'FIXME|XXX'
 
 * NUL-separated paths of the matching files.
 
-### file::latest-by-name
+### file__latest-by-name
 
 Write the most recently modified regular file whose base name matches a Bash ERE.
 
@@ -508,7 +508,7 @@ first one is written.
 #### Example
 
 ```bash
-file::latest-by-name '^backup-.*\.tar\.gz$' /var/backups
+file__latest-by-name '^backup-.*\.tar\.gz$' /var/backups
 ```
 
 #### Arguments
@@ -527,7 +527,7 @@ file::latest-by-name '^backup-.*\.tar\.gz$' /var/backups
 
 * The path of the newest matching file.
 
-### file::edit
+### file__edit
 
 Open an editor for a file, using sudoedit only when required.
 
@@ -537,7 +537,7 @@ code --wait. It defaults to vi.
 #### Example
 
 ```bash
-EDITOR=nano file::edit /etc/hosts
+EDITOR=nano file__edit /etc/hosts
 ```
 
 #### Arguments
@@ -552,7 +552,7 @@ EDITOR=nano file::edit /etc/hosts
 * **69**: The file is not writable and sudoedit is unavailable.
 * other The status of the editor.
 
-### file::release
+### file__release
 
 Release a file held by other processes.
 
@@ -563,7 +563,7 @@ administrator execution.
 #### Example
 
 ```bash
-file::release "${HOME}/.local/share/app/database.lock" 5
+file__release "${HOME}/.local/share/app/database.lock" 5
 ```
 
 #### Arguments
@@ -579,17 +579,17 @@ file::release "${HOME}/.local/share/app/database.lock" 5
 * **74**: The clock could not be read.
 * **75**: The file is still open after SIGKILL.
 
-### file::tree-with-contents
+### file__tree-with-contents
 
 Write the directories and text files below a path, with the contents of each text file.
 
 Directories are written as paths. Regular files whose MIME type is text/*
-are written by file::_print-text; other files are skipped.
+are written by _file__print-text; other files are skipped.
 
 #### Example
 
 ```bash
-file::tree-with-contents src 1 2 > context.txt
+file__tree-with-contents src 1 2 > context.txt
 ```
 
 #### Arguments
@@ -610,14 +610,14 @@ file::tree-with-contents src 1 2 > context.txt
 
 * Directory paths and the contents of text files.
 
-### file::modified-time-unix-seconds
+### file__modified-time-unix-seconds
 
 Write the last modification time of a file as Unix seconds.
 
 #### Example
 
 ```bash
-file::modified-time-unix-seconds /etc/hosts
+file__modified-time-unix-seconds /etc/hosts
 ```
 
 #### Arguments

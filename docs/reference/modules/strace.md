@@ -8,10 +8,10 @@ Processes are traced with strace on Linux.
 
 ## Index
 
-* [strace::attach-pid](#straceattach-pid)
-* [strace::attach-name](#straceattach-name)
+* [strace__attach-pid](#strace__attach-pid)
+* [strace__attach-name](#strace__attach-name)
 
-### strace::attach-pid
+### strace__attach-pid
 
 Attach strace to a process on Linux.
 
@@ -21,7 +21,7 @@ with the current permissions.
 #### Example
 
 ```bash
-strace::attach-pid "$(pgrep -x nginx | head -n 1)"
+strace__attach-pid "$(pgrep -x nginx | head -n 1)"
 ```
 
 #### Arguments
@@ -39,14 +39,14 @@ strace::attach-pid "$(pgrep -x nginx | head -n 1)"
 
 * The system calls that strace reports.
 
-### strace::attach-name
+### strace__attach-name
 
 Attach strace to the first process whose executable name is NAME.
 
 #### Example
 
 ```bash
-strace::attach-name nginx
+strace__attach-name nginx
 ```
 
 #### Arguments
@@ -58,7 +58,7 @@ strace::attach-name nginx
 * **0**: strace ended successfully.
 * **1**: No process has the name.
 * **64**: The argument count is not one.
-* other The status of strace::attach-pid.
+* other The status of strace__attach-pid.
 
 #### Output on stderr
 

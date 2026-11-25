@@ -7,24 +7,24 @@
 
 # @description Write the Microsoft Edge Debian package index URL for the current architecture.
 # @internal
-microsoft-edge::_index-url() {
+_microsoft-edge__index-url() {
   [[ "$#" -eq 0 ]] || return 64
   local architecture=''
-  architecture="$(package::_deb-architecture)" || return "$?"
+  architecture="$(_package__deb-architecture)" || return "$?"
   printf 'https://packages.microsoft.com/repos/edge/dists/stable/main/binary-%s/Packages.gz\n' "${architecture}"
 }
 
 # @description Write the Microsoft Edge package URL for a version from the vendor package metadata.
 # @internal
 # @arg $1 string VERSION Package version. Defaults to the newest stable version.
-microsoft-edge::_artifact-url() {
+_microsoft-edge__artifact-url() {
   [[ "$#" -le 1 ]] || return 64
-  package::_require-platform ubuntu || return "$?"
+  _package__require-platform ubuntu || return "$?"
   local version="${1:-}" index='' index_entries='' entry=''
-  index="$(microsoft-edge::_index-url)" || return "$?"
-  index_entries="$(package::_deb-index-entries "${index}" microsoft-edge-stable)" || return "$?"
+  index="$(_microsoft-edge__index-url)" || return "$?"
+  index_entries="$(_package__deb-index-entries "${index}" microsoft-edge-stable)" || return "$?"
   if [[ -z "${version}" ]]; then
-    version="$(printf '%s\n' "${index_entries}" | cut -f 1 | package::_latest-stable-version)" || return "$?"
+    version="$(printf '%s\n' "${index_entries}" | cut -f 1 | _package__latest-stable-version)" || return "$?"
   fi
   while IFS=$'\t' read -r entry index; do
     if [[ "${entry}" == "${version}" ]]; then
@@ -44,21 +44,21 @@ microsoft-edge::_artifact-url() {
 # @exitcode 69 The platform or CPU is unsupported.
 # @exitcode 74 The vendor metadata could not be downloaded.
 # @example
-#   microsoft-edge::versions | tail -n 1
-microsoft-edge::versions() {
+#   microsoft-edge__versions | tail -n 1
+microsoft-edge__versions() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' index=''
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package__platform)" || return "$?"
   case "${platform}" in
     darwin)
-      package::_cask-versions microsoft-edge
+      _package__cask-versions microsoft-edge
       ;;
     ubuntu)
-      index="$(microsoft-edge::_index-url)" || return "$?"
-      package::_deb-runnable-versions "${index}" microsoft-edge-stable
+      index="$(_microsoft-edge__index-url)" || return "$?"
+      _package__deb-runnable-versions "${index}" microsoft-edge-stable
       ;;
     fedora)
-      package::_rpm-repository-versions https://packages.microsoft.com/yumrepos/edge microsoft-edge-stable
+      _package__rpm-repository-versions https://packages.microsoft.com/yumrepos/edge microsoft-edge-stable
       ;;
   esac
 }
@@ -69,38 +69,38 @@ microsoft-edge::versions() {
 # running CPU, and on Ubuntu only when the installed C library can run it.
 # Microsoft builds Edge for Linux on amd64 only, so arm64 returns 69.
 #
-# @arg $1 string Optional version from microsoft-edge::versions; on macOS only the current version. Defaults to the newest runnable one.
+# @arg $1 string Optional version from microsoft-edge__versions; on macOS only the current version. Defaults to the newest runnable one.
 # @exitcode 0 Microsoft Edge is installed.
 # @exitcode 64 The argument count is wrong.
 # @exitcode 69 The platform or CPU is unsupported, or the version is unavailable.
 # @exitcode 74 The package or repository could not be downloaded.
 # @exitcode other The status of the package manager.
 # @example
-#   microsoft-edge::install
-microsoft-edge::install() {
+#   microsoft-edge__install
+microsoft-edge__install() {
   [[ "$#" -le 1 ]] || return 64
   local platform='' url='' versions='' version="${1:-}"
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package__platform)" || return "$?"
   if [[ "${platform}" == 'darwin' ]]; then
-    package::_install-cask microsoft-edge "${version}"
+    _package__install-cask microsoft-edge "${version}"
     return
   fi
-  versions="$(microsoft-edge::versions)" || return "$?"
-  version="$(package::_select-listed-version "${versions}" "${version}" 'Microsoft Edge')" || return "$?"
+  versions="$(microsoft-edge__versions)" || return "$?"
+  version="$(_package__select-listed-version "${versions}" "${version}" 'Microsoft Edge')" || return "$?"
   case "${platform}" in
     ubuntu)
-      url="$(microsoft-edge::_artifact-url "${version}")" || return "$?"
-      apt::deb::install-from-url "${url}"
+      url="$(_microsoft-edge__artifact-url "${version}")" || return "$?"
+      apt__deb__install-from-url "${url}"
       ;;
     fedora)
-      package::_dnf-register-repository microsoft-edge "[microsoft-edge]
+      _package__dnf-register-repository microsoft-edge "[microsoft-edge]
 name=Microsoft Edge
 baseurl=https://packages.microsoft.com/yumrepos/edge
 enabled=1
 gpgcheck=1
 gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 " || return "$?"
-      package::_install-version microsoft-edge-stable "${version}"
+      _package__install-version microsoft-edge-stable "${version}"
       ;;
   esac
 }

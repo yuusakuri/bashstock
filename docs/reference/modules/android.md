@@ -8,27 +8,27 @@ The SDK directory is ANDROID_HOME, then ANDROID_SDK_ROOT, then the Android Studi
 
 ## Index
 
-* [android::sdk::directory](#androidsdkdirectory)
-* [android::cli::install](#androidcliinstall)
-* [android::sdk::install](#androidsdkinstall)
-* [android::platform-tools::install](#androidplatform-toolsinstall)
-* [android::sdk-platform::install](#androidsdk-platforminstall)
-* [android::build-tools::install](#androidbuild-toolsinstall)
-* [android::emulator::install](#androidemulatorinstall)
-* [android::command-line-tools::install](#androidcommand-line-toolsinstall)
-* [android::avd::list](#androidavdlist)
-* [android::avd::profiles](#androidavdprofiles)
-* [android::system-images::versions](#androidsystem-imagesversions)
-* [android::avd::create](#androidavdcreate)
-* [android::avd::port::available](#androidavdportavailable)
-* [android::avd::port::first](#androidavdportfirst)
-* [android::avd::start](#androidavdstart)
-* [android::avd::stop](#androidavdstop)
-* [android::avd::delete](#androidavddelete)
-* [android::build-tools::versions](#androidbuild-toolsversions)
-* [android::build-tools::latest-version](#androidbuild-toolslatest-version)
+* [android__sdk__directory](#android__sdk__directory)
+* [android__cli__install](#android__cli__install)
+* [android__sdk__install](#android__sdk__install)
+* [android__platform-tools__install](#android__platform-tools__install)
+* [android__sdk-platform__install](#android__sdk-platform__install)
+* [android__build-tools__install](#android__build-tools__install)
+* [android__emulator__install](#android__emulator__install)
+* [android__command-line-tools__install](#android__command-line-tools__install)
+* [android__avd__list](#android__avd__list)
+* [android__avd__profiles](#android__avd__profiles)
+* [android__system-images__versions](#android__system-images__versions)
+* [android__avd__create](#android__avd__create)
+* [android__avd__port__available](#android__avd__port__available)
+* [android__avd__port__first](#android__avd__port__first)
+* [android__avd__start](#android__avd__start)
+* [android__avd__stop](#android__avd__stop)
+* [android__avd__delete](#android__avd__delete)
+* [android__build-tools__versions](#android__build-tools__versions)
+* [android__build-tools__latest-version](#android__build-tools__latest-version)
 
-### android::sdk::directory
+### android__sdk__directory
 
 Write the SDK directory selected by Android Studio or the caller.
 
@@ -38,7 +38,7 @@ ANDROID_HOME wins, then ANDROID_SDK_ROOT, then Android Studio's default:
 #### Example
 
 ```bash
-ls "$(android::sdk::directory)/platforms"
+ls "$(android__sdk__directory)/platforms"
 ```
 
 _Function has no arguments._
@@ -56,7 +56,7 @@ _Function has no arguments._
 
 * A message when ANDROID_HOME and ANDROID_SDK_ROOT differ.
 
-### android::cli::install
+### android__cli__install
 
 Install the official Android CLI without replacing a working copy on failure.
 
@@ -66,7 +66,7 @@ version, and only then moved to ~/.local/bin/android.
 #### Example
 
 ```bash
-android::cli::install
+android__cli__install
 android --version
 ```
 
@@ -81,7 +81,7 @@ android --version
 * **69**: Google publishes no CLI for this OS and CPU, or the downloaded CLI does not start or has another version.
 * **74**: The download or installation failed.
 
-### android::sdk::install
+### android__sdk__install
 
 Create and configure the selected SDK directory and Android CLI.
 
@@ -90,12 +90,12 @@ ANDROID_HOME is written to the Bash and Zsh startup files and the current proces
 #### Example
 
 ```bash
-android::sdk::install "${HOME}/Android/Sdk"
+android__sdk__install "${HOME}/Android/Sdk"
 ```
 
 #### Arguments
 
-* **$1** (string): Optional absolute SDK directory. Defaults to android::sdk::directory.
+* **$1** (string): Optional absolute SDK directory. Defaults to android__sdk__directory.
 * **$2** (string): Optional complete Android CLI version. Defaults to the latest.
 
 #### Exit codes
@@ -105,7 +105,7 @@ android::sdk::install "${HOME}/Android/Sdk"
 * **69**: The Android CLI is unavailable for this OS and CPU.
 * **74**: The directory could not be created or the CLI could not be installed.
 
-### android::platform-tools::install
+### android__platform-tools__install
 
 Install Android Platform Tools and add adb and fastboot to PATH.
 
@@ -114,7 +114,7 @@ The SDK license is accepted automatically.
 #### Example
 
 ```bash
-android::platform-tools::install
+android__platform-tools__install
 adb devices
 ```
 
@@ -129,14 +129,14 @@ adb devices
 * **69**: The Android CLI is unavailable, or adb or fastboot is missing after installation.
 * other The status of the Android CLI.
 
-### android::sdk-platform::install
+### android__sdk-platform__install
 
 Install an Android SDK Platform and verify its android.jar file.
 
 #### Example
 
 ```bash
-android::sdk-platform::install 35
+android__sdk-platform__install 35
 ```
 
 #### Arguments
@@ -151,14 +151,14 @@ android::sdk-platform::install 35
 * **69**: The Android CLI is unavailable, or android.jar is missing after installation.
 * other The status of the Android CLI.
 
-### android::build-tools::install
+### android__build-tools__install
 
 Install one stable Build Tools version and add its executables to PATH.
 
 #### Example
 
 ```bash
-android::build-tools::install 35.0.0
+android__build-tools__install 35.0.0
 aapt2 version
 ```
 
@@ -174,7 +174,7 @@ aapt2 version
 * **69**: The Android CLI is unavailable, or aapt2 is missing after installation.
 * other The status of the Android CLI.
 
-### android::emulator::install
+### android__emulator__install
 
 Install the Android Emulator into the selected SDK.
 
@@ -185,7 +185,7 @@ Current emulators need glibc 2.30 or later, so Ubuntu 18.04 returns 69.
 #### Example
 
 ```bash
-android::emulator::install
+android__emulator__install
 ```
 
 #### Arguments
@@ -203,17 +203,17 @@ android::emulator::install
 
 * A message when the installed emulator does not start.
 
-### android::command-line-tools::install
+### android__command-line-tools__install
 
 Install SDK Command-line Tools and verify sdkmanager and avdmanager.
 
-sdkmanager and avdmanager run on Java, so a JDK is installed with jdk::install
+sdkmanager and avdmanager run on Java, so a JDK is installed with jdk__install
 when neither JAVA_HOME nor PATH provides java.
 
 #### Example
 
 ```bash
-android::command-line-tools::install
+android__command-line-tools__install
 avdmanager list device -c
 ```
 
@@ -226,16 +226,16 @@ avdmanager list device -c
 * **0**: sdkmanager and avdmanager are installed and on PATH.
 * **64**: The revision is malformed.
 * **69**: The Android CLI is unavailable, or a tool is missing after installation.
-* other The status of the Android CLI or jdk::install.
+* other The status of the Android CLI or jdk__install.
 
-### android::avd::list
+### android__avd__list
 
 List AVD names in the selected Android SDK environment.
 
 #### Example
 
 ```bash
-android::avd::list | grep -Fqx pixel_api35 || android::avd::create pixel_api35 35
+android__avd__list | grep -Fqx pixel_api35 || android__avd__create pixel_api35 35
 ```
 
 _Function has no arguments._
@@ -251,14 +251,14 @@ _Function has no arguments._
 
 * One AVD name per line.
 
-### android::avd::profiles
+### android__avd__profiles
 
 List hardware profiles available to avdmanager.
 
 #### Example
 
 ```bash
-android::avd::profiles | grep pixel
+android__avd__profiles | grep pixel
 ```
 
 _Function has no arguments._
@@ -274,14 +274,14 @@ _Function has no arguments._
 
 * One profile ID per line, such as medium_phone or pixel_8.
 
-### android::system-images::versions
+### android__system-images__versions
 
 List stable system images as API, tag, ABI, and revision values.
 
 #### Example
 
 ```bash
-android::system-images::versions 35 google_apis x86_64
+android__system-images__versions 35 google_apis x86_64
 # 35 google_apis x86_64 9
 ```
 
@@ -302,7 +302,7 @@ android::system-images::versions 35 google_apis x86_64
 
 * Lines of API, tag, ABI, and revision separated by spaces.
 
-### android::avd::create
+### android__avd__create
 
 Create one AVD from a stable Google APIs image without starting it.
 
@@ -313,8 +313,8 @@ it is backed up until the new one exists.
 #### Example
 
 ```bash
-android::avd::create pixel_api35 35 pixel_8
-android::avd::create pixel_api35 35 pixel_8 google_apis arm64-v8a '' --replace
+android__avd__create pixel_api35 35 pixel_8
+android__avd__create pixel_api35 35 pixel_8 google_apis arm64-v8a '' --replace
 ```
 
 #### Options
@@ -341,14 +341,14 @@ android::avd::create pixel_api35 35 pixel_8 google_apis arm64-v8a '' --replace
 * **74**: The existing AVD could not be backed up or restored.
 * other The status of the Android CLI or avdmanager.
 
-### android::avd::port::available
+### android__avd__port__available
 
 Report whether an even emulator console port and its ADB port are both free.
 
 #### Example
 
 ```bash
-android::avd::port::available 5556 && android::avd::start pixel_api35 5556
+android__avd__port__available 5556 && android__avd__start pixel_api35 5556
 ```
 
 #### Arguments
@@ -363,14 +363,14 @@ android::avd::port::available 5556 && android::avd::start pixel_api35 5556
 * **69**: Neither lsof nor ss is available.
 * **74**: ss failed.
 
-### android::avd::port::first
+### android__avd__port__first
 
 Write the first free emulator console port.
 
 #### Example
 
 ```bash
-port="$(android::avd::port::first)"
+port="$(android__avd__port__first)"
 ```
 
 _Function has no arguments._
@@ -386,7 +386,7 @@ _Function has no arguments._
 
 * An even port from 5554 to 5682.
 
-### android::avd::start
+### android__avd__start
 
 Start one AVD and wait for Android to finish booting.
 
@@ -398,7 +398,7 @@ stopped; the ADB server and other emulators keep running.
 #### Example
 
 ```bash
-serial="$(android::avd::start pixel_api35 '' 300 --headless)"
+serial="$(android__avd__start pixel_api35 '' 300 --headless)"
 adb -s "${serial}" install app.apk
 ```
 
@@ -428,7 +428,7 @@ adb -s "${serial}" install app.apk
 
 * The emulator log when it exits or the boot times out.
 
-### android::avd::stop
+### android__avd__stop
 
 Stop the named AVD, or the only running AVD when no name is given.
 
@@ -438,7 +438,7 @@ other emulators keep running.
 #### Example
 
 ```bash
-android::avd::stop pixel_api35
+android__avd__stop pixel_api35
 ```
 
 #### Arguments
@@ -454,14 +454,14 @@ android::avd::stop pixel_api35
 * **74**: The clock could not be read.
 * **75**: The emulator refused to stop or did not stop within 60 seconds.
 
-### android::avd::delete
+### android__avd__delete
 
 Delete one named AVD without changing other AVDs.
 
 #### Example
 
 ```bash
-android::avd::delete pixel_api35
+android__avd__delete pixel_api35
 ```
 
 #### Arguments
@@ -476,7 +476,7 @@ android::avd::delete pixel_api35
 * **69**: Command-line Tools are not installed.
 * other The status of avdmanager.
 
-### android::build-tools::versions
+### android__build-tools__versions
 
 Write available stable Android Build Tools versions in ascending order.
 
@@ -485,7 +485,7 @@ Use Android CLI when available, otherwise use sdkmanager.
 #### Example
 
 ```bash
-android::build-tools::versions | tail -n 3
+android__build-tools__versions | tail -n 3
 ```
 
 _Function has no arguments._
@@ -502,14 +502,14 @@ _Function has no arguments._
 
 * One version per line, oldest first.
 
-### android::build-tools::latest-version
+### android__build-tools__latest-version
 
 Write the newest available stable Android Build Tools version.
 
 #### Example
 
 ```bash
-sdkmanager "build-tools;$(android::build-tools::latest-version)"
+sdkmanager "build-tools;$(android__build-tools__latest-version)"
 ```
 
 _Function has no arguments._
@@ -519,7 +519,7 @@ _Function has no arguments._
 * **0**: The version was written.
 * **1**: No stable version was found.
 * **64**: An argument was given.
-* other The status of android::build-tools::versions.
+* other The status of android__build-tools__versions.
 
 #### Output on stdout
 

@@ -17,7 +17,7 @@ bats_require_minimum_version 1.5.0
   printf 'local\n' >"$repo/tracked"
   printf 'untracked\n' >"$repo/new"
 
-  run git::commit::discard "$repo"
+  run git__commit__discard "$repo"
   [ "$status" -eq 0 ]
   [ "$(git -C "$repo" rev-parse HEAD)" = "$first" ]
   [ "$(cat "$repo/tracked")" = initial ]
@@ -40,7 +40,7 @@ bats_require_minimum_version 1.5.0
   printf 'local\n' >"$repo/tracked"
   printf 'untracked\n' >"$repo/new"
 
-  run git::reset "$first" "$repo"
+  run git__reset "$first" "$repo"
   [ "$status" -eq 0 ]
   [ "$(cat "$repo/tracked")" = initial ]
   [ "$(cat "$repo/new")" = untracked ]
@@ -49,9 +49,9 @@ bats_require_minimum_version 1.5.0
 @test "environment settings survive new shells without duplicating PATH" {
   export HOME="$BATS_TEST_TMPDIR/home"
   mkdir -p "$HOME" "$HOME/path with spaces"
-  env::set-variable BASHSTOCK_LITERAL 'a b $literal' bash
-  env::add-path "$HOME/path with spaces" bash
-  env::add-path "$HOME/path with spaces" bash
+  env__set-variable BASHSTOCK_LITERAL 'a b $literal' bash
+  env__add-path "$HOME/path with spaces" bash
+  env__add-path "$HOME/path with spaces" bash
 
   run bash -c 'source "$1"; source "$1"; printf "%s\n%s\n" "$BASHSTOCK_LITERAL" "$PATH"' _ "$HOME/.bashrc"
   [ "$status" -eq 0 ]
@@ -74,14 +74,14 @@ if [[ "$1" == config ]]; then cat >"$JFROG_TEST_ROOT/token"; fi
 SCRIPT
   chmod +x "$bin/jf"
   PATH="$bin:$PATH"
-  run jfrog::setup test-server https://example.invalid alice
+  run jfrog__setup test-server https://example.invalid alice
   [ "$status" -eq 0 ]
   [ "$(cat "$BATS_TEST_TMPDIR/token")" = test-token-value ]
   ! grep -Fq test-token-value "$BATS_TEST_TMPDIR/args"
   grep -Fxq -- '--access-token-stdin' "$BATS_TEST_TMPDIR/args"
 
   unset JFROG_ACCESS_TOKEN
-  run jfrog::setup test-server https://example.invalid alice
+  run jfrog__setup test-server https://example.invalid alice
   [ "$status" -eq 64 ]
 }
 
@@ -108,7 +108,7 @@ SCRIPT
   printf 'extra\n' >"$sdk/extra"
   printf 'ignored\n' >"$sdk/ignored"
 
-  run flutter::use-version 2.0.0 "$sdk"
+  run flutter__use-version 2.0.0 "$sdk"
   [ "$status" -eq 0 ]
   [ "$(cat "$sdk/version")" = two ]
   [ "$(cat "$sdk/ignored")" = ignored ]
@@ -137,7 +137,7 @@ SCRIPT
     command git "$@"
   }
 
-  run flutter::use-version 1.0.0 "$sdk"
+  run flutter__use-version 1.0.0 "$sdk"
   [ "$status" -eq 0 ]
   [ "$(cat "$sdk/version")" = one ]
   [ ! -e "$sdk/extra" ]
@@ -159,15 +159,15 @@ SCRIPT
   git -C "$second" config user.email test@example.invalid
   printf 'first\n' >"$first/file"
   git -C "$first" commit -qam first
-  git::push main origin "$first" >/dev/null
+  git__push main origin "$first" >/dev/null
   printf 'second\n' >"$second/file"
   git -C "$second" commit -qam second
-  run git::push main origin "$second"
+  run git__push main origin "$second"
   [ "$status" -ne 0 ]
-  run git::push::force-with-lease main origin "$second"
+  run git__push__force-with-lease main origin "$second"
   [ "$status" -ne 0 ]
   git -C "$second" fetch -q origin
-  run git::push::force-with-lease main origin "$second"
+  run git__push__force-with-lease main origin "$second"
   [ "$status" -eq 0 ]
   [ "$(git --git-dir="$remote" rev-parse main)" = "$(git -C "$second" rev-parse main)" ]
 }
@@ -192,7 +192,7 @@ SCRIPT
   ! git -C "$repo" cherry-pick "$feature_commit" >/dev/null 2>&1
   printf 'untracked\n' >"$repo/new"
   printf 'ignored\n' >"$repo/ignored"
-  run git::cherry-pick-abort "$repo"
+  run git__cherry-pick-abort "$repo"
   [ "$status" -eq 0 ]
   [ ! -e "$repo/new" ]
   [ -e "$repo/ignored" ]
@@ -202,16 +202,16 @@ SCRIPT
 @test "OpenCode uses the vendor npm package in a user-local prefix" {
   export HOME="$BATS_TEST_TMPDIR/home"
   mkdir -p "$HOME"
-  platform::_identifier() { printf 'fedora\n'; }
+  _platform__identifier() { printf 'fedora\n'; }
   npm() {
     printf '%s\n' "$*" >"$BATS_TEST_TMPDIR/npm.args"
     mkdir -p "$HOME/.local/bin"
     printf '#!/bin/sh\nprintf "1.2.3\\n"\n' >"$HOME/.local/bin/opencode"
     chmod +x "$HOME/.local/bin/opencode"
   }
-  run opencode::install 1.2.3
+  run opencode__install 1.2.3
   [ "$status" -eq 64 ]
-  run opencode::install
+  run opencode__install
   [ "$status" -eq 0 ]
   [ "$output" = 1.2.3 ]
   [ "$(<"$BATS_TEST_TMPDIR/npm.args")" = "install --global --prefix $HOME/.local opencode-ai" ]

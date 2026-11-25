@@ -8,25 +8,25 @@ Account creation runs through administrator execution and works on macOS, Ubuntu
 
 ## Index
 
-* [user::name](#username)
-* [user::primary-group](#userprimary-group)
-* [user::is-root](#useris-root)
-* [user::exists](#userexists)
-* [user::create-system-as-root](#usercreate-system-as-root)
-* [user::create-login-as-root](#usercreate-login-as-root)
-* [user::create-system](#usercreate-system)
-* [user::create-login](#usercreate-login)
-* [user::add-to-group](#useradd-to-group)
-* [user::directory::create-english-links](#userdirectorycreate-english-links)
+* [user__name](#user__name)
+* [user__primary-group](#user__primary-group)
+* [user__is-root](#user__is-root)
+* [user__exists](#user__exists)
+* [user__create-system-as-root](#user__create-system-as-root)
+* [user__create-login-as-root](#user__create-login-as-root)
+* [user__create-system](#user__create-system)
+* [user__create-login](#user__create-login)
+* [user__add-to-group](#user__add-to-group)
+* [user__directory__create-english-links](#user__directory__create-english-links)
 
-### user::name
+### user__name
 
 Write the effective user's name.
 
 #### Example
 
 ```bash
-printf 'Installing for %s\n' "$(user::name)"
+printf 'Installing for %s\n' "$(user__name)"
 ```
 
 _Function has no arguments._
@@ -41,14 +41,14 @@ _Function has no arguments._
 
 * The user name.
 
-### user::primary-group
+### user__primary-group
 
 Write the effective user's primary group name.
 
 #### Example
 
 ```bash
-chown "$(user::name):$(user::primary-group)" "${file}"
+chown "$(user__name):$(user__primary-group)" "${file}"
 ```
 
 _Function has no arguments._
@@ -63,14 +63,14 @@ _Function has no arguments._
 
 * The group name.
 
-### user::is-root
+### user__is-root
 
 Test whether the effective user is root.
 
 #### Example
 
 ```bash
-user::is-root || printf 'Run this with sudo.\n' >&2
+user__is-root || printf 'Run this with sudo.\n' >&2
 ```
 
 _Function has no arguments._
@@ -81,14 +81,14 @@ _Function has no arguments._
 * **1**: The user is not root.
 * **64**: An argument was given.
 
-### user::exists
+### user__exists
 
 Test whether a local user account exists.
 
 #### Example
 
 ```bash
-user::exists deploy || user::create-system _deploy
+user__exists deploy || user__create-system _deploy
 ```
 
 #### Arguments
@@ -101,14 +101,14 @@ user::exists deploy || user::create-system _deploy
 * **1**: No account has that name.
 * **64**: The name is empty, starts with a dash, or contains a newline.
 
-### user::create-system-as-root
+### user__create-system-as-root
 
 Create a non-login system account in a separate root process.
 
 #### Example
 
 ```bash
-user::create-system-as-root _backup
+user__create-system-as-root _backup
 ```
 
 #### Arguments
@@ -122,7 +122,7 @@ user::create-system-as-root _backup
 * **73**: The account already exists or cannot be created.
 * other The status of the root helper.
 
-### user::create-login-as-root
+### user__create-login-as-root
 
 Create a local login account in a separate root process.
 
@@ -132,7 +132,7 @@ entry removes the new account again.
 #### Example
 
 ```bash
-user::create-login-as-root alice 'Alice Example'
+user__create-login-as-root alice 'Alice Example'
 ```
 
 #### Arguments
@@ -148,14 +148,14 @@ user::create-login-as-root alice 'Alice Example'
 * **73**: The account already exists or cannot be created.
 * other The status of the root helper.
 
-### user::create-system
+### user__create-system
 
 Create a non-login system account.
 
 #### Example
 
 ```bash
-user::create-system _backup
+user__create-system _backup
 ```
 
 #### Arguments
@@ -169,7 +169,7 @@ user::create-system _backup
 * **73**: The account already exists or cannot be created.
 * other The status of the root helper.
 
-### user::create-login
+### user__create-login
 
 Create a local login account.
 
@@ -179,7 +179,7 @@ entry removes the new account again.
 #### Example
 
 ```bash
-user::create-login alice 'Alice Example'
+user__create-login alice 'Alice Example'
 ```
 
 #### Arguments
@@ -195,14 +195,14 @@ user::create-login alice 'Alice Example'
 * **73**: The account already exists or cannot be created.
 * other The status of the root helper.
 
-### user::add-to-group
+### user__add-to-group
 
 Add a user to a supplementary group through administrator execution.
 
 #### Example
 
 ```bash
-user::add-to-group dialout
+user__add-to-group dialout
 ```
 
 #### Arguments
@@ -218,7 +218,7 @@ user::add-to-group dialout
 * **77**: sudo refused the credentials.
 * other The status of usermod or dseditgroup.
 
-### user::directory::create-english-links
+### user__directory__create-english-links
 
 Link the English XDG user directory names to the directories of the current locale.
 
@@ -230,7 +230,7 @@ with the same name, and then replaced by the link.
 #### Example
 
 ```bash
-user::directory::create-english-links
+user__directory__create-english-links
 ```
 
 #### Arguments
@@ -245,7 +245,7 @@ user::directory::create-english-links
 * **69**: xdg-user-dir is unavailable.
 * **73**: An English name is held by something other than a directory or link.
 * **74**: A directory could not be resolved, removed, or linked.
-* other The status of dir::merge.
+* other The status of dir__merge.
 
 #### Output on stderr
 

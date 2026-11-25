@@ -13,10 +13,10 @@
 # @exitcode 69 The system is not macOS, or the version is not the current one.
 # @exitcode other The status of brew.
 # @example
-#   qmk::toolbox::install
-qmk::toolbox::install() {
+#   qmk__toolbox__install
+qmk__toolbox__install() {
   [[ "$#" -le 1 ]] || return 64
-  package::_install-cask qmk-toolbox "${1:-}"
+  _package__install-cask qmk-toolbox "${1:-}"
 }
 
 # @description Install the QMK CLI with the official installer and diagnose the environment.
@@ -34,28 +34,28 @@ qmk::toolbox::install() {
 # @exitcode 74 The installer or the PyPI release data could not be downloaded or read.
 # @exitcode other The status of the installer, qmk --version, or qmk doctor.
 # @example
-#   qmk::cli::install
+#   qmk__cli__install
 #   qmk setup -y
-qmk::cli::install() {
+qmk__cli__install() {
   [[ "$#" -le 1 ]] || return 64
   local directory='' status=0
   if [[ -n "${1:-}" ]]; then
     local latest=''
-    latest="$(qmk::cli::_latest-version)" || return "$?"
+    latest="$(_qmk__cli__latest-version)" || return "$?"
     if [[ "$1" != "${latest}" ]]; then
-      console::_write-error "The QMK installer provides only version ${latest}."
+      _console__write-error "The QMK installer provides only version ${latest}."
       return 69
     fi
   fi
-  command::require sh || return "$?"
-  directory="$(package::_temporary-directory)" || return "$?"
-  package::_download https://install.qmk.fm "${directory}/install.sh" || status="$?"
+  command__require sh || return "$?"
+  directory="$(_package__temporary-directory)" || return "$?"
+  _package__download https://install.qmk.fm "${directory}/install.sh" || status="$?"
   [[ "${status}" -ne 0 ]] || sh "${directory}/install.sh" || status="$?"
   rm -rf -- "${directory}"
   [[ "${status}" -eq 0 ]] || return "${status}"
   # The installer puts qmk in $HOME/.local/bin and asks for a new shell otherwise.
-  env::add-path "${HOME}/.local/bin" || return "$?"
-  command::require qmk || return "$?"
+  env__add-path "${HOME}/.local/bin" || return "$?"
+  command__require qmk || return "$?"
   qmk --version || return "$?"
   # qmk doctor exists only once `qmk setup` has prepared the firmware tree.
   if qmk doctor --help >/dev/null 2>&1; then
@@ -66,11 +66,11 @@ qmk::cli::install() {
 
 # @description Write the newest QMK CLI version published on PyPI.
 # @internal
-qmk::cli::_latest-version() {
+_qmk__cli__latest-version() {
   [[ "$#" -eq 0 ]] || return 64
   local json=''
-  json="$(package::_fetch https://pypi.org/pypi/qmk/json)" || return "$?"
-  printf '%s' "${json}" | python::_run-json 74 '
+  json="$(_package__fetch https://pypi.org/pypi/qmk/json)" || return "$?"
+  printf '%s' "${json}" | _python__run-json 74 '
 version = data["info"]["version"]
 if not isinstance(version, str):
     raise TypeError("version")

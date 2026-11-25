@@ -15,12 +15,12 @@
 # @exitcode 69 The system is not macOS or softwareupdate is unavailable.
 # @exitcode other The status of softwareupdate.
 # @example
-#   rosetta::install
-rosetta::install() {
+#   rosetta__install
+rosetta__install() {
   [[ "$#" -eq 0 ]] || return 64
-  [[ "$(system::operating-system)" == darwin ]] || return 69
+  [[ "$(system__operating-system)" == darwin ]] || return 69
   if /usr/bin/arch -x86_64 /usr/bin/true >/dev/null 2>&1; then
     return 0
   fi
-  docker::_run-command softwareupdate --install-rosetta --agree-to-license
+  _docker__run-command softwareupdate --install-rosetta --agree-to-license
 }

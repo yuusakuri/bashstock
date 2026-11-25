@@ -8,9 +8,9 @@ gh is installed from GitHub's official package source.
 
 ## Index
 
-* [gh::install](#ghinstall)
+* [gh__install](#gh__install)
 
-### gh::install
+### gh__install
 
 Install GitHub CLI from its official Ubuntu APT or Fedora DNF repository.
 
@@ -21,7 +21,7 @@ referenced from the repository definition before gh is installed.
 #### Example
 
 ```bash
-gh::install
+gh__install
 ```
 
 _Function has no arguments._

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # @file terminal
 # @brief The controlling terminal and terminal emulator windows.
-# @description terminal::is-available lets interactive functions fail instead of blocking when no terminal is available.
+# @description terminal__is-available lets interactive functions fail instead of blocking when no terminal is available.
 
 # shellcheck disable=SC2015,SC2034,SC2046,SC2119,SC2120,SC2155,SC2163,SC2317,SC2319,SC2329
 
@@ -12,8 +12,8 @@
 # @exitcode 1 There is no usable controlling terminal, as in CI or cron.
 # @exitcode 64 An argument was given.
 # @example
-#   terminal::is-available && shell::confirm 'Continue?'
-terminal::is-available() {
+#   terminal__is-available && shell__confirm 'Continue?'
+terminal__is-available() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
@@ -34,14 +34,14 @@ terminal::is-available() {
 # @exitcode 69 No supported terminal application is available, or the operating system is unsupported.
 # @exitcode other The status of the terminal application.
 # @example
-#   terminal::open
-#   terminal::open make watch
-terminal::open() {
+#   terminal__open
+#   terminal__open make watch
+terminal__open() {
   local command_line=() quoted=''
   [[ "$#" -eq 0 ]] || command_line=(bash -c '"$@"; exec bash -i' bash "$@")
-  case "$(system::operating-system)" in
+  case "$(system__operating-system)" in
     darwin)
-      command::require osascript || return "$?"
+      command__require osascript || return "$?"
       [[ "$#" -eq 0 ]] || quoted="$(printf '%q ' "${command_line[@]}")"
       osascript -e 'on run argv' -e 'tell application "Terminal"' -e 'activate' \
         -e 'do script (item 1 of argv)' -e 'end tell' -e 'end run' "${quoted% }" >/dev/null
@@ -60,7 +60,7 @@ terminal::open() {
       elif command -v xterm >/dev/null 2>&1; then
         xterm ${command_line[@]+-e "${command_line[@]}"}
       else
-        console::_write-error 'No supported terminal application is available.'
+        _console__write-error 'No supported terminal application is available.'
         return 69
       fi
       ;;

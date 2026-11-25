@@ -8,17 +8,17 @@ Brave is installed from its official package source.
 
 ## Index
 
-* [brave::versions](#braveversions)
-* [brave::install](#braveinstall)
+* [brave__versions](#brave__versions)
+* [brave__install](#brave__install)
 
-### brave::versions
+### brave__versions
 
 Write Brave versions available to the current platform.
 
 #### Example
 
 ```bash
-brave::versions | tail -n 1
+brave__versions | tail -n 1
 ```
 
 _Function has no arguments._
@@ -34,7 +34,7 @@ _Function has no arguments._
 
 * Brave versions, one per line; on Ubuntu only builds that the installed C library can run.
 
-### brave::install
+### brave__install
 
 Install Brave from its official repository or Homebrew.
 
@@ -44,12 +44,12 @@ and an omitted version selects the newest such build.
 #### Example
 
 ```bash
-brave::install
+brave__install
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from brave::versions; on macOS only the current version. Defaults to the newest runnable one.
+* **$1** (string): Optional version from brave__versions; on macOS only the current version. Defaults to the newest runnable one.
 
 #### Exit codes
 

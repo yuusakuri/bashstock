@@ -16,12 +16,12 @@
 # @example
 #   case "$1" in
 #     --name)
-#       arg::require-next "$#" "$1" || return "$?"
+#       arg__require-next "$#" "$1" || return "$?"
 #       name="$2"
 #       shift 2
 #       ;;
 #   esac
-arg::require-next() {
+arg__require-next() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -30,7 +30,7 @@ arg::require-next() {
   local option="$2"
 
   if [[ "${remaining}" -lt 2 ]]; then
-    console::_write-error "Option ${option} requires a value."
+    _console__write-error "Option ${option} requires a value."
     return 64
   fi
 }
@@ -43,8 +43,8 @@ arg::require-next() {
 # @exitcode 0 The value is not empty.
 # @exitcode 64 The value is empty, or the arguments are invalid.
 # @example
-#   arg::require --name "${name}" || return "$?"
-arg::require() {
+#   arg__require --name "${name}" || return "$?"
+arg__require() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -53,7 +53,7 @@ arg::require() {
   local value="$2"
 
   if [[ -z "${value}" ]]; then
-    console::_write-error "Option ${name} is required."
+    _console__write-error "Option ${name} is required."
     return 64
   fi
 }
@@ -66,8 +66,8 @@ arg::require() {
 # @exitcode 0 The value is a decimal integer.
 # @exitcode 64 The value is not an integer, or the arguments are invalid.
 # @example
-#   arg::integer --count "${count}" || return "$?"
-arg::integer() {
+#   arg__integer --count "${count}" || return "$?"
+arg__integer() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -75,8 +75,8 @@ arg::integer() {
   local name="$1"
   local value="$2"
 
-  if ! number::is-integer "${value}"; then
-    console::_write-error "Option ${name} must be an integer: ${value}"
+  if ! number__is-integer "${value}"; then
+    _console__write-error "Option ${name} must be an integer: ${value}"
     return 64
   fi
 }
@@ -90,8 +90,8 @@ arg::integer() {
 # @exitcode 0 The value equals one candidate.
 # @exitcode 64 The value matches no candidate, or the arguments are invalid.
 # @example
-#   arg::one-of --algorithm "${algorithm}" ed25519 rsa3072 rsa4096 || return "$?"
-arg::one-of() {
+#   arg__one-of --algorithm "${algorithm}" ed25519 rsa3072 rsa4096 || return "$?"
+arg__one-of() {
   if [[ "$#" -lt 3 ]]; then
     return 64
   fi
@@ -107,7 +107,7 @@ arg::one-of() {
     fi
   done
 
-  console::_write-error "Option ${name} must be one of: $*. Got: ${value}"
+  _console__write-error "Option ${name} must be one of: $*. Got: ${value}"
   return 64
 }
 
@@ -120,52 +120,42 @@ arg::one-of() {
 # @exitcode 64 Always, so the caller can return the status.
 # @example
 #   case "$1" in
-#     *) arg::unknown "$1" || return "$?" ;;
+#     *) arg__unknown "$1" || return "$?" ;;
 #   esac
-arg::unknown() {
+arg__unknown() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
 
-  console::_write-error "Unknown option: $1"
+  _console__write-error "Unknown option: $1"
   return 64
 }
 
 # @description Write the completion helper name that corresponds to a public function.
 # @internal
-arg::completion::_helper-name() {
-  if [[ "$#" -ne 1 || -z "$1" ]]; then
+_arg__completion__helper-name() {
+  if [[ "$#" -ne 1 || "$1" != [a-z]*__?* ]]; then
     return 64
   fi
 
-  local target="$1"
-  local namespace="${target%::*}"
-  local action="${target##*::}"
-
-  if [[ "${namespace}" == "${target}" || -z "${action}" ]]; then
-    return 64
-  fi
-  printf '%s::_%s-args\n' "${namespace}" "${action}"
+  printf '_%s-args\n' "$1"
 }
 
 # @description Write the public function name that corresponds to a completion helper.
 # @internal
-arg::completion::_target-name() {
-  if [[ "$#" -ne 1 || "$1" != *'::_'*'-args' ]]; then
+_arg__completion__target-name() {
+  if [[ "$#" -ne 1 || "$1" != _[a-z]*__?*-args ]]; then
     return 64
   fi
 
-  local helper="${1%-args}"
-  local namespace="${helper%::_*}"
-  local action="${helper##*::_}"
-
-  printf '%s::%s\n' "${namespace}" "${action}"
+  local target="${1#_}"
+  printf '%s\n' "${target%-args}"
 }
 
 # @description Dispatch Tab completion to the target function's completion helper.
 #
 # Registered with `complete -F` for every function that has a matching
-# `::_<action>-args` helper. Bash calls this with no arguments and reads
+# `_<namespace>__<action>-args` helper. Bash calls this with no arguments and reads
 # COMP_WORDS and COMP_CWORD. When the previous word is a named argument, the
 # helper receives it and writes the values for that argument; otherwise it
 # writes the argument names.
@@ -174,22 +164,22 @@ arg::completion::_target-name() {
 # @set COMPREPLY The candidates that start with the current word.
 # @exitcode 0 Always, also when the function has no helper.
 # @example
-#   example::run() { :; }
-#   example::_run-args() {
+#   example__run() { :; }
+#   _example__run-args() {
 #     case "${1:-}" in
 #       --mode) printf '%s\n' fast safe ;;
 #       *) printf '%s\n' --mode ;;
 #     esac
 #   }
-#   complete -F arg::completion::dispatch example::run
-arg::completion::dispatch() {
+#   complete -F arg__completion__dispatch example__run
+arg__completion__dispatch() {
   local target="${COMP_WORDS[0]}"
   local current="${COMP_WORDS[COMP_CWORD]}"
   local previous=''
   local helper=''
   local candidates=''
 
-  helper="$(arg::completion::_helper-name "${target}")" || return 0
+  helper="$(_arg__completion__helper-name "${target}")" || return 0
   declare -F "${helper}" >/dev/null 2>&1 || return 0
 
   if [[ "${COMP_CWORD}" -gt 0 ]]; then
@@ -216,8 +206,8 @@ arg::completion::dispatch() {
 # @exitcode 64 An argument was given.
 # @example
 #   source my-functions.sh
-#   arg::completion::register-all
-arg::completion::register-all() {
+#   arg__completion__register-all
+arg__completion__register-all() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
@@ -227,8 +217,8 @@ arg::completion::register-all() {
   local target=''
 
   while IFS= read -r name; do
-    target="$(arg::completion::_target-name "${name}")" || continue
+    target="$(_arg__completion__target-name "${name}")" || continue
     declare -F "${target}" >/dev/null 2>&1 || continue
-    complete -F arg::completion::dispatch "${target}"
-  done < <(declare -F | awk '{print $3}' | grep -E '::_[a-z][a-z0-9-]*-args$')
+    complete -F arg__completion__dispatch "${target}"
+  done < <(declare -F | awk '{print $3}' | grep -E '^_[a-z][a-z0-9-]*(__[a-z0-9][a-z0-9-]*)+-args$')
 }

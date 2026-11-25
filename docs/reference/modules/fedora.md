@@ -8,25 +8,25 @@ Setup functions configure a fresh Fedora installation.
 
 ## Index
 
-* [fedora::setup](#fedorasetup)
-* [fedora::setup-external](#fedorasetup-external)
+* [fedora__setup](#fedora__setup)
+* [fedora__setup-external](#fedora__setup-external)
 
-### fedora::setup
+### fedora__setup
 
 Apply the common Fedora user configuration, stopping at the first failure.
 
-The same steps as ubuntu::setup run on Fedora: missing curl, Git, and Python
+The same steps as ubuntu__setup run on Fedora: missing curl, Git, and Python
 3 are installed, ~/.env is registered, the editor
 of Bash and Zsh is set to code --wait, completion ignores case, English
 names are linked to localized user directories, the user joins dialout, Git
 is configured, and ~/.ssh permissions are fixed. External tools can be
-installed separately with fedora::setup-external. In supported Wayland
+installed separately with fedora__setup-external. In supported Wayland
 sessions, Electron applications also prefer native Wayland rendering.
 
 #### Example
 
 ```bash
-GIT_EMAIL=alice@example.com GIT_USERNAME='Alice Example' fedora::setup
+GIT_EMAIL=alice@example.com GIT_USERNAME='Alice Example' fedora__setup
 ```
 
 _Function has no arguments._
@@ -43,7 +43,7 @@ _Function has no arguments._
 
 * The step that failed.
 
-### fedora::setup-external
+### fedora__setup-external
 
 Install GnuPG, GitHub CLI, and Git Credential Manager on Fedora when they are not already available.
 
@@ -54,7 +54,7 @@ to use Git Credential Manager after the missing external tools are installed.
 #### Example
 
 ```bash
-fedora::setup-external
+fedora__setup-external
 ```
 
 _Function has no arguments._

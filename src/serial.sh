@@ -14,8 +14,8 @@
 # @exitcode 69 stty is unavailable.
 # @exitcode other The status of stty.
 # @example
-#   serial::configure /dev/ttyUSB0 9600
-serial::configure() { [[ "$#" -ge 1 && "$#" -le 2 && -e "$1" ]] || return 64; local device="$1" baud="${2:-115200}"; command -v stty >/dev/null 2>&1 || return 69; stty -F "$device" "$baud" 2>/dev/null || stty -f "$device" "$baud"; }
+#   serial__configure /dev/ttyUSB0 9600
+serial__configure() { [[ "$#" -ge 1 && "$#" -le 2 && -e "$1" ]] || return 64; local device="$1" baud="${2:-115200}"; command -v stty >/dev/null 2>&1 || return 69; stty -F "$device" "$baud" 2>/dev/null || stty -f "$device" "$baud"; }
 
 # @description Write literal data to a serial device.
 #
@@ -25,8 +25,8 @@ serial::configure() { [[ "$#" -ge 1 && "$#" -le 2 && -e "$1" ]] || return 64; lo
 # @exitcode 1 The device could not be written.
 # @exitcode 64 The argument count is not two or the device does not exist.
 # @example
-#   serial::write /dev/ttyUSB0 'AT'
-serial::write() { [[ "$#" -eq 2 && -e "$1" ]] || return 64; printf '%s' "$2" >"$1"; }
+#   serial__write /dev/ttyUSB0 'AT'
+serial__write() { [[ "$#" -eq 2 && -e "$1" ]] || return 64; printf '%s' "$2" >"$1"; }
 
 # @description Write a command and terminator to a serial device.
 #
@@ -38,8 +38,8 @@ serial::write() { [[ "$#" -eq 2 && -e "$1" ]] || return 64; printf '%s' "$2" >"$
 # @exitcode 64 The arguments, terminator, or wait time are invalid.
 # @exitcode 74 The device could not be written.
 # @example
-#   serial::write-command /dev/ttyUSB0 'AT+GMR' crlf 0.5
-serial::write-command() {
+#   serial__write-command /dev/ttyUSB0 'AT+GMR' crlf 0.5
+serial__write-command() {
   [[ "$#" -ge 2 && "$#" -le 4 && -e "$1" ]] || return 64
   local device="$1" data="$2" terminator="${3:-cr}" wait="${4:-0}" suffix=''
   case "$terminator" in
@@ -58,17 +58,17 @@ serial::write-command() {
 # @description Release a serial device so another process, such as a Python tool, can open it.
 #
 # The reference implementation called file-close on the device, which
-# killed every holder at once; this follows file::release instead: SIGTERM
+# killed every holder at once; this follows file__release instead: SIGTERM
 # first, SIGKILL only for holders left after the timeout.
 #
 # @arg $1 string Serial device path.
 # @arg $2 integer Optional seconds to wait after SIGTERM. Defaults to 2.
 # @exitcode 0 No process holds the device.
 # @exitcode 64 The arguments are invalid or the device does not exist.
-# @exitcode other The status of file::release.
+# @exitcode other The status of file__release.
 # @example
-#   serial::release /dev/ttyACM0 && esptool.py --port /dev/ttyACM0 chip_id
-serial::release() {
+#   serial__release /dev/ttyACM0 && esptool.py --port /dev/ttyACM0 chip_id
+serial__release() {
   [[ "$#" -ge 1 && "$#" -le 2 && -e "$1" ]] || return 64
-  file::release "$@"
+  file__release "$@"
 }

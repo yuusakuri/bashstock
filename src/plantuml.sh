@@ -13,23 +13,23 @@
 # @exitcode 64 An argument was given.
 # @exitcode 69 The platform is unsupported.
 # @example
-#   plantuml::versions
-plantuml::versions() {
+#   plantuml__versions
+plantuml__versions() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_versions plantuml
+  _package__versions plantuml
 }
 
 # @description Install PlantUML from the platform package manager.
 #
-# @arg $1 string Optional version from plantuml::versions. Defaults to the newest one.
+# @arg $1 string Optional version from plantuml__versions. Defaults to the newest one.
 # @exitcode 0 PlantUML is installed.
 # @exitcode 64 The argument count is wrong.
 # @exitcode 69 The platform is unsupported, or the version is unavailable.
 # @exitcode other The status of the package manager.
 # @example
-#   plantuml::install
+#   plantuml__install
 #   plantuml -tsvg diagram.puml
-plantuml::install() {
+plantuml__install() {
   [[ "$#" -le 1 ]] || return 64
-  package::_install-version plantuml "${1:-}"
+  _package__install-version plantuml "${1:-}"
 }

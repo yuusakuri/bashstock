@@ -13,7 +13,7 @@ readonly shdoc="${project_root}/vendor/shdoc/shdoc"
 readonly reference="${project_root}/docs/reference"
 
 # @description Write the library modules in the order that scripts/build combines them.
-docs::modules() {
+docs__modules() {
   local core=(
     settings console number string regex array arg help
     system command shell terminal path time log json option file os
@@ -30,34 +30,34 @@ docs::modules() {
 # @description Write the Markdown anchor that shdoc gives a function heading.
 #
 # @arg $1 string Function name.
-docs::anchor() {
+docs__anchor() {
   printf '%s\n' "$1" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9 _-]//g; s/ /-/g'
 }
 
 # @description Write each public function of a module with the first line of its description.
 #
 # @arg $1 string Module source file.
-docs::public-functions() {
+docs__public-functions() {
   awk '
     /^# @description / { brief = $0; sub(/^# @description /, "", brief); internal = 0; next }
     /^# @internal/ { internal = 1; next }
-    /^[a-z][a-z0-9-]*(::[a-z0-9][a-z0-9-]*)+\(\) *\{/ {
+    /^[a-z][a-z0-9-]*(__[a-z0-9][a-z0-9-]*)+\(\) *\{/ {
       name = $1
       sub(/\(\).*$/, "", name)
-      if (!internal && name !~ /::_/) printf "%s\t%s\n", name, brief
+      if (!internal) printf "%s\t%s\n", name, brief
       brief = ""; internal = 0
     }
   ' "$1"
 }
 
 # @description Write the reference index of every module and public function.
-docs::index() {
+docs__index() {
   local module='' name='' brief=''
   cat <<'HEADER'
 # 関数リファレンス
 
 BashStockが公開する関数を名前空間ごとに示します。
-各関数の引数、出力、終了状態、例は、名前空間のページと`help::show 関数名`で確認できます。
+各関数の引数、出力、終了状態、例は、名前空間のページと`help__show 関数名`で確認できます。
 このファイルと`modules/`は`scripts/docs`が`src/`のshdocコメントから生成します。直接編集しないでください。
 
 関数名と入出力の規則は[ライブラリ仕様](../specifications/library.md)、名前付き引数とTab補完は[名前付き引数とTab補完の仕様](../specifications/named-arguments.md)で定義します。
@@ -66,24 +66,24 @@ BashStockが公開する関数を名前空間ごとに示します。
 管理者権限を常に必要とする操作と、書き込み権限が不足した場合に昇格する操作は、関数名に`-as-root`を付けません。
 HEADER
   while IFS= read -r module; do
-    [[ -n "$(docs::public-functions "${project_root}/src/${module}.sh")" ]] || continue
+    [[ -n "$(docs__public-functions "${project_root}/src/${module}.sh")" ]] || continue
     printf '\n## [`%s`](modules/%s.md)\n\n| 関数 | 説明 |\n|---|---|\n' "${module}" "${module}"
     while IFS=$'\t' read -r name brief; do
-      printf '| [`%s`](modules/%s.md#%s) | %s |\n' "${name}" "${module}" "$(docs::anchor "${name}")" "${brief}"
-    done < <(docs::public-functions "${project_root}/src/${module}.sh")
-  done < <(docs::modules)
+      printf '| [`%s`](modules/%s.md#%s) | %s |\n' "${name}" "${module}" "$(docs__anchor "${name}")" "${brief}"
+    done < <(docs__public-functions "${project_root}/src/${module}.sh")
+  done < <(docs__modules)
 }
 
 # @description Generate the reference into a directory.
 #
 # @arg $1 string Output directory.
-docs::generate() {
+docs__generate() {
   local output="$1" module=''
   mkdir -p "${output}/modules"
   while IFS= read -r module; do
     gawk -f "${shdoc}" <"${project_root}/src/${module}.sh" >"${output}/modules/${module}.md"
-  done < <(docs::modules)
-  docs::index >"${output}/functions.md"
+  done < <(docs__modules)
+  docs__index >"${output}/functions.md"
 }
 
 # @description Generate the reference, or compare it with the committed files when given --check.
@@ -96,11 +96,11 @@ main() {
   case "${1:-}" in
     '')
       rm -rf -- "${reference}/modules"
-      docs::generate "${reference}"
+      docs__generate "${reference}"
       ;;
     --check)
       temporary="$(mktemp -d)"
-      docs::generate "${temporary}"
+      docs__generate "${temporary}"
       diff -ru "${reference}/modules" "${temporary}/modules" || status=1
       diff -u "${reference}/functions.md" "${temporary}/functions.md" || status=1
       rm -rf -- "${temporary}"

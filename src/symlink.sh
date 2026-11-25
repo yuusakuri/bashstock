@@ -19,23 +19,23 @@
 # @exitcode 73 LINK exists and is not a symbolic link.
 # @exitcode 74 The link could not be created.
 # @example
-#   symlink::create ./dotfiles/.vimrc "${HOME}/.vimrc"
-symlink::create() {
+#   symlink__create ./dotfiles/.vimrc "${HOME}/.vimrc"
+symlink__create() {
   [[ "$#" -eq 2 && -n "$1" && -n "$2" ]] || return 64
   local source="$1" link="${2%/}" parent=''
   [[ -e "${source}" || -L "${source}" ]] || return 66
   [[ "${source}" == /* ]] || source="${PWD}/${source}"
-  source="$(path::normalize "${source}")" || return "$?"
+  source="$(path__normalize "${source}")" || return "$?"
   if [[ -e "${link}" && ! -L "${link}" ]]; then
-    console::_write-error "${link} exists and is not a symbolic link."
+    _console__write-error "${link} exists and is not a symbolic link."
     return 73
   fi
-  parent="$(path::directory-name "${link}")" || return "$?"
+  parent="$(path__directory-name "${link}")" || return "$?"
   [[ -d "${parent}" ]] || return 66
   if [[ -w "${parent}" ]]; then
     ln -sfn -- "${source}" "${link}" || return 74
   else
-    command::run-as-root ln -sfn -- "${source}" "${link}" || return 74
+    command__run-as-root ln -sfn -- "${source}" "${link}" || return 74
   fi
 }
 
@@ -46,15 +46,15 @@ symlink::create() {
 # @exitcode 64 The path is not a symbolic link, or the argument count is not one.
 # @exitcode 74 The link could not be removed.
 # @example
-#   symlink::remove "${HOME}/.vimrc"
-symlink::remove() {
+#   symlink__remove "${HOME}/.vimrc"
+symlink__remove() {
   [[ "$#" -eq 1 && -L "${1%/}" ]] || return 64
   local link="${1%/}" parent=''
-  parent="$(path::directory-name "${link}")" || return "$?"
+  parent="$(path__directory-name "${link}")" || return "$?"
   if [[ -w "${parent}" ]]; then
     rm -f -- "${link}" || return 74
   else
-    command::run-as-root rm -f -- "${link}" || return 74
+    command__run-as-root rm -f -- "${link}" || return 74
   fi
 }
 
@@ -66,7 +66,7 @@ symlink::remove() {
 # @exitcode 0 The link was created.
 # @exitcode 64 The arguments are invalid or the source does not exist.
 # @exitcode 74 The bin directory could not be created.
-# @exitcode other The status of symlink::create.
+# @exitcode other The status of symlink__create.
 # @example
-#   symlink::create-in-local-bin /opt/flutter/bin/flutter
-symlink::create-in-local-bin() { [[ "$#" -ge 1 && "$#" -le 3 && -e "$1" ]] || return 64; local source="$1" name="${2:-$(basename -- "$1")}" directory="${3:-$HOME/.local/bin}"; mkdir -p -- "$directory" || return 74; symlink::create "$source" "$directory/$name"; }
+#   symlink__create-in-local-bin /opt/flutter/bin/flutter
+symlink__create-in-local-bin() { [[ "$#" -ge 1 && "$#" -le 3 && -e "$1" ]] || return 64; local source="$1" name="${2:-$(basename -- "$1")}" directory="${3:-$HOME/.local/bin}"; mkdir -p -- "$directory" || return 74; symlink__create "$source" "$directory/$name"; }

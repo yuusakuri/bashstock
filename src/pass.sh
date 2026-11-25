@@ -13,11 +13,11 @@
 # @exitcode 66 The store does not exist.
 # @exitcode 74 The store could not be removed.
 # @example
-#   pass::store::remove "${HOME}/.password-store-old"
-pass::store::remove() {
+#   pass__store__remove "${HOME}/.password-store-old"
+pass__store__remove() {
   [[ "$#" -le 1 ]] || return 64
   local directory=''
-  directory="$(pass::store::_directory "$@")" || return "$?"
+  directory="$(_pass__store__directory "$@")" || return "$?"
   [[ -n "${directory}" && "${directory}" != / && ! -L "${directory}" ]] || return 64
   [[ -d "${directory}" ]] || return 66
   rm -rf -- "${directory}" || return 74
@@ -25,7 +25,7 @@ pass::store::remove() {
 
 # @description Write the pass store directory: the argument, PASSWORD_STORE_DIR, or $HOME/.password-store.
 # @internal
-pass::store::_directory() {
+_pass__store__directory() {
   [[ "$#" -le 1 ]] || return 64
   printf '%s\n' "${1:-${PASSWORD_STORE_DIR:-${HOME}/.password-store}}"
 }
@@ -40,14 +40,14 @@ pass::store::_directory() {
 # @exitcode 69 pass is unavailable.
 # @exitcode other The status of pass init.
 # @example
-#   pass::store::init "$(gpg::secret-key::fingerprints | head -n 1)"
-pass::store::init() {
+#   pass__store__init "$(gpg__secret-key__fingerprints | head -n 1)"
+pass__store__init() {
   [[ "$#" -le 2 ]] || return 64
   local fingerprint="${1:-}" directory='' fingerprints=''
-  command::require pass || return "$?"
-  directory="$(pass::store::_directory "${2:-}")" || return "$?"
+  command__require pass || return "$?"
+  directory="$(_pass__store__directory "${2:-}")" || return "$?"
   if [[ -z "${fingerprint}" ]]; then
-    fingerprints="$(gpg::secret-key::fingerprints)" || return "$?"
+    fingerprints="$(gpg__secret-key__fingerprints)" || return "$?"
     fingerprint="${fingerprints%%$'\n'*}"
   fi
   PASSWORD_STORE_DIR="${directory}" pass init "${fingerprint}"
@@ -61,23 +61,23 @@ pass::store::init() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 The platform is unsupported.
 # @example
-#   pass::versions
-pass::versions() {
+#   pass__versions
+pass__versions() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_versions pass
+  _package__versions pass
 }
 
 # @description Install pass from the platform package manager.
 #
-# @arg $1 string Optional version from pass::versions. Defaults to the newest one.
+# @arg $1 string Optional version from pass__versions. Defaults to the newest one.
 # @exitcode 0 pass is installed.
 # @exitcode 64 The argument count is wrong.
 # @exitcode 69 The platform is unsupported, or the version is unavailable.
 # @exitcode other The status of the package manager.
 # @example
-#   pass::install
-#   pass init "$(gpg::secret-key::fingerprints | head -n 1)"
-pass::install() {
+#   pass__install
+#   pass init "$(gpg__secret-key__fingerprints | head -n 1)"
+pass__install() {
   [[ "$#" -le 1 ]] || return 64
-  package::_install-version pass "${1:-}"
+  _package__install-version pass "${1:-}"
 }

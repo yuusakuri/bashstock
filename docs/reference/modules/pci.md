@@ -8,16 +8,16 @@ Devices are listed with lspci.
 
 ## Index
 
-* [pci::device::list](#pcidevicelist)
+* [pci__device__list](#pci__device__list)
 
-### pci::device::list
+### pci__device__list
 
 Write the PCI devices with lspci.
 
 #### Example
 
 ```bash
-pci::device::list
+pci__device__list
 ```
 
 _Function has no arguments._
