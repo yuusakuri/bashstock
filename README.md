@@ -29,7 +29,7 @@ _bashstock() { bash -c 'source "$1" && "${@:2}"' bashstock "${_bashstock_file}" 
 () {
   local name
   for name in $(_bashstock declare -F); do
-    [[ "${name}" != *::* || "${name}" == *::_* ]] || functions[$name]="_bashstock ${name} \"\$@\""
+    [[ "${name}" != [a-z]*__* ]] || functions[$name]="_bashstock ${name} \"\$@\""
   done
 }
 ZSH
