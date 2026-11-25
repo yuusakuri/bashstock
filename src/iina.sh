@@ -15,16 +15,16 @@
 # @exitcode 69 The system is not macOS.
 # @exitcode other The status of brew or duti.
 # @example
-#   iina::set-default-app
-iina::set-default-app() {
+#   iina.set-default-app
+iina.set-default-app() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform darwin || return "$?"
+  _package.require-platform darwin || return "$?"
   local bundle='com.colliderli.iina' extension=''
   local extensions=(
     mp4 mkv mov avi wmv flv webm m4v mpg mpeg 3gp ts m2ts mts ogv vob asf f4v rmvb divx
   )
   if ! command -v duti >/dev/null 2>&1; then
-    package::_install duti || return "$?"
+    _package.install duti || return "$?"
   fi
   for extension in "${extensions[@]}"; do
     duti -s "${bundle}" "${extension}" all || return "$?"

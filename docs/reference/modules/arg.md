@@ -8,15 +8,15 @@ Functions that take --kebab-case named arguments use these helpers to report mis
 
 ## Index
 
-* [arg::require-next](#argrequire-next)
-* [arg::require](#argrequire)
-* [arg::integer](#arginteger)
-* [arg::one-of](#argone-of)
-* [arg::unknown](#argunknown)
-* [arg::completion::dispatch](#argcompletiondispatch)
-* [arg::completion::register-all](#argcompletionregister-all)
+* [arg.require-next](#argrequire-next)
+* [arg.require](#argrequire)
+* [arg.integer](#arginteger)
+* [arg.one-of](#argone-of)
+* [arg.unknown](#argunknown)
+* [arg.completion.dispatch](#argcompletiondispatch)
+* [arg.completion.register-all](#argcompletionregister-all)
 
-### arg::require-next
+### arg.require-next
 
 Require a value to follow the current named argument.
 
@@ -28,7 +28,7 @@ reading $2.
 ```bash
 case "$1" in
   --name)
-    arg::require-next "$#" "$1" || return "$?"
+    arg.require-next "$#" "$1" || return "$?"
     name="$2"
     shift 2
     ;;
@@ -49,14 +49,14 @@ esac
 
 * A message naming the argument when its value is missing.
 
-### arg::require
+### arg.require
 
 Require a named argument to have a non-empty value.
 
 #### Example
 
 ```bash
-arg::require --name "${name}" || return "$?"
+arg.require --name "${name}" || return "$?"
 ```
 
 #### Arguments
@@ -73,14 +73,14 @@ arg::require --name "${name}" || return "$?"
 
 * A message naming the argument when the value is empty.
 
-### arg::integer
+### arg.integer
 
 Require a named argument value to be a decimal integer.
 
 #### Example
 
 ```bash
-arg::integer --count "${count}" || return "$?"
+arg.integer --count "${count}" || return "$?"
 ```
 
 #### Arguments
@@ -97,14 +97,14 @@ arg::integer --count "${count}" || return "$?"
 
 * A message naming the argument and the value when it is not an integer.
 
-### arg::one-of
+### arg.one-of
 
 Require a named argument value to match one candidate.
 
 #### Example
 
 ```bash
-arg::one-of --algorithm "${algorithm}" ed25519 rsa3072 rsa4096 || return "$?"
+arg.one-of --algorithm "${algorithm}" ed25519 rsa3072 rsa4096 || return "$?"
 ```
 
 #### Arguments
@@ -122,7 +122,7 @@ arg::one-of --algorithm "${algorithm}" ed25519 rsa3072 rsa4096 || return "$?"
 
 * A message listing the accepted values when the value is not one of them.
 
-### arg::unknown
+### arg.unknown
 
 Report a named argument that no case branch recognized.
 
@@ -132,7 +132,7 @@ Use it in the default branch of the case statement that parses named arguments.
 
 ```bash
 case "$1" in
-  *) arg::unknown "$1" || return "$?" ;;
+  *) arg.unknown "$1" || return "$?" ;;
 esac
 ```
 
@@ -148,12 +148,12 @@ esac
 
 * A message naming the argument.
 
-### arg::completion::dispatch
+### arg.completion.dispatch
 
 Dispatch Tab completion to the target function's completion helper.
 
 Registered with `complete -F` for every function that has a matching
-`::_<action>-args` helper. Bash calls this with no arguments and reads
+`_<namespace>.<action>-args` helper. Bash calls this with no arguments and reads
 COMP_WORDS and COMP_CWORD. When the previous word is a named argument, the
 helper receives it and writes the values for that argument; otherwise it
 writes the argument names.
@@ -161,14 +161,14 @@ writes the argument names.
 #### Example
 
 ```bash
-example::run() { :; }
-example::_run-args() {
+example.run() { :; }
+_example.run-args() {
   case "${1:-}" in
     --mode) printf '%s\n' fast safe ;;
     *) printf '%s\n' --mode ;;
   esac
 }
-complete -F arg::completion::dispatch example::run
+complete -F arg.completion.dispatch example.run
 ```
 
 _Function has no arguments._
@@ -181,7 +181,7 @@ _Function has no arguments._
 
 * **0**: Always, also when the function has no helper.
 
-### arg::completion::register-all
+### arg.completion.register-all
 
 Register Tab completion for every function that has a completion helper.
 
@@ -192,7 +192,7 @@ Call again after defining additional completion helpers.
 
 ```bash
 source my-functions.sh
-arg::completion::register-all
+arg.completion.register-all
 ```
 
 _Function has no arguments._

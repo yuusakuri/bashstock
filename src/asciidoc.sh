@@ -14,8 +14,8 @@
 # @exitcode 69 asciidoctor is unavailable.
 # @exitcode other The status of asciidoctor.
 # @example
-#   asciidoc::html docs/design.adoc build/html
-asciidoc::html() {
+#   asciidoc.html docs/design.adoc build/html
+asciidoc.html() {
   [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" ]] || return 64
-  docker::_run-command asciidoctor -r asciidoctor-diagram -b html5 -D "${2:-.}" "$1"
+  _docker.run-command asciidoctor -r asciidoctor-diagram -b html5 -D "${2:-.}" "$1"
 }

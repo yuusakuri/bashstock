@@ -11,8 +11,8 @@
 # @exitcode 1 The value does not match.
 # @exitcode 64 The expression is invalid, or the argument count is not two.
 # @example
-#   regex::is-match "${version}" '^[0-9]+\.[0-9]+\.[0-9]+$'
-regex::is-match() {
+#   regex.is-match "${version}" '^[0-9]+\.[0-9]+\.[0-9]+$'
+regex.is-match() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -44,11 +44,11 @@ regex::is-match() {
 # @exitcode 1 The value does not match.
 # @exitcode 64 The expression or group is invalid, or the captured text contains a newline.
 # @example
-#   regex::capture-group 'v1.22.3' '^v([0-9]+)\.([0-9]+)' 2
+#   regex.capture-group 'v1.22.3' '^v([0-9]+)\.([0-9]+)' 2
 #   # 22
-regex::capture-group() {
+regex.capture-group() {
   if [[ "$#" -ne 3 ]] ||
-    ! number::_is-non-negative-integer-at-most "$3" 2147483647; then
+    ! _number.is-non-negative-integer-at-most "$3" 2147483647; then
     return 64
   fi
 
@@ -62,7 +62,7 @@ regex::capture-group() {
       if ((group >= ${#BASH_REMATCH[@]})); then
         return 64
       fi
-      if ! string::_require-one-line "${BASH_REMATCH[group]}"; then
+      if ! _string.require-one-line "${BASH_REMATCH[group]}"; then
         return 64
       fi
       printf '%s\n' "${BASH_REMATCH[group]}"
@@ -87,10 +87,10 @@ regex::capture-group() {
 # @exitcode 1 The value does not match.
 # @exitcode 64 The expression is invalid, or a captured text contains a newline.
 # @example
-#   regex::capture-groups 'user@example.com' '^([^@]+)@(.+)$'
+#   regex.capture-groups 'user@example.com' '^([^@]+)@(.+)$'
 #   # user
 #   # example.com
-regex::capture-groups() {
+regex.capture-groups() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -103,7 +103,7 @@ regex::capture-groups() {
     local index=''
     if [[ "${value}" =~ ${expression} ]]; then
       for ((index = 1; index < ${#BASH_REMATCH[@]}; index++)); do
-        if ! string::_require-one-line "${BASH_REMATCH[index]}"; then
+        if ! _string.require-one-line "${BASH_REMATCH[index]}"; then
           return 64
         fi
         printf '%s\n' "${BASH_REMATCH[index]}"

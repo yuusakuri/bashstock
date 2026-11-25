@@ -8,22 +8,22 @@ macOS uses the Homebrew cask and Linux uses OpenAI's standalone installer.
 
 ## Index
 
-* [codex::install](#codexinstall)
+* [codex.install](#codexinstall)
 
-### codex::install
+### codex.install
 
 Install the newest OpenAI Codex CLI.
 
 macOS installs the Homebrew cask codex. Linux runs OpenAI's standalone
 installer, which verifies the release checksum, installs the static musl
 build into $HOME/.local, and keeps it updated. $HOME/.local/bin is added
-to PATH through env::add-path, so the installer leaves the shell startup
+to PATH through env.add-path, so the installer leaves the shell startup
 files alone. Signing in is left to the first run of codex.
 
 #### Example
 
 ```bash
-codex::install && codex --version
+codex.install && codex --version
 ```
 
 _Function has no arguments._

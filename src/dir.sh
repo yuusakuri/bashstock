@@ -16,8 +16,8 @@
 # @exitcode 69 diff is unavailable.
 # @exitcode 2 diff failed.
 # @example
-#   dir::diff config.orig config > config.patch
-dir::diff() { [[ "$#" -eq 2 && -d "$1" && -d "$2" ]] || return 64; command -v diff >/dev/null 2>&1 || return 69; diff -uprN -- "$1" "$2"; }
+#   dir.diff config.orig config > config.patch
+dir.diff() { [[ "$#" -eq 2 && -d "$1" && -d "$2" ]] || return 64; command -v diff >/dev/null 2>&1 || return 69; diff -uprN -- "$1" "$2"; }
 
 # @description Merge every entry of SOURCE into DESTINATION by moving it, then remove SOURCE.
 #
@@ -31,8 +31,8 @@ dir::diff() { [[ "$#" -eq 2 && -d "$1" && -d "$2" ]] || return 64; command -v di
 # @exitcode 64 SOURCE is not a directory, DESTINATION is a symbolic link or a file, DESTINATION is SOURCE or inside it, or SOURCE holds an entry that would replace SOURCE itself.
 # @exitcode 74 An entry could not be moved, or SOURCE could not be removed.
 # @example
-#   dir::merge "${HOME}/デスクトップ" "${HOME}/Desktop"
-dir::merge() {
+#   dir.merge "${HOME}/デスクトップ" "${HOME}/Desktop"
+dir.merge() {
   [[ "$#" -eq 2 && -d "$1" && ! -L "$1" && -n "$2" ]] || return 64
   local source="$1" destination="$2" entry='' name='' target=''
   local source_path='' destination_path='' created=0
@@ -58,7 +58,7 @@ dir::merge() {
     name="${entry##*/}"
     target="${destination}/${name}"
     if [[ -d "${entry}" && ! -L "${entry}" && -d "${target}" && ! -L "${target}" ]]; then
-      dir::merge "${entry}" "${target}" || return "$?"
+      dir.merge "${entry}" "${target}" || return "$?"
       continue
     fi
     if [[ -e "${target}" || -L "${target}" ]]; then
@@ -82,12 +82,12 @@ dir::merge() {
 # @exitcode 69 The clock provider is unavailable.
 # @exitcode 74 The directory could not be created.
 # @example
-#   backup="$(dir::create-with-date-time /var/backups)"
-dir::create-with-date-time() {
+#   backup="$(dir.create-with-date-time /var/backups)"
+dir.create-with-date-time() {
   [[ "$#" -le 1 ]] || return 64
   local directory="${1:-.}" name='' path='' index=2
   [[ -d "${directory}" ]] || return 66
-  name="$(time::local-date-time-seconds-basic)" || return "$?"
+  name="$(time.local-date-time-seconds-basic)" || return "$?"
   path="${directory%/}/${name}"
   until mkdir -- "${path}" 2>/dev/null; do
     [[ -e "${path}" || -L "${path}" ]] || return 74
@@ -109,15 +109,15 @@ dir::create-with-date-time() {
 # @exitcode 66 The directory cannot be entered.
 # @exitcode 74 An entry could not be removed.
 # @example
-#   dir::clear ./build
-dir::clear() {
+#   dir.clear ./build
+dir.clear() {
   [[ "$#" -le 1 ]] || return 64
   local directory="${1-.}" physical='' home=''
   [[ -n "${directory}" && -d "${directory}" && ! -L "${directory%/}" ]] || return 64
   physical="$(cd -P -- "${directory}" && pwd -P)" || return 66
   home="$(cd -P -- "${HOME:-/}" 2>/dev/null && pwd -P)" || home=''
   if [[ "${physical}" == / || "${physical}" == "${home}" ]]; then
-    console::_write-error "Refusing to clear ${physical}."
+    _console.write-error "Refusing to clear ${physical}."
     return 64
   fi
   find "${physical}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + || return 74

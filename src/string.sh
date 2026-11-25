@@ -7,7 +7,7 @@
 
 # @description Require one argument that contains no newline.
 # @internal
-string::_require-one-line() {
+_string.require-one-line() {
   if [[ "$#" -ne 1 || "$1" == *$'\n'* ]]; then
     return 64
   fi
@@ -15,28 +15,28 @@ string::_require-one-line() {
 
 # @description Require one non-empty argument that contains no newline.
 # @internal
-string::_require-non-empty-line() {
+_string.require-non-empty-line() {
   if [[ "$#" -ne 1 || -z "$1" ]]; then
     return 64
   fi
 
-  string::_require-one-line "$1"
+  _string.require-one-line "$1"
 }
 
 # @description Require the current locale to use UTF-8.
 # @internal
-string::_require-utf8-locale() {
+_string.require-utf8-locale() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
   if ! command -v locale >/dev/null 2>&1; then
-    console::_write-error 'A UTF-8 locale is required.'
+    _console.write-error 'A UTF-8 locale is required.'
     return 69
   fi
 
   local character_map=''
   character_map="$(locale charmap 2>/dev/null)" || {
-    console::_write-error 'A UTF-8 locale is required.'
+    _console.write-error 'A UTF-8 locale is required.'
     return 69
   }
   case "${character_map}" in
@@ -44,7 +44,7 @@ string::_require-utf8-locale() {
       return 0
       ;;
     *)
-      console::_write-error 'A UTF-8 locale is required.'
+      _console.write-error 'A UTF-8 locale is required.'
       return 69
       ;;
   esac
@@ -57,9 +57,9 @@ string::_require-utf8-locale() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string::trim '  hello world  '
+#   string.trim '  hello world  '
 #   # hello world
-string::trim() {
+string.trim() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -94,9 +94,9 @@ string::trim() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string::collapse-whitespace $'  a\t b   c '
+#   string.collapse-whitespace $'  a\t b   c '
 #   # a b c
-string::collapse-whitespace() {
+string.collapse-whitespace() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -131,14 +131,14 @@ string::collapse-whitespace() {
 # @exitcode 0 The fields were written.
 # @exitcode 64 The delimiter is empty, or a value contains a newline.
 # @example
-#   string::split 'a,,b' ','
+#   string.split 'a,,b' ','
 #   # a
 #   #
 #   # b
-string::split() {
+string.split() {
   if [[ "$#" -ne 2 || -z "$2" ]] ||
-    ! string::_require-one-line "$1" ||
-    ! string::_require-one-line "$2"; then
+    ! _string.require-one-line "$1" ||
+    ! _string.require-one-line "$2"; then
     return 64
   fi
 
@@ -156,7 +156,7 @@ string::split() {
 
 # @description Translate ASCII letter case according to the requested mode.
 # @internal
-string::_translate-ascii() {
+_string.translate-ascii() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -213,13 +213,13 @@ string::_translate-ascii() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string::lower 'Hello World'
+#   string.lower 'Hello World'
 #   # hello world
-string::lower() {
+string.lower() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
-  string::_translate-ascii "$1" lower
+  _string.translate-ascii "$1" lower
 }
 
 # @description Convert ASCII lowercase letters to uppercase.
@@ -231,13 +231,13 @@ string::lower() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string::upper 'Hello World'
+#   string.upper 'Hello World'
 #   # HELLO WORLD
-string::upper() {
+string.upper() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
-  string::_translate-ascii "$1" upper
+  _string.translate-ascii "$1" upper
 }
 
 # @description Swap the case of every ASCII letter.
@@ -247,13 +247,13 @@ string::upper() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string::swap-case 'Hello World'
+#   string.swap-case 'Hello World'
 #   # hELLO wORLD
-string::swap-case() {
+string.swap-case() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
-  string::_translate-ascii "$1" swap
+  _string.translate-ascii "$1" swap
 }
 
 # @description Convert the first ASCII letter to lowercase when applicable.
@@ -263,9 +263,9 @@ string::swap-case() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string::lower-first 'Hello'
+#   string.lower-first 'Hello'
 #   # hello
-string::lower-first() {
+string.lower-first() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -275,7 +275,7 @@ string::lower-first() {
   fi
 
   local first=''
-  first="$(string::lower "${1:0:1}")" || return "$?"
+  first="$(string.lower "${1:0:1}")" || return "$?"
   printf '%s%s\n' "${first}" "${1:1}"
 }
 
@@ -286,9 +286,9 @@ string::lower-first() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string::upper-first 'hello'
+#   string.upper-first 'hello'
 #   # Hello
-string::upper-first() {
+string.upper-first() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -298,7 +298,7 @@ string::upper-first() {
   fi
 
   local first=''
-  first="$(string::upper "${1:0:1}")" || return "$?"
+  first="$(string.upper "${1:0:1}")" || return "$?"
   printf '%s%s\n' "${first}" "${1:1}"
 }
 
@@ -309,9 +309,9 @@ string::upper-first() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string::strip-surrounding-quotes '"/opt/my app"'
+#   string.strip-surrounding-quotes '"/opt/my app"'
 #   # /opt/my app
-string::strip-surrounding-quotes() {
+string.strip-surrounding-quotes() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -334,9 +334,9 @@ string::strip-surrounding-quotes() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not two.
 # @example
-#   string::remove-all-matches 'a1b2c3' '[0-9]'
+#   string.remove-all-matches 'a1b2c3' '[0-9]'
 #   # abc
-string::remove-all-matches() {
+string.remove-all-matches() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -352,9 +352,9 @@ string::remove-all-matches() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not two.
 # @example
-#   string::remove-first-match 'a-b-c' '-'
+#   string.remove-first-match 'a-b-c' '-'
 #   # ab-c
-string::remove-first-match() {
+string.remove-first-match() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -370,9 +370,9 @@ string::remove-first-match() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not two.
 # @example
-#   string::remove-prefix '/usr/local/bin/node' '*/'
+#   string.remove-prefix '/usr/local/bin/node' '*/'
 #   # node
-string::remove-prefix() {
+string.remove-prefix() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -388,9 +388,9 @@ string::remove-prefix() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not two.
 # @example
-#   string::remove-suffix 'archive.tar.gz' '.*'
+#   string.remove-suffix 'archive.tar.gz' '.*'
 #   # archive
-string::remove-suffix() {
+string.remove-suffix() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -407,9 +407,9 @@ string::remove-suffix() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string::encode-url 'a b&c'
+#   string.encode-url 'a b&c'
 #   # a%20b%26c
-string::encode-url() {
+string.encode-url() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -447,9 +447,9 @@ string::encode-url() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The argument count is not one, or an escape is malformed.
 # @example
-#   string::decode-url 'a%20b%26c'
+#   string.decode-url 'a%20b%26c'
 #   # a b&c
-string::decode-url() {
+string.decode-url() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -490,8 +490,8 @@ string::decode-url() {
 # @exitcode 1 The value does not contain the substring.
 # @exitcode 64 The argument count is not two.
 # @example
-#   string::contains "${PATH}" /usr/local/bin && printf 'on PATH\n'
-string::contains() {
+#   string.contains "${PATH}" /usr/local/bin && printf 'on PATH\n'
+string.contains() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -506,8 +506,8 @@ string::contains() {
 # @exitcode 1 The value does not start with the prefix.
 # @exitcode 64 The argument count is not two.
 # @example
-#   string::starts-with "${url}" https:// || return 64
-string::starts-with() {
+#   string.starts-with "${url}" https:// || return 64
+string.starts-with() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -522,8 +522,8 @@ string::starts-with() {
 # @exitcode 1 The value does not end with the suffix.
 # @exitcode 64 The argument count is not two.
 # @example
-#   string::ends-with "${file}" .tar.gz && tar -xzf "${file}"
-string::ends-with() {
+#   string.ends-with "${file}" .tar.gz && tar -xzf "${file}"
+string.ends-with() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -544,9 +544,9 @@ string::ends-with() {
 # @exitcode 0 The joined value was written.
 # @exitcode 64 No delimiter was given.
 # @example
-#   string::join , a b c
+#   string.join , a b c
 #   # a,b,c
-string::join() {
+string.join() {
   if [[ "$#" -lt 1 ]]; then
     return 64
   fi
@@ -573,9 +573,9 @@ string::join() {
 # @exitcode 0 The length was written.
 # @exitcode 64 The argument count is not one.
 # @example
-#   string::byte-length 'あ'
+#   string.byte-length 'あ'
 #   # 3
-string::byte-length() {
+string.byte-length() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -591,13 +591,13 @@ string::byte-length() {
 # @exitcode 64 The argument count is not one.
 # @exitcode 69 The current locale does not use UTF-8.
 # @example
-#   LC_ALL=C.UTF-8 string::length 'あい'
+#   LC_ALL=C.UTF-8 string.length 'あい'
 #   # 2
-string::length() {
+string.length() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
-  string::_require-utf8-locale || return "$?"
+  _string.require-utf8-locale || return "$?"
   # Bash 3.2 applies a locale given before the function name only when it is assigned again.
   [[ -z "${LANG+set}" ]] || local LANG="${LANG}"
   [[ -z "${LC_CTYPE+set}" ]] || local LC_CTYPE="${LC_CTYPE}"
@@ -617,9 +617,9 @@ string::length() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The pattern is empty, or the argument count is not three.
 # @example
-#   string::replace-first 'a-b-c' '-' '+'
+#   string.replace-first 'a-b-c' '-' '+'
 #   # a+b-c
-string::replace-first() {
+string.replace-first() {
   if [[ "$#" -ne 3 || -z "$2" ]]; then
     return 64
   fi
@@ -645,9 +645,9 @@ string::replace-first() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The pattern is empty, or the argument count is not three.
 # @example
-#   string::replace-all 'a-b-c' '-' '+'
+#   string.replace-all 'a-b-c' '-' '+'
 #   # a+b+c
-string::replace-all() {
+string.replace-all() {
   if [[ "$#" -ne 3 || -z "$2" ]]; then
     return 64
   fi
@@ -671,9 +671,9 @@ string::replace-all() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The pattern is empty, or the argument count is not three.
 # @example
-#   string::replace-last 'a-b-c' '-' '+'
+#   string.replace-last 'a-b-c' '-' '+'
 #   # a-b+c
-string::replace-last() {
+string.replace-last() {
   if [[ "$#" -ne 3 || -z "$2" ]]; then
     return 64
   fi
@@ -712,15 +712,15 @@ string::replace-last() {
 # @exitcode 0 The value is not empty.
 # @exitcode 64 The value is empty, or the name is invalid.
 # @example
-#   string::require-non-empty USER_NAME "${user_name}" || return "$?"
-string::require-non-empty() {
-  if [[ "$#" -ne 2 ]] || ! string::_require-non-empty-line "$1"; then
+#   string.require-non-empty USER_NAME "${user_name}" || return "$?"
+string.require-non-empty() {
+  if [[ "$#" -ne 2 ]] || ! _string.require-non-empty-line "$1"; then
     return 64
   fi
   if [[ -n "$2" ]]; then
     return 0
   fi
-  console::_write-error "$1 must not be empty."
+  _console.write-error "$1 must not be empty."
   return 64
 }
 
@@ -732,15 +732,15 @@ string::require-non-empty() {
 # @exitcode 0 The value is empty.
 # @exitcode 64 The value is not empty, or the name is invalid.
 # @example
-#   string::require-empty REMAINDER "${remainder}" || return "$?"
-string::require-empty() {
-  if [[ "$#" -ne 2 ]] || ! string::_require-non-empty-line "$1"; then
+#   string.require-empty REMAINDER "${remainder}" || return "$?"
+string.require-empty() {
+  if [[ "$#" -ne 2 ]] || ! _string.require-non-empty-line "$1"; then
     return 64
   fi
   if [[ -z "$2" ]]; then
     return 0
   fi
-  console::_write-error "$1 must be empty."
+  _console.write-error "$1 must be empty."
   return 64
 }
 
@@ -753,9 +753,9 @@ string::require-empty() {
 # @exitcode 0 The value equals an allowed value.
 # @exitcode 64 The value is not allowed, or the arguments are invalid.
 # @example
-#   string::require-allowed SOURCE "${source}" os official || return "$?"
-string::require-allowed() {
-  if [[ "$#" -lt 3 ]] || ! string::_require-non-empty-line "$1"; then
+#   string.require-allowed SOURCE "${source}" os official || return "$?"
+string.require-allowed() {
+  if [[ "$#" -lt 3 ]] || ! _string.require-non-empty-line "$1"; then
     return 64
   fi
 
@@ -770,7 +770,7 @@ string::require-allowed() {
     fi
   done
 
-  console::_write-error "${name} has an unsupported value."
+  _console.write-error "${name} has an unsupported value."
   return 64
 }
 
@@ -784,14 +784,14 @@ string::require-allowed() {
 # @exitcode 64 An index is not a non-negative integer, START is after END, or END exceeds the length.
 # @exitcode 69 The current locale does not use UTF-8.
 # @example
-#   LC_ALL=C.UTF-8 string::slice 'こんにちは' 1 3
+#   LC_ALL=C.UTF-8 string.slice 'こんにちは' 1 3
 #   # んに
-string::slice() {
+string.slice() {
   if [[ "$#" -lt 2 || "$#" -gt 3 ]] ||
-    ! number::_is-non-negative-integer-at-most "$2" 2147483647; then
+    ! _number.is-non-negative-integer-at-most "$2" 2147483647; then
     return 64
   fi
-  string::_require-utf8-locale || return "$?"
+  _string.require-utf8-locale || return "$?"
   # Bash 3.2 applies a locale given before the function name only when it is assigned again.
   [[ -z "${LANG+set}" ]] || local LANG="${LANG}"
   [[ -z "${LC_CTYPE+set}" ]] || local LC_CTYPE="${LC_CTYPE}"
@@ -802,7 +802,7 @@ string::slice() {
   local end="${3-${#1}}"
   local length="${#value}"
 
-  if ! number::_is-non-negative-integer-at-most "${end}" 2147483647; then
+  if ! _number.is-non-negative-integer-at-most "${end}" 2147483647; then
     return 64
   fi
   if ((10#${start} > 10#${end} || 10#${end} > length)); then

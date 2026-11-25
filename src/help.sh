@@ -5,7 +5,7 @@
 
 # @description Write the line number and source file of a function, separated by a tab.
 # @internal
-help::_location() {
+_help.location() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local location=''
   location="$(
@@ -19,7 +19,7 @@ help::_location() {
 
 # @description Write the shdoc comment block directly above a line of a file.
 # @internal
-help::_comment-block() {
+_help.comment-block() {
   ( [[ "$#" -eq 2 && "$1" =~ ^[0-9]+$ && -f "$2" ]] ) || return 64
   awk -v target="$1" '
     FNR >= target { exit }
@@ -31,7 +31,7 @@ help::_comment-block() {
 
 # @description Format a shdoc comment block as terminal help.
 # @internal
-help::_format() {
+_help.format() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   awk -v name="$1" '
     function add(key, text) { items[key] = items[key] text "\n" }
@@ -92,35 +92,35 @@ help::_format() {
 # The help is read from the shdoc comment block above the function definition,
 # so it is the same text that docs/reference describes.
 #
-# @arg $1 string Name of a loaded function, such as string::trim.
+# @arg $1 string Name of a loaded function, such as string.trim.
 # @stdout The function name, description, arguments, options, outputs, exit codes, and example.
 # @exitcode 0 The help was written.
 # @exitcode 1 No function has that name.
 # @exitcode 64 The argument count is not one.
 # @exitcode 66 The function has no documentation or its source file cannot be read.
 # @example
-#   help::show string::trim
-help::show() {
+#   help.show string.trim
+help.show() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local location='' line='' file='' block=''
   if ! declare -F "$1" >/dev/null 2>&1; then
-    console::_write-error "No function is named $1."
+    _console.write-error "No function is named $1."
     return 1
   fi
-  location="$(help::_location "$1")" || return 66
+  location="$(_help.location "$1")" || return 66
   line="${location%%$'\t'*}"
   file="${location#*$'\t'}"
   [[ -r "${file}" ]] || return 66
-  block="$(help::_comment-block "${line}" "${file}")" || return 66
+  block="$(_help.comment-block "${line}" "${file}")" || return 66
   if [[ "${block}" != *'@description'* ]]; then
-    console::_write-error "$1 has no documentation."
+    _console.write-error "$1 has no documentation."
     return 66
   fi
-  printf '%s\n' "${block}" | help::_format "$1"
+  printf '%s\n' "${block}" | _help.format "$1"
 }
 
-# @description Write public function names for Tab completion of help::show.
+# @description Write public function names for Tab completion of help.show.
 # @internal
-help::_show-args() {
-  declare -F | awk '{ print $3 }' | grep -E '^[a-z][a-z0-9-]*(::[a-z0-9][a-z0-9-]*)+$' | grep -v '::_'
+_help.show-args() {
+  declare -F | awk '{ print $3 }' | grep -E '^[a-z][a-z0-9-]*(\.[a-z0-9][a-z0-9-]*)+$'
 }

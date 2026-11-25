@@ -9,25 +9,25 @@
 
 | 参照元 | 本プロジェクトの関数 | 機能 |
 |---|---|---|
-| `trim_string` | `string::trim` | 先頭と末尾の空白文字を除き、結果を標準出力へ書きます。 |
-| `trim_all` | `string::collapse-whitespace` | 両端の空白文字を除き、内側で連続する空白文字をASCII空白一つへ変換します。 |
-| `regex` | `regex::is-match` | 文字列がBashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現に一致するかを終了状態で返します。 |
-| `split` | `string::split` | 文字列を空でない区切り文字列で分割し、空の要素を保持して一要素ずつ標準出力へ書きます。 |
-| `lower` | `string::lower` | ASCII英大文字を小文字へ変換し、その他の文字を保持します。 |
-| `upper` | `string::upper` | ASCII英小文字を大文字へ変換し、その他の文字を保持します。 |
-| `reverse_case` | `string::swap-case` | ASCII英字の大文字と小文字を入れ替え、その他の文字を保持します。 |
-| `trim_quotes` | `string::strip-surrounding-quotes` | 文字列全体を囲む同種の引用符を一組だけ除きます。 |
-| `strip_all` | `string::remove-all-matches` | Bashパターンに一致する部分をすべて除きます。 |
-| `strip` | `string::remove-first-match` | Bashパターンに最初に一致する部分を除きます。 |
-| `lstrip` | `string::remove-prefix` | Bashパターンに一致する最長の接頭部分を除きます。 |
-| `rstrip` | `string::remove-suffix` | Bashパターンに一致する最長の接尾部分を除きます。 |
-| `urlencode` | `string::encode-url` | UTF-8文字列をバイト単位でパーセント符号化します。 |
-| `urldecode` | `string::decode-url` | 正しいパーセント符号化をバイトへ戻します。 |
-| 文字列包含の条件式 | `string::contains` | 第一引数が第二引数をリテラル文字列として含むかを終了状態で返します。 |
-| 接頭辞の条件式 | `string::starts-with` | 第一引数が第二引数で始まるかを終了状態で返します。 |
-| 接尾辞の条件式 | `string::ends-with` | 第一引数が第二引数で終わるかを終了状態で返します。 |
-| `dirname` | `path::directory-name` | パスのディレクトリ部分を標準出力へ書きます。 |
-| `basename` | `path::base-name` | パスの最後の要素を標準出力へ書き、指定した接尾辞を一度だけ除けます。 |
+| `trim_string` | `string.trim` | 先頭と末尾の空白文字を除き、結果を標準出力へ書きます。 |
+| `trim_all` | `string.collapse-whitespace` | 両端の空白文字を除き、内側で連続する空白文字をASCII空白一つへ変換します。 |
+| `regex` | `regex.is-match` | 文字列がBashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現に一致するかを終了状態で返します。 |
+| `split` | `string.split` | 文字列を空でない区切り文字列で分割し、空の要素を保持して一要素ずつ標準出力へ書きます。 |
+| `lower` | `string.lower` | ASCII英大文字を小文字へ変換し、その他の文字を保持します。 |
+| `upper` | `string.upper` | ASCII英小文字を大文字へ変換し、その他の文字を保持します。 |
+| `reverse_case` | `string.swap-case` | ASCII英字の大文字と小文字を入れ替え、その他の文字を保持します。 |
+| `trim_quotes` | `string.strip-surrounding-quotes` | 文字列全体を囲む同種の引用符を一組だけ除きます。 |
+| `strip_all` | `string.remove-all-matches` | Bashパターンに一致する部分をすべて除きます。 |
+| `strip` | `string.remove-first-match` | Bashパターンに最初に一致する部分を除きます。 |
+| `lstrip` | `string.remove-prefix` | Bashパターンに一致する最長の接頭部分を除きます。 |
+| `rstrip` | `string.remove-suffix` | Bashパターンに一致する最長の接尾部分を除きます。 |
+| `urlencode` | `string.encode-url` | UTF-8文字列をバイト単位でパーセント符号化します。 |
+| `urldecode` | `string.decode-url` | 正しいパーセント符号化をバイトへ戻します。 |
+| 文字列包含の条件式 | `string.contains` | 第一引数が第二引数をリテラル文字列として含むかを終了状態で返します。 |
+| 接頭辞の条件式 | `string.starts-with` | 第一引数が第二引数で始まるかを終了状態で返します。 |
+| 接尾辞の条件式 | `string.ends-with` | 第一引数が第二引数で終わるかを終了状態で返します。 |
+| `dirname` | `path.directory-name` | パスのディレクトリ部分を標準出力へ書きます。 |
+| `basename` | `path.base-name` | パスの最後の要素を標準出力へ書き、指定した接尾辞を一度だけ除けます。 |
 
 ## 採用しない名前付き関数
 

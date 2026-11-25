@@ -14,5 +14,5 @@
 # @exitcode 69 lspci is unavailable.
 # @exitcode other The status of lspci.
 # @example
-#   pci::device::list
-pci::device::list() { [[ "$#" -eq 0 ]] || return 64; docker::_run-command lspci; }
+#   pci.device.list
+pci.device.list() { [[ "$#" -eq 0 ]] || return 64; _docker.run-command lspci; }

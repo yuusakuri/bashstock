@@ -11,8 +11,8 @@
 # @exitcode 1 No value equals the expected value.
 # @exitcode 64 No expected value was given.
 # @example
-#   array::contains main "${branches[@]}" && printf 'main exists\n'
-array::contains() {
+#   array.contains main "${branches[@]}" && printf 'main exists\n'
+array.contains() {
   if [[ "$#" -lt 1 ]]; then
     return 64
   fi
@@ -37,16 +37,16 @@ array::contains() {
 # @exitcode 0 The values were written.
 # @exitcode 64 A value contains a newline.
 # @example
-#   array::reverse a b c
+#   array.reverse a b c
 #   # c
 #   # b
 #   # a
-array::reverse() {
+array.reverse() {
   local values=("$@")
   local index=''
 
   for ((index = ${#values[@]} - 1; index >= 0; index--)); do
-    if ! string::_require-one-line "${values[index]}"; then
+    if ! _string.require-one-line "${values[index]}"; then
       return 64
     fi
     printf '%s\n' "${values[index]}"
@@ -59,8 +59,8 @@ array::reverse() {
 # @stdout The number of values.
 # @exitcode 0 Always.
 # @example
-#   array::length "${files[@]}"
-array::length() {
+#   array.length "${files[@]}"
+array.length() {
   printf '%s\n' "$#"
 }
 
@@ -72,12 +72,12 @@ array::length() {
 # @exitcode 1 No value was given.
 # @exitcode 64 The first value contains a newline.
 # @example
-#   array::first "${hosts[@]}"
-array::first() {
+#   array.first "${hosts[@]}"
+array.first() {
   if [[ "$#" -eq 0 ]]; then
     return 1
   fi
-  if ! string::_require-one-line "$1"; then
+  if ! _string.require-one-line "$1"; then
     return 64
   fi
 
@@ -92,8 +92,8 @@ array::first() {
 # @exitcode 1 No value was given.
 # @exitcode 64 The last value contains a newline.
 # @example
-#   array::last "${versions[@]}"
-array::last() {
+#   array.last "${versions[@]}"
+array.last() {
   if [[ "$#" -eq 0 ]]; then
     return 1
   fi
@@ -103,7 +103,7 @@ array::last() {
     :
   done
 
-  if ! string::_require-one-line "${value}"; then
+  if ! _string.require-one-line "${value}"; then
     return 64
   fi
   printf '%s\n' "${value}"
@@ -116,18 +116,18 @@ array::last() {
 # @exitcode 0 The values were written.
 # @exitcode 64 A value contains a newline.
 # @example
-#   array::unique b a b c a
+#   array.unique b a b c a
 #   # b
 #   # a
 #   # c
-array::unique() {
+array.unique() {
   local seen=()
   local value=''
   local previous=''
   local duplicate='0'
 
   for value in "$@"; do
-    if ! string::_require-one-line "${value}"; then
+    if ! _string.require-one-line "${value}"; then
       return 64
     fi
 
@@ -154,11 +154,11 @@ array::unique() {
 # @exitcode 0 The values were written.
 # @exitcode 64 No prefix was given, or a value contains a newline.
 # @example
-#   array::prepend-to-each --exclude= .git node_modules
+#   array.prepend-to-each --exclude= .git node_modules
 #   # --exclude=.git
 #   # --exclude=node_modules
-array::prepend-to-each() {
-  if [[ "$#" -lt 1 ]] || ! string::_require-one-line "$1"; then
+array.prepend-to-each() {
+  if [[ "$#" -lt 1 ]] || ! _string.require-one-line "$1"; then
     return 64
   fi
 
@@ -167,7 +167,7 @@ array::prepend-to-each() {
   shift
 
   for value in "$@"; do
-    if ! string::_require-one-line "${value}"; then
+    if ! _string.require-one-line "${value}"; then
       return 64
     fi
     printf '%s%s\n' "${prefix}" "${value}"

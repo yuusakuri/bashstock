@@ -11,11 +11,11 @@ bats_require_minimum_version 1.5.0
       return 1
     fi
   }
-  run android::avd::port::available 5555
+  run android.avd.port.available 5555
   [ "$status" -eq 64 ]
-  run android::avd::port::available 5554
+  run android.avd.port.available 5554
   [ "$status" -eq 1 ]
-  run android::avd::port::first
+  run android.avd.port.first
   [ "$status" -eq 0 ]
   [ "$output" = 5556 ]
 }
@@ -64,26 +64,26 @@ SCRIPT
   export PATH
   uname() { [[ "$1" == '-m' ]] && printf 'aarch64\n'; }
 
-  run android::avd::create test_avd 35
+  run android.avd.create test_avd 35
   [ "$status" -eq 0 ]
   [ -f "$ANDROID_AVD_HOME/test_avd.ini" ]
-  run android::avd::create test_avd 35
+  run android.avd.create test_avd 35
   [ "$status" -eq 73 ]
-  run android::avd::create test_avd 35 --replace
+  run android.avd.create test_avd 35 --replace
   [ "$status" -eq 0 ]
   [ -f "$ANDROID_AVD_HOME/test_avd.ini" ]
   local properties="$ANDROID_HOME/system-images/android-35/google_apis/arm64-v8a/source.properties"
   # Revision 9 is offered after 8 was installed: other AVDs may use 8, so it stays.
   printf 'Pkg.Revision=8\n' >"$properties"
-  run android::avd::create default_avd 35
+  run android.avd.create default_avd 35
   [ "$status" -eq 0 ]
   [ "$(<"$properties")" = 'Pkg.Revision=8' ]
   [ -f "$ANDROID_AVD_HOME/default_avd.ini" ]
-  run android::avd::create explicit_avd 35 medium_phone google_apis arm64-v8a 9
+  run android.avd.create explicit_avd 35 medium_phone google_apis arm64-v8a 9
   [ "$status" -eq 69 ]
   [ "$(<"$properties")" = 'Pkg.Revision=8' ]
   [ ! -e "$ANDROID_AVD_HOME/explicit_avd.ini" ]
-  run android::avd::create same_avd 35 medium_phone google_apis arm64-v8a 8.0
+  run android.avd.create same_avd 35 medium_phone google_apis arm64-v8a 8.0
   [ "$status" -eq 0 ]
 }
 
@@ -111,7 +111,7 @@ case "$*" in
 esac
 SCRIPT
   chmod +x "$ANDROID_HOME/platform-tools/adb"
-  run android::avd::stop wanted
+  run android.avd.stop wanted
   [ "$status" -eq 0 ]
   grep -Fqx -- '-s emulator-5556 emu kill' "$ANDROID_TEST_LOG"
   ! grep -Fqx -- '-s emulator-5554 emu kill' "$ANDROID_TEST_LOG"
@@ -136,14 +136,14 @@ exec sleep 300
 SCRIPT
   printf '#!/usr/bin/env bash\nexit 1\n' >"$ANDROID_HOME/platform-tools/adb"
   # CI containers have neither lsof nor ss.
-  android::avd::port::available() { :; }
+  android.avd.port.available() { :; }
   chmod +x "$ANDROID_HOME/emulator/emulator" "$ANDROID_HOME/platform-tools/adb"
   # A process that the call did not start, such as another emulator, keeps running.
   # Bats waits for processes that hold its descriptor 3, so the helpers close it.
   sleep 300 3>&- &
   local other="$!"
 
-  run --separate-stderr android::avd::start test_avd 5554 2
+  run --separate-stderr android.avd.start test_avd 5554 2
   [ "$status" -eq 75 ]
   ! kill -0 "$(<"$EMULATOR_PID_FILE")" 2>/dev/null
   kill -0 "$other"
@@ -152,8 +152,8 @@ SCRIPT
   # The caller ignores TERM like an interactive shell ignores Ctrl-C, and records the status.
   # Python gives the caller its own process group, as setsid does on Linux only.
   python3 -c 'import os, sys; os.setpgrp(); os.execvp(sys.argv[1], sys.argv[1:])' bash -c \
-    'trap "" TERM; source "$1"; android::avd::port::available() { :; }
-      android::avd::start test_avd 5554 300; printf "%s\n" "$?" >"$2"' \
+    'trap "" TERM; source "$1"; android.avd.port.available() { :; }
+      android.avd.start test_avd 5554 300; printf "%s\n" "$?" >"$2"' \
     _ "$PROJECT_ROOT/dist/bashstock.sh" "$BATS_TEST_TMPDIR/status" >/dev/null 2>&1 3>&- &
   local caller="$!" waited=0
   until [[ -s "$EMULATOR_PID_FILE" ]] || (( waited >= 50 )); do sleep 0.2; waited=$((waited + 1)); done

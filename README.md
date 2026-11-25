@@ -29,7 +29,7 @@ _bashstock() { bash -c 'source "$1" && "${@:2}"' bashstock "${_bashstock_file}" 
 () {
   local name
   for name in $(_bashstock declare -F); do
-    [[ "${name}" != *::* || "${name}" == *::_* ]] || functions[$name]="_bashstock ${name} \"\$@\""
+    [[ "${name}" != [a-z]*.* ]] || functions[$name]="_bashstock ${name} \"\$@\""
   done
 }
 ZSH
@@ -62,22 +62,22 @@ Zshから管理者権限が必要な関数を呼び出す場合は、先に`sudo
 結果は標準出力へ書かれ、成否は終了状態で返ります。
 
 ```bash
-string::upper 'hello'
-path::normalize './foo/../bar'
-regex::is-match 'v1.2.3' '^v[0-9]+' && printf 'version tag\n'
+string.upper 'hello'
+path.normalize './foo/../bar'
+regex.is-match 'v1.2.3' '^v[0-9]+' && printf 'version tag\n'
 ```
 
 複数の設定値を受け取る関数は、`--name VALUE`形式の名前付き引数を使います。
 対話型Bashでは、引数名と一部の値をTab補完できます。
 
 ```bash
-archive::compress-tar-gzip --output backup.tar.gz Documents Pictures
+archive.compress-tar-gzip --output backup.tar.gz Documents Pictures
 ```
 
-関数の説明、引数、終了状態、例は、読み込んだ後に`help::show`で表示できます。
+関数の説明、引数、終了状態、例は、読み込んだ後に`help.show`で表示できます。
 
 ```bash
-help::show string::trim
+help.show string.trim
 ```
 
 ## 対応環境

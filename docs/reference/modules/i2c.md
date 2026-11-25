@@ -8,17 +8,17 @@ Buses and devices are listed with i2cdetect.
 
 ## Index
 
-* [i2c::bus::list](#i2cbuslist)
-* [i2c::device::list](#i2cdevicelist)
+* [i2c.bus.list](#i2cbuslist)
+* [i2c.device.list](#i2cdevicelist)
 
-### i2c::bus::list
+### i2c.bus.list
 
 Write the I2C buses with i2cdetect -l.
 
 #### Example
 
 ```bash
-i2c::bus::list
+i2c.bus.list
 ```
 
 _Function has no arguments._
@@ -34,14 +34,14 @@ _Function has no arguments._
 
 * The output of i2cdetect -l.
 
-### i2c::device::list
+### i2c.device.list
 
 Write the devices on one I2C bus with i2cdetect -y.
 
 #### Example
 
 ```bash
-i2c::device::list 1
+i2c.device.list 1
 ```
 
 #### Arguments

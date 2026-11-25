@@ -10,10 +10,10 @@
 # @noargs
 # @exitcode 0 Jenkins was restarted.
 # @exitcode 64 An argument was given.
-# @exitcode other The status of systemd::restart.
+# @exitcode other The status of systemd.restart.
 # @example
-#   jenkins::restart
-jenkins::restart() {
+#   jenkins.restart
+jenkins.restart() {
   [[ "$#" -eq 0 ]] || return 64
-  systemd::restart jenkins.service
+  systemd.restart jenkins.service
 }

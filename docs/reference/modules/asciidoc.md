@@ -8,16 +8,16 @@ Documents are converted with Asciidoctor and its diagram extension.
 
 ## Index
 
-* [asciidoc::html](#asciidochtml)
+* [asciidoc.html](#asciidochtml)
 
-### asciidoc::html
+### asciidoc.html
 
 Convert AsciiDoc to HTML with diagram support.
 
 #### Example
 
 ```bash
-asciidoc::html docs/design.adoc build/html
+asciidoc.html docs/design.adoc build/html
 ```
 
 #### Arguments

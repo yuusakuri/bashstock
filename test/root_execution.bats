@@ -3,70 +3,70 @@
 load test_helper
 
 @test "file operation names preserve argument boundaries and literal values" {
-  file::append-text() { printf '<%s>' "$@"; }
-  file::replace-text() { printf '<%s>' "$@"; }
-  file::replace-text-in-files() { printf '<%s>' "$@"; }
-  file::replace-or-append-text() { printf '<%s>' "$@"; }
+  file.append-text() { printf '<%s>' "$@"; }
+  file.replace-text() { printf '<%s>' "$@"; }
+  file.replace-text-in-files() { printf '<%s>' "$@"; }
+  file.replace-or-append-text() { printf '<%s>' "$@"; }
 
-  run bashstock::_dispatch-root append-text '/protected file' $'text\nvalue'
+  run _bashstock.dispatch-root append-text '/protected file' $'text\nvalue'
   [ "${status}" -eq 0 ]
   [ "${output}" = $'</protected file><text\nvalue>' ]
 
-  run bashstock::_dispatch-root replace-text '/protected file' '^name=' ''
+  run _bashstock.dispatch-root replace-text '/protected file' '^name=' ''
   [ "${status}" -eq 0 ]
   [ "${output}" = '</protected file><^name=><>' ]
 
-  run bashstock::_dispatch-root replace-text-in-files '^name=' '$(false); *' '/first file' '/second file'
+  run _bashstock.dispatch-root replace-text-in-files '^name=' '$(false); *' '/first file' '/second file'
   [ "${status}" -eq 0 ]
   [ "${output}" = '<^name=><$(false); *></first file></second file>' ]
 
-  run bashstock::_dispatch-root replace-or-append-text '/protected file' '^name=' 'name=value'
+  run _bashstock.dispatch-root replace-or-append-text '/protected file' '^name=' 'name=value'
   [ "${status}" -eq 0 ]
   [ "${output}" = '</protected file><^name=><name=value>' ]
 }
 
 @test "account and ownership operations validate inputs before reaching the provider" {
-  user::exists() { return 1; }
-  terminal::is-available() { return 0; }
-  platform::_create-system-user() { printf '<%s>' "$@"; }
-  platform::_create-login-user() { printf '<%s>' "$@"; }
-  platform::_change-owner-recursively() { printf '<%s>' "$@"; }
+  user.exists() { return 1; }
+  terminal.is-available() { return 0; }
+  _platform.create-system-user() { printf '<%s>' "$@"; }
+  _platform.create-login-user() { printf '<%s>' "$@"; }
+  _platform.change-owner-recursively() { printf '<%s>' "$@"; }
 
-  run bashstock::_dispatch-root create-system-user _service
+  run _bashstock.dispatch-root create-system-user _service
   [ "${status}" -eq 0 ]
   [ "${output}" = '<_service>' ]
 
-  run bashstock::_dispatch-root create-login-user developer 'Developer Name'
+  run _bashstock.dispatch-root create-login-user developer 'Developer Name'
   [ "${status}" -eq 0 ]
   [ "${output}" = '<developer><Developer Name>' ]
 
-  run bashstock::_dispatch-root change-owner-recursively "${BATS_TEST_TMPDIR}" developer staff
+  run _bashstock.dispatch-root change-owner-recursively "${BATS_TEST_TMPDIR}" developer staff
   [ "${status}" -eq 0 ]
   [ "${output}" = "<${BATS_TEST_TMPDIR}><developer><staff>" ]
 
-  run bashstock::_dispatch-root create-system-user invalid
+  run _bashstock.dispatch-root create-system-user invalid
   [ "${status}" -eq 64 ]
   [ "${output}" = '' ]
 
-  run bashstock::_dispatch-root create-login-user developer 'Bad:Name'
+  run _bashstock.dispatch-root create-login-user developer 'Bad:Name'
   [ "${status}" -eq 64 ]
   [ "${output}" = '' ]
 
-  run bashstock::_dispatch-root change-owner-recursively "${BATS_TEST_TMPDIR}/missing" developer
+  run _bashstock.dispatch-root change-owner-recursively "${BATS_TEST_TMPDIR}/missing" developer
   [ "${status}" -eq 66 ]
   [ "${output}" = '' ]
 }
 
 @test "the operation dispatcher rejects unknown names and missing arguments" {
-  run bashstock::_dispatch-root unknown-operation
+  run _bashstock.dispatch-root unknown-operation
   [ "${status}" -eq 64 ]
-  run bashstock::_dispatch-root file::append-text '/protected file' text
+  run _bashstock.dispatch-root file.append-text '/protected file' text
   [ "${status}" -eq 64 ]
-  run bashstock::_dispatch-root
+  run _bashstock.dispatch-root
   [ "${status}" -eq 64 ]
-  run bashstock::_dispatch-root create-system-user
+  run _bashstock.dispatch-root create-system-user
   [ "${status}" -eq 64 ]
-  run bashstock::_dispatch-root create-login-user
+  run _bashstock.dispatch-root create-login-user
   [ "${status}" -eq 64 ]
 }
 
@@ -109,10 +109,10 @@ load test_helper
 
   run bash -euo pipefail -c '
     source "$1"
-    file::append-text-as-root "$2" "name=old"
-    file::replace-text-as-root "$2" "old" "new"
-    file::replace-or-append-text-as-root "$2" "^other=" "other=value"
-    file::replace-text-in-files-as-root "value" "updated" "$2"
+    file.append-text-as-root "$2" "name=old"
+    file.replace-text-as-root "$2" "old" "new"
+    file.replace-or-append-text-as-root "$2" "^other=" "other=value"
+    file.replace-text-in-files-as-root "value" "updated" "$2"
   ' _ "${file}" "${target}"
   [ "${status}" -eq 0 ]
   [ "$(<"${target}")" = $'name=new\nother=updated' ]
@@ -122,10 +122,10 @@ load test_helper
   [[ "${EUID}" -ne 0 ]] || skip 'requires an unprivileged test process'
   sudo() { printf '<%s>' "$@" >>"${BATS_TEST_TMPDIR}/sudo-args"; }
 
-  command::run-as-root printf '%s' value
+  command.run-as-root printf '%s' value
   [ "$(<"${BATS_TEST_TMPDIR}/sudo-args")" = '<-n><--><true><-n><--><printf><%s><value>' ]
 
   sudo() { return 1; }
-  run command::run-as-root printf '%s' value
+  run command.run-as-root printf '%s' value
   [ "${status}" -eq 77 ]
 }

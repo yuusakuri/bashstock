@@ -8,10 +8,10 @@ Processes are traced with ltrace on Linux.
 
 ## Index
 
-* [ltrace::attach-pid](#ltraceattach-pid)
-* [ltrace::attach-name](#ltraceattach-name)
+* [ltrace.attach-pid](#ltraceattach-pid)
+* [ltrace.attach-name](#ltraceattach-name)
 
-### ltrace::attach-pid
+### ltrace.attach-pid
 
 Attach ltrace to a process on Linux.
 
@@ -21,7 +21,7 @@ with the current permissions.
 #### Example
 
 ```bash
-ltrace::attach-pid 4242
+ltrace.attach-pid 4242
 ```
 
 #### Arguments
@@ -39,14 +39,14 @@ ltrace::attach-pid 4242
 
 * The library calls that ltrace reports.
 
-### ltrace::attach-name
+### ltrace.attach-name
 
 Attach ltrace to the first process whose executable name is NAME.
 
 #### Example
 
 ```bash
-ltrace::attach-name myapp
+ltrace.attach-name myapp
 ```
 
 #### Arguments
@@ -58,7 +58,7 @@ ltrace::attach-name myapp
 * **0**: ltrace ended successfully.
 * **1**: No process has the name.
 * **64**: The argument count is not one.
-* other The status of ltrace::attach-pid.
+* other The status of ltrace.attach-pid.
 
 #### Output on stderr
 

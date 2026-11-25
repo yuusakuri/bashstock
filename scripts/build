@@ -15,14 +15,14 @@ readonly core_modules
 build_staging_root=''
 
 # @description Remove the temporary build directory.
-build::_cleanup() {
+_build.cleanup() {
   if [[ -n "${build_staging_root}" ]]; then
     rm -rf -- "${build_staging_root}"
   fi
 }
 
 # @description Write one named source module without its shebang.
-build::_write-module() {
+_build.write-module() {
   local name="$1"
   printf '# Source: src/%s.sh\n' "${name}"
   tail -n +2 -- "${project_root}/src/${name}.sh"
@@ -30,7 +30,7 @@ build::_write-module() {
 }
 
 # @description Write the namespace modules that follow the OS providers, in name order.
-build::_after-platform-modules() {
+_build.after-platform-modules() {
   local path='' name=''
   for path in "${project_root}"/src/*.sh; do
     name="$(basename -- "${path}" .sh)"
@@ -40,13 +40,13 @@ build::_after-platform-modules() {
 }
 
 # @description Combine the license, library modules, OS providers, and execution entry point.
-build::_write-library() {
+_build.write-library() {
   local before_platform=(runtime/header "${core_modules[@]}")
   local after_platform=()
   local module=''
   while IFS= read -r module; do
     after_platform+=("${module}")
-  done < <(build::_after-platform-modules)
+  done < <(_build.after-platform-modules)
   after_platform+=(runtime/operations runtime/footer)
 
   printf '#!/usr/bin/env bash\n'
@@ -57,20 +57,20 @@ build::_write-library() {
   printf '\n'
 
   for module in "${before_platform[@]}"; do
-    build::_write-module "${module}"
+    _build.write-module "${module}"
   done
 
   # shellcheck disable=SC2016 # Emit the provider selection for runtime.
-  printf 'case "$(platform::_identifier)" in\n  darwin)\n'
-  build::_write-module os-darwin
+  printf 'case "$(_platform.identifier)" in\n  darwin)\n'
+  _build.write-module os-darwin
   printf '    ;;\n  ubuntu)\n'
-  build::_write-module os-ubuntu
+  _build.write-module os-ubuntu
   printf '    ;;\n  fedora)\n'
-  build::_write-module os-fedora
+  _build.write-module os-fedora
   printf '    ;;\n  *) ;;\nesac\n\n'
 
   for module in "${after_platform[@]}"; do
-    build::_write-module "${module}"
+    _build.write-module "${module}"
   done
 }
 
@@ -86,10 +86,10 @@ main() {
   command -v mktemp >/dev/null 2>&1 || return 69
   mkdir -p "${distribution_root}"
   build_staging_root="$(mktemp -d "${distribution_root}/.build.XXXXXX")" || return 74
-  trap build::_cleanup EXIT
+  trap _build.cleanup EXIT
   output="${build_staging_root}/bashstock.sh"
 
-  build::_write-library >"${output}"
+  _build.write-library >"${output}"
   bash -n "${output}"
   chmod 644 "${output}"
   mv -f -- "${output}" "${distribution_root}/bashstock.sh"

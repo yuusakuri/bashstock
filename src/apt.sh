@@ -16,12 +16,12 @@
 # @exitcode 69 The system is not Ubuntu, or apt-cache or Python 3 is missing.
 # @exitcode 74 apt-cache policy failed.
 # @example
-#   apt::package::candidates gcc-
+#   apt.package.candidates gcc-
 #   # gcc-12	12.3.0-1ubuntu1~22.04
-apt::package::candidates() {
+apt.package.candidates() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[a-z0-9][a-z0-9.+-]*$ ]] ) || return 64
-  package::_require-platform ubuntu || return "$?"
-  command::require apt-cache || return "$?"
+  _package.require-platform ubuntu || return "$?"
+  command.require apt-cache || return "$?"
   local prefix="$1" name='' policy=''
   local names=()
   while IFS= read -r name; do
@@ -29,7 +29,7 @@ apt::package::candidates() {
   done < <(apt-cache pkgnames "${prefix}" 2>/dev/null)
   [[ "${#names[@]}" -gt 0 ]] || return 0
   policy="$(apt-cache policy "${names[@]}" 2>/dev/null)" || return 74
-  printf '%s\n' "${policy}" | python::run -c '
+  printf '%s\n' "${policy}" | python.run -c '
 import re
 import sys
 prefix = sys.argv[1]
@@ -43,7 +43,7 @@ for line in sys.stdin:
     if name and match and match.group(1) != "(none)":
         print(name[len(prefix):] + "\t" + name + "\t" + match.group(1))
         name = None
-' "${prefix}" | package::_sort-by-first-field
+' "${prefix}" | _package.sort-by-first-field
 }
 
 # @description Write the APT package name with the newest version suffix after PREFIX.
@@ -56,11 +56,11 @@ for line in sys.stdin:
 # @exitcode 69 The system is not Ubuntu, or apt-cache or Python 3 is missing.
 # @exitcode 74 apt-cache policy failed.
 # @example
-#   package::_install "$(apt::package::latest gcc-)"
-apt::package::latest() {
+#   _package.install "$(apt.package.latest gcc-)"
+apt.package.latest() {
   [[ "$#" -eq 1 ]] || return 64
   local candidates='' line=''
-  candidates="$(apt::package::candidates "$1")" || return "$?"
+  candidates="$(apt.package.candidates "$1")" || return "$?"
   [[ -n "${candidates}" ]] || return 1
   line="${candidates##*$'\n'}"
   printf '%s\n' "${line%%$'\t'*}"
@@ -77,36 +77,36 @@ apt::package::latest() {
 # @exitcode 74 The download failed.
 # @exitcode other The status of apt-get.
 # @example
-#   apt::deb::install-from-url https://example.com/tool_1.2.3_amd64.deb
-apt::deb::install-from-url() {
+#   apt.deb.install-from-url https://example.com/tool_1.2.3_amd64.deb
+apt.deb.install-from-url() {
   [[ "$#" -ge 1 && "$#" -le 2 && "$1" == https://* ]] || return 64
-  package::_require-platform ubuntu || return "$?"
+  _package.require-platform ubuntu || return "$?"
   local required_command=''
   for required_command in curl dpkg dpkg-deb apt-get chmod; do
-    command::require "${required_command}" || return "$?"
+    command.require "${required_command}" || return "$?"
   done
   local url="$1" expected="${2:-}" directory='' file='' architecture='' status=0
   if [[ -z "${expected}" ]]; then
-    expected="$(package::_deb-architecture)" || return "$?"
+    expected="$(_package.deb-architecture)" || return "$?"
   fi
-  directory="$(package::_temporary-directory)" || return "$?"
+  directory="$(_package.temporary-directory)" || return "$?"
   file="${directory}/package.deb"
-  package::_download "${url}" "${file}" || status="$?"
+  _package.download "${url}" "${file}" || status="$?"
   if [[ "${status}" -eq 0 ]]; then
     architecture="$(dpkg-deb --field "${file}" Architecture 2>/dev/null)" || status=65
   fi
   if [[ "${status}" -eq 0 && "${architecture}" != "${expected}" && "${architecture}" != 'all' ]]; then
-    console::_write-error "Package architecture ${architecture} does not match ${expected}."
+    _console.write-error "Package architecture ${architecture} does not match ${expected}."
     status=65
   fi
   if [[ "${status}" -eq 0 ]]; then
     chmod 0755 "${directory}" && chmod 0644 "${file}" || status=74
   fi
   if [[ "${status}" -eq 0 ]]; then
-    package::_refresh || status="$?"
+    _package.refresh || status="$?"
   fi
   if [[ "${status}" -eq 0 ]]; then
-    command::run-as-root env DEBIAN_FRONTEND=noninteractive apt-get install -y "${file}" || status="$?"
+    command.run-as-root env DEBIAN_FRONTEND=noninteractive apt-get install -y "${file}" || status="$?"
   fi
   rm -rf -- "${directory}"
   return "${status}"

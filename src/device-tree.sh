@@ -13,5 +13,5 @@
 # @exitcode 64 An argument was given.
 # @exitcode 66 The system has no device tree.
 # @example
-#   device-tree::node::list | grep -i i2c
-device-tree::node::list() { [[ "$#" -eq 0 ]] || return 64; [[ -d /sys/firmware/devicetree/base ]] || return 66; find /sys/firmware/devicetree/base -mindepth 1 -print; }
+#   device-tree.node.list | grep -i i2c
+device-tree.node.list() { [[ "$#" -eq 0 ]] || return 64; [[ -d /sys/firmware/devicetree/base ]] || return 66; find /sys/firmware/devicetree/base -mindepth 1 -print; }

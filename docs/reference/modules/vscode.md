@@ -8,12 +8,12 @@ VS Code is installed from Microsoft's package source.
 
 ## Index
 
-* [vscode::remove-user-data](#vscoderemove-user-data)
-* [vscode::set-default-app](#vscodeset-default-app)
-* [vscode::versions](#vscodeversions)
-* [vscode::install](#vscodeinstall)
+* [vscode.remove-user-data](#vscoderemove-user-data)
+* [vscode.set-default-app](#vscodeset-default-app)
+* [vscode.versions](#vscodeversions)
+* [vscode.install](#vscodeinstall)
 
-### vscode::remove-user-data
+### vscode.remove-user-data
 
 Remove the VS Code user data directory.
 
@@ -22,7 +22,7 @@ VS Code is not checked for running instances.
 #### Example
 
 ```bash
-vscode::remove-user-data
+vscode.remove-user-data
 ```
 
 #### Arguments
@@ -36,7 +36,7 @@ vscode::remove-user-data
 * **66**: The directory does not exist, is /, or is a symbolic link.
 * **74**: The directory could not be removed.
 
-### vscode::set-default-app
+### vscode.set-default-app
 
 Set VS Code as the default application for text and source file types on macOS.
 
@@ -46,7 +46,7 @@ skipped; any other failure returns its status.
 #### Example
 
 ```bash
-vscode::set-default-app
+vscode.set-default-app
 ```
 
 _Function has no arguments._
@@ -62,14 +62,14 @@ _Function has no arguments._
 
 * Each skipped extension or UTI.
 
-### vscode::versions
+### vscode.versions
 
 Write VS Code versions available to the current platform.
 
 #### Example
 
 ```bash
-vscode::versions | tail -n 1
+vscode.versions | tail -n 1
 ```
 
 _Function has no arguments._
@@ -85,7 +85,7 @@ _Function has no arguments._
 
 * VS Code versions, one per line; on Ubuntu only builds that the installed C library can run.
 
-### vscode::install
+### vscode.install
 
 Install VS Code from the Microsoft repository or Homebrew.
 
@@ -95,13 +95,13 @@ and an omitted version selects the newest such build.
 #### Example
 
 ```bash
-vscode::install
+vscode.install
 code --version
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from vscode::versions; on macOS only the current version. Defaults to the newest runnable one.
+* **$1** (string): Optional version from vscode.versions; on macOS only the current version. Defaults to the newest runnable one.
 
 #### Exit codes
 

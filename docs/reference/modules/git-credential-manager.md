@@ -8,17 +8,17 @@ The manager is installed from its GitHub releases.
 
 ## Index
 
-* [git-credential-manager::version::list](#git-credential-managerversionlist)
-* [git-credential-manager::install](#git-credential-managerinstall)
+* [git-credential-manager.version.list](#git-credential-managerversionlist)
+* [git-credential-manager.install](#git-credential-managerinstall)
 
-### git-credential-manager::version::list
+### git-credential-manager.version.list
 
 Write the installed Git Credential Manager version.
 
 #### Example
 
 ```bash
-git-credential-manager::version::list
+git-credential-manager.version.list
 ```
 
 _Function has no arguments._
@@ -34,7 +34,7 @@ _Function has no arguments._
 
 * The installed version.
 
-### git-credential-manager::install
+### git-credential-manager.install
 
 Install an official Git Credential Manager release for this OS and CPU.
 
@@ -47,7 +47,7 @@ not start returns 69 without installing anything.
 #### Example
 
 ```bash
-git-credential-manager::install 2.6.1
+git-credential-manager.install 2.6.1
 ```
 
 #### Arguments

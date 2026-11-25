@@ -12,9 +12,9 @@ use_platform() {
   OS_VERSION="${2:-}"
   OS_CODENAME="${3:-}"
   # shellcheck disable=SC2317
-  platform::_identifier() { printf '%s\n' "${PLATFORM}"; }
+  _platform.identifier() { printf '%s\n' "${PLATFORM}"; }
   # shellcheck disable=SC2317
-  platform::_os-release-value() {
+  _platform.os-release-value() {
     case "$1" in
       VERSION_ID) [[ -n "${OS_VERSION}" ]] && printf '%s\n' "${OS_VERSION}" ;;
       UBUNTU_CODENAME | VERSION_CODENAME) [[ -n "${OS_CODENAME}" ]] && printf '%s\n' "${OS_CODENAME}" ;;
@@ -22,7 +22,7 @@ use_platform() {
     esac
   }
   # shellcheck disable=SC2317
-  system::operating-system() {
+  system.operating-system() {
     if [[ "${PLATFORM}" == 'darwin' ]]; then printf 'darwin\n'; else printf 'linux\n'; fi
   }
 }
@@ -32,7 +32,7 @@ record_root_commands() {
   ROOT_LOG="${BATS_TEST_TMPDIR}/root.log"
   : >"${ROOT_LOG}"
   # shellcheck disable=SC2317
-  command::run-as-root() { printf '%s\n' "$*" >>"${ROOT_LOG}"; }
+  command.run-as-root() { printf '%s\n' "$*" >>"${ROOT_LOG}"; }
 }
 
 # @description Redirect system file writes below a temporary root directory.
@@ -40,7 +40,7 @@ use_fake_root() {
   FAKE_ROOT="${BATS_TEST_TMPDIR}/root"
   mkdir -p "${FAKE_ROOT}"
   # shellcheck disable=SC2317
-  file::write-text() {
+  file.write-text() {
     mkdir -p "${FAKE_ROOT}$(dirname "$1")"
     printf '%s' "$2" >"${FAKE_ROOT}$1"
   }
@@ -76,12 +76,12 @@ use_fake_curl() {
     printf ' %s | 2.28.4715.102+dfsg-2.2~bpo22.04.1 | http://archive.ubuntu.com jammy-backports/universe amd64 Packages\n' "$2"
     printf ' %s | 2.26.4220.100+dfsg-5.2 | http://archive.ubuntu.com jammy/universe Sources\n' "$2"
   }
-  run mozc::server::install
+  run mozc.server.install
   [ "${status}" -eq 0 ]
   [ "$(<"${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades mozc-server=2.28.4715.102+dfsg-2.2~bpo22.04.1' ]
 
   : >"${ROOT_LOG}"
-  run mozc::ibus::install 2.26.4220.100+dfsg-5.2
+  run mozc.ibus.install 2.26.4220.100+dfsg-5.2
   [ "${status}" -eq 0 ]
   [ "$(<"${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades ibus-mozc=2.26.4220.100+dfsg-5.2 mozc-server=2.26.4220.100+dfsg-5.2' ]
 }
@@ -90,14 +90,14 @@ use_fake_curl() {
   use_platform fedora 44
   record_root_commands
   dnf() { :; }
-  run pass::install 1.7.4
+  run pass.install 1.7.4
   [ "${status}" -eq 0 ]
   [ "$(<"${ROOT_LOG}")" = 'dnf install -y pass-1.7.4' ]
 
   use_platform darwin
   BREW_LOG="${BATS_TEST_TMPDIR}/brew.log"
   brew() { printf '%s\n' "$*" >>"${BREW_LOG}"; }
-  run pass::install
+  run pass.install
   [ "${status}" -eq 0 ]
   [ "$(<"${BREW_LOG}")" = 'install pass' ]
 }
@@ -111,12 +111,12 @@ use_fake_curl() {
   dpkg-deb() { printf '%s\n' "${DEB_ARCHITECTURE}"; }
 
   DEB_ARCHITECTURE='arm64'
-  run --separate-stderr apt::deb::install-from-url https://example.invalid/tool.deb
+  run --separate-stderr apt.deb.install-from-url https://example.invalid/tool.deb
   [ "${status}" -eq 65 ]
   [ ! -s "${ROOT_LOG}" ]
 
   DEB_ARCHITECTURE='amd64'
-  run apt::deb::install-from-url https://example.invalid/tool.deb
+  run apt.deb.install-from-url https://example.invalid/tool.deb
   [ "${status}" -eq 0 ]
   [ "$(sed -n 1p "${ROOT_LOG}")" = 'apt-get update' ]
   local install='' package=''
@@ -127,11 +127,11 @@ use_fake_curl() {
 
   : >"${ROOT_LOG}"
   DEB_ARCHITECTURE='all'
-  run apt::deb::install-from-url https://example.invalid/tool.deb
+  run apt.deb.install-from-url https://example.invalid/tool.deb
   [ "${status}" -eq 0 ]
 
   use_platform fedora 44
-  run --separate-stderr apt::deb::install-from-url https://example.invalid/tool.deb
+  run --separate-stderr apt.deb.install-from-url https://example.invalid/tool.deb
   [ "${status}" -eq 69 ]
 }
 
@@ -146,7 +146,7 @@ use_fake_curl() {
   dpkg() { [[ "$1" == '--print-architecture' ]] && printf 'arm64\n'; }
   apt-cache() { :; }
   dpkg-query() { return 1; }
-  run docker::install '5:29.8.1-1~ubuntu.24.04~noble'
+  run docker.install '5:29.8.1-1~ubuntu.24.04~noble'
   [ "${status}" -eq 0 ]
   [ "$(<"${FAKE_ROOT}/etc/apt/sources.list.d/docker.sources")" = "$(printf '%s\n' \
     'Types: deb' \
@@ -172,18 +172,18 @@ use_fake_curl() {
 
   # The requested version is missing, so nothing is removed.
   apt-cache() { return 100; }
-  run --separate-stderr docker::install '5:1.0.0-1~ubuntu.24.04~noble'
+  run --separate-stderr docker.install '5:1.0.0-1~ubuntu.24.04~noble'
   [ "${status}" -eq 69 ]
   ! grep -q 'apt-get remove' "${ROOT_LOG}"
 
   # The installation fails after docker.io was removed, so docker.io returns.
   apt-cache() { :; }
   : >"${ROOT_LOG}"
-  command::run-as-root() {
+  command.run-as-root() {
     printf '%s\n' "$*" >>"${ROOT_LOG}"
     [[ "$*" != *'install -y'*docker-ce* ]]
   }
-  run docker::install
+  run docker.install
   [ "${status}" -ne 0 ]
   grep -Fqx 'env DEBIAN_FRONTEND=noninteractive apt-get remove -y docker.io' "${ROOT_LOG}"
   [ "$(tail -n 1 "${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io' ]
@@ -197,7 +197,7 @@ use_fake_curl() {
   CURL_MISSING='/dists/bionic/'
   use_fake_curl
   dpkg() { [[ "$1" == '--print-architecture' ]] && printf 'amd64\n'; }
-  run --separate-stderr docker::install
+  run --separate-stderr docker.install
   [ "${status}" -eq 69 ]
   [ ! -s "${ROOT_LOG}" ]
   [ ! -e "${FAKE_ROOT}/etc/apt/sources.list.d/docker.sources" ]
@@ -208,16 +208,16 @@ use_fake_curl() {
   use_fake_curl
   apt-get() { :; }
   dnf() { :; }
-  file::write-text() { return 77; }
+  file.write-text() { return 77; }
   dpkg() { printf 'arm64\n'; }
   use_platform ubuntu 18.04 bionic
-  run docker::install
+  run docker.install
   [ "${status}" -eq 77 ]
   ! grep -q 'install -y.*docker-ce' "${ROOT_LOG}"
 
   : >"${ROOT_LOG}"
   use_platform fedora 34
-  run docker::install
+  run docker.install
   [ "${status}" -eq 77 ]
   ! grep -q '^dnf install ' "${ROOT_LOG}"
 }
@@ -237,16 +237,16 @@ use_fake_curl() {
   }
 
   KEY_FINGERPRINT='0000000000000000000000000000000000000000'
-  run --separate-stderr claude-desktop::install
+  run --separate-stderr claude-desktop.install
   [ "${status}" -eq 65 ]
   [ ! -e "${FAKE_ROOT}/etc/apt/sources.list.d/claude-desktop.list" ]
   ! grep -q 'claude-desktop' "${ROOT_LOG}"
 
   : >"${ROOT_LOG}"
   KEY_FINGERPRINT='31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE'
-  run claude-desktop::install 2.31226.1
+  run claude-desktop.install 2.31226.1
   [ "${status}" -eq 64 ]
-  run claude-desktop::install
+  run claude-desktop.install
   [ "${status}" -eq 0 ]
   [ "$(<"${FAKE_ROOT}/etc/apt/sources.list.d/claude-desktop.list")" = 'deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/claude-desktop-archive-keyring.asc] https://downloads.claude.ai/claude-desktop/apt/stable stable main' ]
   grep -Eq '^install -m 0644 .*/key\.asc /usr/share/keyrings/claude-desktop-archive-keyring\.asc$' "${ROOT_LOG}"
@@ -260,16 +260,16 @@ use_fake_curl() {
 
   ARCHITECTURE='amd64'
   use_platform ubuntu 20.04 focal
-  run --separate-stderr claude-desktop::install
+  run --separate-stderr claude-desktop.install
   [ "${status}" -eq 69 ]
 
   use_platform fedora 44
-  run --separate-stderr claude-desktop::install
+  run --separate-stderr claude-desktop.install
   [ "${status}" -eq 69 ]
 
   ARCHITECTURE='armhf'
   use_platform ubuntu 24.04 noble
-  run --separate-stderr claude-desktop::install
+  run --separate-stderr claude-desktop.install
   [ "${status}" -eq 69 ]
 
   [ ! -s "${ROOT_LOG}" ]
@@ -280,13 +280,13 @@ use_fake_curl() {
   use_platform darwin
   BREW_LOG="${BATS_TEST_TMPDIR}/brew.log"
   brew() { printf '%s\n' "$*" >>"${BREW_LOG}"; }
-  run claude-desktop::install
+  run claude-desktop.install
   [ "${status}" -eq 0 ]
-  run claude-code::install
+  run claude-code.install
   [ "${status}" -eq 0 ]
-  run codex::install
+  run codex.install
   [ "${status}" -eq 0 ]
-  run chatgpt::install
+  run chatgpt.install
   [ "${status}" -eq 0 ]
   [ "$(<"${BREW_LOG}")" = $'install --cask claude\ninstall --cask claude-code\ninstall --cask codex\ninstall --cask chatgpt' ]
 }
@@ -304,16 +304,16 @@ use_fake_curl() {
   }
 
   KEY_FINGERPRINT='0000000000000000000000000000000000000000'
-  run --separate-stderr claude-code::install
+  run --separate-stderr claude-code.install
   [ "${status}" -eq 65 ]
   [ ! -e "${FAKE_ROOT}/etc/apt/sources.list.d/claude-code.list" ]
   ! grep -q 'claude-code' "${ROOT_LOG}"
 
   : >"${ROOT_LOG}"
   KEY_FINGERPRINT='31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE'
-  run claude-code::install 2.1.287-1
+  run claude-code.install 2.1.287-1
   [ "${status}" -eq 64 ]
-  run claude-code::install
+  run claude-code.install
   [ "${status}" -eq 0 ]
   [ "$(<"${FAKE_ROOT}/etc/apt/sources.list.d/claude-code.list")" = 'deb [signed-by=/etc/apt/keyrings/claude-code.asc] https://downloads.claude.ai/claude-code/apt/stable stable main' ]
   grep -Eq '^install -m 0644 .*/claude-code\.asc /etc/apt/keyrings/claude-code\.asc$' "${ROOT_LOG}"
@@ -323,7 +323,7 @@ use_fake_curl() {
   : >"${ROOT_LOG}"
   dnf() { :; }
   uname() { [[ "$1" == '-m' ]] && printf 'x86_64\n'; }
-  run claude-code::install
+  run claude-code.install
   [ "${status}" -eq 0 ]
   grep -Fxq 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-claude-code' "${FAKE_ROOT}/etc/yum.repos.d/claude-code.repo"
   grep -Fxq 'baseurl=https://downloads.claude.ai/claude-code/rpm/stable' "${FAKE_ROOT}/etc/yum.repos.d/claude-code.repo"
@@ -332,7 +332,7 @@ use_fake_curl() {
 
   use_platform ubuntu 18.04 bionic
   : >"${ROOT_LOG}"
-  run --separate-stderr claude-code::install
+  run --separate-stderr claude-code.install
   [ "${status}" -eq 69 ]
   [ ! -s "${ROOT_LOG}" ]
 }
@@ -349,7 +349,7 @@ chmod +x "${HOME}/.local/bin/codex"'
   use_fake_curl
 
   MACHINE='x86_64'
-  run codex::install
+  run codex.install
   [ "${status}" -eq 0 ]
   [ "${lines[${#lines[@]} - 1]}" = 'codex-cli 0.162.1' ]
   IFS='|' read -r interactive count path <"${HOME}/installer.log"
@@ -358,11 +358,11 @@ chmod +x "${HOME}/.local/bin/codex"'
   [[ ":${path}:" == *":${HOME}/.local/bin:"* ]]
   grep -Fq "${HOME}/.local/bin" "${HOME}/.bashrc"
 
-  run codex::install 0.162.1
+  run codex.install 0.162.1
   [ "${status}" -eq 64 ]
   MACHINE='armv7l'
   rm -f "${HOME}/installer.log"
-  run --separate-stderr codex::install
+  run --separate-stderr codex.install
   [ "${status}" -eq 69 ]
   [ ! -e "${HOME}/installer.log" ]
 }
@@ -378,14 +378,14 @@ chmod +x "${HOME}/.local/bin/codex"'
   curl() { printf '%s\n' "${@: -1}" >>"${CURL_URLS}"; original_curl "$@"; }
 
   use_platform ubuntu 22.04 jammy
-  run --separate-stderr chatgpt::install
+  run --separate-stderr chatgpt.install
   [ "${status}" -eq 69 ]
   [ ! -s "${ROOT_LOG}" ]
 
   use_platform ubuntu 24.04 noble
-  run chatgpt::install 26.1007.71326
+  run chatgpt.install 26.1007.71326
   [ "${status}" -eq 64 ]
-  run chatgpt::install
+  run chatgpt.install
   [ "${status}" -eq 0 ]
   grep -Fxq 'https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_amd64.deb' "${CURL_URLS}"
   [[ "$(tail -n 1 "${ROOT_LOG}")" == 'env DEBIAN_FRONTEND=noninteractive apt-get install -y '*'/package.deb' ]]
@@ -394,14 +394,14 @@ chmod +x "${HOME}/.local/bin/codex"'
   : >"${ROOT_LOG}"
   uname() { [[ "$1" == '-m' ]] && printf 'x86_64\n'; }
   dnf() { :; }
-  run chatgpt::install
+  run chatgpt.install
   [ "${status}" -eq 0 ]
   [[ "$(<"${ROOT_LOG}")" == 'dnf install -y '*'/chatgpt.x86_64.rpm' ]]
   grep -Fxq 'https://persistent.oaistatic.com/codex-app-prod/linux/rpm/latest/chatgpt.x86_64.rpm' "${CURL_URLS}"
 
   use_platform fedora 42
   : >"${ROOT_LOG}"
-  run --separate-stderr chatgpt::install
+  run --separate-stderr chatgpt.install
   [ "${status}" -eq 69 ]
   [ ! -s "${ROOT_LOG}" ]
 }
@@ -415,7 +415,7 @@ chmod +x "${HOME}/.local/bin/codex"'
   dnf() { :; }
   systemctl() { :; }
   usermod() { :; }
-  run docker::install '3:29.8.0-1.fc43'
+  run docker.install '3:29.8.0-1.fc43'
   [ "${status}" -eq 0 ]
   grep -Fqx 'dnf install -y docker-ce-3:29.8.0-1.fc43 docker-ce-cli-29.8.0-1.fc43 containerd.io docker-buildx-plugin docker-compose-plugin' "${ROOT_LOG}"
   grep -Fqx 'systemctl enable --now docker' "${ROOT_LOG}"
@@ -433,7 +433,7 @@ chmod +x "${HOME}/.local/bin/codex"'
   usermod() { :; }
   # docker-ce provides docker-engine; only the legacy docker package is installed by its name.
   rpm() { [[ "$1" == -q && "$2" == docker ]]; }
-  run docker::install
+  run docker.install
   [ "${status}" -eq 0 ]
   grep -Fqx 'dnf remove -y docker' "${ROOT_LOG}"
   [ "$(grep -c '^dnf remove' "${ROOT_LOG}")" -eq 1 ]
@@ -450,7 +450,7 @@ chmod +x "${HOME}/.local/bin/codex"'
   uname() { [[ "$1" == '-m' ]] && printf 'aarch64\n'; }
   systemctl() { :; }
   usermod() { :; }
-  run docker::install
+  run docker.install
   [ "${status}" -eq 0 ]
   grep -Fqx 'dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin' "${ROOT_LOG}"
   grep -Fqx 'dnf upgrade -y docker-ce docker-ce-cli containerd.io docker-compose-plugin' "${ROOT_LOG}"
@@ -464,7 +464,7 @@ chmod +x "${HOME}/.local/bin/codex"'
     [[ " $* " == *' --arch=aarch64,noarch '* ]] || return 1
     printf '1.141.0-1791276900\n'
   }
-  run vscode::versions
+  run vscode.versions
   [ "${status}" -eq 0 ]
   [ "${output}" = '1.141.0-1791276900' ]
 }
@@ -474,7 +474,7 @@ chmod +x "${HOME}/.local/bin/codex"'
   dpkg() { printf 'arm64\n'; }
   CURL_BODY=$'Package: docker-ce\nVersion: 5:24.0.2-1~ubuntu.18.04~bionic\nFilename: newest.deb\n\nPackage: docker-ce\nVersion: 18.06.3~ce~3-0~ubuntu\nFilename: legacy.deb\n\nPackage: docker-ce\nVersion: 5:24.0.1-1~ubuntu.18.04~bionic\nFilename: previous.deb\n'
   use_fake_curl
-  run docker::versions
+  run docker.versions
   [ "${status}" -eq 0 ]
   [ "${output}" = $'18.06.3~ce~3-0~ubuntu\n5:24.0.1-1~ubuntu.18.04~bionic\n5:24.0.2-1~ubuntu.18.04~bionic' ]
 }
@@ -487,12 +487,12 @@ chmod +x "${HOME}/.local/bin/codex"'
   dnf() { :; }
   systemctl() { :; }
   usermod() { :; }
-  run docker::install
+  run docker.install
   [ "${status}" -eq 0 ]
   grep -Fqx 'dnf upgrade -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin' "${ROOT_LOG}"
 
   : >"${ROOT_LOG}"
-  run docker::install '3:29.8.0-1.fc43'
+  run docker.install '3:29.8.0-1.fc43'
   [ "${status}" -eq 0 ]
   ! grep -q '^dnf upgrade ' "${ROOT_LOG}"
 }
@@ -508,13 +508,13 @@ chmod +x "${HOME}/.local/bin/codex"'
   dpkg() { printf 'arm64\n'; }
   apt-cache() { :; }
   dpkg-query() { return 1; }
-  run docker::install
+  run docker.install
   [ "${status}" -eq 0 ]
   grep -Fqx 'env DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin' "${ROOT_LOG}"
   ! grep -q -- '--allow-downgrades' "${ROOT_LOG}"
 
   : >"${ROOT_LOG}"
-  run docker::install '5:29.8.0-1~ubuntu.22.04~jammy'
+  run docker.install '5:29.8.0-1~ubuntu.22.04~jammy'
   [ "${status}" -eq 0 ]
   grep -Fqx 'env DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades docker-ce=5:29.8.0-1~ubuntu.22.04~jammy docker-ce-cli=5:29.8.0-1~ubuntu.22.04~jammy containerd.io docker-buildx-plugin docker-compose-plugin' "${ROOT_LOG}"
 }
@@ -525,7 +525,7 @@ chmod +x "${HOME}/.local/bin/codex"'
   brew() { printf '%s\n' "$*" >>"${BREW_LOG}"; }
   colima() { return 1; }
   pgrep() { return 1; }
-  run --separate-stderr docker::install
+  run --separate-stderr docker.install
   [ "${status}" -eq 69 ]
   [[ "${stderr}" == *'Colima or Rancher Desktop'* ]]
   [ ! -e "${BREW_LOG}" ]
@@ -542,19 +542,19 @@ chmod +x "${HOME}/.local/bin/codex"'
     esac
   }
   COLIMA_STATUS=0
-  run colima::install
+  run colima.install
   [ "${status}" -eq 0 ]
   [ ! -e "${COLIMA_LOG}" ]
   COLIMA_STATUS=1
   sysctl() { printf '1\n'; }
-  run colima::install
+  run colima.install
   [ "${status}" -eq 0 ]
   [ "$(<"${COLIMA_LOG}")" = 'start' ]
 
   # Without Hypervisor.framework the VM cannot boot, so Colima is not started.
   : >"${COLIMA_LOG}"
   sysctl() { printf '0\n'; }
-  run --separate-stderr colima::install
+  run --separate-stderr colima.install
   [ "${status}" -eq 69 ]
   [[ "${stderr}" == *'Hypervisor.framework'* ]]
   [ ! -s "${COLIMA_LOG}" ]
@@ -572,10 +572,10 @@ chmod +x "${HOME}/.local/bin/codex"'
     printf '%s\n' "$*" >>"${BREW_LOG}"
   }
   open() { printf '%s\n' "$*" >>"${OPEN_LOG}"; }
-  run --separate-stderr rancher-desktop::install 1.19.0
+  run --separate-stderr rancher-desktop.install 1.19.0
   [ "${status}" -eq 69 ]
   [ ! -e "${BREW_LOG}" ]
-  run rancher-desktop::install
+  run rancher-desktop.install
   [ "${status}" -eq 0 ]
   [ "$(<"${BREW_LOG}")" = 'install --cask rancher' ]
   # open runs in the background, so wait briefly for its record.
@@ -590,7 +590,7 @@ chmod +x "${HOME}/.local/bin/codex"'
   # An open that waits for a first-launch confirmation does not block the install.
   open() { sleep 30; }
   SECONDS=0
-  run rancher-desktop::install
+  run rancher-desktop.install
   [ "${status}" -eq 0 ]
   [ "${SECONDS}" -lt 10 ]
 }
@@ -598,14 +598,14 @@ chmod +x "${HOME}/.local/bin/codex"'
 @test "Rancher Desktop refuses Ubuntu and Fedora releases that its packages do not support" {
   use_platform ubuntu 20.04 focal
   record_root_commands
-  run --separate-stderr rancher-desktop::install
+  run --separate-stderr rancher-desktop.install
   [ "${status}" -eq 69 ]
   [[ "${stderr}" == *'Rancher Desktop requires Ubuntu 22.04 or later.'* ]]
   [ ! -s "${ROOT_LOG}" ]
 
   # Its rdctl needs glibc 2.34, which Fedora 34 lacks.
   use_platform fedora 34
-  run --separate-stderr rancher-desktop::install
+  run --separate-stderr rancher-desktop.install
   [ "${status}" -eq 69 ]
   [[ "${stderr}" == *'Rancher Desktop requires Fedora 35 or later.'* ]]
   [ ! -s "${ROOT_LOG}" ]
@@ -614,13 +614,13 @@ chmod +x "${HOME}/.local/bin/codex"'
 @test "Rancher Desktop on Fedora uses the Fedora build and names the newest version" {
   use_platform fedora 44
   local write_log="${BATS_TEST_TMPDIR}/writes.log"
-  package::_dnf-register-repository() { printf '%s\n%s' "$1" "$2" >"${write_log}.repo"; }
-  package::_rpm-repository-versions() { printf '%s\n' "$1" >"${write_log}.query"; printf '1.23.1-3.1\n1.24.0-2.1\n'; }
-  package::_install-version() { printf '%s\n' "$*" >"${write_log}.install"; }
-  rancher-desktop::_start-linux() { :; }
-  [[ -w /dev/kvm ]] || package::_add-current-user-to-group() { :; }
+  _package.dnf-register-repository() { printf '%s\n%s' "$1" "$2" >"${write_log}.repo"; }
+  _package.rpm-repository-versions() { printf '%s\n' "$1" >"${write_log}.query"; printf '1.23.1-3.1\n1.24.0-2.1\n'; }
+  _package.install-version() { printf '%s\n' "$*" >"${write_log}.install"; }
+  _rancher-desktop.start-linux() { :; }
+  [[ -w /dev/kvm ]] || _package.add-current-user-to-group() { :; }
 
-  run rancher-desktop::install
+  run rancher-desktop.install
   [ "${status}" -eq 0 ]
   # The rpm repository is built for openSUSE and left Fedora with version 1.2.1.
   grep -Fqx 'baseurl=https://download.opensuse.org/repositories/isv:/Rancher:/stable/fedora/' "${write_log}.repo"
@@ -635,10 +635,10 @@ chmod +x "${HOME}/.local/bin/codex"'
   apt-cache() {
     printf ' nodejs | 18.19.1+dfsg-6ubuntu5 | http://archive.ubuntu.com noble/universe amd64 Packages\n'
   }
-  run node::versions os
+  run node.versions os
   [ "${status}" -eq 0 ]
   [ "${output}" = '18.19.1' ]
-  run --separate-stderr node::install 22.0.0 os
+  run --separate-stderr node.install 22.0.0 os
   [ "${status}" -eq 69 ]
   [[ "${stderr}" == *'Node.js 22.0.0 is unavailable from os.'* ]]
   [ ! -s "${ROOT_LOG}" ]
@@ -649,7 +649,7 @@ chmod +x "${HOME}/.local/bin/codex"'
   CURL_BODY='[{"version":"v16.20.2","files":["linux-arm64"]},{"version":"v18.19.1","files":["linux-x64"]},{"version":"v17.0.0-rc1","files":["linux-arm64"]}]'
   curl() { printf '%s' "$CURL_BODY"; }
   uname() { [[ "$1" == '-m' ]] && printf 'aarch64\n'; }
-  run node::versions official
+  run node.versions official
   [ "${status}" -eq 0 ]
   [ "${output}" = '16.20.2' ]
 }
@@ -658,11 +658,11 @@ chmod +x "${HOME}/.local/bin/codex"'
   use_platform fedora 44
   record_root_commands
   dnf() { :; }
-  package::_versions() { printf '1.26.1-1.fc44\n1.26.10-1.fc44\n'; }
-  run go::install 1.26.1
+  _package.versions() { printf '1.26.1-1.fc44\n1.26.10-1.fc44\n'; }
+  run go.install 1.26.1
   [ "${status}" -eq 0 ]
   # dnf install keeps an installed older golang, so an omitted version names the newest.
-  run go::install
+  run go.install
   [ "${status}" -eq 0 ]
   [ "$(<"${ROOT_LOG}")" = $'dnf install -y golang-1.26.1\ndnf install -y golang-1.26.10' ]
 }
@@ -670,22 +670,22 @@ chmod +x "${HOME}/.local/bin/codex"'
 @test "Go on Ubuntu selects a versioned package through /usr/local/bin and removes only its own links" {
   use_platform ubuntu 24.04 noble
   record_root_commands
-  go::repository::register() { :; }
-  package::_install() { printf 'install %s\n' "$*" >>"${ROOT_LOG}"; }
+  go.repository.register() { :; }
+  _package.install() { printf 'install %s\n' "$*" >>"${ROOT_LOG}"; }
   readlink() { printf '/usr/lib/go-1.25/bin/%s\n' "${1##*/}"; }
 
-  run go::install 1.25
+  run go.install 1.25
   [ "${status}" -eq 69 ]
   [[ "${output}" == *'golang-1.25 did not install /usr/lib/go-1.25/bin/go.'* ]]
 
   : >"${ROOT_LOG}"
-  run go::install
+  run go.install
   [ "${status}" -eq 0 ]
   [ "$(<"${ROOT_LOG}")" = $'install golang\nrm -f -- /usr/local/bin/go\nrm -f -- /usr/local/bin/gofmt' ]
 
   : >"${ROOT_LOG}"
   readlink() { printf '/opt/custom/bin/%s\n' "${1##*/}"; }
-  run go::install
+  run go.install
   [ "${status}" -eq 0 ]
   [ "$(<"${ROOT_LOG}")" = 'install golang' ]
 }
@@ -707,15 +707,15 @@ chmod +x "${HOME}/.local/bin/codex"'
     esac
   }
   dpkg-query() { printf '2.39-0ubuntu8'; }
-  apt::deb::install-from-url() { printf '%s\n' "$*"; }
-  run microsoft-edge::versions
+  apt.deb.install-from-url() { printf '%s\n' "$*"; }
+  run microsoft-edge.versions
   [ "${output}" = $'153.0.1-1\n154.0.2-1' ]
-  run microsoft-edge::install
+  run microsoft-edge.install
   [ "${status}" -eq 0 ]
   [ "${output}" = 'https://packages.microsoft.com/repos/edge/pool/main/m/edge_154.0.2-1_amd64.deb' ]
-  run microsoft-edge::install 153.0.1-1
+  run microsoft-edge.install 153.0.1-1
   [ "${output}" = 'https://packages.microsoft.com/repos/edge/pool/main/m/edge_153.0.1-1_amd64.deb' ]
-  run --separate-stderr microsoft-edge::install 155.0.1-1
+  run --separate-stderr microsoft-edge.install 155.0.1-1
   [ "${status}" -eq 69 ]
 }
 
@@ -724,7 +724,7 @@ chmod +x "${HOME}/.local/bin/codex"'
   record_root_commands
   uname() { [[ "$1" == '-m' ]] && printf 'aarch64\n'; }
   dnf() { :; }
-  run --separate-stderr microsoft-edge::install
+  run --separate-stderr microsoft-edge.install
   [ "${status}" -eq 69 ]
   [[ "${stderr}" == *'No Microsoft Edge version can run on this system.'* ]]
   [ ! -s "${ROOT_LOG}" ]
@@ -742,7 +742,7 @@ chmod +x "${HOME}/.local/bin/codex"'
         ;;
     esac
   }
-  run apt::package::latest openjdk-
+  run apt.package.latest openjdk-
   [ "${status}" -eq 0 ]
   [ "${output}" = 'openjdk-21-jdk' ]
 }
@@ -755,7 +755,7 @@ chmod +x "${HOME}/.local/bin/codex"'
   udevadm() { :; }
   local hwdb="${BATS_TEST_TMPDIR}/root/etc/udev/hwdb.d/90-bashstock-ime-keys.hwdb"
 
-  run keyboard::setup-ime-keys
+  run keyboard.setup-ime-keys
   [ "${status}" -eq 0 ]
   [ "$(sed -n 2p "${hwdb}")" = 'evdev:input:b0003v*p*' ]
   grep -Fqx ' KEYBOARD_KEY_7008a=henkan' "${hwdb}"
@@ -765,7 +765,7 @@ chmod +x "${HOME}/.local/bin/codex"'
   [ "$(grep -c '^ KEYBOARD_KEY_' "${hwdb}")" -eq 4 ]
   [ "$(<"${ROOT_LOG}")" = $'systemd-hwdb update\nudevadm trigger --subsystem-match=input --action=change' ]
 
-  run keyboard::setup-ime-keys 046d c52b
+  run keyboard.setup-ime-keys 046d c52b
   [ "${status}" -eq 0 ]
   [ "$(sed -n 2p "${hwdb}")" = 'evdev:input:b0003v046DpC52B*' ]
   grep -Fqx ' KEYBOARD_KEY_7008a=henkan' "${hwdb}"
@@ -773,11 +773,11 @@ chmod +x "${HOME}/.local/bin/codex"'
   grep -Fqx ' KEYBOARD_KEY_70090=henkan' "${hwdb}"
   grep -Fqx ' KEYBOARD_KEY_70091=muhenkan' "${hwdb}"
 
-  run keyboard::setup-ime-keys 46d c52b
+  run keyboard.setup-ime-keys 46d c52b
   [ "${status}" -eq 64 ]
-  run keyboard::setup-ime-keys 046d0 c52b
+  run keyboard.setup-ime-keys 046d0 c52b
   [ "${status}" -eq 64 ]
-  run keyboard::setup-ime-keys 046d
+  run keyboard.setup-ime-keys 046d
   [ "${status}" -eq 64 ]
 }
 
@@ -812,13 +812,13 @@ gsettings_value() {
   gsettings set "${item}:${base}/terminal/" command "'gnome-terminal'"
   gsettings set "${item}:${base}/terminal/" binding "'<Ctrl><Alt>t'"
 
-  run gnome::keybinding::set-custom custom101 'Enable IME (Mozc)' "ibus engine 'mozc-jp'" '<Alt>a'
+  run gnome.keybinding.set-custom custom101 'Enable IME (Mozc)' "ibus engine 'mozc-jp'" '<Alt>a'
   [ "${status}" -eq 0 ]
   [ "$(gsettings_value "${schema}" custom-keybindings)" = "['${base}/terminal/', '${base}/custom101/']" ]
   [ "$(gsettings_value "${item}:${base}/custom101/" command)" = "'ibus engine \\'mozc-jp\\''" ]
   [ "$(gsettings_value "${item}:${base}/custom101/" binding)" = "'<Alt>a'" ]
 
-  run gnome::keybinding::set-custom custom101 'Enable IME (Mozc)' "ibus engine 'mozc-jp'" '<Alt>a'
+  run gnome.keybinding.set-custom custom101 'Enable IME (Mozc)' "ibus engine 'mozc-jp'" '<Alt>a'
   [ "$(gsettings_value "${schema}" custom-keybindings)" = "['${base}/terminal/', '${base}/custom101/']" ]
 }
 
@@ -833,14 +833,14 @@ gsettings_value() {
   gsettings set "${item}:${base}/terminal/" name "'Terminal'"
   gsettings set "${item}:${base}/terminal/" command "'gnome-terminal'"
   gsettings set "${item}:${base}/terminal/" binding "'<Ctrl><Alt>t'"
-  run gnome::input-source::set-shortcuts
+  run gnome.input-source.set-shortcuts
   [ "${status}" -eq 0 ]
   local expected="['${base}/terminal/', '${base}/custom100/', '${base}/custom101/', '${base}/bashstock-ime-off/', '${base}/bashstock-ime-on/']"
 
   local platform=''
   for platform in ubuntu fedora; do
     use_platform "${platform}"
-    run gnome::input-source::setup-ime-keys
+    run gnome.input-source.setup-ime-keys
     [ "${status}" -eq 0 ]
     [ "$(gsettings_value "${schema}" custom-keybindings)" = "${expected}" ]
     [ "$(gsettings_value "${item}:${base}/bashstock-ime-off/" binding)" = "'Muhenkan'" ]
@@ -857,18 +857,18 @@ gsettings_value() {
   use_platform ubuntu 24.04 noble
   use_fake_gsettings
   ibus() { :; }
-  run gnome::input-source::setup-ime-keys unexpected
+  run gnome.input-source.setup-ime-keys unexpected
   [ "${status}" -eq 64 ]
 
   use_platform darwin
-  run gnome::input-source::setup-ime-keys
+  run gnome.input-source.setup-ime-keys
   [ "${status}" -eq 69 ]
 
   use_platform ubuntu
   local missing=''
-  command::require() { [[ "$1" != "${missing}" ]] || return 69; }
+  command.require() { [[ "$1" != "${missing}" ]] || return 69; }
   for missing in gsettings ibus; do
-    run gnome::input-source::setup-ime-keys
+    run gnome.input-source.setup-ime-keys
     [ "${status}" -eq 69 ]
   done
   [ -z "$(find "${GSETTINGS_STORE}" -type f -print)" ]
@@ -885,29 +885,29 @@ gsettings_value() {
       set) return 1 ;;
     esac
   }
-  run gnome::input-source::setup-ime-keys
+  run gnome.input-source.setup-ime-keys
   [ "${status}" -eq 74 ]
 }
 
 @test "Mozc becomes the first input source while the keyboard layout is kept" {
   use_fake_gsettings
   gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'jp'), ('ibus', 'mozc-jp')]"
-  run gnome::input-source::set-mozc-first
+  run gnome.input-source.set-mozc-first
   [ "${status}" -eq 0 ]
   [ "$(gsettings_value org.gnome.desktop.input-sources sources)" = "[('ibus', 'mozc-jp'), ('xkb', 'jp')]" ]
 
   gsettings set org.gnome.desktop.input-sources sources "[('ibus', 'mozc-jp')]"
-  run gnome::input-source::set-mozc-first
+  run gnome.input-source.set-mozc-first
   [ "${status}" -eq 1 ]
   [ "$(gsettings_value org.gnome.desktop.input-sources sources)" = "[('ibus', 'mozc-jp')]" ]
 }
 
 @test "automatic screen lock is disabled for Linux GNOME and macOS users" {
   local operating_system='linux'
-  system::operating-system() { printf '%s\n' "${operating_system}"; }
+  system.operating-system() { printf '%s\n' "${operating_system}"; }
   use_fake_gsettings
 
-  run system::disable-auto-lock
+  run system.disable-auto-lock
   [ "${status}" -eq 0 ]
   [ "$(gsettings_value org.gnome.desktop.screensaver lock-enabled)" = 'false' ]
 
@@ -918,38 +918,38 @@ gsettings_value() {
       printf '2026-11-01 12:00:00.000 sysadminctl[1:1] %s\n' "${fake_lock_status}" >&2
     fi
   }
-  command::require() { [[ "$1" == gsettings || "$1" == sysadminctl ]]; }
+  command.require() { [[ "$1" == gsettings || "$1" == sysadminctl ]]; }
   operating_system='darwin'
   fake_lock_status='screenLock is off'
-  run system::disable-auto-lock
+  run system.disable-auto-lock
   [ "${status}" -eq 0 ]
   [ "$(<"${sysadminctl_log}")" = $'-screenLock off -password -\n-screenLock status' ]
 
   # A refused password leaves the delay in place even when sysadminctl exits 0.
   fake_lock_status=''
-  run system::disable-auto-lock
+  run system.disable-auto-lock
   [ "${status}" -eq 74 ]
   fake_lock_status='Error: unrecognized option'
-  run system::disable-auto-lock
+  run system.disable-auto-lock
   [ "${status}" -eq 74 ]
 
   operating_system='fedora'
-  run system::disable-auto-lock
+  run system.disable-auto-lock
   [ "${status}" -eq 69 ]
-  run system::disable-auto-lock unexpected
+  run system.disable-auto-lock unexpected
   [ "${status}" -eq 64 ]
 }
 
 @test "automatic screen lock is enabled with a delay for Linux GNOME and macOS users" {
   local operating_system='linux'
-  system::operating-system() { printf '%s\n' "${operating_system}"; }
+  system.operating-system() { printf '%s\n' "${operating_system}"; }
   use_fake_gsettings
 
-  run system::enable-auto-lock
+  run system.enable-auto-lock
   [ "${status}" -eq 0 ]
   [ "$(gsettings_value org.gnome.desktop.screensaver lock-enabled)" = 'true' ]
   [ "$(gsettings_value org.gnome.desktop.screensaver lock-delay)" = '0' ]
-  run system::enable-auto-lock 060
+  run system.enable-auto-lock 060
   [ "${status}" -eq 0 ]
   [ "$(gsettings_value org.gnome.desktop.screensaver lock-delay)" = '60' ]
 
@@ -960,44 +960,44 @@ gsettings_value() {
       printf '2026-11-01 12:00:00.000 sysadminctl[1:1] %s\n' "${fake_lock_status}" >&2
     fi
   }
-  command::require() { [[ "$1" == gsettings || "$1" == sysadminctl ]]; }
+  command.require() { [[ "$1" == gsettings || "$1" == sysadminctl ]]; }
   operating_system='darwin'
   fake_lock_status='screenLock delay is immediate'
-  run system::enable-auto-lock
+  run system.enable-auto-lock
   [ "${status}" -eq 0 ]
   fake_lock_status='screenLock delay is 300 seconds'
-  run system::enable-auto-lock 300
+  run system.enable-auto-lock 300
   [ "${status}" -eq 0 ]
   [ "$(<"${sysadminctl_log}")" = $'-screenLock immediate -password -\n-screenLock status\n-screenLock 300 -password -\n-screenLock status' ]
 
   # A refused password leaves the previous setting even when sysadminctl exits 0.
   fake_lock_status='screenLock is off'
-  run system::enable-auto-lock
+  run system.enable-auto-lock
   [ "${status}" -eq 74 ]
   fake_lock_status='screenLock delay is 300 seconds'
-  run system::enable-auto-lock 60
+  run system.enable-auto-lock 60
   [ "${status}" -eq 74 ]
 
-  run system::enable-auto-lock -1
+  run system.enable-auto-lock -1
   [ "${status}" -eq 64 ]
-  run system::enable-auto-lock 5s
+  run system.enable-auto-lock 5s
   [ "${status}" -eq 64 ]
-  run system::enable-auto-lock 1 2
+  run system.enable-auto-lock 1 2
   [ "${status}" -eq 64 ]
   operating_system='fedora'
-  run system::enable-auto-lock
+  run system.enable-auto-lock
   [ "${status}" -eq 69 ]
 }
 
 @test "Flutter installation preserves existing SDK changes in a retrievable stash" {
   use_platform darwin
-  flutter::dependencies::install() { :; }
+  flutter.dependencies.install() { :; }
   export HOME="${BATS_TEST_TMPDIR}/home"
   mkdir -p "${HOME}"
   local directory="${BATS_TEST_TMPDIR}/flutter"
   mkdir -p "${directory}"
   printf 'keep' >"${directory}/notes.txt"
-  run --separate-stderr flutter::install 3.35.0 "${directory}"
+  run --separate-stderr flutter.install 3.35.0 "${directory}"
   [ "${status}" -eq 73 ]
   [ "$(<"${directory}/notes.txt")" = 'keep' ]
 
@@ -1015,7 +1015,7 @@ gsettings_value() {
   git -C "${directory}" remote add origin "${BATS_TEST_TMPDIR}/remote.git"
   printf 'change\n' >>"${directory}/bin/flutter"
   printf 'untracked\n' >"${directory}/untracked.txt"
-  run flutter::install 3.35.0 "${directory}"
+  run flutter.install 3.35.0 "${directory}"
   [ "${status}" -eq 0 ]
   [ -x "${directory}/bin/flutter" ]
   [ ! -e "${directory}/untracked.txt" ]
@@ -1030,20 +1030,20 @@ gsettings_value() {
     [[ "$1" == pkgnames ]] || return 1
     printf 'libstdc++-7-dev\nlibstdc++-6-dev\n'
   }
-  run flutter::dependencies::install
+  run flutter.dependencies.install
   [ "${status}" -eq 0 ]
   grep -Fq 'libstdc++-7-dev' "${ROOT_LOG}"
   ! grep -Fq 'libstdc++-12-dev' "${ROOT_LOG}"
 }
 
 @test "JDK latest ignores unrelated package names with pipefail enabled" {
-  platform::_identifier() { printf 'ubuntu\n'; }
+  _platform.identifier() { printf 'ubuntu\n'; }
   apt-cache() {
     [[ "$*" == 'pkgnames openjdk-' ]] || return 64
     printf 'openjdk-17-jdk\nopenjdk-21-jdk\nopenjdk-21-source\n'
   }
   set -o pipefail
-  run jdk::version::latest
+  run jdk.version.latest
   [ "$status" -eq 0 ]
   [ "$output" = 21 ]
 }
@@ -1056,7 +1056,7 @@ gsettings_value() {
     cp -- "${last}" "${PARAMETERS}"
     printf '%s\n' "$*" >"${PARAMETERS}.args"
   }
-  run gpg::key::generate --user-id 'Test User <test@example.invalid>' --expires 1y
+  run gpg.key.generate --user-id 'Test User <test@example.invalid>' --expires 1y
   [ "${status}" -eq 0 ]
   grep -Fqx 'Key-Type: eddsa' "${PARAMETERS}"
   grep -Fqx 'Subkey-Curve: cv25519' "${PARAMETERS}"
@@ -1065,20 +1065,20 @@ gsettings_value() {
   grep -Fqx 'Expire-Date: 1y' "${PARAMETERS}"
   grep -Fqx '%no-protection' "${PARAMETERS}"
 
-  run gpg::key::generate --user-id 'Test User <test@example.invalid>' --passphrase-fd 3
+  run gpg.key.generate --user-id 'Test User <test@example.invalid>' --passphrase-fd 3
   [ "${status}" -eq 0 ]
   ! grep -Fq '%no-protection' "${PARAMETERS}"
   [[ "$(<"${PARAMETERS}.args")" == '--batch --pinentry-mode loopback --passphrase-fd 3 --generate-key '* ]]
 
-  run gpg::key::generate --algorithm dsa --user-id 'Test <test@example.invalid>'
+  run gpg.key.generate --algorithm dsa --user-id 'Test <test@example.invalid>'
   [ "${status}" -eq 64 ]
-  run gpg::key::generate --pinentry --passphrase-fd 3 --user-id 'Test <test@example.invalid>'
+  run gpg.key.generate --pinentry --passphrase-fd 3 --user-id 'Test <test@example.invalid>'
   [ "${status}" -eq 64 ]
-  run gpg::key::generate --user-id 'no email'
+  run gpg.key.generate --user-id 'no email'
   [ "${status}" -eq 64 ]
   # A newline would add a directive such as %no-protection to the parameters.
   rm -f "${PARAMETERS}"
-  run gpg::key::generate --user-id $'Test\n%no-protection <test@example.invalid>' --passphrase-fd 3
+  run gpg.key.generate --user-id $'Test\n%no-protection <test@example.invalid>' --passphrase-fd 3
   [ "${status}" -eq 64 ]
   [ ! -e "${PARAMETERS}" ]
 }
@@ -1091,7 +1091,7 @@ gsettings_value() {
   IBUS_LOG="${BATS_TEST_TMPDIR}/ibus.log"
   ibus-daemon() { printf 'ibus-daemon %s\n' "$*" >>"${IBUS_LOG}"; }
   ibus() { printf 'ibus %s\n' "$*" >>"${IBUS_LOG}"; }
-  run mozc::ibus::set-hiragana-as-default
+  run mozc.ibus.set-hiragana-as-default
   [ "${status}" -eq 0 ]
   # IBus reads the engine list again only after its cache is rewritten.
   [ "$(<"${IBUS_LOG}")" = $'ibus write-cache\nibus-daemon -rd' ]
@@ -1101,7 +1101,7 @@ gsettings_value() {
   local form=''
   for form in 'engines: {' 'engines <' 'engines: <'; do
     printf '%s\n  layout : "custom"\n%s\nactive_on_launch: False\n' "${form}" "$([[ "${form}" == *'<' ]] && printf '>' || printf '}')" >"${file}"
-    run mozc::ibus::set-hiragana-as-default
+    run mozc.ibus.set-hiragana-as-default
     [ "${status}" -eq 0 ]
     grep -Fqx '  layout : "custom"' "${file}"
     grep -Fqx 'active_on_launch: True' "${file}"
@@ -1113,7 +1113,7 @@ gsettings_value() {
   for content in '' 'active_on_launch: True'; do
     rm -f "${file}"
     [[ -z "${content}" ]] || printf '%s\n' "${content}" >"${file}"
-    run mozc::ibus::set-hiragana-as-default
+    run mozc.ibus.set-hiragana-as-default
     [ "${status}" -eq 0 ]
     grep -Fqx '  name : "mozc-jp"' "${file}"
     [ "$(grep -c '^active_on_launch:' "${file}")" -eq 1 ]
@@ -1131,7 +1131,7 @@ gsettings_value() {
   chmod +x "${engine}"
 
   printf '<component><engines exec="%s --xml" /></component>\n' "${engine}" >"${component}"
-  run mozc::ibus::_ensure-engines "${file}" "${component}"
+  run _mozc.ibus.ensure-engines "${file}" "${component}"
   [ "${status}" -eq 0 ]
   [ "$(<"${engine}.args")" = --xml ]
   grep -Fqx '  name : "from-mozc"' "${file}"
@@ -1139,7 +1139,7 @@ gsettings_value() {
   # Mozc 2.25 on Fedora 34 fixes its engines in the component and would wait if run with --xml.
   rm -f "${file}" "${engine}.args"
   printf '<component><engines><engine><name>mozc-jp</name></engine></engines></component>\n' >"${component}"
-  run mozc::ibus::_ensure-engines "${file}" "${component}"
+  run _mozc.ibus.ensure-engines "${file}" "${component}"
   [ "${status}" -eq 0 ]
   [ ! -e "${engine}.args" ]
   grep -Fqx '  name : "mozc-jp"' "${file}"
@@ -1151,13 +1151,13 @@ gsettings_value() {
   : >"${directory}/aws_vpn_client_1.log"
   : >"${directory}/nested/aws_vpn_client_2.log"
   : >"${directory}/ovpn_aws_vpn_client_3.log"
-  aws::vpn-client::log::files "${directory}" >"${BATS_TEST_TMPDIR}/files"
+  aws.vpn-client.log.files "${directory}" >"${BATS_TEST_TMPDIR}/files"
   [ "$(tr '\0' '\n' <"${BATS_TEST_TMPDIR}/files" | sort)" = "$(printf '%s\n%s' "${directory}/aws_vpn_client_1.log" "${directory}/nested/aws_vpn_client_2.log")" ]
-  run aws::vpn-client::log::clear "${directory}"
+  run aws.vpn-client.log.clear "${directory}"
   [ "${status}" -eq 0 ]
   [ -d "${directory}/nested" ]
   [ -z "$(find "${directory}" -type f)" ]
-  run aws::vpn-client::log::files "${BATS_TEST_TMPDIR}/missing"
+  run aws.vpn-client.log.files "${BATS_TEST_TMPDIR}/missing"
   [ "${status}" -eq 66 ]
 }
 
@@ -1167,13 +1167,13 @@ gsettings_value() {
   mkdir -p "${CHROME_PROFILE}"
   printf '{}' >"${CHROME_PROFILE}/Preferences"
   printf '{"roots":{}}' >"${CHROME_PROFILE}/Bookmarks"
-  chrome::profile::find-by-email() { printf '%s\n' "${CHROME_PROFILE}"; }
-  run chrome::profile::export-user-data-by-email user@example.invalid "${destination}"
+  chrome.profile.find-by-email() { printf '%s\n' "${CHROME_PROFILE}"; }
+  run chrome.profile.export-user-data-by-email user@example.invalid "${destination}"
   [ "${status}" -eq 0 ]
   [ "$(<"${destination}/Profile 1_preferences.json")" = '{}' ]
   [ "$(<"${destination}/Profile 1_bookmarks.json")" = '{"roots":{}}' ]
-  chrome::profile::find-by-email() { :; }
-  run chrome::profile::export-user-data-by-email user@example.invalid "${destination}"
+  chrome.profile.find-by-email() { :; }
+  run chrome.profile.export-user-data-by-email user@example.invalid "${destination}"
   [ "${status}" -eq 1 ]
 }
 
@@ -1187,18 +1187,18 @@ gsettings_value() {
   }
   xcode-select() { :; }
   pkgutil() { :; }
-  run xcode::command-line-tools::upgrade
+  run xcode.command-line-tools.upgrade
   [ "${status}" -eq 0 ]
   [ "$(<"${ROOT_LOG}")" = 'softwareupdate --install Command Line Tools for Xcode-16.10' ]
 
   softwareupdate() { printf 'No new software available.\n'; }
   : >"${ROOT_LOG}"
-  run --separate-stderr xcode::command-line-tools::upgrade
+  run --separate-stderr xcode.command-line-tools.upgrade
   [ "${status}" -eq 0 ]
   [ ! -s "${ROOT_LOG}" ]
   # A catalog that cannot be read is an error, not "no update".
   softwareupdate() { printf 'Cannot reach the catalog.\n'; return 1; }
-  run --separate-stderr xcode::command-line-tools::upgrade
+  run --separate-stderr xcode.command-line-tools.upgrade
   [ "${status}" -eq 74 ]
   [ ! -s "${ROOT_LOG}" ]
 }
@@ -1207,10 +1207,10 @@ gsettings_value() {
   use_platform ubuntu 24.04 noble
   HOME="${BATS_TEST_TMPDIR}/home"
   mkdir -p "${HOME}"
-  env::dotenv::register() { :; }
-  shell::editor::set-default() { return 74; }
-  shell::completion::enable-ignore-case() { printf 'unexpected\n'; }
-  run --separate-stderr ubuntu::setup
+  env.dotenv.register() { :; }
+  shell.editor.set-default() { return 74; }
+  shell.completion.enable-ignore-case() { printf 'unexpected\n'; }
+  run --separate-stderr ubuntu.setup
   [ "${status}" -eq 74 ]
   [ -f "${HOME}/.env" ]
   # ~/.env holds secrets, so a new one is private whatever the umask is.
@@ -1219,7 +1219,7 @@ gsettings_value() {
     *) [ "$(stat -c '%a' "${HOME}/.env")" = 600 ] ;;
   esac
   [ -z "${output}" ]
-  [[ "${stderr}" == *'shell::editor::set-default'* ]]
+  [[ "${stderr}" == *'shell.editor.set-default'* ]]
 }
 
 @test "Ubuntu setup leaves external tools for the optional follow-up function" {
@@ -1228,40 +1228,40 @@ gsettings_value() {
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
   local installed=''
   mkdir -p "${HOME}"
-  command::exists() { [[ " ${installed} " == *" $1 "* ]]; }
-  command::_run-step() {
+  command.exists() { [[ " ${installed} " == *" $1 "* ]]; }
+  _command.run-step() {
     printf '%s\n' "$*" >>"${STEP_LOG}"
-    if [[ "$1" == package::_install ]]; then
+    if [[ "$1" == _package.install ]]; then
       shift
-      package::_install "$@"
+      _package.install "$@"
     fi
   }
-  package::_install() {
-    printf 'package::_install %s\n' "$*" >>"${STEP_LOG}"
+  _package.install() {
+    printf '_package.install %s\n' "$*" >>"${STEP_LOG}"
     local package=''
     for package in "$@"; do installed+=" ${package}"; done
   }
-  gh::install() {
-    printf 'gh::install\n' >>"${STEP_LOG}"
+  gh.install() {
+    printf 'gh.install\n' >>"${STEP_LOG}"
     installed+=' gh'
   }
-  git-credential-manager::install() { installed+=' git-credential-manager'; }
+  git-credential-manager.install() { installed+=' git-credential-manager'; }
 
-  run ubuntu::setup
+  run ubuntu.setup
   [ "${status}" -eq 0 ]
-  [ "$(sed -n '1p' "${STEP_LOG}")" = 'package::_install curl git python3' ]
-  [ "$(sed -n '2p' "${STEP_LOG}")" = 'package::_install curl git python3' ]
-  grep -Fqx 'git::config::setup' "${STEP_LOG}"
-  ! grep -Fq 'package::_install gnupg' "${STEP_LOG}"
-  ! grep -Fq 'gh::install' "${STEP_LOG}"
-  ! grep -Fq 'git-credential-manager::install' "${STEP_LOG}"
-  ! grep -Fq 'git::config::use-credential-manager' "${STEP_LOG}"
+  [ "$(sed -n '1p' "${STEP_LOG}")" = '_package.install curl git python3' ]
+  [ "$(sed -n '2p' "${STEP_LOG}")" = '_package.install curl git python3' ]
+  grep -Fqx 'git.config.setup' "${STEP_LOG}"
+  ! grep -Fq '_package.install gnupg' "${STEP_LOG}"
+  ! grep -Fq 'gh.install' "${STEP_LOG}"
+  ! grep -Fq 'git-credential-manager.install' "${STEP_LOG}"
+  ! grep -Fq 'git.config.use-credential-manager' "${STEP_LOG}"
 
-  run ubuntu::setup-external
+  run ubuntu.setup-external
   [ "${status}" -eq 0 ]
-  grep -Fqx 'package::_install gnupg' "${STEP_LOG}"
-  grep -Fqx 'gh::install' "${STEP_LOG}"
-  [ "$(tail -n 1 "${STEP_LOG}")" = 'git::config::use-credential-manager' ]
+  grep -Fqx '_package.install gnupg' "${STEP_LOG}"
+  grep -Fqx 'gh.install' "${STEP_LOG}"
+  [ "$(tail -n 1 "${STEP_LOG}")" = 'git.config.use-credential-manager' ]
 }
 
 @test "Fedora setup leaves external tools for the optional follow-up function" {
@@ -1270,44 +1270,44 @@ gsettings_value() {
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
   local installed='curl git python3'
   mkdir -p "${HOME}"
-  command::exists() { [[ " ${installed} " == *" $1 "* ]]; }
-  command::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
-  gh::install() { printf 'gh::install\n' >>"${STEP_LOG}"; }
+  command.exists() { [[ " ${installed} " == *" $1 "* ]]; }
+  _command.run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+  gh.install() { printf 'gh.install\n' >>"${STEP_LOG}"; }
 
-  run fedora::setup
+  run fedora.setup
   [ "${status}" -eq 0 ]
-  ! grep -Fq 'package::_install python3' "${STEP_LOG}"
-  grep -Fqx 'git::config::setup' "${STEP_LOG}"
-  ! grep -Fq 'git::config::use-credential-manager' "${STEP_LOG}"
-  ! grep -Fq 'package::_install gnupg2' "${STEP_LOG}"
-  ! grep -Fq 'git-credential-manager::install' "${STEP_LOG}"
+  ! grep -Fq '_package.install python3' "${STEP_LOG}"
+  grep -Fqx 'git.config.setup' "${STEP_LOG}"
+  ! grep -Fq 'git.config.use-credential-manager' "${STEP_LOG}"
+  ! grep -Fq '_package.install gnupg2' "${STEP_LOG}"
+  ! grep -Fq 'git-credential-manager.install' "${STEP_LOG}"
   case "$(uname -s)" in
     Darwin) [ "$(stat -f '%Lp' "${HOME}/.env")" = 600 ] ;;
     *) [ "$(stat -c '%a' "${HOME}/.env")" = 600 ] ;;
   esac
 
-  run fedora::setup-external
+  run fedora.setup-external
   [ "${status}" -eq 0 ]
-  grep -Fqx 'package::_install gnupg2' "${STEP_LOG}"
-  [ "$(sed -n '$p' "${STEP_LOG}")" = 'git::config::use-credential-manager' ]
+  grep -Fqx '_package.install gnupg2' "${STEP_LOG}"
+  [ "$(sed -n '$p' "${STEP_LOG}")" = 'git.config.use-credential-manager' ]
 
   use_platform ubuntu 24.04 noble
-  run --separate-stderr fedora::setup
+  run --separate-stderr fedora.setup
   [ "${status}" -eq 69 ]
-  run --separate-stderr fedora::setup-external
+  run --separate-stderr fedora.setup-external
   [ "${status}" -eq 69 ]
 }
 
 @test "IBus Mozc upgrade installs only a missing or older version on Ubuntu" {
   use_platform ubuntu 24.04 noble
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
-  mozc::ibus::install() { printf 'mozc::ibus::install %s\n' "$*" >>"${STEP_LOG}"; }
-  mozc::ibus::versions() { printf '%s\n' '2.26.4220.100+dfsg-5.2' '2.28.5160.102+dfsg-0ubuntu0.22.04.1'; }
+  mozc.ibus.install() { printf 'mozc.ibus.install %s\n' "$*" >>"${STEP_LOG}"; }
+  mozc.ibus.versions() { printf '%s\n' '2.26.4220.100+dfsg-5.2' '2.28.5160.102+dfsg-0ubuntu0.22.04.1'; }
 
   dpkg-query() { return 1; }
-  run mozc::ibus::upgrade
+  run mozc.ibus.upgrade
   [ "${status}" -eq 0 ]
-  [ "$(<"${STEP_LOG}")" = 'mozc::ibus::install 2.28.5160.102+dfsg-0ubuntu0.22.04.1' ]
+  [ "$(<"${STEP_LOG}")" = 'mozc.ibus.install 2.28.5160.102+dfsg-0ubuntu0.22.04.1' ]
 
   : >"${STEP_LOG}"
   dpkg-query() { printf 'install ok installed\t2.26.4220.100+dfsg-5.2'; }
@@ -1315,27 +1315,27 @@ gsettings_value() {
     [[ "$1" == '--compare-versions' && "$2" == '2.28.5160.102+dfsg-0ubuntu0.22.04.1' &&
       "$3" == ge && "$4" == '2.28.5160.102+dfsg-0ubuntu0.22.04.1' ]]
   }
-  run mozc::ibus::upgrade
+  run mozc.ibus.upgrade
   [ "${status}" -eq 0 ]
-  [ "$(<"${STEP_LOG}")" = 'mozc::ibus::install 2.28.5160.102+dfsg-0ubuntu0.22.04.1' ]
+  [ "$(<"${STEP_LOG}")" = 'mozc.ibus.install 2.28.5160.102+dfsg-0ubuntu0.22.04.1' ]
 
   : >"${STEP_LOG}"
   dpkg-query() { printf 'install ok installed\t2.28.5160.102+dfsg-0ubuntu0.22.04.1'; }
-  run mozc::ibus::upgrade
+  run mozc.ibus.upgrade
   [ "${status}" -eq 0 ]
   [ ! -s "${STEP_LOG}" ]
 
-  mozc::ibus::versions() { :; }
-  run --separate-stderr mozc::ibus::upgrade
+  mozc.ibus.versions() { :; }
+  run --separate-stderr mozc.ibus.upgrade
   [ "${status}" -eq 69 ]
   [[ "${stderr}" == *'no IBus Mozc version'* ]]
   [ ! -s "${STEP_LOG}" ]
 
-  run mozc::ibus::upgrade extra
+  run mozc.ibus.upgrade extra
   [ "${status}" -eq 64 ]
 
   use_platform fedora 40
-  run --separate-stderr mozc::ibus::upgrade
+  run --separate-stderr mozc.ibus.upgrade
   [ "${status}" -eq 69 ]
   [ ! -s "${STEP_LOG}" ]
 }
@@ -1344,40 +1344,40 @@ gsettings_value() {
   use_platform ubuntu 24.04 noble
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
   local installed='curl git python3'
-  command::exists() { [[ " ${installed} " == *" $1 "* ]]; }
-  command::_run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
-  package::_install() {
-    printf 'package::_install %s\n' "$*" >>"${STEP_LOG}"
+  command.exists() { [[ " ${installed} " == *" $1 "* ]]; }
+  _command.run-step() { printf '%s\n' "$*" >>"${STEP_LOG}"; }
+  _package.install() {
+    printf '_package.install %s\n' "$*" >>"${STEP_LOG}"
     installed+=" $*"
   }
 
-  run linux::_setup-prerequisites
+  run _linux.setup-prerequisites
   [ "${status}" -eq 0 ]
   [ ! -e "${STEP_LOG}" ]
 
   installed='curl git'
-  run linux::_setup-prerequisites
+  run _linux.setup-prerequisites
   [ "${status}" -eq 0 ]
-  [ "$(<"${STEP_LOG}")" = 'package::_install python3' ]
+  [ "$(<"${STEP_LOG}")" = '_package.install python3' ]
 }
 
 @test "GitHub CLI repository setup checks both published key fingerprints" {
   use_platform ubuntu 24.04 noble
   record_root_commands
   local gpg_fingerprints='' write_log="${BATS_TEST_TMPDIR}/writes.log"
-  package::_download() { printf 'keyring' >"$2"; }
-  package::_deb-architecture() { printf 'amd64\n'; }
-  package::_refresh() { printf 'refresh\n' >>"${write_log}"; }
-  package::_install() { printf 'install %s\n' "$*" >>"${write_log}"; }
-  file::write-text() { printf '%s\n%s' "$1" "$2" >"${write_log}.source"; }
+  _package.download() { printf 'keyring' >"$2"; }
+  _package.deb-architecture() { printf 'amd64\n'; }
+  _package.refresh() { printf 'refresh\n' >>"${write_log}"; }
+  _package.install() { printf 'install %s\n' "$*" >>"${write_log}"; }
+  file.write-text() { printf '%s\n%s' "$1" "$2" >"${write_log}.source"; }
   gpg() {
     printf 'pub:u:4096:1:old::::::\nfpr:::::::::%s:\npub:u:4096:1:new::::::\nfpr:::::::::%s:\n' \
       "${gpg_fingerprints%% *}" "${gpg_fingerprints##* }"
   }
-  command::require() { [[ "$1" == gpg || "$1" == mktemp ]]; }
+  command.require() { [[ "$1" == gpg || "$1" == mktemp ]]; }
 
   gpg_fingerprints='2C6106201985B60E6C7AC87323F3D4EA75716059 7F38BBB59D064DBCB3D84D725612B36462313325'
-  run gh::install
+  run gh.install
   [ "${status}" -eq 0 ]
   grep -Fqx 'install -d -m 0755 /etc/apt/keyrings' "${ROOT_LOG}"
   [ "$(wc -l <"${ROOT_LOG}")" -eq 2 ]
@@ -1388,7 +1388,7 @@ gsettings_value() {
 
   : >"${ROOT_LOG}"
   gpg_fingerprints='0000000000000000000000000000000000000000 7F38BBB59D064DBCB3D84D725612B36462313325'
-  run gh::_register-repository
+  run _gh.register-repository
   [ "${status}" -eq 65 ]
   [ ! -s "${ROOT_LOG}" ]
 }
@@ -1397,16 +1397,16 @@ gsettings_value() {
   use_platform fedora 44
   record_root_commands
   local write_log="${BATS_TEST_TMPDIR}/writes.log"
-  package::_download() { printf '%s\n' "$1" >>"${write_log}.urls"; printf 'key' >"$2"; }
-  package::_dnf-register-repository() { printf '%s\n%s' "$1" "$2" >"${write_log}.repo"; }
-  package::_install() { printf 'install %s\n' "$*" >>"${write_log}"; }
+  _package.download() { printf '%s\n' "$1" >>"${write_log}.urls"; printf 'key' >"$2"; }
+  _package.dnf-register-repository() { printf '%s\n%s' "$1" "$2" >"${write_log}.repo"; }
+  _package.install() { printf 'install %s\n' "$*" >>"${write_log}"; }
   gpg() {
     printf 'pub:u:4096:1:old::::::\nfpr:::::::::2C6106201985B60E6C7AC87323F3D4EA75716059:\n'
     printf 'pub:u:4096:1:new::::::\nfpr:::::::::7F38BBB59D064DBCB3D84D725612B36462313325:\n'
   }
-  command::require() { [[ "$1" == gpg || "$1" == mktemp ]]; }
+  command.require() { [[ "$1" == gpg || "$1" == mktemp ]]; }
 
-  run gh::install
+  run gh.install
   [ "${status}" -eq 0 ]
   [ "$(<"${write_log}.urls")" = https://cli.github.com/packages/githubcli-archive-keyring.asc ]
   grep -Fqx 'install -d -m 0755 /etc/pki/rpm-gpg' "${ROOT_LOG}"
@@ -1429,7 +1429,7 @@ gsettings_value() {
       "${DUTI_BROKEN:-}") printf 'failed to set %s as handler for public.json (error -54)\n' "$2" >&2; return 2 ;;
     esac
   }
-  run --separate-stderr vscode::set-default-app
+  run --separate-stderr vscode.set-default-app
   [ "${status}" -eq 0 ]
   [[ "${stderr}" == *'Skipped .gitignore'* ]]
   [[ "${stderr}" == *'Skipped public.javascript'* ]]
@@ -1437,7 +1437,7 @@ gsettings_value() {
 
   DUTI_BROKEN=.json
   : >"${DUTI_LOG}"
-  run --separate-stderr vscode::set-default-app
+  run --separate-stderr vscode.set-default-app
   [ "${status}" -eq 2 ]
   [[ "${stderr}" == *'public.json (error -54)'* ]]
   [ "$(tail -n 1 "${DUTI_LOG}")" = '.json' ]
@@ -1448,69 +1448,69 @@ gsettings_value() {
   HOME="${BATS_TEST_TMPDIR}/home"
   STEP_LOG="${BATS_TEST_TMPDIR}/steps.log"
   mkdir -p "${HOME}"
-  command::_run-step() {
+  _command.run-step() {
     printf '%s\n' "$*" >>"${STEP_LOG}"
     case "$1" in
-      colima::install) return 75 ;;
-      docker::install) return 69 ;;
+      colima.install) return 75 ;;
+      docker.install) return 69 ;;
     esac
   }
-  run --separate-stderr mac::setup
+  run --separate-stderr mac.setup
   [ "${status}" -eq 75 ]
   [ -f "${HOME}/.env" ] && [ -d "${HOME}/.local/bin" ]
   # sudo becomes passwordless before any step that needs it.
-  [ "$(head -n 1 "${STEP_LOG}")" = 'sudo::passwordless::enable' ]
-  grep -Fqx "shell::editor::set-default code --wait bash,zsh" "${STEP_LOG}"
-  grep -Fqx 'mac::dock::set-position' "${STEP_LOG}"
+  [ "$(head -n 1 "${STEP_LOG}")" = 'sudo.passwordless.enable' ]
+  grep -Fqx "shell.editor.set-default code --wait bash,zsh" "${STEP_LOG}"
+  grep -Fqx 'mac.dock.set-position' "${STEP_LOG}"
   grep -Fqx 'brew install --cask antigravity-ide' "${STEP_LOG}"
-  grep -Fqx 'mac::gatekeeper::disable' "${STEP_LOG}"
-  [ "$(tail -n 1 "${STEP_LOG}")" = 'iina::set-default-app' ]
+  grep -Fqx 'mac.gatekeeper.disable' "${STEP_LOG}"
+  [ "$(tail -n 1 "${STEP_LOG}")" = 'iina.set-default-app' ]
 }
 
 @test "macOS preference functions write the expected defaults and restart the Dock" {
   use_platform darwin
   record_root_commands
-  command::require() { [ "$1" = 'pmset' ]; }
+  command.require() { [ "$1" = 'pmset' ]; }
   DEFAULTS_LOG="${BATS_TEST_TMPDIR}/defaults.log"
   KILLALL_LOG="${BATS_TEST_TMPDIR}/killall.log"
   defaults() { printf '%s\n' "$*" >>"${DEFAULTS_LOG}"; }
   killall() { printf '%s\n' "$*" >>"${KILLALL_LOG}"; }
 
-  run mac::keyboard::use-function-keys
+  run mac.keyboard.use-function-keys
   [ "${status}" -eq 0 ]
-  run mac::keyboard::set-repeat
+  run mac.keyboard.set-repeat
   [ "${status}" -eq 0 ]
-  run mac::keyboard::set-repeat 15 2
+  run mac.keyboard.set-repeat 15 2
   [ "${status}" -eq 0 ]
-  run mac::keyboard::set-repeat fast
+  run mac.keyboard.set-repeat fast
   [ "${status}" -eq 64 ]
-  run mac::trackpad::disable-smart-zoom
+  run mac.trackpad.disable-smart-zoom
   [ "${status}" -eq 0 ]
-  run mac::dock::set-autohide-instant
+  run mac.dock.set-autohide-instant
   [ "${status}" -eq 0 ]
-  run mac::dock::hide-recent-applications
+  run mac.dock.hide-recent-applications
   [ "${status}" -eq 0 ]
-  run mac::dock::set-minimize-effect
+  run mac.dock.set-minimize-effect
   [ "${status}" -eq 0 ]
-  run mac::dock::set-minimize-effect fade
+  run mac.dock.set-minimize-effect fade
   [ "${status}" -eq 64 ]
-  run mac::dock::set-position bottom
+  run mac.dock.set-position bottom
   [ "${status}" -eq 0 ]
-  run mac::dock::set-position top
+  run mac.dock.set-position top
   [ "${status}" -eq 64 ]
-  run mac::wake-on-lan::enable
+  run mac.wake-on-lan.enable
   [ "${status}" -eq 0 ]
-  run mac::sleep::disable-automatic
+  run mac.sleep.disable-automatic
   [ "${status}" -eq 0 ]
-  run mac::sleep::enable-automatic
+  run mac.sleep.enable-automatic
   [ "${status}" -eq 0 ]
-  run mac::software-update::enable-automatic-install
+  run mac.software-update.enable-automatic-install
   [ "${status}" -eq 0 ]
-  run mac::software-update::enable-automatic-install unexpected
+  run mac.software-update.enable-automatic-install unexpected
   [ "${status}" -eq 64 ]
-  run mac::software-update::disable-automatic-install
+  run mac.software-update.disable-automatic-install
   [ "${status}" -eq 0 ]
-  run mac::software-update::disable-automatic-install unexpected
+  run mac.software-update.disable-automatic-install unexpected
   [ "${status}" -eq 64 ]
 
   [ "$(<"${DEFAULTS_LOG}")" = "write NSGlobalDomain com.apple.keyboard.fnState -bool true
@@ -1534,15 +1534,15 @@ defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstal
 defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool false' ]
 
   use_platform ubuntu 24.04 noble
-  run mac::dock::set-position
+  run mac.dock.set-position
   [ "${status}" -eq 69 ]
-  run mac::sleep::disable-automatic
+  run mac.sleep.disable-automatic
   [ "${status}" -eq 69 ]
-  run mac::sleep::enable-automatic
+  run mac.sleep.enable-automatic
   [ "${status}" -eq 69 ]
-  run mac::software-update::enable-automatic-install
+  run mac.software-update.enable-automatic-install
   [ "${status}" -eq 69 ]
-  run mac::software-update::disable-automatic-install
+  run mac.software-update.disable-automatic-install
   [ "${status}" -eq 69 ]
 }
 
@@ -1554,16 +1554,16 @@ defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstal
   sleep() { :; }
   open() { printf '%s\n' "$*" >>"${OPEN_LOG}"; }
 
-  run mac::applications::remove-bundled
+  run mac.applications.remove-bundled
   [ "${status}" -eq 0 ]
   grep -Fq '/Applications/GarageBand.app' "${ROOT_LOG}"
-  run mac::quarantine::remove-applications
+  run mac.quarantine.remove-applications
   [ "${status}" -eq 0 ]
   grep -Fqx 'xattr -r -d com.apple.quarantine /Applications' "${ROOT_LOG}"
 
   # spctl refuses until the user confirms in System Settings, which is then opened.
-  command::run-as-root() { printf '%s\n' "$*" >>"${ROOT_LOG}"; [[ "$1" != spctl ]]; }
-  run --separate-stderr mac::gatekeeper::disable
+  command.run-as-root() { printf '%s\n' "$*" >>"${ROOT_LOG}"; [[ "$1" != spctl ]]; }
+  run --separate-stderr mac.gatekeeper.disable
   [ "${status}" -eq 0 ]
   grep -Fqx 'spctl --master-disable' "${ROOT_LOG}"
   [[ "${stderr}" == *'Allow applications from anywhere'* ]]
@@ -1584,24 +1584,24 @@ defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstal
   PATH="${root}/bin:${PATH}"
   HOME="${root}/home"
 
-  run mac::full-disk-access::target-paths tool
+  run mac.full-disk-access.target-paths tool
   [ "${status}" -eq 0 ]
   [ "${output}" = "${root}/Tool.app" ]
-  run mac::full-disk-access::target-paths python3.12
+  run mac.full-disk-access.target-paths python3.12
   [ "${status}" -eq 0 ]
   [ "${output}" = "${root}/Python.framework/Versions/3.12/bin/python3.12
 ${root}/Python.framework/Versions/3.12/Resources/Python.app" ]
-  run mac::full-disk-access::target-paths BashstockSample
+  run mac.full-disk-access.target-paths BashstockSample
   [ "${status}" -eq 0 ]
   [ "${output}" = "${root}/home/Applications/BashstockSample.app" ]
 
-  run mac::full-disk-access::target-paths bashstock-missing-application
+  run mac.full-disk-access.target-paths bashstock-missing-application
   [ "${status}" -eq 1 ]
-  run mac::full-disk-access::target-paths "${root}/missing"
+  run mac.full-disk-access.target-paths "${root}/missing"
   [ "${status}" -eq 66 ]
-  run mac::full-disk-access::target-paths ''
+  run mac.full-disk-access.target-paths ''
   [ "${status}" -eq 64 ]
-  run mac::full-disk-access::target-paths tool BashstockSample
+  run mac.full-disk-access.target-paths tool BashstockSample
   [ "${status}" -eq 64 ]
 }
 
@@ -1614,7 +1614,7 @@ ${root}/Python.framework/Versions/3.12/Resources/Python.app" ]
   open() { printf '%s\n' "$*" >>"${OPEN_LOG}"; }
   codesign() { printf 'Identifier=tool\nSignature=adhoc\n' >&2; }
 
-  run --separate-stderr mac::full-disk-access::open "${root}/Tool.app"
+  run --separate-stderr mac.full-disk-access.open "${root}/Tool.app"
   [ "${status}" -eq 0 ]
   [ "$(<"${OPEN_LOG}")" = "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles
 -R ${root}/Tool.app" ]
@@ -1623,12 +1623,12 @@ ${root}/Python.framework/Versions/3.12/Resources/Python.app" ]
 
   # A name that cannot be resolved stops before System Settings opens.
   : >"${OPEN_LOG}"
-  run mac::full-disk-access::open "${root}/missing"
+  run mac.full-disk-access.open "${root}/missing"
   [ "${status}" -eq 66 ]
   [ ! -s "${OPEN_LOG}" ]
 
   use_platform ubuntu 24.04 noble
-  run mac::full-disk-access::open
+  run mac.full-disk-access.open
   [ "${status}" -eq 69 ]
 }
 
@@ -1637,27 +1637,27 @@ ${root}/Python.framework/Versions/3.12/Resources/Python.app" ]
   HOME="${BATS_TEST_TMPDIR}/home"
   mkdir -p "${HOME}/Library/Application Support/com.apple.TCC"
 
-  run mac::full-disk-access::is-granted
+  run mac.full-disk-access.is-granted
   [ "${status}" -eq 1 ]
   : >"${HOME}/Library/Application Support/com.apple.TCC/TCC.db"
-  run mac::full-disk-access::is-granted
+  run mac.full-disk-access.is-granted
   [ "${status}" -eq 0 ]
   [ -z "${output}" ]
-  run mac::full-disk-access::is-granted extra
+  run mac.full-disk-access.is-granted extra
   [ "${status}" -eq 64 ]
 
   use_platform ubuntu 24.04 noble
-  run mac::full-disk-access::is-granted
+  run mac.full-disk-access.is-granted
   [ "${status}" -eq 69 ]
 }
 
 @test "shell startup helpers for Zsh and Homebrew casks write one line each" {
   HOME="${BATS_TEST_TMPDIR}/home"
   mkdir -p "${HOME}"
-  shell::zsh::enable-interactive-comments
-  shell::zsh::enable-interactive-comments
-  homebrew::cask::disable-quarantine
-  homebrew::cask::disable-quarantine
+  shell.zsh.enable-interactive-comments
+  shell.zsh.enable-interactive-comments
+  homebrew.cask.disable-quarantine
+  homebrew.cask.disable-quarantine
   [ "$(grep -c '^setopt interactivecomments$' "${HOME}/.zshrc")" -eq 1 ]
   [ "$(grep -c '^export HOMEBREW_CASK_OPTS=--no-quarantine$' "${HOME}/.zshrc")" -eq 1 ]
   [ "$(grep -c '^export HOMEBREW_CASK_OPTS=--no-quarantine$' "${HOME}/.bashrc")" -eq 1 ]
@@ -1665,9 +1665,9 @@ ${root}/Python.framework/Versions/3.12/Resources/Python.app" ]
 }
 
 @test "the default ADB device applies to later calls in the same shell" {
-  run adb::device::set-default 'bad serial'
+  run adb.device.set-default 'bad serial'
   [ "${status}" -eq 64 ]
-  adb::device::set-default emulator-5554
+  adb.device.set-default emulator-5554
   [ "${ANDROID_SERIAL}" = 'emulator-5554' ]
   unset ANDROID_SERIAL
 }
@@ -1679,9 +1679,9 @@ use_fake_sudoers() {
   SUDO_RESULT="${SUDO_RESULT:-0}"
   mkdir -p "${FAKE_ROOT}"
   : >"${ROOT_LOG}"
-  user::exists() { [[ "$1" != 'missing' ]]; }
+  user.exists() { [[ "$1" != 'missing' ]]; }
   # shellcheck disable=SC2317
-  command::run-as-root() {
+  command.run-as-root() {
     printf '%s\n' "$*" >>"${ROOT_LOG}"
     case "$1" in
       visudo) return 0 ;;
@@ -1696,7 +1696,7 @@ use_fake_sudoers() {
 
 @test "passwordless sudo is granted through a checked drop-in file without an editor" {
   use_fake_sudoers
-  run sudo::passwordless::enable first.last
+  run sudo.passwordless.enable first.last
   [ "${status}" -eq 0 ]
   [ "$(<"${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-first_-last")" = 'first.last ALL=(ALL) NOPASSWD: ALL' ]
   grep -Eq '^visudo -c -q -f .*/rule$' "${ROOT_LOG}"
@@ -1704,7 +1704,7 @@ use_fake_sudoers() {
   grep -Fqx 'sudo -n -u first.last -- sudo -n -k true' "${ROOT_LOG}"
 
   SUDO_USER='invoker'
-  run sudo::passwordless::enable
+  run sudo.passwordless.enable
   [ "${status}" -eq 0 ]
   [ "$(<"${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-invoker")" = 'invoker ALL=(ALL) NOPASSWD: ALL' ]
 }
@@ -1712,37 +1712,37 @@ use_fake_sudoers() {
 @test "passwordless sudo leaves no rule when sudo still asks for a password" {
   SUDO_RESULT=1
   use_fake_sudoers
-  run --separate-stderr sudo::passwordless::enable alice
+  run --separate-stderr sudo.passwordless.enable alice
   [ "${status}" -eq 69 ]
   [ ! -e "${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-alice" ]
 
   : >"${ROOT_LOG}"
-  run --separate-stderr sudo::passwordless::enable missing
+  run --separate-stderr sudo.passwordless.enable missing
   [ "${status}" -eq 64 ]
   [ ! -s "${ROOT_LOG}" ]
 }
 
 @test "passwordless sudo can be revoked again, also when the rule is already gone" {
   use_fake_sudoers
-  run sudo::passwordless::enable first.last
+  run sudo.passwordless.enable first.last
   [ "${status}" -eq 0 ]
   [ -e "${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-first_-last" ]
 
-  run sudo::passwordless::enable first_last
+  run sudo.passwordless.enable first_last
   [ "${status}" -eq 0 ]
   [ -e "${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-first__last" ]
 
-  run sudo::passwordless::disable first.last
+  run sudo.passwordless.disable first.last
   [ "${status}" -eq 0 ]
   [ ! -e "${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-first_-last" ]
   # Another user whose name differs only by . and _ keeps the rule.
   [ -e "${FAKE_ROOT}/etc/sudoers.d/zz-bashstock-passwordless-first__last" ]
 
-  run sudo::passwordless::disable first.last
+  run sudo.passwordless.disable first.last
   [ "${status}" -eq 0 ]
 
   : >"${ROOT_LOG}"
-  run sudo::passwordless::disable 'a b'
+  run sudo.passwordless.disable 'a b'
   [ "${status}" -eq 64 ]
   [ ! -s "${ROOT_LOG}" ]
 }
@@ -1754,7 +1754,7 @@ use_fake_sudoers() {
       {"tag_name":"v2.119.1","draft":false,"prerelease":false},
       {"tag_name":"v2.118.0","draft":false,"prerelease":false}]'
   }
-  run supabase::versions
+  run supabase.versions
   [ "${status}" -eq 0 ]
   [ "${output}" = $'2.118.0\n2.119.1' ]
 }
@@ -1768,8 +1768,8 @@ use_fake_sudoers() {
   # A cut-off download, a GitHub rate-limit answer, and JSON null all lack the release data.
   for BODY in '[{"tag_name":"v1.0.0"' '{"message":"API rate limit exceeded"}' 'null'; do
     use_platform ubuntu 24.04 noble
-    for query in supabase::versions utm::versions flutter::versions 'node::versions official' \
-      'pipx::versions official' 'qmk::cli::install 1.0.0'; do
+    for query in supabase.versions utm.versions flutter.versions 'node.versions official' \
+      'pipx.versions official' 'qmk.cli.install 1.0.0'; do
       read -r -a words <<<"${query}"
       run --separate-stderr "${words[@]}"
       [ "${status}" -eq 74 ]
@@ -1778,7 +1778,7 @@ use_fake_sudoers() {
 
     # Homebrew answers with its own JSON on macOS.
     use_platform darwin
-    run --separate-stderr node::versions os
+    run --separate-stderr node.versions os
     [ "${status}" -eq 74 ]
     [[ "${stderr}" != *Traceback* ]]
   done
@@ -1806,11 +1806,11 @@ use_fake_sudoers() {
   }
   dpkg-query() { printf '2.27-3ubuntu1.6'; }
 
-  run vscode::versions
+  run vscode.versions
   [ "${status}" -eq 0 ]
   [ "${output}" = '1.85.2-1705561292' ]
 
-  run vscode::install
+  run vscode.install
   [ "${status}" -eq 0 ]
   [ "$(tail -n 1 "${ROOT_LOG}")" = 'env DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades code=1.85.2-1705561292' ]
   # The 1.85 package skips its own repository definition only when vscode.list exists.
@@ -1818,7 +1818,7 @@ use_fake_sudoers() {
   ! grep -Eq '^[[:space:]]*deb[[:space:]]' "${FAKE_ROOT}/etc/apt/sources.list.d/vscode.list"
 
   : >"${ROOT_LOG}"
-  run --separate-stderr vscode::install 1.86.0-1706698139
+  run --separate-stderr vscode.install 1.86.0-1706698139
   [ "${status}" -eq 69 ]
   [ ! -s "${ROOT_LOG}" ]
 }
@@ -1850,20 +1850,20 @@ use_fake_sudoers() {
       "1.0.1":[{"requires_python":">=3.6","yanked":true}]}}'
   }
 
-  run --separate-stderr pipx::install
+  run --separate-stderr pipx.install
   [ "${status}" -eq 69 ]
   [ ! -e "${PIP_LOG}" ]
 
-  run pipx::versions official
+  run pipx.versions official
   [ "${status}" -eq 0 ]
   [ "${output}" = $'0.12.0\n0.17.0\n1.0.0' ]
 
-  run pipx::install '' official
+  run pipx.install '' official
   [ "${status}" -eq 0 ]
   [ "$(<"${PIP_LOG}")" = '-m pip install --user pipx==1.0.0' ]
   grep -Fqx 'env DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip python3-venv' "${ROOT_LOG}"
 
-  run --separate-stderr pipx::install 1.1.0 official
+  run --separate-stderr pipx.install 1.1.0 official
   [ "${status}" -eq 69 ]
 }
 
@@ -1877,13 +1877,13 @@ use_fake_sudoers() {
     [[ "$1" == madison ]] || return 0
     printf ' %s | 0.12.3.1-2ubuntu1 | http://archive.ubuntu.com focal/universe amd64 Packages\n' "$2"
   }
-  run pipx::install
+  run pipx.install
   [ "${status}" -eq 0 ]
   grep -Fqx 'env DEBIAN_FRONTEND=noninteractive apt-get install -y python3-venv' "${ROOT_LOG}"
 
   # A version that the packages do not offer is refused before APT runs.
   : >"${ROOT_LOG}"
-  run --separate-stderr pipx::install 0.0.1
+  run --separate-stderr pipx.install 0.0.1
   [ "${status}" -eq 69 ]
   [[ "${stderr}" == *'pipx 0.0.1 cannot be installed on this system.'* ]]
   [ ! -s "${ROOT_LOG}" ]
@@ -1910,7 +1910,7 @@ use_fake_sudoers() {
   }
   curl() { printf '%s' '{"releases":{"1.7.1":[{"requires_python":">=3.8","yanked":false}]}}'; }
 
-  run pipx::install '' official
+  run pipx.install '' official
   [ "${status}" -eq 0 ]
   [ "$(<"${PIP_LOG}")" = '-m pip install pipx==1.7.1' ]
   [[ "$(readlink "${HOME}/.local/bin/pipx")" == "${HOME}/.local/lib/pipx-official/1.7.1."*/bin/pipx ]]
@@ -1920,7 +1920,7 @@ use_fake_sudoers() {
 
   # A failed update, such as one without PyPI, keeps the working pipx and removes the new environment.
   PIP_STATUS=1
-  run pipx::install '' official
+  run pipx.install '' official
   [ "${status}" -ne 0 ]
   [ "$(readlink "${HOME}/.local/bin/pipx")" = "${working}" ]
   [ "$("${HOME}/.local/bin/pipx")" = 1.7.1 ]
@@ -1928,7 +1928,7 @@ use_fake_sudoers() {
 
   # A successful update moves the launcher and removes the environment it replaced.
   PIP_STATUS=0
-  run pipx::install '' official
+  run pipx.install '' official
   [ "${status}" -eq 0 ]
   [ "$(readlink "${HOME}/.local/bin/pipx")" != "${working}" ]
   [ ! -e "${working}" ]
@@ -1959,22 +1959,22 @@ use_fake_sudoers() {
   }
   cd "${BATS_TEST_TMPDIR}"
 
-  run ubuntu::server-iso-versions amd64
+  run ubuntu.server-iso-versions amd64
   [ "${status}" -eq 0 ]
   [ "${output}" = '24.04.5' ]
 
-  run ubuntu::download-server-iso '' amd64 image.iso
+  run ubuntu.download-server-iso '' amd64 image.iso
   [ "${status}" -eq 0 ]
   [ "$(<image.iso)" = "${ISO_BODY}" ]
 
   printf 'previous image' >image.iso
   ISO_BODY='corrupted image'
-  run --separate-stderr ubuntu::download-server-iso 24.04.5 amd64 image.iso
+  run --separate-stderr ubuntu.download-server-iso 24.04.5 amd64 image.iso
   [ "${status}" -eq 65 ]
   [ "$(<image.iso)" = 'previous image' ]
   [ "$(find . -name 'image.iso.*' | wc -l)" -eq 0 ]
 
-  run --separate-stderr ubuntu::download-server-iso 22.04.5 amd64 image.iso
+  run --separate-stderr ubuntu.download-server-iso 22.04.5 amd64 image.iso
   [ "${status}" -eq 69 ]
 }
 
@@ -2013,12 +2013,12 @@ use_fake_sudoers() {
     esac
   }
 
-  run git-credential-manager::install
+  run git-credential-manager.install
   [ "${status}" -eq 0 ]
   [ "$("${HOME}/.local/bin/git-credential-manager" --version)" = '2.9.1+abc' ]
   [ ! -e "${HOME}/.local/lib/git-credential-manager/3.0.1" ]
 
-  run --separate-stderr git-credential-manager::install 3.0.1
+  run --separate-stderr git-credential-manager.install 3.0.1
   [ "${status}" -eq 69 ]
   [ ! -e "${HOME}/.local/lib/git-credential-manager/3.0.1" ]
 }
@@ -2047,15 +2047,15 @@ use_fake_sudoers() {
     printf '<a href="get_file.php?file=linux/gmic_4.0.5_ubuntu24-04_noble_amd64.deb">'
   }
 
-  run --separate-stderr gimp::gmic::install
+  run --separate-stderr gimp.gmic.install
   [ "${status}" -eq 69 ]
   [ ! -s "${ROOT_LOG}" ]
 
-  run gimp::gmic::versions official
+  run gimp.gmic.versions official
   [ "${status}" -eq 0 ]
   [ "${output}" = $'4.0.4\n4.0.5' ]
 
-  run gimp::gmic::install '' official
+  run gimp.gmic.install '' official
   [ "${status}" -eq 0 ]
   grep -Eq '^env DEBIAN_FRONTEND=noninteractive apt-get install -y /.*/package\.deb$' "${ROOT_LOG}"
   grep -qxF 'https://gmic.eu/get_file.php?file=linux/gmic_4.0.5_ubuntu26-04_resolute_amd64.deb' "${CURL_LOG}"
@@ -2067,11 +2067,11 @@ use_fake_sudoers() {
   dpkg() { [[ "$1" == '--print-architecture' ]] && printf 'arm64\n'; }
   curl() { printf '<a href="get_file.php?file=linux/gmic_4.0.5_ubuntu26-04_resolute_amd64.deb">'; }
 
-  run gimp::gmic::versions official
+  run gimp.gmic.versions official
   [ "${status}" -eq 0 ]
   [ -z "${output}" ]
 
-  run --separate-stderr gimp::gmic::install '' official
+  run --separate-stderr gimp.gmic.install '' official
   [ "${status}" -eq 69 ]
   [[ "${stderr}" == *'no package for this Ubuntu release and CPU'* ]]
   [ ! -s "${ROOT_LOG}" ]
@@ -2086,14 +2086,14 @@ use_fake_sudoers() {
     printf '%s' '[{"tag_name":"v1.2.3"}]'
   }
 
-  GITHUB_TOKEN='secret-token' run supabase::versions
+  GITHUB_TOKEN='secret-token' run supabase.versions
   [ "${status}" -eq 0 ]
   [ "${output}" = '1.2.3' ]
   grep -Fqx 'stdin: header = "Authorization: Bearer secret-token"' "${CURL_LOG}"
   ! grep '^args:' "${CURL_LOG}" | grep -q secret-token
 
   : >"${CURL_LOG}"
-  GITHUB_TOKEN='' run supabase::versions
+  GITHUB_TOKEN='' run supabase.versions
   [ "${status}" -eq 0 ]
   ! grep -q 'stdin:' "${CURL_LOG}"
 }
@@ -2108,7 +2108,7 @@ use_fake_sudoers() {
     if [[ "$(grep -c . "${CURL_LOG}")" -le 2 ]]; then printf 'partial'; return 92; fi
     printf 'complete'
   }
-  run package::_fetch https://example.invalid/index.json
+  run _package.fetch https://example.invalid/index.json
   [ "${status}" -eq 0 ]
   [ "${output}" = 'complete' ]
   [ "$(grep -c . "${CURL_LOG}")" -eq 3 ]
@@ -2116,13 +2116,13 @@ use_fake_sudoers() {
 
   : >"${CURL_LOG}"
   curl() { printf '%s\n' "$*" >>"${CURL_LOG}"; return 22; }
-  run package::_download https://example.invalid/missing "${BATS_TEST_TMPDIR}/missing"
+  run _package.download https://example.invalid/missing "${BATS_TEST_TMPDIR}/missing"
   [ "${status}" -eq 74 ]
   [ "$(grep -c . "${CURL_LOG}")" -eq 1 ]
 
   : >"${CURL_LOG}"
   curl() { printf '%s\n' "$*" >>"${CURL_LOG}"; return 28; }
-  run package::_download https://example.invalid/stalled "${BATS_TEST_TMPDIR}/stalled"
+  run _package.download https://example.invalid/stalled "${BATS_TEST_TMPDIR}/stalled"
   [ "${status}" -eq 74 ]
   [ "$(grep -c . "${CURL_LOG}")" -eq 1 ]
   grep -q -- '--retry 3 --connect-timeout 30 --speed-limit 1024 --speed-time 60' "${CURL_LOG}"
@@ -2135,7 +2135,7 @@ use_fake_sudoers() {
   chmod +x "${rbenv_stub}"
   PATH="${rbenv_stub%/*}:${PATH}"
   set -o pipefail
-  run ruby::version::latest
+  run ruby.version.latest
   set +o pipefail
   [ "${status}" -eq 0 ]
   [ "${output}" = '3.4.7' ]
@@ -2144,11 +2144,11 @@ use_fake_sudoers() {
 @test "Chrome profile search succeeds when a profile other than the last one matches" {
   local root="${BATS_TEST_TMPDIR}/Chrome"
   mkdir -p "${root}/Default" "${root}/Profile 1"
-  chrome::profile::email() { [[ "$1" == */Default ]] && printf 'user@example.invalid\n'; }
-  run chrome::profile::find-by-email user@example.invalid "${root}"
+  chrome.profile.email() { [[ "$1" == */Default ]] && printf 'user@example.invalid\n'; }
+  run chrome.profile.find-by-email user@example.invalid "${root}"
   [ "${status}" -eq 0 ]
   [ "${output}" = "${root}/Default" ]
-  run chrome::profile::find-by-email other@example.invalid "${root}"
+  run chrome.profile.find-by-email other@example.invalid "${root}"
   [ "${status}" -eq 1 ]
   [ -z "${output}" ]
 }
@@ -2163,13 +2163,13 @@ use_fake_sudoers() {
     if [[ "$1" == upgrade && " ${BREW_OUTDATED} " != *" $2 "* ]]; then return 1; fi
   }
   BREW_OUTDATED=''
-  run ruby::_install-rbenv
+  run _ruby.install-rbenv
   [ "${status}" -eq 0 ]
   ! grep -q '^upgrade' "${BREW_LOG}"
 
   : >"${BREW_LOG}"
   BREW_OUTDATED='ruby-build'
-  run ruby::_install-rbenv
+  run _ruby.install-rbenv
   [ "${status}" -eq 0 ]
   [ "$(grep '^upgrade' "${BREW_LOG}")" = 'upgrade ruby-build' ]
 }
@@ -2180,13 +2180,13 @@ use_fake_sudoers() {
   npm() { printf '%s\n' "$*" >>"${NPM_LOG}"; }
   corepack() { :; }
   command() { if [[ "$1" == -v && "$2" == corepack ]]; then return 1; fi; builtin command "$@"; }
-  command::run-as-root() { "$@"; }
-  run node::_enable-corepack darwin os
+  command.run-as-root() { "$@"; }
+  run _node.enable-corepack darwin os
   [ "${status}" -eq 0 ]
   [ "$(<"${NPM_LOG}")" = 'install --global --force corepack@0.20.0' ]
 
   : >"${NPM_LOG}"
-  run node::_enable-corepack ubuntu os
+  run _node.enable-corepack ubuntu os
   [ "${status}" -eq 0 ]
   [ "$(<"${NPM_LOG}")" = 'install --global corepack@0.20.0' ]
 }
@@ -2195,8 +2195,8 @@ use_fake_sudoers() {
   HOME="${BATS_TEST_TMPDIR}/home"
   unset RBENV_ROOT
   mkdir -p "$HOME/.rbenv/bin"
-  ruby::_configure-shell
-  ruby::_configure-shell
+  _ruby.configure-shell
+  _ruby.configure-shell
   [ "$(grep -c 'rbenv/bin' "$HOME/.bashrc")" -eq 1 ]
   [ "$(grep -c 'rbenv init' "$HOME/.bashrc")" -eq 1 ]
   grep -Fqx "export PATH=\"$HOME/.rbenv/bin:\${PATH}\"" "$HOME/.bashrc"
@@ -2210,13 +2210,13 @@ use_fake_sudoers() {
   printf 'old\n' >"${applications}/UTM.app/Contents/version"
 
   cp() { return 1; }
-  run utm::_copy-application "${source}" "${applications}"
+  run _utm.copy-application "${source}" "${applications}"
   [ "${status}" -eq 74 ]
   [ "$(<"${applications}/UTM.app/Contents/version")" = old ]
   [ -z "$(find "${applications}" -mindepth 1 -maxdepth 1 -name '.*')" ]
 
   unset -f cp
-  run utm::_copy-application "${source}" "${applications}"
+  run _utm.copy-application "${source}" "${applications}"
   [ "${status}" -eq 0 ]
   [ "$(<"${applications}/UTM.app/Contents/version")" = new ]
   [ -z "$(find "${applications}" -mindepth 1 -maxdepth 1 -name '.*')" ]
@@ -2230,10 +2230,10 @@ use_fake_sudoers() {
   printf '#!/bin/sh\nprintf "10.0.0\\n"\n' >"${BATS_TEST_TMPDIR}/archive/node/bin/npm"
   chmod +x "${BATS_TEST_TMPDIR}/archive/node/bin/node" "${BATS_TEST_TMPDIR}/archive/node/bin/npm"
   tar -czf "${BATS_TEST_TMPDIR}/node.tar.gz" -C "${BATS_TEST_TMPDIR}/archive" node
-  node::_official-platform() { printf 'linux-x64\n'; }
-  package::_download() { cp -- "${BATS_TEST_TMPDIR}/node.tar.gz" "$2"; }
+  _node.official-platform() { printf 'linux-x64\n'; }
+  _package.download() { cp -- "${BATS_TEST_TMPDIR}/node.tar.gz" "$2"; }
 
-  run node::_install-official 1.2.3
+  run _node.install-official 1.2.3
   [ "${status}" -eq 0 ]
   [ -x "${destination}/bin/node" ]
   [ ! -e "${destination}/unpacked" ]
@@ -2245,23 +2245,23 @@ use_fake_sudoers() {
   use_platform darwin
   BREW_LOG="${BATS_TEST_TMPDIR}/brew.log"
   brew() { printf '%s\n' "$*" >>"${BREW_LOG}"; }
-  run thunderbird::install
+  run thunderbird.install
   [ "${status}" -eq 0 ]
   [ "$(<"${BREW_LOG}")" = 'install --cask thunderbird' ]
-  run thunderbird::install current extra
+  run thunderbird.install current extra
   [ "${status}" -eq 64 ]
 
   use_platform ubuntu 24.04 noble
   record_root_commands
   apt-get() { :; }
-  run thunderbird::install
+  run thunderbird.install
   [ "${status}" -eq 0 ]
   grep -Eq 'apt-get install -y .*thunderbird$' "${ROOT_LOG}"
 
   : >"${ROOT_LOG}"
   use_platform fedora 44
   dnf() { :; }
-  run thunderbird::install 1:140.0-1.fc44
+  run thunderbird.install 1:140.0-1.fc44
   [ "${status}" -eq 0 ]
   grep -Fq 'thunderbird-1:140.0-1.fc44' "${ROOT_LOG}"
 }

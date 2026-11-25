@@ -8,9 +8,9 @@ The module defines the setup steps that Ubuntu and Fedora share.
 
 ## Index
 
-* [linux::setup](#linuxsetup)
+* [linux.setup](#linuxsetup)
 
-### linux::setup
+### linux.setup
 
 Apply the common Linux user configuration, stopping at the first failure.
 
@@ -20,7 +20,7 @@ installed, then configures Wayland, the user's environment, shell, Git, and SSH.
 #### Example
 
 ```bash
-linux::setup
+linux.setup
 ```
 
 _Function has no arguments._

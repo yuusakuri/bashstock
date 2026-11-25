@@ -8,11 +8,11 @@ Administrator execution uses sudo only when the current user is not root.
 
 ## Index
 
-* [command::exists](#commandexists)
-* [command::require](#commandrequire)
-* [command::run-as-root](#commandrun-as-root)
+* [command.exists](#commandexists)
+* [command.require](#commandrequire)
+* [command.run-as-root](#commandrun-as-root)
 
-### command::exists
+### command.exists
 
 Test whether a command name resolves in the current environment.
 
@@ -21,7 +21,7 @@ Functions, aliases, builtins, and executables on PATH all count.
 #### Example
 
 ```bash
-command::exists docker && docker version
+command.exists docker && docker version
 ```
 
 #### Arguments
@@ -34,14 +34,14 @@ command::exists docker && docker version
 * **1**: The command does not resolve.
 * **64**: The name is empty, starts with a dash, or contains a newline.
 
-### command::require
+### command.require
 
 Require a command name to resolve in the current environment.
 
 #### Example
 
 ```bash
-command::require curl || return "$?"
+command.require curl || return "$?"
 ```
 
 #### Arguments
@@ -58,7 +58,7 @@ command::require curl || return "$?"
 
 * A message naming the command when it is unavailable.
 
-### command::run-as-root
+### command.run-as-root
 
 Run a command directly as root or through validated sudo access.
 
@@ -69,7 +69,7 @@ password input.
 #### Example
 
 ```bash
-command::run-as-root install -m 0644 ./rule /etc/udev/rules.d/90-device.rules
+command.run-as-root install -m 0644 ./rule /etc/udev/rules.d/90-device.rules
 ```
 
 #### Arguments

@@ -17,13 +17,13 @@
 # @exitcode 69 The system is not Linux or strace is unavailable.
 # @exitcode other The status of strace.
 # @example
-#   strace::attach-pid "$(pgrep -x nginx | head -n 1)"
-strace::attach-pid() {
+#   strace.attach-pid "$(pgrep -x nginx | head -n 1)"
+strace.attach-pid() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] ) || return 64
-  [[ "$(system::operating-system)" == linux ]] || return 69
-  command::require strace || return "$?"
-  if process::_trace-needs-root "$1"; then
-    command::run-as-root strace -p "$1"
+  [[ "$(system.operating-system)" == linux ]] || return 69
+  command.require strace || return "$?"
+  if _process.trace-needs-root "$1"; then
+    command.run-as-root strace -p "$1"
   else
     strace -p "$1"
   fi
@@ -36,12 +36,12 @@ strace::attach-pid() {
 # @exitcode 0 strace ended successfully.
 # @exitcode 1 No process has the name.
 # @exitcode 64 The argument count is not one.
-# @exitcode other The status of strace::attach-pid.
+# @exitcode other The status of strace.attach-pid.
 # @example
-#   strace::attach-name nginx
-strace::attach-name() {
+#   strace.attach-name nginx
+strace.attach-name() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local id=''
-  id="$(process::_first-id-by-name "$1")" || return "$?"
-  strace::attach-pid "${id}"
+  id="$(_process.first-id-by-name "$1")" || return "$?"
+  strace.attach-pid "${id}"
 }

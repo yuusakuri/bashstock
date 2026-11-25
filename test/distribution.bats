@@ -20,11 +20,11 @@ copy_distribution() {
   file="$(copy_distribution)"
   chmod 644 "${file}"
 
-  run bash -c 'cd /; source "$1"; string::upper hello; path::normalize ./foo/../bar' _ "${file}"
+  run bash -c 'cd /; source "$1"; string.upper hello; path.normalize ./foo/../bar' _ "${file}"
   [ "${status}" -eq 0 ]
   [ "${output}" = $'HELLO\nbar' ]
 
-  run bash -c 'cd "${1%/*}"; source "./${1##*/}"; cd /; string::upper hello' _ "${file}"
+  run bash -c 'cd "${1%/*}"; source "./${1##*/}"; cd /; string.upper hello' _ "${file}"
   [ "${status}" -eq 0 ]
   [ "${output}" = 'HELLO' ]
 }
@@ -39,8 +39,8 @@ copy_distribution() {
     cd "${1%/*}"
     source "./${1##*/}"
     cd /
-    command::run-as-root() { printf "%s\n" "$@"; }
-    file::append-text-as-root "/protected file" "text"
+    command.run-as-root() { printf "%s\n" "$@"; }
+    file.append-text-as-root "/protected file" "text"
   ' _ "${file}"
   [ "${status}" -eq 0 ]
   [ "${output}" = "${BASH}"$'\n--\n'"${directory}/${file##*/}"$'\n--internal-root\nappend-text\n/protected file\ntext' ]
@@ -51,17 +51,17 @@ copy_distribution() {
   file="$(copy_distribution)"
 
   run env BASHSTOCK_ROOT=/missing _BASHSTOCK_FILE=/missing _BASHSTOCK_LOADED=1 \
-    bash -c 'source "$1"; string::upper hello; test -f "${_BASHSTOCK_FILE}"' _ "${file}"
+    bash -c 'source "$1"; string.upper hello; test -f "${_BASHSTOCK_FILE}"' _ "${file}"
   [ "${status}" -eq 0 ]
   [ "${output}" = 'HELLO' ]
 }
 
 @test "noninteractive sourcing is silent and preserves caller state and existing completion" {
   run bash -c '
-    sample::run() { :; }
-    sample::_run-args() { printf "%s\n" --name; }
-    complete -W retained sample::run
-    before_completion="$(complete -p sample::run)"
+    sample.run() { :; }
+    _sample.run-args() { printf "%s\n" --name; }
+    complete -W retained sample.run
+    before_completion="$(complete -p sample.run)"
     before_directory="${PWD}"
     before_ifs="${IFS}"
     before_options="$(set +o)"
@@ -77,12 +77,12 @@ copy_distribution() {
     test "$(shopt -p)" = "${before_shopt}"
     test "$(trap -p)" = "${before_traps}"
     test "${BASH_REMATCH[0]}" = retained
-    test "$(complete -p sample::run)" = "${before_completion}"
-    arg::completion::register-all
-    complete -p sample::run
+    test "$(complete -p sample.run)" = "${before_completion}"
+    arg.completion.register-all
+    complete -p sample.run
   ' _ "${PROJECT_ROOT}/dist/bashstock.sh" "${BATS_TEST_TMPDIR}/output"
   [ "${status}" -eq 0 ]
-  [[ "${output}" == *'arg::completion::dispatch'* ]]
+  [[ "${output}" == *'arg.completion.dispatch'* ]]
 }
 
 @test "a second load preserves definitions and explicitly enabled completion" {
@@ -91,14 +91,14 @@ copy_distribution() {
 
   run bash -c '
     source "$1"
-    string::upper() { printf "retained\n"; }
-    sample::run() { :; }
-    sample::_run-args() { printf "%s\n" --name; }
-    arg::completion::register-all
-    before_completion="$(complete -p sample::run)"
+    string.upper() { printf "retained\n"; }
+    sample.run() { :; }
+    _sample.run-args() { printf "%s\n" --name; }
+    arg.completion.register-all
+    before_completion="$(complete -p sample.run)"
     source "$1"
-    test "$(complete -p sample::run)" = "${before_completion}"
-    string::upper hello
+    test "$(complete -p sample.run)" = "${before_completion}"
+    string.upper hello
   ' _ "${file}"
   [ "${status}" -eq 0 ]
   [ "${output}" = 'retained' ]
@@ -111,7 +111,7 @@ copy_distribution() {
     test "${_BASHSTOCK_LOADED:-}" != 1 || exit 97
     unset -f dirname
     source "$1" || exit 96
-    string::upper recovered
+    string.upper recovered
   ' _ "${PROJECT_ROOT}/dist/bashstock.sh"
   [ "${status}" -eq 0 ]
   [ "${output}" = 'RECOVERED' ]
@@ -121,12 +121,12 @@ copy_distribution() {
   run bash -euo pipefail -c '
     source "$1" || exit 99
     source "$1" || exit 98
-    string::upper hello
-    if regex::is-match value missing; then exit 97; fi
-    file::append-text "$2" value
-    file::replace-text "$2" value replacement
+    string.upper hello
+    if regex.is-match value missing; then exit 97; fi
+    file.append-text "$2" value
+    file.replace-text "$2" value replacement
     test "$(<"$2")" = replacement
-    if file::replace-text "$2" "[" invalid; then exit 96; else test "$?" -eq 64; fi
+    if file.replace-text "$2" "[" invalid; then exit 96; else test "$?" -eq 64; fi
   ' _ "${PROJECT_ROOT}/dist/bashstock.sh" "${BATS_TEST_TMPDIR}/file"
   [ "${status}" -eq 0 ]
   [ "${output}" = 'HELLO' ]
@@ -134,20 +134,20 @@ copy_distribution() {
 
 @test "interactive sourcing enables completion automatically and preserves it on reload" {
   run bash --noprofile --norc -ic '
-    sample::run() { :; }
-    sample::_run-args() { printf "%s\n" --name --count; }
+    sample.run() { :; }
+    _sample.run-args() { printf "%s\n" --name --count; }
     source "$1" >"$2" || exit 90
     test ! -s "$2" || exit 91
-    registered="$(complete -p sample::run)" || exit 92
-    [[ "${registered}" == *"-F arg::completion::dispatch"* ]] || exit 93
-    COMP_WORDS=(sample::run --n)
+    registered="$(complete -p sample.run)" || exit 92
+    [[ "${registered}" == *"-F arg.completion.dispatch"* ]] || exit 93
+    COMP_WORDS=(sample.run --n)
     COMP_CWORD=1
-    arg::completion::dispatch || exit 94
+    arg.completion.dispatch || exit 94
     [[ "${#COMPREPLY[@]}" -eq 1 && "${COMPREPLY[0]}" == --name ]] || exit 95
-    complete -W retained sample::run
-    retained="$(complete -p sample::run)"
+    complete -W retained sample.run
+    retained="$(complete -p sample.run)"
     source "$1" || exit 96
-    test "$(complete -p sample::run)" = "${retained}" || exit 97
+    test "$(complete -p sample.run)" = "${retained}" || exit 97
   ' _ "${PROJECT_ROOT}/dist/bashstock.sh" "${BATS_TEST_TMPDIR}/output"
   [ "${status}" -eq 0 ]
 }

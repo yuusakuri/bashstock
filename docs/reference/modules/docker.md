@@ -8,30 +8,30 @@ Container functions wrap one docker command each and return 69 when docker is un
 
 ## Index
 
-* [docker::container::list-running](#dockercontainerlist-running)
-* [docker::container::list](#dockercontainerlist)
-* [docker::container::pull](#dockercontainerpull)
-* [docker::container::push](#dockercontainerpush)
-* [docker::container::shell](#dockercontainershell)
-* [docker::container::logs](#dockercontainerlogs)
-* [docker::container::stop](#dockercontainerstop)
-* [docker::container::start](#dockercontainerstart)
-* [docker::container::stop-all](#dockercontainerstop-all)
-* [docker::container::remove-all](#dockercontainerremove-all)
-* [docker::volume::remove-all](#dockervolumeremove-all)
-* [docker::remove-all](#dockerremove-all)
-* [docker::login-artifactory](#dockerlogin-artifactory)
-* [docker::versions](#dockerversions)
-* [docker::install](#dockerinstall)
+* [docker.container.list-running](#dockercontainerlist-running)
+* [docker.container.list](#dockercontainerlist)
+* [docker.container.pull](#dockercontainerpull)
+* [docker.container.push](#dockercontainerpush)
+* [docker.container.shell](#dockercontainershell)
+* [docker.container.logs](#dockercontainerlogs)
+* [docker.container.stop](#dockercontainerstop)
+* [docker.container.start](#dockercontainerstart)
+* [docker.container.stop-all](#dockercontainerstop-all)
+* [docker.container.remove-all](#dockercontainerremove-all)
+* [docker.volume.remove-all](#dockervolumeremove-all)
+* [docker.remove-all](#dockerremove-all)
+* [docker.login-artifactory](#dockerlogin-artifactory)
+* [docker.versions](#dockerversions)
+* [docker.install](#dockerinstall)
 
-### docker::container::list-running
+### docker.container.list-running
 
 List running Docker containers.
 
 #### Example
 
 ```bash
-docker::container::list-running
+docker.container.list-running
 ```
 
 _Function has no arguments._
@@ -47,14 +47,14 @@ _Function has no arguments._
 
 * The output of docker ps.
 
-### docker::container::list
+### docker.container.list
 
 List Docker containers.
 
 #### Example
 
 ```bash
-docker::container::list
+docker.container.list
 ```
 
 _Function has no arguments._
@@ -70,14 +70,14 @@ _Function has no arguments._
 
 * The output of docker ps -a.
 
-### docker::container::pull
+### docker.container.pull
 
 Copy files between a Docker container and the host.
 
 #### Example
 
 ```bash
-docker::container::pull web /var/log/nginx ./logs
+docker.container.pull web /var/log/nginx ./logs
 ```
 
 #### Arguments
@@ -93,14 +93,14 @@ docker::container::pull web /var/log/nginx ./logs
 * **69**: docker is unavailable.
 * other The status of docker cp.
 
-### docker::container::push
+### docker.container.push
 
 Copy a host path into a container.
 
 #### Example
 
 ```bash
-docker::container::push web ./nginx.conf /etc/nginx/nginx.conf
+docker.container.push web ./nginx.conf /etc/nginx/nginx.conf
 ```
 
 #### Arguments
@@ -116,7 +116,7 @@ docker::container::push web ./nginx.conf /etc/nginx/nginx.conf
 * **69**: docker is unavailable.
 * other The status of docker cp.
 
-### docker::container::shell
+### docker.container.shell
 
 Run an interactive shell or a command in a container.
 
@@ -127,8 +127,8 @@ terminal, so it also works from scripts and CI.
 #### Example
 
 ```bash
-docker::container::shell web
-docker::container::shell web nginx -t
+docker.container.shell web
+docker.container.shell web nginx -t
 ```
 
 #### Arguments
@@ -143,14 +143,14 @@ docker::container::shell web nginx -t
 * **69**: docker is unavailable.
 * other The status of docker exec.
 
-### docker::container::logs
+### docker.container.logs
 
 Follow the log of a container.
 
 #### Example
 
 ```bash
-docker::container::logs web
+docker.container.logs web
 ```
 
 #### Arguments
@@ -168,14 +168,14 @@ docker::container::logs web
 
 * The container log, followed until interrupted.
 
-### docker::container::stop
+### docker.container.stop
 
 Stop a container.
 
 #### Example
 
 ```bash
-docker::container::stop web
+docker.container.stop web
 ```
 
 #### Arguments
@@ -189,14 +189,14 @@ docker::container::stop web
 * **69**: docker is unavailable.
 * other The status of docker stop.
 
-### docker::container::start
+### docker.container.start
 
 Start a container.
 
 #### Example
 
 ```bash
-docker::container::start web
+docker.container.start web
 ```
 
 #### Arguments
@@ -210,14 +210,14 @@ docker::container::start web
 * **69**: docker is unavailable.
 * other The status of docker start.
 
-### docker::container::stop-all
+### docker.container.stop-all
 
 Stop every running container; having none is a success.
 
 #### Example
 
 ```bash
-docker::container::stop-all
+docker.container.stop-all
 ```
 
 _Function has no arguments._
@@ -229,14 +229,14 @@ _Function has no arguments._
 * **69**: docker is unavailable.
 * other The status of the docker command that failed.
 
-### docker::container::remove-all
+### docker.container.remove-all
 
 Remove every container, running or not.
 
 #### Example
 
 ```bash
-docker::container::remove-all
+docker.container.remove-all
 ```
 
 _Function has no arguments._
@@ -248,14 +248,14 @@ _Function has no arguments._
 * **69**: docker is unavailable.
 * other The status of the docker command that failed.
 
-### docker::volume::remove-all
+### docker.volume.remove-all
 
 Remove every Docker volume.
 
 #### Example
 
 ```bash
-docker::volume::remove-all
+docker.volume.remove-all
 ```
 
 _Function has no arguments._
@@ -267,14 +267,14 @@ _Function has no arguments._
 * **69**: docker is unavailable.
 * other The status of the docker command that failed.
 
-### docker::remove-all
+### docker.remove-all
 
 Remove every container and then every volume, stopping at the first failure.
 
 #### Example
 
 ```bash
-docker::remove-all
+docker.remove-all
 ```
 
 _Function has no arguments._
@@ -286,7 +286,7 @@ _Function has no arguments._
 * **69**: docker is unavailable.
 * other The status of the docker command that failed.
 
-### docker::login-artifactory
+### docker.login-artifactory
 
 Log in to an Artifactory Docker registry using a token on standard input.
 
@@ -295,7 +295,7 @@ The token is passed to docker on standard input, never as an argument.
 #### Example
 
 ```bash
-docker::login-artifactory example.jfrog.io builder "$(pass show jfrog/token)"
+docker.login-artifactory example.jfrog.io builder "$(pass show jfrog/token)"
 ```
 
 #### Arguments
@@ -311,14 +311,14 @@ docker::login-artifactory example.jfrog.io builder "$(pass show jfrog/token)"
 * **69**: docker is unavailable.
 * other The status of docker login.
 
-### docker::versions
+### docker.versions
 
 Write Docker Engine or Docker CLI versions available to the current platform.
 
 #### Example
 
 ```bash
-docker::versions | tail -n 1
+docker.versions | tail -n 1
 ```
 
 _Function has no arguments._
@@ -334,7 +334,7 @@ _Function has no arguments._
 
 * Docker Engine versions on Linux, or Docker CLI versions from Homebrew on macOS, one per line.
 
-### docker::install
+### docker.install
 
 Install the Docker CLI, and Docker Engine on Linux.
 
@@ -347,13 +347,13 @@ again when Docker cannot be installed.
 #### Example
 
 ```bash
-docker::install
+docker.install
 docker run --rm hello-world
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from docker::versions. Defaults to the newest stable version.
+* **$1** (string): Optional version from docker.versions. Defaults to the newest stable version.
 
 #### Exit codes
 

@@ -7,12 +7,12 @@
 
 # @description Apply the common Fedora user configuration, stopping at the first failure.
 #
-# The same steps as ubuntu::setup run on Fedora: missing curl, Git, and Python
+# The same steps as ubuntu.setup run on Fedora: missing curl, Git, and Python
 # 3 are installed, ~/.env is registered, the editor
 # of Bash and Zsh is set to code --wait, completion ignores case, English
 # names are linked to localized user directories, the user joins dialout, Git
 # is configured, and ~/.ssh permissions are fixed. External tools can be
-# installed separately with fedora::setup-external. In supported Wayland
+# installed separately with fedora.setup-external. In supported Wayland
 # sessions, Electron applications also prefer native Wayland rendering.
 #
 # @noargs
@@ -23,11 +23,11 @@
 # @exitcode 77 sudo refused the credentials.
 # @exitcode other The status of the first step that failed.
 # @example
-#   GIT_EMAIL=alice@example.com GIT_USERNAME='Alice Example' fedora::setup
-fedora::setup() {
+#   GIT_EMAIL=alice@example.com GIT_USERNAME='Alice Example' fedora.setup
+fedora.setup() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform fedora || return "$?"
-  linux::setup || return "$?"
+  _package.require-platform fedora || return "$?"
+  linux.setup || return "$?"
 }
 
 # @description Install GnuPG, GitHub CLI, and Git Credential Manager on Fedora when they are not already available.
@@ -43,9 +43,9 @@ fedora::setup() {
 # @exitcode 77 sudo refused the credentials.
 # @exitcode other A package installation or repository setup failed.
 # @example
-#   fedora::setup-external
-fedora::setup-external() {
+#   fedora.setup-external
+fedora.setup-external() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform fedora || return "$?"
-  linux::_setup-external gnupg2
+  _package.require-platform fedora || return "$?"
+  _linux.setup-external gnupg2
 }

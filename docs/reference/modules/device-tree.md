@@ -8,16 +8,16 @@ Nodes are read from /proc/device-tree.
 
 ## Index
 
-* [device-tree::node::list](#device-treenodelist)
+* [device-tree.node.list](#device-treenodelist)
 
-### device-tree::node::list
+### device-tree.node.list
 
 Write the node paths of the Linux device tree.
 
 #### Example
 
 ```bash
-device-tree::node::list | grep -i i2c
+device-tree.node.list | grep -i i2c
 ```
 
 _Function has no arguments._

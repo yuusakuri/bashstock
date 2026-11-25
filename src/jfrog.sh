@@ -13,8 +13,8 @@
 # @exitcode 69 jf is unavailable.
 # @exitcode other The status of jf config remove.
 # @example
-#   jfrog::config::clear artifactory-prod
-jfrog::config::clear() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; docker::_run-command jf config remove "$1"; }
+#   jfrog.config.clear artifactory-prod
+jfrog.config.clear() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; _docker.run-command jf config remove "$1"; }
 
 # @description Remove every JFrog CLI server configuration.
 #
@@ -24,8 +24,8 @@ jfrog::config::clear() { [[ "$#" -eq 1 && -n "$1" ]] || return 64; docker::_run-
 # @exitcode 69 jf is unavailable.
 # @exitcode other The status of jf config clean.
 # @example
-#   jfrog::config::clear-all
-jfrog::config::clear-all() { [[ "$#" -eq 0 ]] || return 64; docker::_run-command jf config clean; }
+#   jfrog.config.clear-all
+jfrog.config.clear-all() { [[ "$#" -eq 0 ]] || return 64; _docker.run-command jf config clean; }
 
 # @description Display JFrog CLI server configurations.
 #
@@ -36,8 +36,8 @@ jfrog::config::clear-all() { [[ "$#" -eq 0 ]] || return 64; docker::_run-command
 # @exitcode 69 jf is unavailable.
 # @exitcode other The status of jf config show.
 # @example
-#   jfrog::config::list
-jfrog::config::list() { [[ "$#" -eq 0 ]] || return 64; docker::_run-command jf config show; }
+#   jfrog.config.list
+jfrog.config.list() { [[ "$#" -eq 0 ]] || return 64; _docker.run-command jf config show; }
 
 # @description Register and verify a JFrog CLI server.
 #
@@ -51,8 +51,8 @@ jfrog::config::list() { [[ "$#" -eq 0 ]] || return 64; docker::_run-command jf c
 # @exitcode 69 jf is unavailable.
 # @exitcode other The status of jf config add or jf rt ping.
 # @example
-#   JFROG_ACCESS_TOKEN="$(pass show jfrog/token)" jfrog::setup prod https://example.jfrog.io builder
-jfrog::setup() {
+#   JFROG_ACCESS_TOKEN="$(pass show jfrog/token)" jfrog.setup prod https://example.jfrog.io builder
+jfrog.setup() {
   [[ "$#" -eq 3 && -n "$1" && -n "$2" && -n "$3" && -n "${JFROG_ACCESS_TOKEN:-}" ]] || return 64
   command -v jf >/dev/null 2>&1 || return 69
   printf '%s\n' "$JFROG_ACCESS_TOKEN" |

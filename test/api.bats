@@ -16,7 +16,16 @@ load test_helper
       awk '/^## 採用する関数$/{on=1; next} /^## /{on=0} on' \
         "${PROJECT_ROOT}/docs/explanation/function-selection/util-scripts.md"
     } |
-      python3 -c 'import re, sys; print("\n".join(re.findall(r"`([a-z][a-z0-9-]*(?:::[a-z][a-z0-9-]*)+)`", sys.stdin.read())))' |
+      # The second column names the functions. Other columns also quote dotted
+      # file names, hosts, and configuration keys, which are not functions.
+      python3 -c '
+import re, sys
+for line in sys.stdin:
+    cells = line.split("|")
+    if len(cells) > 3:
+        for name in re.findall(r"`([a-z][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+)[ `]", cells[2]):
+            print(name)
+' |
       sort -u
   )"
 
@@ -29,40 +38,40 @@ load test_helper
 }
 
 @test "regular expression functions use the regex namespace" {
-  declare -F regex::is-match >/dev/null
-  declare -F regex::capture-group >/dev/null
-  declare -F regex::capture-groups >/dev/null
+  declare -F regex.is-match >/dev/null
+  declare -F regex.capture-group >/dev/null
+  declare -F regex.capture-groups >/dev/null
 
-  ! declare -F string::is-match >/dev/null
-  ! declare -F string::capture-group >/dev/null
-  ! declare -F string::capture-groups >/dev/null
+  ! declare -F string.is-match >/dev/null
+  ! declare -F string.capture-group >/dev/null
+  ! declare -F string.capture-groups >/dev/null
 }
 
 @test "the library loads every standard module by default" {
-  declare -F aws::instance-id >/dev/null
-  declare -F aws::auto-scaling-group >/dev/null
-  declare -F git::commit::edit-via-rebase >/dev/null
-  declare -F net::ip::set-static >/dev/null
+  declare -F aws.instance-id >/dev/null
+  declare -F aws.auto-scaling-group >/dev/null
+  declare -F git.commit.edit-via-rebase >/dev/null
+  declare -F net.ip.set-static >/dev/null
 }
 
 @test "public mutation names do not encode mandatory administrator execution" {
-  declare -F file::append-text >/dev/null
-  declare -F file::replace-text >/dev/null
-  declare -F file::replace-all-text >/dev/null
-  declare -F file::replace-text-in-files >/dev/null
-  declare -F file::replace-all-text-in-files >/dev/null
-  declare -F file::replace-text-or-append >/dev/null
-  declare -F user::create-system >/dev/null
-  declare -F user::create-login >/dev/null
-  declare -F path::change-owner-recursively >/dev/null
+  declare -F file.append-text >/dev/null
+  declare -F file.replace-text >/dev/null
+  declare -F file.replace-all-text >/dev/null
+  declare -F file.replace-text-in-files >/dev/null
+  declare -F file.replace-all-text-in-files >/dev/null
+  declare -F file.replace-text-or-append >/dev/null
+  declare -F user.create-system >/dev/null
+  declare -F user.create-login >/dev/null
+  declare -F path.change-owner-recursively >/dev/null
 
-  declare -F file::append-text-as-root >/dev/null
-  declare -F file::replace-text-as-root >/dev/null
-  declare -F file::replace-all-text-as-root >/dev/null
-  declare -F file::replace-text-in-files-as-root >/dev/null
-  declare -F file::replace-all-text-in-files-as-root >/dev/null
-  ! declare -F file::replace-all-text-or-append >/dev/null
-  declare -F user::create-system-as-root >/dev/null
-  declare -F user::create-login-as-root >/dev/null
-  declare -F path::change-owner-recursively-as-root >/dev/null
+  declare -F file.append-text-as-root >/dev/null
+  declare -F file.replace-text-as-root >/dev/null
+  declare -F file.replace-all-text-as-root >/dev/null
+  declare -F file.replace-text-in-files-as-root >/dev/null
+  declare -F file.replace-all-text-in-files-as-root >/dev/null
+  ! declare -F file.replace-all-text-or-append >/dev/null
+  declare -F user.create-system-as-root >/dev/null
+  declare -F user.create-login-as-root >/dev/null
+  declare -F path.change-owner-recursively-as-root >/dev/null
 }

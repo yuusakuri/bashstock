@@ -8,7 +8,7 @@
 # @description Import the variables of a dotenv file into the current process.
 #
 # The file is parsed as data and never executed. Every line is validated
-# before any variable changes; see env::dotenv::_entries for the syntax.
+# before any variable changes; see _env.dotenv.entries for the syntax.
 #
 # @arg $1 string Regular dotenv file. A symbolic link is refused.
 # @set Each variable of the file is set and exported.
@@ -18,35 +18,35 @@
 # @exitcode 74 A variable could not be set or exported.
 # @exitcode other The status of the parser.
 # @example
-#   env::dotenv::import .env && printf '%s\n' "${DATABASE_URL}"
-env::dotenv::import() {
+#   env.dotenv.import .env && printf '%s\n' "${DATABASE_URL}"
+env.dotenv.import() {
   [[ "$#" -eq 1 && -f "$1" && ! -L "$1" ]] || return 64
-  env::dotenv::_entries "$1" >/dev/null || return "$?"
+  _env.dotenv.entries "$1" >/dev/null || return "$?"
   local __bashstock_dotenv_key='' __bashstock_dotenv_value=''
   # A readonly variable such as UID cannot be assigned, so the whole file is
   # refused before any variable changes. unset in a subshell fails only then.
   while IFS= read -r -d '' __bashstock_dotenv_key && IFS= read -r -d '' __bashstock_dotenv_value; do
     if ! ( unset -v "${__bashstock_dotenv_key}" ) 2>/dev/null; then
-      console::_write-error "${__bashstock_dotenv_key} in $1 is readonly; no variable was imported."
+      _console.write-error "${__bashstock_dotenv_key} in $1 is readonly; no variable was imported."
       return 65
     fi
-  done < <(env::dotenv::_entries "$1")
+  done < <(_env.dotenv.entries "$1")
   while IFS= read -r -d '' __bashstock_dotenv_key && IFS= read -r -d '' __bashstock_dotenv_value; do
     printf -v "${__bashstock_dotenv_key}" '%s' "${__bashstock_dotenv_value}" 2>/dev/null || return 74
     export "${__bashstock_dotenv_key?}" || return 74
-  done < <(env::dotenv::_entries "$1")
+  done < <(_env.dotenv.entries "$1")
 }
 
 # @description Write export commands for a dotenv file that Bash and Zsh can evaluate.
 # @internal
-env::dotenv::_export-commands() {
+_env.dotenv.export-commands() {
   [[ "$#" -eq 1 ]] || return 64
-  env::dotenv::_entries "$1" >/dev/null || return "$?"
+  _env.dotenv.entries "$1" >/dev/null || return "$?"
   local key='' value='' quoted=''
   while IFS= read -r -d '' key && IFS= read -r -d '' value; do
     printf -v quoted '%q' "${value}"
     printf 'export %s=%s\n' "${key}" "${quoted}"
-  done < <(env::dotenv::_entries "$1")
+  done < <(_env.dotenv.entries "$1")
 }
 
 # @description Write the KEY and VALUE of every assignment in a dotenv file as NUL-separated pairs.
@@ -59,7 +59,7 @@ env::dotenv::_export-commands() {
 # returns 65 and writes nothing. The body runs in a subshell, so its regex
 # captures do not reach the caller's BASH_REMATCH.
 # @internal
-env::dotenv::_entries() (
+_env.dotenv.entries() (
   [[ "$#" -eq 1 && -f "$1" && ! -L "$1" ]] || return 64
   local line='' key='' rest='' value='' character='' quote='' index=0 length=0 number=0
   local entry_keys=() entry_values=()
@@ -70,7 +70,7 @@ env::dotenv::_entries() (
     [[ -z "${rest}" || "${rest}" == \#* ]] && continue
     [[ "${rest}" =~ ^export[[:space:]]+ ]] && rest="${rest#"${BASH_REMATCH[0]}"}"
     if [[ ! "${rest}" =~ ^([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=[[:space:]]* ]]; then
-      console::_write-error "Invalid dotenv assignment on line ${number} of $1."
+      _console.write-error "Invalid dotenv assignment on line ${number} of $1."
       return 65
     fi
     key="${BASH_REMATCH[1]}"
@@ -101,7 +101,7 @@ env::dotenv::_entries() (
       rest="${rest:index+1}"
       rest="${rest#"${rest%%[![:space:]]*}"}"
       if ((index >= length)) || [[ -n "${rest}" && "${rest}" != \#* ]]; then
-        console::_write-error "Unterminated or trailing text in the dotenv value on line ${number} of $1."
+        _console.write-error "Unterminated or trailing text in the dotenv value on line ${number} of $1."
         return 65
       fi
     else
@@ -128,8 +128,8 @@ env::dotenv::_entries() (
 # @exitcode 64 The name or the shell list is invalid.
 # @exitcode other The status of the file operation that failed.
 # @example
-#   env::set-variable EDITOR vim bash
-env::set-variable() {
+#   env.set-variable EDITOR vim bash
+env.set-variable() {
   ( [[ "$#" -ge 2 && "$#" -le 3 && "$1" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] ) || return 64
   local name="$1" value="$2" shells="${3:-bash,zsh}" shell='' rc='' quoted=''
   ( [[ "$shells" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] ) || return 64
@@ -138,8 +138,8 @@ env::set-variable() {
   IFS=',' read -r -a _util_shells <<<"$shells"
   for shell in "${_util_shells[@]}"; do
     case "$shell" in bash) rc="$HOME/.bashrc" ;; zsh) rc="$HOME/.zshrc" ;; esac
-    if [[ ! -e "$rc" ]]; then file::write-text "$rc" '' || return "$?"; fi
-    file::replace-text-or-append "$rc" "^export ${name}=.*$" "export ${name}=${quoted}" || return "$?"
+    if [[ ! -e "$rc" ]]; then file.write-text "$rc" '' || return "$?"; fi
+    file.replace-text-or-append "$rc" "^export ${name}=.*$" "export ${name}=${quoted}" || return "$?"
   done
   export "${name}=${value}"
 }
@@ -155,8 +155,8 @@ env::set-variable() {
 # @exitcode 64 The directory does not exist or the shell list is invalid.
 # @exitcode other The status of the file operation that failed.
 # @example
-#   env::add-path "${HOME}/.local/bin"
-env::add-path() {
+#   env.add-path "${HOME}/.local/bin"
+env.add-path() {
   [[ "$#" -ge 1 && "$#" -le 2 && -d "$1" ]] || return 64
   local path="$1" shells="${2:-bash,zsh}" shell='' rc='' quoted='' line=''
   ( [[ "$shells" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] ) || return 64
@@ -167,7 +167,7 @@ env::add-path() {
   for shell in "${_util_shells[@]}"; do
     case "$shell" in bash) rc="$HOME/.bashrc" ;; zsh) rc="$HOME/.zshrc" ;; esac
     if [[ ! -f "$rc" ]] || ! grep -Fqx -- "$line" "$rc"; then
-      file::append-text "$rc" "${line}"$'\n' || return "$?"
+      file.append-text "$rc" "${line}"$'\n' || return "$?"
     fi
   done
   case ":${PATH:-}:" in *":$path:"*) ;; *) PATH="${PATH:+${PATH}:}${path}"; export PATH ;; esac
@@ -175,7 +175,7 @@ env::add-path() {
 
 # @description Load a dotenv file in every new Bash and Zsh session.
 #
-# Bash startup files load BashStock and call env::dotenv::import. Zsh cannot
+# Bash startup files load BashStock and call env.dotenv.import. Zsh cannot
 # load a Bash library, so its startup file asks Bash for the parsed values
 # and evaluates the resulting export commands. Each startup file receives the
 # line once, and the file is always read as data.
@@ -186,13 +186,13 @@ env::add-path() {
 # @exitcode 64 The file is not a regular file or the shell list is invalid.
 # @exitcode other The status of the file operation that failed.
 # @example
-#   env::dotenv::register "${HOME}/.config/app/.env" zsh
-env::dotenv::register() {
+#   env.dotenv.register "${HOME}/.config/app/.env" zsh
+env.dotenv.register() {
   [[ "$#" -ge 1 && "$#" -le 2 && -f "$1" && ! -L "$1" ]] || return 64
   local file="$1" shells="${2:-bash,zsh}" shell='' rc='' line='' library='' quoted_file=''
   ( [[ "${shells}" =~ ^(bash|zsh)(,(bash|zsh))*$ ]] ) || return 64
   [[ "${file}" == /* ]] || file="${PWD}/${file}"
-  file="$(path::normalize "${file}")" || return "$?"
+  file="$(path.normalize "${file}")" || return "$?"
   printf -v quoted_file '%q' "${file}"
   printf -v library '%q' "${_BASHSTOCK_FILE}"
   local _util_shells=()
@@ -201,15 +201,15 @@ env::dotenv::register() {
     case "${shell}" in
       bash)
         rc="${HOME}/.bashrc"
-        line="[ -r ${library} ] && . ${library} && env::dotenv::import ${quoted_file}"
+        line="[ -r ${library} ] && . ${library} && env.dotenv.import ${quoted_file}"
         ;;
       zsh)
         rc="${HOME}/.zshrc"
-        line="[ -r ${library} ] && eval \"\$(bash -c '. \"\$1\" && env::dotenv::_export-commands \"\$2\"' bashstock ${library} ${quoted_file})\""
+        line="[ -r ${library} ] && eval \"\$(bash -c '. \"\$1\" && _env.dotenv.export-commands \"\$2\"' bashstock ${library} ${quoted_file})\""
         ;;
     esac
     if [[ ! -f "${rc}" ]] || ! grep -Fqx -- "${line}" "${rc}"; then
-      file::append-text "${rc}" "${line}"$'\n' || return "$?"
+      file.append-text "${rc}" "${line}"$'\n' || return "$?"
     fi
   done
 }

@@ -8,10 +8,10 @@ Homebrew is installed with its official installer on macOS.
 
 ## Index
 
-* [homebrew::install](#homebrewinstall)
-* [homebrew::cask::disable-quarantine](#homebrewcaskdisable-quarantine)
+* [homebrew.install](#homebrewinstall)
+* [homebrew.cask.disable-quarantine](#homebrewcaskdisable-quarantine)
 
-### homebrew::install
+### homebrew.install
 
 Install Homebrew with the official installer when it is missing.
 
@@ -21,7 +21,7 @@ process finds brew on PATH afterwards. Homebrew lives in /opt/homebrew.
 #### Example
 
 ```bash
-homebrew::install
+homebrew.install
 brew --version
 ```
 
@@ -35,7 +35,7 @@ _Function has no arguments._
 * **74**: The installer could not be downloaded.
 * other The status of the official installer.
 
-### homebrew::cask::disable-quarantine
+### homebrew.cask.disable-quarantine
 
 Install Homebrew casks without the quarantine attribute from now on.
 
@@ -45,7 +45,7 @@ and exported to the current process.
 #### Example
 
 ```bash
-homebrew::cask::disable-quarantine
+homebrew.cask.disable-quarantine
 ```
 
 _Function has no arguments._

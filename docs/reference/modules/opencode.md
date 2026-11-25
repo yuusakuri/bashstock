@@ -8,9 +8,9 @@ OpenCode is installed with its official installer.
 
 ## Index
 
-* [opencode::install](#opencodeinstall)
+* [opencode.install](#opencodeinstall)
 
-### opencode::install
+### opencode.install
 
 Install the newest OpenCode command-line application.
 
@@ -18,12 +18,12 @@ macOS uses the Homebrew tap. Linux installs the official opencode-ai npm
 package into $HOME/.local; its installer picks the build for the CPU and C
 library, and the glibc builds run on Ubuntu 18.04 and later. Linux needs
 npm: the Ubuntu nodejs package does not provide it, so install Node.js with
-`node::install VERSION official` first there.
+`node.install VERSION official` first there.
 
 #### Example
 
 ```bash
-opencode::install
+opencode.install
 ```
 
 _Function has no arguments._

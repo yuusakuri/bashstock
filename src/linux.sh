@@ -8,19 +8,19 @@
 # @description Install curl, Git, and Python 3 when they are missing.
 #
 # @internal
-linux::_setup-prerequisites() {
+_linux.setup-prerequisites() {
   [[ "$#" -eq 0 ]] || return 64
   local platform=''
   local packages=()
-  platform="$(package::_platform)" || return "$?"
-  command::exists curl || packages+=(curl)
-  command::exists git || packages+=(git)
-  command::exists python3 || packages+=(python3)
+  platform="$(_package.platform)" || return "$?"
+  command.exists curl || packages+=(curl)
+  command.exists git || packages+=(git)
+  command.exists python3 || packages+=(python3)
   case "${platform}" in
     ubuntu | fedora) ;;
     *) return 69 ;;
   esac
-  [[ "${#packages[@]}" -eq 0 ]] || command::_run-step package::_install "${packages[@]}"
+  [[ "${#packages[@]}" -eq 0 ]] || _command.run-step _package.install "${packages[@]}"
 }
 
 # @description Apply the common Linux user configuration, stopping at the first failure.
@@ -35,21 +35,21 @@ linux::_setup-prerequisites() {
 # @exitcode 69 The platform is not Ubuntu or Fedora.
 # @exitcode other The status of the first step that failed.
 # @example
-#   linux::setup
-linux::setup() {
+#   linux.setup
+linux.setup() {
   [[ "$#" -eq 0 ]] || return 64
-  package::_require-platform ubuntu fedora || return "$?"
-  linux::_setup-prerequisites || return "$?"
-  command::_run-step electron::wayland::enable || return "$?"
+  _package.require-platform ubuntu fedora || return "$?"
+  _linux.setup-prerequisites || return "$?"
+  _command.run-step electron.wayland.enable || return "$?"
   # ~/.env holds secrets, so only the user may read a new one.
-  file::ensure-exists "${HOME}/.env" 0600 || return "$?"
-  command::_run-step env::dotenv::register "${HOME}/.env" || return "$?"
-  command::_run-step shell::editor::set-default 'code --wait' bash,zsh || return "$?"
-  command::_run-step shell::completion::enable-ignore-case || return "$?"
-  command::_run-step user::directory::create-english-links || return "$?"
-  command::_run-step user::add-to-group dialout || return "$?"
-  command::_run-step git::config::setup || return "$?"
-  command::_run-step ssh::setup-directory
+  file.ensure-exists "${HOME}/.env" 0600 || return "$?"
+  _command.run-step env.dotenv.register "${HOME}/.env" || return "$?"
+  _command.run-step shell.editor.set-default 'code --wait' bash,zsh || return "$?"
+  _command.run-step shell.completion.enable-ignore-case || return "$?"
+  _command.run-step user.directory.create-english-links || return "$?"
+  _command.run-step user.add-to-group dialout || return "$?"
+  _command.run-step git.config.setup || return "$?"
+  _command.run-step ssh.setup-directory
 }
 
 # @description Install GnuPG, GitHub CLI, and Git Credential Manager when they are not already available.
@@ -58,16 +58,16 @@ linux::setup() {
 # installed.
 # @internal
 # @arg $1 string GnuPG package name of the platform.
-linux::_setup-external() {
+_linux.setup-external() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
-  if ! command::exists gpg; then
-    command::_run-step package::_install "$1" || return "$?"
+  if ! command.exists gpg; then
+    _command.run-step _package.install "$1" || return "$?"
   fi
-  if ! command::exists gh; then
-    command::_run-step gh::install || return "$?"
+  if ! command.exists gh; then
+    _command.run-step gh.install || return "$?"
   fi
-  if ! command::exists git-credential-manager; then
-    command::_run-step git-credential-manager::install || return "$?"
+  if ! command.exists git-credential-manager; then
+    _command.run-step git-credential-manager.install || return "$?"
   fi
-  command::_run-step git::config::use-credential-manager
+  _command.run-step git.config.use-credential-manager
 }

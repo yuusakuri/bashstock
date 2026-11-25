@@ -20,9 +20,9 @@
 
 | 参照元 | 本プロジェクトの関数 | 引数 | 機能 | Bash 3.2での実装規則と必須テスト |
 |---|---|---|---|---|
-| `log_info`、`log` | `log::info` | `MESSAGE` | 現在のローカル日時、`INFO`、コマンド名、メッセージを一行ずつ標準エラー出力へ書きます。 | 組み込みの`printf`と`time::local-date-time-milliseconds-extended`を使用します。通常文字列、空文字、複数行、バックスラッシュ、書式指定文字、引数過多を確認します。 |
-| `log_warn`、`log` | `log::warn` | `MESSAGE` | 現在のローカル日時、`WARN`、コマンド名、メッセージを一行ずつ標準エラー出力へ書きます。 | 組み込みの`printf`と`time::local-date-time-milliseconds-extended`を使用します。通常文字列、空文字、複数行、バックスラッシュ、書式指定文字、引数過多を確認します。 |
-| `log_error`、`log` | `log::error` | `MESSAGE` | 現在のローカル日時、`ERROR`、コマンド名、メッセージを一行ずつ標準エラー出力へ書きます。関数自体はプロセスを終了しません。 | 組み込みの`printf`と`time::local-date-time-milliseconds-extended`を使用します。通常文字列、空文字、複数行、バックスラッシュ、書式指定文字、引数過多を確認します。 |
+| `log_info`、`log` | `log.info` | `MESSAGE` | 現在のローカル日時、`INFO`、コマンド名、メッセージを一行ずつ標準エラー出力へ書きます。 | 組み込みの`printf`と`time.local-date-time-milliseconds-extended`を使用します。通常文字列、空文字、複数行、バックスラッシュ、書式指定文字、引数過多を確認します。 |
+| `log_warn`、`log` | `log.warn` | `MESSAGE` | 現在のローカル日時、`WARN`、コマンド名、メッセージを一行ずつ標準エラー出力へ書きます。 | 組み込みの`printf`と`time.local-date-time-milliseconds-extended`を使用します。通常文字列、空文字、複数行、バックスラッシュ、書式指定文字、引数過多を確認します。 |
+| `log_error`、`log` | `log.error` | `MESSAGE` | 現在のローカル日時、`ERROR`、コマンド名、メッセージを一行ずつ標準エラー出力へ書きます。関数自体はプロセスを終了しません。 | 組み込みの`printf`と`time.local-date-time-milliseconds-extended`を使用します。通常文字列、空文字、複数行、バックスラッシュ、書式指定文字、引数過多を確認します。 |
 
 ログの一行は、`YYYY-MM-DDTHH:MM:SS.sss+HH:MM [LEVEL] [COMMAND] MESSAGE`形式または負のUTCオフセットを使う同じ形式です。`COMMAND`には`BASHSTOCK_NAME`を使用します。メッセージが複数行の場合は、空の行を含む各行へ日時、レベル、コマンド名を付けます。メッセージ内の`\n`や`\t`を制御文字へ変換せず、受け取った文字をそのまま出力します。
 
@@ -32,12 +32,12 @@
 
 | 参照元 | 本プロジェクトの関数 | 引数 | 機能 | Bash 3.2での実装規則と必須テスト |
 |---|---|---|---|---|
-| `assert_is_installed` | `command::require` | `COMMAND` | コマンドを現在の実行環境から解決できることを検査します。解決できない場合は診断を書き、終了状態69を返します。 | `command::exists`を使用し、入力を実行しません。外部コマンド、組み込み、関数、未知の名前、空文字、引数過多を確認します。 |
-| `assert_not_empty` | `string::require-non-empty` | `NAME VALUE` | `VALUE`が空でないことを検査します。空の場合は`NAME`を含む診断を書き、終了状態64を返します。 | `[[ -n ]]`を使用し、値を診断へ出力しません。通常値、空文字、空白、改行、空の名前、引数の不足と過多を確認します。 |
-| `assert_empty` | `string::require-empty` | `NAME VALUE` | `VALUE`が空であることを検査します。空でない場合は`NAME`を含む診断を書き、終了状態64を返します。 | `[[ -z ]]`を使用し、値を診断へ出力しません。空文字、通常値、空白、改行、空の名前、引数の不足と過多を確認します。 |
-| `assert_not_empty_or_null` | `json::require-present` | `NAME VALUE` | JSONから取得した`VALUE`が空文字でも文字列`null`でもないことを検査します。条件を満たさない場合は`NAME`を含む診断を書き、終了状態64を返します。 | 値をコードや正規表現として評価せず、空文字と`null`を完全一致で検査します。通常値、数値、`false`、空文字、`null`、`NULL`、空の名前、引数の不足と過多を確認します。 |
-| `assert_value_in_list` | `string::require-allowed` | `NAME VALUE ALLOWED...` | `VALUE`が一つ以上の`ALLOWED`のいずれかと完全一致することを検査します。一致しない場合は診断を書き、終了状態64を返します。 | `array::contains`を使用し、配列名の間接参照とパターン比較を使用しません。先頭と末尾の一致、不一致、空値、空の許可値、重複、空白、パターン記号、許可値なしを確認します。 |
-| `assert_exactly_one_of` | `option::require-single` | `NAME VALUE [NAME VALUE]...` | 二組以上のオプション名と値を受け取り、空でない値が一つだけであることを検査します。条件を満たさない場合は候補名を含む診断を書き、終了状態64を返します。 | 位置引数を二つずつ処理し、配列名の間接参照を使用しません。一つだけ設定、すべて空、複数設定、空白値、空の名前、奇数個の引数、一組だけ、引数なしを確認します。 |
+| `assert_is_installed` | `command.require` | `COMMAND` | コマンドを現在の実行環境から解決できることを検査します。解決できない場合は診断を書き、終了状態69を返します。 | `command.exists`を使用し、入力を実行しません。外部コマンド、組み込み、関数、未知の名前、空文字、引数過多を確認します。 |
+| `assert_not_empty` | `string.require-non-empty` | `NAME VALUE` | `VALUE`が空でないことを検査します。空の場合は`NAME`を含む診断を書き、終了状態64を返します。 | `[[ -n ]]`を使用し、値を診断へ出力しません。通常値、空文字、空白、改行、空の名前、引数の不足と過多を確認します。 |
+| `assert_empty` | `string.require-empty` | `NAME VALUE` | `VALUE`が空であることを検査します。空でない場合は`NAME`を含む診断を書き、終了状態64を返します。 | `[[ -z ]]`を使用し、値を診断へ出力しません。空文字、通常値、空白、改行、空の名前、引数の不足と過多を確認します。 |
+| `assert_not_empty_or_null` | `json.require-present` | `NAME VALUE` | JSONから取得した`VALUE`が空文字でも文字列`null`でもないことを検査します。条件を満たさない場合は`NAME`を含む診断を書き、終了状態64を返します。 | 値をコードや正規表現として評価せず、空文字と`null`を完全一致で検査します。通常値、数値、`false`、空文字、`null`、`NULL`、空の名前、引数の不足と過多を確認します。 |
+| `assert_value_in_list` | `string.require-allowed` | `NAME VALUE ALLOWED...` | `VALUE`が一つ以上の`ALLOWED`のいずれかと完全一致することを検査します。一致しない場合は診断を書き、終了状態64を返します。 | `array.contains`を使用し、配列名の間接参照とパターン比較を使用しません。先頭と末尾の一致、不一致、空値、空の許可値、重複、空白、パターン記号、許可値なしを確認します。 |
+| `assert_exactly_one_of` | `option.require-single` | `NAME VALUE [NAME VALUE]...` | 二組以上のオプション名と値を受け取り、空でない値が一つだけであることを検査します。条件を満たさない場合は候補名を含む診断を書き、終了状態64を返します。 | 位置引数を二つずつ処理し、配列名の間接参照を使用しません。一つだけ設定、すべて空、複数設定、空白値、空の名前、奇数個の引数、一組だけ、引数なしを確認します。 |
 
 必須条件を検査する関数は、対象を表す`command`、`string`、`json`、`option`名前空間に置きます。条件を満たす場合は出力せず、終了状態0を返します。関数は`exit`を呼び出しません。呼び出し側は終了状態を返すか、製品の規則に従って処理を継続します。`NAME`は空でない一行の表示名とし、改行を含む場合は終了状態64を返します。
 
@@ -45,7 +45,7 @@
 
 | 参照元 | 本プロジェクトの関数 | 引数 | 機能 | Bash 3.2での実装規則と必須テスト |
 |---|---|---|---|---|
-| `array_prepend` | `array::prepend-to-each` | `PREFIX [VALUE...]` | 各`VALUE`の先頭へ`PREFIX`を付け、一要素ずつ標準出力へ書きます。値がない場合は何も出力しません。 | 名前参照、連想配列、単語分割、パス名展開を使用せず、位置引数を順番に処理します。空配列、一要素、複数要素、空要素、空の接頭辞、空白、パターン記号、改行を確認します。 |
+| `array_prepend` | `array.prepend-to-each` | `PREFIX [VALUE...]` | 各`VALUE`の先頭へ`PREFIX`を付け、一要素ずつ標準出力へ書きます。値がない場合は何も出力しません。 | 名前参照、連想配列、単語分割、パス名展開を使用せず、位置引数を順番に処理します。空配列、一要素、複数要素、空要素、空の接頭辞、空白、パターン記号、改行を確認します。 |
 
 `PREFIX`または`VALUE`に改行が含まれる場合は、行単位の出力で要素の境界を保持できないため終了状態64を返します。
 
@@ -53,7 +53,7 @@
 
 | 参照元 | 本プロジェクトの関数 | 引数 | 機能 | Bash 3.2での実装規則と必須テスト |
 |---|---|---|---|---|
-| `string_substr` | `string::slice` | `VALUE START [END]` | `VALUE`から0始まりの`START`以降、`END`未満の文字を出力します。`END`を省略した場合は末尾までを出力します。 | Bash 3.2の部分文字列展開を使用します。ASCII、日本語、空文字、先頭、末尾、空の範囲、`END`省略、負数、整数以外、逆転した範囲、範囲外、引数の不足と過多を確認します。 |
+| `string_substr` | `string.slice` | `VALUE START [END]` | `VALUE`から0始まりの`START`以降、`END`未満の文字を出力します。`END`を省略した場合は末尾までを出力します。 | Bash 3.2の部分文字列展開を使用します。ASCII、日本語、空文字、先頭、末尾、空の範囲、`END`省略、負数、整数以外、逆転した範囲、範囲外、引数の不足と過多を確認します。 |
 
 `START`と`END`は0以上の10進整数です。`START`は`END`以下であり、両方とも現在のUTF-8ロケールで数えた文字数以下でなければなりません。条件を満たさない場合は終了状態64を返します。この契約は、参照元の第三引数を長さとして扱う実装上の不一致を引き継ぎません。
 
@@ -61,46 +61,46 @@
 
 | 参照元 | 本プロジェクトの関数 | 引数 | 機能 | Bash 3.2での実装規則と必須テスト |
 |---|---|---|---|---|
-| `file_contains_text` | `file::contains-match` | `PATH EXPRESSION` | 読み取れる通常ファイルのいずれかの行がPython `re`正規表現に一致すれば終了状態0、一致しなければ1を返します。標準出力へは書きません。 | Pythonの`re`で式をcompileしてからファイルの各行を調べます。一致、不一致、空ファイル、改行で終わらない最終行、空の式、無効な式、存在しないパス、ディレクトリ、読取不可を確認します。 |
-| `os_validate_checksum` | `file::verify-sha256` | `PATH EXPECTED` | 読み取れる通常ファイルのSHA-256値が64桁の`EXPECTED`と一致すれば終了状態0、一致しなければ1を返します。標準出力へは書きません。 | macOSでは`shasum -a 256`、UbuntuとFedoraでは`sha256sum`を内部アダプターから使用します。一致、不一致、空ファイル、大文字と小文字の期待値、不正な期待値、空白を含むパス、存在しないパス、ディレクトリ、読取不可、実行環境不足を確認します。 |
-| `file_append_text` | `file::append-text` | `FILE TEXT` | `TEXT`を変換せず、`FILE`の末尾へ正確に追記します。fileが存在しない場合は、`umask`と実行者がrootかどうかにかかわらず`0644`で作成します。 | 既存fileの書込permission、または新規fileを作成する親directoryのpermissionを事前確認し、現在の権限で追記できない場合だけ`command::run-as-root`を使用します。組み込みの`printf '%s'`を使用し、`echo -e`と`eval`は使用しません。 |
-| `file_replace_text` | `file::replace-text` | `FILE EXPRESSION REPLACEMENT` | 各行でBash EREに最初に一致する部分を、literalの`REPLACEMENT`へ置換します。一件も一致しない場合はfileを変更せず終了状態1を返します。 | Bash 3.2だけで一行ずつ置換します。permissionを事前確認し、必要な場合だけ管理者権限で、同じdirectoryの一時fileへ書いて原子的に置き換えます。 |
-| `file_replace_text` | `file::replace-all-text` | `FILE EXPRESSION REPLACEMENT` | 各行でBash EREに一致するすべての部分を、literalの`REPLACEMENT`へ置換します。一件も一致しない場合はfileを変更せず終了状態1を返します。 | 空文字列へ一致できる式を拒否し、各行の左から右へ重複しない一致を置換します。permissionを事前確認し、必要な場合だけ管理者権限を使用します。 |
-| `file_replace_text_in_files` | `file::replace-text-in-files` | `EXPRESSION REPLACEMENT FILE...` | 一つ以上のfileについて、各行の最初の一致をliteralの`REPLACEMENT`へ置換します。 | 全入力と正規表現とpermissionを検証してから一時fileを作成します。一つでも管理者権限が必要なら処理全体を同じ権限で実行し、途中失敗時は保存した元fileから復元します。 |
-| `file_replace_text_in_files` | `file::replace-all-text-in-files` | `EXPRESSION REPLACEMENT FILE...` | 一つ以上のfileについて、各行の全一致をliteralの`REPLACEMENT`へ置換します。 | `file::replace-text-in-files`と同じpermission検査、原子的更新、復元契約を使用します。 |
-| `file_replace_or_append_text` | `file::replace-text-or-append` | `FILE EXPRESSION REPLACEMENT` | 各行の全一致を置換し、一件も一致しなければ`REPLACEMENT`を新しい一行として末尾へ追加します。 | Bash 3.2で一行ずつ処理します。permissionを事前確認し、必要な場合だけ管理者権限で、更新後の全内容を一時fileへ作成して原子的に置き換えます。 |
+| `file_contains_text` | `file.contains-match` | `PATH EXPRESSION` | 読み取れる通常ファイルのいずれかの行がPython `re`正規表現に一致すれば終了状態0、一致しなければ1を返します。標準出力へは書きません。 | Pythonの`re`で式をcompileしてからファイルの各行を調べます。一致、不一致、空ファイル、改行で終わらない最終行、空の式、無効な式、存在しないパス、ディレクトリ、読取不可を確認します。 |
+| `os_validate_checksum` | `file.verify-sha256` | `PATH EXPECTED` | 読み取れる通常ファイルのSHA-256値が64桁の`EXPECTED`と一致すれば終了状態0、一致しなければ1を返します。標準出力へは書きません。 | macOSでは`shasum -a 256`、UbuntuとFedoraでは`sha256sum`を内部アダプターから使用します。一致、不一致、空ファイル、大文字と小文字の期待値、不正な期待値、空白を含むパス、存在しないパス、ディレクトリ、読取不可、実行環境不足を確認します。 |
+| `file_append_text` | `file.append-text` | `FILE TEXT` | `TEXT`を変換せず、`FILE`の末尾へ正確に追記します。fileが存在しない場合は、`umask`と実行者がrootかどうかにかかわらず`0644`で作成します。 | 既存fileの書込permission、または新規fileを作成する親directoryのpermissionを事前確認し、現在の権限で追記できない場合だけ`command.run-as-root`を使用します。組み込みの`printf '%s'`を使用し、`echo -e`と`eval`は使用しません。 |
+| `file_replace_text` | `file.replace-text` | `FILE EXPRESSION REPLACEMENT` | 各行でBash EREに最初に一致する部分を、literalの`REPLACEMENT`へ置換します。一件も一致しない場合はfileを変更せず終了状態1を返します。 | Bash 3.2だけで一行ずつ置換します。permissionを事前確認し、必要な場合だけ管理者権限で、同じdirectoryの一時fileへ書いて原子的に置き換えます。 |
+| `file_replace_text` | `file.replace-all-text` | `FILE EXPRESSION REPLACEMENT` | 各行でBash EREに一致するすべての部分を、literalの`REPLACEMENT`へ置換します。一件も一致しない場合はfileを変更せず終了状態1を返します。 | 空文字列へ一致できる式を拒否し、各行の左から右へ重複しない一致を置換します。permissionを事前確認し、必要な場合だけ管理者権限を使用します。 |
+| `file_replace_text_in_files` | `file.replace-text-in-files` | `EXPRESSION REPLACEMENT FILE...` | 一つ以上のfileについて、各行の最初の一致をliteralの`REPLACEMENT`へ置換します。 | 全入力と正規表現とpermissionを検証してから一時fileを作成します。一つでも管理者権限が必要なら処理全体を同じ権限で実行し、途中失敗時は保存した元fileから復元します。 |
+| `file_replace_text_in_files` | `file.replace-all-text-in-files` | `EXPRESSION REPLACEMENT FILE...` | 一つ以上のfileについて、各行の全一致をliteralの`REPLACEMENT`へ置換します。 | `file.replace-text-in-files`と同じpermission検査、原子的更新、復元契約を使用します。 |
+| `file_replace_or_append_text` | `file.replace-text-or-append` | `FILE EXPRESSION REPLACEMENT` | 各行の全一致を置換し、一件も一致しなければ`REPLACEMENT`を新しい一行として末尾へ追加します。 | Bash 3.2で一行ずつ処理します。permissionを事前確認し、必要な場合だけ管理者権限で、更新後の全内容を一時fileへ作成して原子的に置き換えます。 |
 
-`file::contains-match`はPython `re`の正規表現を評価します。ファイル置換関数はBashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現を一行の範囲で評価します。空の式、式または置換値の改行、入力fileのNUL文字を、元fileを変更せず終了状態64で拒否します。全一致を置換する関数は、空文字列へ一致できる式も終了状態64で拒否します。置換値はliteralであり、`$1`、`\1`、`&`を置換式として評価しません。更新関数は処理に必要なfileとdirectoryのpermissionを確認し、現在の権限で処理できない場合だけ`command::run-as-root`を使用します。すべての更新関数はシンボリックリンクを拒否し、既存fileの所有者、group、mode、ACL、拡張属性を保持します。metadataを保持できない場合は元fileを変更せず終了状態74を返します。
+`file.contains-match`はPython `re`の正規表現を評価します。ファイル置換関数はBashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現を一行の範囲で評価します。空の式、式または置換値の改行、入力fileのNUL文字を、元fileを変更せず終了状態64で拒否します。全一致を置換する関数は、空文字列へ一致できる式も終了状態64で拒否します。置換値はliteralであり、`$1`、`\1`、`&`を置換式として評価しません。更新関数は処理に必要なfileとdirectoryのpermissionを確認し、現在の権限で処理できない場合だけ`command.run-as-root`を使用します。すべての更新関数はシンボリックリンクを拒否し、既存fileの所有者、group、mode、ACL、拡張属性を保持します。metadataを保持できない場合は元fileを変更せず終了状態74を返します。
 
-`file::verify-sha256`は、16進英字の大小を区別しません。MD5は安全な完全性検査に適さないため、対応する公開関数を設けません。
+`file.verify-sha256`は、16進英字の大小を区別しません。MD5は安全な完全性検査に適さないため、対応する公開関数を設けません。
 
 ### 利用者
 
 | 参照元 | 本プロジェクトの関数 | 引数 | 機能 | Bash 3.2での実装規則と必須テスト |
 |---|---|---|---|---|
-| `os_get_current_users_name` | `user::name` | なし | 現在のプロセスを実行する実効利用者の名前を標準出力へ書きます。 | `id -un`を使用します。一般利用者、root、空でない出力、引数過多、`id`の失敗を確認します。 |
-| `os_get_current_users_group` | `user::primary-group` | なし | 現在のプロセスを実行する実効利用者のプライマリーグループ名を標準出力へ書きます。 | `id -gn`を使用します。一般利用者、root、空でない出力、引数過多、`id`の失敗を確認します。 |
-| `os_user_is_root_or_sudo` | `user::is-root` | なし | 現在のプロセスの実効利用者IDが0なら終了状態0、それ以外は1を返します。標準出力と標準エラー出力へは書きません。 | Bash 3.2の`EUID`を数値として比較します。root、一般利用者、`sudo`の呼び出し元を示す環境変数だけがある状態、引数過多を確認します。 |
-| `os_user_exists` | `user::exists` | `NAME` | OS上に`NAME`と完全一致する利用者が存在すれば終了状態0、存在しなければ1を返します。標準出力と標準エラー出力へは書きません。 | `id`を使用し、名前をコマンドまたはオプションとして評価しません。現在の利用者、root、存在しない名前、空文字、ハイフンで始まる値、空白、改行、引数過多を確認します。 |
-| `os_create_user` | `user::create-system` | `NAME` | パスの所有者として使用できる、ログイン不能なローカルシステムアカウントを管理者権限で作成します。既存の利用者名は終了状態73を返します。 | macOSでは役割アカウント、UbuntuとFedoraではシステムアカウントとして作成します。操作自体に管理者権限が必要なため、公開名へ`-as-root`を付けません。 |
-| `os_create_user` | `user::create-login` | `NAME FULL_NAME` | 人がログインするためのローカル一般利用者を管理者権限で作成し、OS標準のホームディレクトリ、`/bin/bash`、対話入力したパスワードを設定します。管理者権限は付与しません。 | パスワードは制御端末上のOS標準入力だけで設定します。操作自体に管理者権限が必要なため、公開名へ`-as-root`を付けません。 |
+| `os_get_current_users_name` | `user.name` | なし | 現在のプロセスを実行する実効利用者の名前を標準出力へ書きます。 | `id -un`を使用します。一般利用者、root、空でない出力、引数過多、`id`の失敗を確認します。 |
+| `os_get_current_users_group` | `user.primary-group` | なし | 現在のプロセスを実行する実効利用者のプライマリーグループ名を標準出力へ書きます。 | `id -gn`を使用します。一般利用者、root、空でない出力、引数過多、`id`の失敗を確認します。 |
+| `os_user_is_root_or_sudo` | `user.is-root` | なし | 現在のプロセスの実効利用者IDが0なら終了状態0、それ以外は1を返します。標準出力と標準エラー出力へは書きません。 | Bash 3.2の`EUID`を数値として比較します。root、一般利用者、`sudo`の呼び出し元を示す環境変数だけがある状態、引数過多を確認します。 |
+| `os_user_exists` | `user.exists` | `NAME` | OS上に`NAME`と完全一致する利用者が存在すれば終了状態0、存在しなければ1を返します。標準出力と標準エラー出力へは書きません。 | `id`を使用し、名前をコマンドまたはオプションとして評価しません。現在の利用者、root、存在しない名前、空文字、ハイフンで始まる値、空白、改行、引数過多を確認します。 |
+| `os_create_user` | `user.create-system` | `NAME` | パスの所有者として使用できる、ログイン不能なローカルシステムアカウントを管理者権限で作成します。既存の利用者名は終了状態73を返します。 | macOSでは役割アカウント、UbuntuとFedoraではシステムアカウントとして作成します。操作自体に管理者権限が必要なため、公開名へ`-as-root`を付けません。 |
+| `os_create_user` | `user.create-login` | `NAME FULL_NAME` | 人がログインするためのローカル一般利用者を管理者権限で作成し、OS標準のホームディレクトリ、`/bin/bash`、対話入力したパスワードを設定します。管理者権限は付与しません。 | パスワードは制御端末上のOS標準入力だけで設定します。操作自体に管理者権限が必要なため、公開名へ`-as-root`を付けません。 |
 
-`user::is-root`は実効利用者IDだけを判定します。`SUDO_USER`などの環境変数が設定されていても、実効利用者IDが0でなければ終了状態1を返します。利用者名を受け取る関数は、空文字、改行を含む値、ハイフンで始まる値を終了状態64として扱います。
+`user.is-root`は実効利用者IDだけを判定します。`SUDO_USER`などの環境変数が設定されていても、実効利用者IDが0でなければ終了状態1を返します。利用者名を受け取る関数は、空文字、改行を含む値、ハイフンで始まる値を終了状態64として扱います。
 
-`user::create-system`は、サービス実行とファイル所有のためのアカウントを作成します。`NAME`は、macOSの役割アカウントとLinuxのシステムアカウントで共通して使用できる`_[a-z][a-z0-9_-]*`形式に限定します。このアカウントは人のログインに使用できません。
+`user.create-system`は、サービス実行とファイル所有のためのアカウントを作成します。`NAME`は、macOSの役割アカウントとLinuxのシステムアカウントで共通して使用できる`_[a-z][a-z0-9_-]*`形式に限定します。このアカウントは人のログインに使用できません。
 
-`user::create-login`は、人がログインするための一般利用者を作成します。`NAME`は`[a-z][a-z0-9_-]*`形式、`FULL_NAME`は空でなく、改行、コロン、制御文字を含まない文字列とします。macOSではホームを`/Users/NAME`、UbuntuとFedoraでは`/home/NAME`に作成します。パスワード設定に失敗した場合は、同じ関数呼び出しで作成した利用者とホームディレクトリを削除して元の状態へ戻します。復元にも失敗した場合は終了状態74を返し、残った利用者名とホームディレクトリを標準エラー出力へ書きます。macOSのSecure TokenとFileVault解除権限は、この関数の契約に含めません。
+`user.create-login`は、人がログインするための一般利用者を作成します。`NAME`は`[a-z][a-z0-9_-]*`形式、`FULL_NAME`は空でなく、改行、コロン、制御文字を含まない文字列とします。macOSではホームを`/Users/NAME`、UbuntuとFedoraでは`/home/NAME`に作成します。パスワード設定に失敗した場合は、同じ関数呼び出しで作成した利用者とホームディレクトリを削除して元の状態へ戻します。復元にも失敗した場合は終了状態74を返し、残った利用者名とホームディレクトリを標準エラー出力へ書きます。macOSのSecure TokenとFileVault解除権限は、この関数の契約に含めません。
 
 ### 管理者実行とOS別実装
 
 | 参照元 | 本プロジェクトの関数 | 引数 | 機能 | Bash 3.2での実装規則と必須テスト |
 |---|---|---|---|---|
-| `assert_user_has_sudo_perms` | `command::run-as-root` | `COMMAND [ARGUMENT...]` | 実効利用者IDが0ならコマンドを直接実行し、それ以外ならsudoを介して管理者権限で実行します。標準入力、標準出力、標準エラー出力、終了状態を接続したまま保持します。 | コマンドと各引数を配列として渡し、`eval`、文字列連結、暗黙のシェル起動を使用しません。root、sudo成功、認証拒否、sudoなし、未知のコマンド、空白と記号を含む引数を確認します。 |
-| `os_change_dir_owner` | `path::change-owner-recursively` | `PATH USER [GROUP]` | ディレクトリ自身と同じファイルシステム内の全内容について、所有者を管理者権限で変更します。`GROUP`を省略した場合は`USER`のプライマリーグループを使用します。 | 対象が実在する通常ディレクトリであり、シンボリックリンクでないことを確認します。操作自体に管理者権限が必要なため、公開名へ`-as-root`を付けません。 |
+| `assert_user_has_sudo_perms` | `command.run-as-root` | `COMMAND [ARGUMENT...]` | 実効利用者IDが0ならコマンドを直接実行し、それ以外ならsudoを介して管理者権限で実行します。標準入力、標準出力、標準エラー出力、終了状態を接続したまま保持します。 | コマンドと各引数を配列として渡し、`eval`、文字列連結、暗黙のシェル起動を使用しません。root、sudo成功、認証拒否、sudoなし、未知のコマンド、空白と記号を含む引数を確認します。 |
+| `os_change_dir_owner` | `path.change-owner-recursively` | `PATH USER [GROUP]` | ディレクトリ自身と同じファイルシステム内の全内容について、所有者を管理者権限で変更します。`GROUP`を省略した場合は`USER`のプライマリーグループを使用します。 | 対象が実在する通常ディレクトリであり、シンボリックリンクでないことを確認します。操作自体に管理者権限が必要なため、公開名へ`-as-root`を付けません。 |
 
-`-as-root`は、同じ処理を通常権限と管理者権限のどちらで実行するかを呼び出し側が明示選択できる場合だけ使用します。操作自体が管理者権限を必要とする関数と、permission検査によって必要な場合だけ権限を昇格する関数には付けません。`command::run-as-root`は管理者実行を明示選択するため、この名前を維持します。sudoが存在しない場合は終了状態69、認証または権限が拒否された場合は77を返します。
+`-as-root`は、同じ処理を通常権限と管理者権限のどちらで実行するかを呼び出し側が明示選択できる場合だけ使用します。操作自体が管理者権限を必要とする関数と、permission検査によって必要な場合だけ権限を昇格する関数には付けません。`command.run-as-root`は管理者実行を明示選択するため、この名前を維持します。sudoが存在しない場合は終了状態69、認証または権限が拒否された場合は77を返します。
 
-公開関数はOSに関係なく一つの名前と契約を持ちます。内部のプラットフォーム読み込み処理は`system::operating-system`とLinuxの`/etc/os-release`を確認し、macOS、Ubuntu、Fedoraの実装ファイルから一つだけを読み込みます。各実装ファイルは同じ内部プロバイダー関数を定義し、公開関数が共通の入力検査を行った後で呼び出します。未対応のOSや必要な管理コマンドがない環境では終了状態69を返します。
+公開関数はOSに関係なく一つの名前と契約を持ちます。内部のプラットフォーム読み込み処理は`system.operating-system`とLinuxの`/etc/os-release`を確認し、macOS、Ubuntu、Fedoraの実装ファイルから一つだけを読み込みます。各実装ファイルは同じ内部プロバイダー関数を定義し、公開関数が共通の入力検査を行った後で呼び出します。未対応のOSや必要な管理コマンドがない環境では終了状態69を返します。
 
 | 内部プロバイダー | システムアカウント作成 | ログイン用アカウント作成 | 再帰的な所有者変更 |
 |---|---|---|---|
@@ -119,14 +119,14 @@ AWS関数は配布物の`bashstock.sh`へ収録します。
 
 | 参照元 | 本プロジェクトの関数 | 引数 | 機能 |
 |---|---|---|---|
-| `assert_is_ec2_instance` | `aws::is-ec2-instance` | なし | IMDSv2トークンを取得できれば終了状態0、取得できなければ1を返します。出力は行いません。 |
-| `aws_lookup_path_in_instance_metadata_v2`、`ec2_metadata_http_get` | `aws::instance-metadata` | `PATH` | IMDSv2から指定したメタデータパスの値を取得します。パスが存在しない場合は終了状態1を返します。 |
-| `aws_get_instance_id` | `aws::instance-id` | なし | 現在のEC2インスタンスIDを出力します。 |
-| `aws_get_instance_region` | `aws::instance-region` | なし | インスタンス識別文書から現在のAWSリージョンを出力します。 |
-| `aws_get_ec2_instance_availability_zone` | `aws::instance-availability-zone` | なし | 現在のアベイラビリティーゾーンを出力します。 |
-| `aws_get_instance_private_ip` | `aws::instance-private-ip` | なし | 現在のEC2インスタンスのプライマリー非公開IPv4アドレスを出力します。 |
+| `assert_is_ec2_instance` | `aws.is-ec2-instance` | なし | IMDSv2トークンを取得できれば終了状態0、取得できなければ1を返します。出力は行いません。 |
+| `aws_lookup_path_in_instance_metadata_v2`、`ec2_metadata_http_get` | `aws.instance-metadata` | `PATH` | IMDSv2から指定したメタデータパスの値を取得します。パスが存在しない場合は終了状態1を返します。 |
+| `aws_get_instance_id` | `aws.instance-id` | なし | 現在のEC2インスタンスIDを出力します。 |
+| `aws_get_instance_region` | `aws.instance-region` | なし | インスタンス識別文書から現在のAWSリージョンを出力します。 |
+| `aws_get_ec2_instance_availability_zone` | `aws.instance-availability-zone` | なし | 現在のアベイラビリティーゾーンを出力します。 |
+| `aws_get_instance_private_ip` | `aws.instance-private-ip` | なし | 現在のEC2インスタンスのプライマリー非公開IPv4アドレスを出力します。 |
 
-`aws::instance-metadata`の`PATH`は、先頭と末尾に斜線を含まず、空でないパス要素を斜線で連結した形式とします。`.`、`..`、クエリー、フラグメント、制御文字を拒否します。公開IPアドレスやホスト名など、専用関数に含まれない値は、この関数へIMDSのパスを明示して取得します。
+`aws.instance-metadata`の`PATH`は、先頭と末尾に斜線を含まず、空でないパス要素を斜線で連結した形式とします。`.`、`..`、クエリー、フラグメント、制御文字を拒否します。公開IPアドレスやホスト名など、専用関数に含まれない値は、この関数へIMDSのパスを明示して取得します。
 
 内部IMDSアダプターは、`/latest/api/token`から有効期間60秒のトークンを取得し、同じ関数呼び出し内だけで使用します。HTTPプロキシを使用せず、接続と処理のタイムアウトを設定します。HTTPエラー、空の応答、不正なJSON、タイムアウトを区別し、利用できない実行環境は69、一時的な通信失敗は75を返します。
 
@@ -136,12 +136,12 @@ AWS関数は配布物の`bashstock.sh`へ収録します。
 
 | 参照元 | 本プロジェクトの関数 | 引数 | 機能 |
 |---|---|---|---|
-| `aws_get_instance_tags` | `aws::instance-tags` | `INSTANCE_ID REGION` | 指定EC2インスタンスの全タグをAWS CLIのJSON形式で出力します。 |
-| `aws_get_instance_tag_val` | `aws::instance-tag` | `INSTANCE_ID REGION KEY` | 指定EC2インスタンスのタグ値を出力します。タグがない場合は終了状態1を返します。 |
-| `aws_wrapper_get_instance_tag` | `aws::wait-for-instance-tag` | `INSTANCE_ID REGION KEY TIMEOUT_SECONDS INTERVAL_SECONDS` | 指定タグを取得できるまで待ち、タグ値を出力します。 |
-| `aws_get_instances_with_tag` | `aws::instances-with-tag` | `KEY VALUE REGION` | 指定タグを持つ待機中または実行中のEC2インスタンスをJSON形式で出力します。 |
+| `aws_get_instance_tags` | `aws.instance-tags` | `INSTANCE_ID REGION` | 指定EC2インスタンスの全タグをAWS CLIのJSON形式で出力します。 |
+| `aws_get_instance_tag_val` | `aws.instance-tag` | `INSTANCE_ID REGION KEY` | 指定EC2インスタンスのタグ値を出力します。タグがない場合は終了状態1を返します。 |
+| `aws_wrapper_get_instance_tag` | `aws.wait-for-instance-tag` | `INSTANCE_ID REGION KEY TIMEOUT_SECONDS INTERVAL_SECONDS` | 指定タグを取得できるまで待ち、タグ値を出力します。 |
+| `aws_get_instances_with_tag` | `aws.instances-with-tag` | `KEY VALUE REGION` | 指定タグを持つ待機中または実行中のEC2インスタンスをJSON形式で出力します。 |
 
-AWS CLIの`--query`と`--output`を使用し、利用者の値をJMESPath式またはシェルコードへ連結しません。タグとインスタンスの応答順序は公開契約に含めません。ENI検索やIPアドレス一覧などの限定的な処理は、`aws::instances-with-tag`のJSONを製品側で処理します。
+AWS CLIの`--query`と`--output`を使用し、利用者の値をJMESPath式またはシェルコードへ連結しません。タグとインスタンスの応答順序は公開契約に含めません。ENI検索やIPアドレス一覧などの限定的な処理は、`aws.instances-with-tag`のJSONを製品側で処理します。
 
 #### Auto Scaling
 
@@ -149,12 +149,12 @@ AWS CLIの`--query`と`--output`を使用し、利用者の値をJMESPath式ま�
 
 | 参照元 | 本プロジェクトの関数 | 引数 | 機能 |
 |---|---|---|---|
-| `aws_describe_asg` | `aws::auto-scaling-group` | `NAME REGION` | 指定Auto Scaling GroupをAWS CLIのJSON形式で出力します。存在しない場合は終了状態1を返します。 |
-| `aws_describe_instances_in_asg` | `aws::instances-in-auto-scaling-group` | `NAME REGION` | 指定Auto Scaling Groupに属する待機中または実行中のEC2インスタンスをJSON形式で出力します。 |
-| `aws_wrapper_get_asg_name` | `aws::auto-scaling-group-name` | `TIMEOUT_SECONDS INTERVAL_SECONDS` | 現在のEC2インスタンスの`aws:autoscaling:groupName`タグを取得し、Auto Scaling Group名を出力します。 |
-| `aws_wrapper_get_asg_size` | `aws::auto-scaling-group-size` | `NAME REGION` | 指定Auto Scaling Groupの希望容量を0以上の整数で出力します。 |
+| `aws_describe_asg` | `aws.auto-scaling-group` | `NAME REGION` | 指定Auto Scaling GroupをAWS CLIのJSON形式で出力します。存在しない場合は終了状態1を返します。 |
+| `aws_describe_instances_in_asg` | `aws.instances-in-auto-scaling-group` | `NAME REGION` | 指定Auto Scaling Groupに属する待機中または実行中のEC2インスタンスをJSON形式で出力します。 |
+| `aws_wrapper_get_asg_name` | `aws.auto-scaling-group-name` | `TIMEOUT_SECONDS INTERVAL_SECONDS` | 現在のEC2インスタンスの`aws:autoscaling:groupName`タグを取得し、Auto Scaling Group名を出力します。 |
+| `aws_wrapper_get_asg_size` | `aws.auto-scaling-group-size` | `NAME REGION` | 指定Auto Scaling Groupの希望容量を0以上の整数で出力します。 |
 
-`aws::auto-scaling-group-name`は`aws::wait-for-instance-tag`を使用します。待機関数は最大試行回数ではなく、0より大きい待機上限秒と確認間隔秒を受け取ります。`time::boot-time-milliseconds`を使用し、システム日時の変更とサスペンドを含めて待機上限を判定します。時計の戻り値は算術展開の前に0以上の整数であることを検証します。待機上限へ達した場合は終了状態75を返します。関数は`exit`を呼び出さず、認証情報、トークン、AWS CLIの応答本文をログへ書きません。
+`aws.auto-scaling-group-name`は`aws.wait-for-instance-tag`を使用します。待機関数は最大試行回数ではなく、0より大きい待機上限秒と確認間隔秒を受け取ります。`time.boot-time-milliseconds`を使用し、システム日時の変更とサスペンドを含めて待機上限を判定します。時計の戻り値は算術展開の前に0以上の整数であることを検証します。待機上限へ達した場合は終了状態75を返します。関数は`exit`を呼び出さず、認証情報、トークン、AWS CLIの応答本文をログへ書きません。
 
 AWS関数のテストはAWS CLIとHTTP処理を固定応答のアダプターへ置き換え、実際のAWSアカウント、認証情報、IMDSへ接続しません。成功、対象なし、ページ分割、APIエラー、認証エラー、タイムアウト、空値、メタデータパスの不正を確認します。
 

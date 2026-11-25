@@ -8,17 +8,17 @@ The CLI uses the official installer; QMK Toolbox uses Homebrew on macOS.
 
 ## Index
 
-* [qmk::toolbox::install](#qmktoolboxinstall)
-* [qmk::cli::install](#qmkcliinstall)
+* [qmk.toolbox.install](#qmktoolboxinstall)
+* [qmk.cli.install](#qmkcliinstall)
 
-### qmk::toolbox::install
+### qmk.toolbox.install
 
 Install QMK Toolbox with Homebrew on macOS.
 
 #### Example
 
 ```bash
-qmk::toolbox::install
+qmk.toolbox.install
 ```
 
 #### Arguments
@@ -32,7 +32,7 @@ qmk::toolbox::install
 * **69**: The system is not macOS, or the version is not the current one.
 * other The status of brew.
 
-### qmk::cli::install
+### qmk.cli.install
 
 Install the QMK CLI with the official installer and diagnose the environment.
 
@@ -44,7 +44,7 @@ reported without failing; errors return its status.
 #### Example
 
 ```bash
-qmk::cli::install
+qmk.cli.install
 qmk setup -y
 ```
 

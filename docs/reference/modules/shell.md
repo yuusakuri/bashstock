@@ -8,24 +8,24 @@ Tests return 0 or 1 without output; prompts read from the controlling terminal a
 
 ## Index
 
-* [shell::is-function-defined](#shellis-function-defined)
-* [shell::editor::set-default](#shelleditorset-default)
-* [shell::completion::enable-ignore-case](#shellcompletionenable-ignore-case)
-* [shell::zsh::enable-interactive-comments](#shellzshenable-interactive-comments)
-* [shell::confirm](#shellconfirm)
-* [shell::read-line](#shellread-line)
-* [shell::confirm-or-cancel](#shellconfirm-or-cancel)
-* [shell::choose-one](#shellchoose-one)
-* [shell::pause](#shellpause)
+* [shell.is-function-defined](#shellis-function-defined)
+* [shell.editor.set-default](#shelleditorset-default)
+* [shell.completion.enable-ignore-case](#shellcompletionenable-ignore-case)
+* [shell.zsh.enable-interactive-comments](#shellzshenable-interactive-comments)
+* [shell.confirm](#shellconfirm)
+* [shell.read-line](#shellread-line)
+* [shell.confirm-or-cancel](#shellconfirm-or-cancel)
+* [shell.choose-one](#shellchoose-one)
+* [shell.pause](#shellpause)
 
-### shell::is-function-defined
+### shell.is-function-defined
 
 Test whether a shell function is defined.
 
 #### Example
 
 ```bash
-shell::is-function-defined node::install && node::install
+shell.is-function-defined node.install && node.install
 ```
 
 #### Arguments
@@ -38,14 +38,14 @@ shell::is-function-defined node::install && node::install
 * **1**: No function has that name.
 * **64**: The name is empty, starts with a dash, or contains a newline.
 
-### shell::editor::set-default
+### shell.editor.set-default
 
 Set the default editor of new Bash and Zsh sessions and the current process.
 
 #### Example
 
 ```bash
-shell::editor::set-default vim bash,zsh
+shell.editor.set-default vim bash,zsh
 ```
 
 #### Arguments
@@ -61,9 +61,9 @@ shell::editor::set-default vim bash,zsh
 
 * **0**: The editor was set.
 * **64**: More than two arguments were given or the shell list is invalid.
-* other The status of env::set-variable.
+* other The status of env.set-variable.
 
-### shell::completion::enable-ignore-case
+### shell.completion.enable-ignore-case
 
 Make Bash and Zsh completion ignore letter case.
 
@@ -74,7 +74,7 @@ personal one exists. Zsh receives a matcher-list zstyle in $HOME/.zshrc.
 #### Example
 
 ```bash
-shell::completion::enable-ignore-case bash
+shell.completion.enable-ignore-case bash
 ```
 
 #### Arguments
@@ -87,7 +87,7 @@ shell::completion::enable-ignore-case bash
 * **64**: More than one argument was given or the shell list is invalid.
 * other The status of the file operation that failed.
 
-### shell::zsh::enable-interactive-comments
+### shell.zsh.enable-interactive-comments
 
 Allow comments that start with # in interactive Zsh sessions.
 
@@ -96,7 +96,7 @@ setopt interactivecomments is written to ~/.zshrc once.
 #### Example
 
 ```bash
-shell::zsh::enable-interactive-comments
+shell.zsh.enable-interactive-comments
 ```
 
 _Function has no arguments._
@@ -107,7 +107,7 @@ _Function has no arguments._
 * **64**: An argument was given.
 * **74**: ~/.zshrc could not be written.
 
-### shell::confirm
+### shell.confirm
 
 Read and normalize a yes-or-no answer.
 
@@ -117,7 +117,7 @@ y and n are accepted as abbreviations, without regard to case.
 #### Example
 
 ```bash
-if [[ "$(shell::confirm 'Remove the cache?' no)" == yes ]]; then
+if [[ "$(shell.confirm 'Remove the cache?' no)" == yes ]]; then
   rm -rf -- "${cache}"
 fi
 ```
@@ -141,14 +141,14 @@ fi
 
 * The question followed by [yes/no].
 
-### shell::read-line
+### shell.read-line
 
 Read one line and substitute a default only for empty input.
 
 #### Example
 
 ```bash
-name="$(shell::read-line 'Branch' main)"
+name="$(shell.read-line 'Branch' main)"
 ```
 
 #### Arguments
@@ -170,7 +170,7 @@ name="$(shell::read-line 'Branch' main)"
 
 * The prompt followed by a colon.
 
-### shell::confirm-or-cancel
+### shell.confirm-or-cancel
 
 Read and normalize a yes, no, or cancel answer.
 
@@ -179,7 +179,7 @@ y, n, and c are accepted as abbreviations, without regard to case.
 #### Example
 
 ```bash
-case "$(shell::confirm-or-cancel 'Overwrite settings.json?' cancel)" in
+case "$(shell.confirm-or-cancel 'Overwrite settings.json?' cancel)" in
   yes) cp new.json settings.json ;;
   cancel) return 1 ;;
 esac
@@ -204,14 +204,14 @@ esac
 
 * The question followed by [yes/no/cancel].
 
-### shell::choose-one
+### shell.choose-one
 
 Display indexed choices and write the selected value.
 
 #### Example
 
 ```bash
-version="$(shell::choose-one 'Node.js version' 20.18.0 22.11.0)"
+version="$(shell.choose-one 'Node.js version' 20.18.0 22.11.0)"
 ```
 
 #### Arguments
@@ -233,14 +233,14 @@ version="$(shell::choose-one 'Node.js version' 20.18.0 22.11.0)"
 
 * The message, the numbered choices, and a Selection: prompt.
 
-### shell::pause
+### shell.pause
 
 Wait for one line from the controlling terminal.
 
 #### Example
 
 ```bash
-shell::pause 'Connect the device, then press Enter.'
+shell.pause 'Connect the device, then press Enter.'
 ```
 
 #### Arguments

@@ -4,21 +4,21 @@ The controlling terminal and terminal emulator windows.
 
 ## Overview
 
-terminal::is-available lets interactive functions fail instead of blocking when no terminal is available.
+terminal.is-available lets interactive functions fail instead of blocking when no terminal is available.
 
 ## Index
 
-* [terminal::is-available](#terminalis-available)
-* [terminal::open](#terminalopen)
+* [terminal.is-available](#terminalis-available)
+* [terminal.open](#terminalopen)
 
-### terminal::is-available
+### terminal.is-available
 
 Test whether the controlling terminal is readable and writable.
 
 #### Example
 
 ```bash
-terminal::is-available && shell::confirm 'Continue?'
+terminal.is-available && shell.confirm 'Continue?'
 ```
 
 _Function has no arguments._
@@ -29,7 +29,7 @@ _Function has no arguments._
 * **1**: There is no usable controlling terminal, as in CI or cron.
 * **64**: An argument was given.
 
-### terminal::open
+### terminal.open
 
 Open a new window of the desktop's default terminal application.
 
@@ -42,8 +42,8 @@ arguments and then stays open as an interactive shell.
 #### Example
 
 ```bash
-terminal::open
-terminal::open make watch
+terminal.open
+terminal.open make watch
 ```
 
 #### Arguments

@@ -8,19 +8,19 @@ GIMP is installed from the platform package source or the official disk image.
 
 ## Index
 
-* [gimp::versions](#gimpversions)
-* [gimp::install](#gimpinstall)
-* [gimp::gmic::versions](#gimpgmicversions)
-* [gimp::gmic::install](#gimpgmicinstall)
+* [gimp.versions](#gimpversions)
+* [gimp.install](#gimpinstall)
+* [gimp.gmic.versions](#gimpgmicversions)
+* [gimp.gmic.install](#gimpgmicinstall)
 
-### gimp::versions
+### gimp.versions
 
 Write GIMP versions available to the current platform.
 
 #### Example
 
 ```bash
-gimp::versions
+gimp.versions
 ```
 
 _Function has no arguments._
@@ -35,20 +35,20 @@ _Function has no arguments._
 
 * GIMP versions, one per line.
 
-### gimp::install
+### gimp.install
 
 Install GIMP, and on Linux the G'MIC plugin from the selected source.
 
 #### Example
 
 ```bash
-gimp::install '' official
+gimp.install '' official
 ```
 
 #### Arguments
 
-* **$1** (string): Optional GIMP version from gimp::versions; on macOS only the current version.
-* **$2** (string): Optional G'MIC source on Linux: os (default) or official; see gimp::gmic::install.
+* **$1** (string): Optional GIMP version from gimp.versions; on macOS only the current version.
+* **$2** (string): Optional G'MIC source on Linux: os (default) or official; see gimp.gmic.install.
 
 #### Exit codes
 
@@ -57,14 +57,14 @@ gimp::install '' official
 * **69**: The platform is unsupported, the version is unavailable, or the G'MIC source cannot provide the plugin.
 * other The status of the package manager.
 
-### gimp::gmic::versions
+### gimp.gmic.versions
 
 Write G'MIC GIMP plugin versions available from the selected source.
 
 #### Example
 
 ```bash
-gimp::gmic::versions official
+gimp.gmic.versions official
 ```
 
 #### Arguments
@@ -82,7 +82,7 @@ gimp::gmic::versions official
 
 * G'MIC plugin versions, one per line.
 
-### gimp::gmic::install
+### gimp.gmic.install
 
 Install the G'MIC GIMP plugin.
 
@@ -95,12 +95,12 @@ of switching to the other source.
 #### Example
 
 ```bash
-gimp::gmic::install '' official
+gimp.gmic.install '' official
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from gimp::gmic::versions for the same source.
+* **$1** (string): Optional version from gimp.gmic.versions for the same source.
 * **$2** (string): Optional source: os (default) or official. The official source supports Ubuntu on amd64, the only CPU the G'MIC project builds packages for.
 
 #### Exit codes

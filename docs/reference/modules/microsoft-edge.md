@@ -8,17 +8,17 @@ Edge is installed from Microsoft's package source.
 
 ## Index
 
-* [microsoft-edge::versions](#microsoft-edgeversions)
-* [microsoft-edge::install](#microsoft-edgeinstall)
+* [microsoft-edge.versions](#microsoft-edgeversions)
+* [microsoft-edge.install](#microsoft-edgeinstall)
 
-### microsoft-edge::versions
+### microsoft-edge.versions
 
 Write Microsoft Edge versions available to the current platform.
 
 #### Example
 
 ```bash
-microsoft-edge::versions | tail -n 1
+microsoft-edge.versions | tail -n 1
 ```
 
 _Function has no arguments._
@@ -34,7 +34,7 @@ _Function has no arguments._
 
 * Microsoft Edge versions, one per line; on Linux only builds for this CPU, and on Ubuntu only builds the C library can run.
 
-### microsoft-edge::install
+### microsoft-edge.install
 
 Install Microsoft Edge from vendor metadata, the vendor repository, or Homebrew.
 
@@ -45,12 +45,12 @@ Microsoft builds Edge for Linux on amd64 only, so arm64 returns 69.
 #### Example
 
 ```bash
-microsoft-edge::install
+microsoft-edge.install
 ```
 
 #### Arguments
 
-* **$1** (string): Optional version from microsoft-edge::versions; on macOS only the current version. Defaults to the newest runnable one.
+* **$1** (string): Optional version from microsoft-edge.versions; on macOS only the current version. Defaults to the newest runnable one.
 
 #### Exit codes
 

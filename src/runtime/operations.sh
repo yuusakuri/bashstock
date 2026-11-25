@@ -4,19 +4,19 @@
 #
 # Arguments are an operation name followed by its literal argument values.
 # @internal
-bashstock::_run-as-root() {
+_bashstock.run-as-root() {
   if [[ "$#" -lt 1 ]]; then
     return 64
   fi
   if [[ ! -f "${_BASHSTOCK_FILE}" || ! -r "${_BASHSTOCK_FILE}" ]]; then
     return 66
   fi
-  command::run-as-root "${BASH}" -- "${_BASHSTOCK_FILE}" --internal-root "$@"
+  command.run-as-root "${BASH}" -- "${_BASHSTOCK_FILE}" --internal-root "$@"
 }
 
 # @description Dispatch a fixed operation name and validate inputs in the executing process.
 # @internal
-bashstock::_dispatch-root() {
+_bashstock.dispatch-root() {
   if [[ "$#" -lt 1 ]]; then
     return 64
   fi
@@ -25,37 +25,37 @@ bashstock::_dispatch-root() {
   shift
   case "${operation}" in
     append-text)
-      file::append-text "$@"
+      file.append-text "$@"
       ;;
     write-text)
-      file::write-text "$@"
+      file.write-text "$@"
       ;;
     replace-text)
-      file::replace-text "$@"
+      file.replace-text "$@"
       ;;
     replace-text-in-files)
-      file::replace-text-in-files "$@"
+      file.replace-text-in-files "$@"
       ;;
     replace-all-text)
-      file::replace-all-text "$@"
+      file.replace-all-text "$@"
       ;;
     replace-all-text-in-files)
-      file::replace-all-text-in-files "$@"
+      file.replace-all-text-in-files "$@"
       ;;
     replace-or-append-text)
-      file::replace-or-append-text "$@"
+      file.replace-or-append-text "$@"
       ;;
     create-system-user)
-      user::_validate-system-creation "$@" || return "$?"
-      platform::_create-system-user "$@"
+      _user.validate-system-creation "$@" || return "$?"
+      _platform.create-system-user "$@"
       ;;
     create-login-user)
-      user::_validate-login-creation "$@" || return "$?"
-      platform::_create-login-user "$@"
+      _user.validate-login-creation "$@" || return "$?"
+      _platform.create-login-user "$@"
       ;;
     change-owner-recursively)
-      path::_validate-ownership "$@" || return "$?"
-      platform::_change-owner-recursively "$@"
+      _path.validate-ownership "$@" || return "$?"
+      _platform.change-owner-recursively "$@"
       ;;
     *)
       return 64
@@ -65,10 +65,10 @@ bashstock::_dispatch-root() {
 
 # @description Accept only the internal execution mode and require root privileges.
 # @internal
-bashstock::_main() {
+_bashstock.main() {
   if [[ "$#" -ge 1 && "$1" == '--internal-git-sequence-editor' ]]; then
     shift
-    git::_sequence-editor "$@"
+    _git.sequence-editor "$@"
     return "$?"
   fi
   if [[ "$#" -lt 2 || "$1" != '--internal-root' ]]; then
@@ -84,5 +84,5 @@ bashstock::_main() {
     return 77
   fi
   shift
-  bashstock::_dispatch-root "$@"
+  _bashstock.dispatch-root "$@"
 }

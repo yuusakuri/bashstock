@@ -14,8 +14,8 @@
 # @exitcode 66 The path does not exist.
 # @exitcode 69 df is unavailable.
 # @example
-#   storage::usage "${HOME}"
-storage::usage() {
+#   storage.usage "${HOME}"
+storage.usage() {
   if [[ "$#" -gt 1 ]]; then return 64; fi
   local path="${1:-.}"
   [[ -e "$path" || -d "$path" ]] || return 66
@@ -34,13 +34,13 @@ storage::usage() {
 # @exitcode 64 The directory does not exist or the count is not a positive integer.
 # @exitcode 69 du or sort is unavailable.
 # @example
-#   storage::largest-entries "${HOME}/Library/Caches" 5
-storage::largest-entries() {
+#   storage.largest-entries "${HOME}/Library/Caches" 5
+storage.largest-entries() {
   [[ "$#" -le 2 ]] || return 64
   local directory="${1:-.}" max="${2:-10}"
   ( [[ -d "${directory}" && "${max}" =~ ^[1-9][0-9]*$ ]] ) || return 64
-  command::require du || return "$?"
-  command::require sort || return "$?"
+  command.require du || return "$?"
+  command.require sort || return "$?"
   du -h -a -d 1 -- "${directory}" 2>/dev/null | sort -hr | head -n "${max}"
 }
 
@@ -54,13 +54,13 @@ storage::largest-entries() {
 # @exitcode 69 The system is not Linux.
 # @exitcode 74 An entry could not be removed.
 # @example
-#   storage::clear-trash
-storage::clear-trash() {
+#   storage.clear-trash
+storage.clear-trash() {
   [[ "$#" -eq 0 ]] || return 64
-  [[ "$(system::operating-system)" == linux ]] || return 69
+  [[ "$(system.operating-system)" == linux ]] || return 69
   local trash="${XDG_DATA_HOME:-${HOME}/.local/share}/Trash" part=''
   for part in files info; do
     [[ -d "${trash}/${part}" ]] || continue
-    command::run-as-root find "${trash}/${part}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + || return 74
+    command.run-as-root find "${trash}/${part}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + || return 74
   done
 }

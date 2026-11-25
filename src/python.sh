@@ -17,7 +17,7 @@
 # @arg $1 string -c.
 # @arg $2 string Python script.
 # @arg $@ string Arguments of the script.
-python::run() {
+python.run() {
   [[ "$#" -ge 2 && "$1" == '-c' ]] || return 64
   local interpreter=''
   interpreter="$(type -P python3)" || return 69
@@ -36,10 +36,10 @@ sys.argv[1:] = [os.fsencode(argument).decode("utf-8", "surrogateescape") for arg
 # @arg $1 int Status for input that is not the expected JSON.
 # @arg $2 string Python script.
 # @arg $@ string Arguments of the script.
-python::_run-json() {
+_python.run-json() {
   [[ "$#" -ge 2 && -n "$2" ]] || return 64
   ( [[ "$1" =~ ^[0-9]+$ ]] ) || return 64
-  python::run -c '
+  python.run -c '
 import json
 import sys
 status = int(sys.argv[1])

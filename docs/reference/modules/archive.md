@@ -8,13 +8,13 @@ The archive format is chosen from the file extension.
 
 ## Index
 
-* [archive::verify](#archiveverify)
-* [archive::remove-broken](#archiveremove-broken)
-* [archive::extract-file](#archiveextract-file)
-* [archive::compress-tar-gzip](#archivecompress-tar-gzip)
-* [archive::extract](#archiveextract)
+* [archive.verify](#archiveverify)
+* [archive.remove-broken](#archiveremove-broken)
+* [archive.extract-file](#archiveextract-file)
+* [archive.compress-tar-gzip](#archivecompress-tar-gzip)
+* [archive.extract](#archiveextract)
 
-### archive::verify
+### archive.verify
 
 Verify all recognized archives below a path.
 
@@ -29,7 +29,7 @@ standard error but not counted as broken, and does not change the status.
 #### Example
 
 ```bash
-archive::verify "${HOME}/Downloads"
+archive.verify "${HOME}/Downloads"
 ```
 
 #### Arguments
@@ -48,17 +48,17 @@ archive::verify "${HOME}/Downloads"
 
 * The path of each broken archive, and a message for each archive that cannot be verified.
 
-### archive::remove-broken
+### archive.remove-broken
 
 Remove archives that fail verification.
 
-Only archives that archive::verify reports as broken are removed. An
+Only archives that archive.verify reports as broken are removed. An
 archive that cannot be verified is kept and does not change the status.
 
 #### Example
 
 ```bash
-archive::remove-broken "${HOME}/Downloads"
+archive.remove-broken "${HOME}/Downloads"
 ```
 
 #### Arguments
@@ -77,7 +77,7 @@ archive::remove-broken "${HOME}/Downloads"
 
 * The path of each removed archive, and a message for each archive that cannot be verified.
 
-### archive::extract-file
+### archive.extract-file
 
 Extract one archive or decompress one compressed file.
 
@@ -92,8 +92,8 @@ file named without the extension. Existing files are overwritten.
 #### Example
 
 ```bash
-archive::extract-file release.tar.xz /opt/release
-archive::extract-file access.log.gz
+archive.extract-file release.tar.xz /opt/release
+archive.extract-file access.log.gz
 ```
 
 #### Arguments
@@ -114,14 +114,14 @@ archive::extract-file access.log.gz
 
 * The rejected entry or symbolic link when the archive is refused.
 
-### archive::compress-tar-gzip
+### archive.compress-tar-gzip
 
 Compress paths into a gzip-compressed tar archive.
 
 #### Example
 
 ```bash
-archive::compress-tar-gzip --output backup.tar.gz Documents Pictures
+archive.compress-tar-gzip --output backup.tar.gz Documents Pictures
 ```
 
 #### Options
@@ -141,14 +141,14 @@ archive::compress-tar-gzip --output backup.tar.gz Documents Pictures
 * **69**: tar is unavailable.
 * other The status of tar.
 
-### archive::extract
+### archive.extract
 
 Extract one archive, or every recognized archive below a directory, next to itself.
 
 #### Example
 
 ```bash
-archive::extract "${HOME}/Downloads"
+archive.extract "${HOME}/Downloads"
 ```
 
 #### Arguments
@@ -161,5 +161,5 @@ archive::extract "${HOME}/Downloads"
 * **64**: More than one argument was given.
 * **66**: The directory does not exist or cannot be searched.
 * **74**: The temporary list could not be created.
-* other The status of archive::extract-file for the first archive that failed.
+* other The status of archive.extract-file for the first archive that failed.
 

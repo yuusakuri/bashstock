@@ -8,25 +8,25 @@ Metadata functions read the instance metadata service with IMDSv2 tokens; VPN Cl
 
 ## Index
 
-* [aws::is-ec2-instance](#awsis-ec2-instance)
-* [aws::instance-metadata](#awsinstance-metadata)
-* [aws::instance-id](#awsinstance-id)
-* [aws::instance-region](#awsinstance-region)
-* [aws::instance-availability-zone](#awsinstance-availability-zone)
-* [aws::instance-private-ip](#awsinstance-private-ip)
-* [aws::instance-tags](#awsinstance-tags)
-* [aws::instance-tag](#awsinstance-tag)
-* [aws::wait-for-instance-tag](#awswait-for-instance-tag)
-* [aws::instances-with-tag](#awsinstances-with-tag)
-* [aws::auto-scaling-group](#awsauto-scaling-group)
-* [aws::instances-in-auto-scaling-group](#awsinstances-in-auto-scaling-group)
-* [aws::auto-scaling-group-name](#awsauto-scaling-group-name)
-* [aws::auto-scaling-group-size](#awsauto-scaling-group-size)
-* [aws::vpn-client::log::files](#awsvpn-clientlogfiles)
-* [aws::vpn-client::log::clear](#awsvpn-clientlogclear)
-* [aws::vpn-client::log::open](#awsvpn-clientlogopen)
+* [aws.is-ec2-instance](#awsis-ec2-instance)
+* [aws.instance-metadata](#awsinstance-metadata)
+* [aws.instance-id](#awsinstance-id)
+* [aws.instance-region](#awsinstance-region)
+* [aws.instance-availability-zone](#awsinstance-availability-zone)
+* [aws.instance-private-ip](#awsinstance-private-ip)
+* [aws.instance-tags](#awsinstance-tags)
+* [aws.instance-tag](#awsinstance-tag)
+* [aws.wait-for-instance-tag](#awswait-for-instance-tag)
+* [aws.instances-with-tag](#awsinstances-with-tag)
+* [aws.auto-scaling-group](#awsauto-scaling-group)
+* [aws.instances-in-auto-scaling-group](#awsinstances-in-auto-scaling-group)
+* [aws.auto-scaling-group-name](#awsauto-scaling-group-name)
+* [aws.auto-scaling-group-size](#awsauto-scaling-group-size)
+* [aws.vpn-client.log.files](#awsvpn-clientlogfiles)
+* [aws.vpn-client.log.clear](#awsvpn-clientlogclear)
+* [aws.vpn-client.log.open](#awsvpn-clientlogopen)
 
-### aws::is-ec2-instance
+### aws.is-ec2-instance
 
 Test whether IMDSv2 is available for the current instance.
 
@@ -36,7 +36,7 @@ two-second limit, so the test is fast outside EC2.
 #### Example
 
 ```bash
-aws::is-ec2-instance && region="$(aws::instance-region)"
+aws.is-ec2-instance && region="$(aws.instance-region)"
 ```
 
 _Function has no arguments._
@@ -47,14 +47,14 @@ _Function has no arguments._
 * **1**: The metadata service did not answer.
 * **64**: An argument was given.
 
-### aws::instance-metadata
+### aws.instance-metadata
 
 Write one validated EC2 instance metadata value.
 
 #### Example
 
 ```bash
-aws::instance-metadata placement/availability-zone
+aws.instance-metadata placement/availability-zone
 ```
 
 #### Arguments
@@ -72,14 +72,14 @@ aws::instance-metadata placement/availability-zone
 
 * The metadata value.
 
-### aws::instance-id
+### aws.instance-id
 
 Write the current EC2 instance identifier.
 
 #### Example
 
 ```bash
-instance_id="$(aws::instance-id)"
+instance_id="$(aws.instance-id)"
 ```
 
 _Function has no arguments._
@@ -95,7 +95,7 @@ _Function has no arguments._
 
 * An instance ID such as i-0123456789abcdef0.
 
-### aws::instance-region
+### aws.instance-region
 
 Write the current EC2 instance region.
 
@@ -104,7 +104,7 @@ The region is read from the instance identity document.
 #### Example
 
 ```bash
-aws::instance-tags "$(aws::instance-id)" "$(aws::instance-region)"
+aws.instance-tags "$(aws.instance-id)" "$(aws.instance-region)"
 ```
 
 _Function has no arguments._
@@ -120,14 +120,14 @@ _Function has no arguments._
 
 * A region such as ap-northeast-1.
 
-### aws::instance-availability-zone
+### aws.instance-availability-zone
 
 Write the current EC2 instance availability zone.
 
 #### Example
 
 ```bash
-aws::instance-availability-zone
+aws.instance-availability-zone
 ```
 
 _Function has no arguments._
@@ -143,14 +143,14 @@ _Function has no arguments._
 
 * An availability zone such as ap-northeast-1a.
 
-### aws::instance-private-ip
+### aws.instance-private-ip
 
 Write the current EC2 instance private IPv4 address.
 
 #### Example
 
 ```bash
-printf 'listen %s:8080\n' "$(aws::instance-private-ip)"
+printf 'listen %s:8080\n' "$(aws.instance-private-ip)"
 ```
 
 _Function has no arguments._
@@ -166,14 +166,14 @@ _Function has no arguments._
 
 * The private IPv4 address.
 
-### aws::instance-tags
+### aws.instance-tags
 
 Write all tags for one EC2 instance.
 
 #### Example
 
 ```bash
-aws::instance-tags i-0123456789abcdef0 ap-northeast-1
+aws.instance-tags i-0123456789abcdef0 ap-northeast-1
 ```
 
 #### Arguments
@@ -193,14 +193,14 @@ aws::instance-tags i-0123456789abcdef0 ap-northeast-1
 
 * The describe-tags response as JSON.
 
-### aws::instance-tag
+### aws.instance-tag
 
 Write one EC2 instance tag value.
 
 #### Example
 
 ```bash
-aws::instance-tag i-0123456789abcdef0 ap-northeast-1 Name
+aws.instance-tag i-0123456789abcdef0 ap-northeast-1 Name
 ```
 
 #### Arguments
@@ -222,7 +222,7 @@ aws::instance-tag i-0123456789abcdef0 ap-northeast-1 Name
 
 * The tag value.
 
-### aws::wait-for-instance-tag
+### aws.wait-for-instance-tag
 
 Wait for one EC2 instance tag to become available.
 
@@ -232,7 +232,7 @@ until it appears or the timeout passes.
 #### Example
 
 ```bash
-aws::wait-for-instance-tag "$(aws::instance-id)" "$(aws::instance-region)" Role 120 5
+aws.wait-for-instance-tag "$(aws.instance-id)" "$(aws.instance-region)" Role 120 5
 ```
 
 #### Arguments
@@ -255,7 +255,7 @@ aws::wait-for-instance-tag "$(aws::instance-id)" "$(aws::instance-region)" Role 
 
 * The tag value.
 
-### aws::instances-with-tag
+### aws.instances-with-tag
 
 Write EC2 instances that have a requested tag.
 
@@ -264,7 +264,7 @@ Only pending and running instances are included.
 #### Example
 
 ```bash
-aws::instances-with-tag Role web ap-northeast-1
+aws.instances-with-tag Role web ap-northeast-1
 ```
 
 #### Arguments
@@ -285,14 +285,14 @@ aws::instances-with-tag Role web ap-northeast-1
 
 * The describe-instances response as JSON.
 
-### aws::auto-scaling-group
+### aws.auto-scaling-group
 
 Write the Auto Scaling group that contains an EC2 instance.
 
 #### Example
 
 ```bash
-aws::auto-scaling-group web-asg ap-northeast-1
+aws.auto-scaling-group web-asg ap-northeast-1
 ```
 
 #### Arguments
@@ -313,14 +313,14 @@ aws::auto-scaling-group web-asg ap-northeast-1
 
 * The group description as JSON.
 
-### aws::instances-in-auto-scaling-group
+### aws.instances-in-auto-scaling-group
 
 Write running or pending instances in an Auto Scaling group.
 
 #### Example
 
 ```bash
-aws::instances-in-auto-scaling-group web-asg ap-northeast-1
+aws.instances-in-auto-scaling-group web-asg ap-northeast-1
 ```
 
 #### Arguments
@@ -341,7 +341,7 @@ aws::instances-in-auto-scaling-group web-asg ap-northeast-1
 
 * The describe-instances response as JSON; {"Reservations":[]} for an empty group.
 
-### aws::auto-scaling-group-name
+### aws.auto-scaling-group-name
 
 Write the current instance's Auto Scaling group name.
 
@@ -351,7 +351,7 @@ waiting until the tag appears.
 #### Example
 
 ```bash
-group="$(aws::auto-scaling-group-name 300 10)"
+group="$(aws.auto-scaling-group-name 300 10)"
 ```
 
 #### Arguments
@@ -371,14 +371,14 @@ group="$(aws::auto-scaling-group-name 300 10)"
 
 * The Auto Scaling group name.
 
-### aws::auto-scaling-group-size
+### aws.auto-scaling-group-size
 
 Write the desired capacity of an Auto Scaling group.
 
 #### Example
 
 ```bash
-aws::auto-scaling-group-size web-asg ap-northeast-1
+aws.auto-scaling-group-size web-asg ap-northeast-1
 ```
 
 #### Arguments
@@ -399,7 +399,7 @@ aws::auto-scaling-group-size web-asg ap-northeast-1
 
 * The desired capacity as a number.
 
-### aws::vpn-client::log::files
+### aws.vpn-client.log.files
 
 Write AWS VPN Client log files as NUL-separated paths.
 
@@ -409,7 +409,7 @@ ovpn_aws_vpn_client are selected, as in the reference script.
 #### Example
 
 ```bash
-aws::vpn-client::log::files | xargs -0 tail -n 50
+aws.vpn-client.log.files | xargs -0 tail -n 50
 ```
 
 #### Arguments
@@ -427,14 +427,14 @@ aws::vpn-client::log::files | xargs -0 tail -n 50
 
 * NUL-separated paths of the log files.
 
-### aws::vpn-client::log::clear
+### aws.vpn-client.log.clear
 
 Remove regular log files below the AWS VPN Client log directory.
 
 #### Example
 
 ```bash
-aws::vpn-client::log::clear
+aws.vpn-client.log.clear
 ```
 
 #### Arguments
@@ -449,7 +449,7 @@ aws::vpn-client::log::clear
 * **69**: find is unavailable.
 * **74**: A file could not be removed.
 
-### aws::vpn-client::log::open
+### aws.vpn-client.log.open
 
 Open log files with an editor command, passing each path as one argument.
 
@@ -457,8 +457,8 @@ Open log files with an editor command, passing each path as one argument.
 
 ```bash
 files=()
-while IFS= read -r -d '' file; do files+=("${file}"); done < <(aws::vpn-client::log::files)
-aws::vpn-client::log::open code "${files[@]}"
+while IFS= read -r -d '' file; do files+=("${file}"); done < <(aws.vpn-client.log.files)
+aws.vpn-client.log.open code "${files[@]}"
 ```
 
 #### Arguments

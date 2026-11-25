@@ -26,7 +26,7 @@ copy_build_inputs() {
 @test "invalid generated syntax fails without replacing the existing distribution" {
   local directory=''
   directory="$(copy_build_inputs)"
-  printf '\ninvalid::function() {\n' >>"${directory}/src/string.sh"
+  printf '\ninvalid.function() {\n' >>"${directory}/src/string.sh"
 
   run bash "${directory}/scripts/build"
   [ "${status}" -ne 0 ]
@@ -41,7 +41,7 @@ copy_build_inputs() {
   run bash "${directory}/scripts/build"
   [ "${status}" -eq 0 ]
   [ "$(find "${directory}/dist" -type f | wc -l | tr -d ' ')" = 1 ]
-  run bash -c 'source "$1"; string::upper built' _ "${directory}/dist/bashstock.sh"
+  run bash -c 'source "$1"; string.upper built' _ "${directory}/dist/bashstock.sh"
   [ "${status}" -eq 0 ]
   [ "${output}" = 'BUILT' ]
 }

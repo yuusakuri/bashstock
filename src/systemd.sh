@@ -14,19 +14,19 @@
 # @exitcode 69 The system is not Linux or systemctl is unavailable.
 # @exitcode other The status of systemctl.
 # @example
-#   systemd::file ssh.service
-systemd::file() {
+#   systemd.file ssh.service
+systemd.file() {
   [[ "$#" -eq 1 ]] || return 64
-  systemd::_require-unit "$1" || return "$?"
+  _systemd.require-unit "$1" || return "$?"
   systemctl show --property=FragmentPath --value -- "$1"
 }
 
 # @description Require Linux with systemctl and a valid unit name.
 # @internal
-systemd::_require-unit() {
+_systemd.require-unit() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9@._:\\-]+$ ]] ) || return 64
-  [[ "$(system::operating-system)" == linux ]] || return 69
-  command::require systemctl
+  [[ "$(system.operating-system)" == linux ]] || return 69
+  command.require systemctl
 }
 
 # @description Write the After, Requires, and Wants dependencies of a systemd unit as KEY=VALUE lines.
@@ -38,10 +38,10 @@ systemd::_require-unit() {
 # @exitcode 69 The system is not Linux or systemctl is unavailable.
 # @exitcode other The status of systemctl.
 # @example
-#   systemd::dependencies docker.service
-systemd::dependencies() {
+#   systemd.dependencies docker.service
+systemd.dependencies() {
   [[ "$#" -eq 1 ]] || return 64
-  systemd::_require-unit "$1" || return "$?"
+  _systemd.require-unit "$1" || return "$?"
   systemctl show --property=After --property=Requires --property=Wants -- "$1"
 }
 
@@ -53,11 +53,11 @@ systemd::dependencies() {
 # @exitcode 69 The system is not Linux or systemctl is unavailable.
 # @exitcode other The status of systemctl.
 # @example
-#   systemd::restart nginx.service
-systemd::restart() {
+#   systemd.restart nginx.service
+systemd.restart() {
   [[ "$#" -eq 1 ]] || return 64
-  systemd::_require-unit "$1" || return "$?"
-  command::run-as-root systemctl restart -- "$1"
+  _systemd.require-unit "$1" || return "$?"
+  command.run-as-root systemctl restart -- "$1"
 }
 
 # @description Start a systemd unit through administrator execution.
@@ -68,11 +68,11 @@ systemd::restart() {
 # @exitcode 69 The system is not Linux or systemctl is unavailable.
 # @exitcode other The status of systemctl.
 # @example
-#   systemd::start docker.service
-systemd::start() {
+#   systemd.start docker.service
+systemd.start() {
   [[ "$#" -eq 1 ]] || return 64
-  systemd::_require-unit "$1" || return "$?"
-  command::run-as-root systemctl start -- "$1"
+  _systemd.require-unit "$1" || return "$?"
+  command.run-as-root systemctl start -- "$1"
 }
 
 # @description Stop a systemd unit through administrator execution.
@@ -83,11 +83,11 @@ systemd::start() {
 # @exitcode 69 The system is not Linux or systemctl is unavailable.
 # @exitcode other The status of systemctl.
 # @example
-#   systemd::stop docker.service
-systemd::stop() {
+#   systemd.stop docker.service
+systemd.stop() {
   [[ "$#" -eq 1 ]] || return 64
-  systemd::_require-unit "$1" || return "$?"
-  command::run-as-root systemctl stop -- "$1"
+  _systemd.require-unit "$1" || return "$?"
+  command.run-as-root systemctl stop -- "$1"
 }
 
 # @description Enable a systemd unit at boot through administrator execution.
@@ -98,11 +98,11 @@ systemd::stop() {
 # @exitcode 69 The system is not Linux or systemctl is unavailable.
 # @exitcode other The status of systemctl.
 # @example
-#   systemd::enable ssh.service
-systemd::enable() {
+#   systemd.enable ssh.service
+systemd.enable() {
   [[ "$#" -eq 1 ]] || return 64
-  systemd::_require-unit "$1" || return "$?"
-  command::run-as-root systemctl enable -- "$1"
+  _systemd.require-unit "$1" || return "$?"
+  command.run-as-root systemctl enable -- "$1"
 }
 
 # @description Disable a systemd unit at boot through administrator execution.
@@ -113,11 +113,11 @@ systemd::enable() {
 # @exitcode 69 The system is not Linux or systemctl is unavailable.
 # @exitcode other The status of systemctl.
 # @example
-#   systemd::disable cups.service
-systemd::disable() {
+#   systemd.disable cups.service
+systemd.disable() {
   [[ "$#" -eq 1 ]] || return 64
-  systemd::_require-unit "$1" || return "$?"
-  command::run-as-root systemctl disable -- "$1"
+  _systemd.require-unit "$1" || return "$?"
+  command.run-as-root systemctl disable -- "$1"
 }
 
 # @description Write the current state of a systemd unit and return the status of systemctl status.
@@ -129,10 +129,10 @@ systemd::disable() {
 # @exitcode 69 The system is not Linux or systemctl is unavailable.
 # @exitcode other The status of systemctl status, such as 3 for an inactive unit.
 # @example
-#   systemd::status ssh.service
-systemd::status() {
+#   systemd.status ssh.service
+systemd.status() {
   [[ "$#" -eq 1 ]] || return 64
-  systemd::_require-unit "$1" || return "$?"
+  _systemd.require-unit "$1" || return "$?"
   systemctl status --no-pager -- "$1"
 }
 
@@ -145,8 +145,8 @@ systemd::status() {
 # @exitcode 69 systemctl is unavailable.
 # @exitcode other The status of systemctl.
 # @example
-#   systemd::service::list
-systemd::service::list() { [[ "$#" -eq 0 ]] || return 64; docker::_run-command systemctl list-units --type=service; }
+#   systemd.service.list
+systemd.service.list() { [[ "$#" -eq 0 ]] || return 64; _docker.run-command systemctl list-units --type=service; }
 
 # @description Write the running systemd services.
 #
@@ -157,8 +157,8 @@ systemd::service::list() { [[ "$#" -eq 0 ]] || return 64; docker::_run-command s
 # @exitcode 69 systemctl is unavailable.
 # @exitcode other The status of systemctl.
 # @example
-#   systemd::service::list-running
-systemd::service::list-running() { [[ "$#" -eq 0 ]] || return 64; docker::_run-command systemctl list-units --type=service --state=running; }
+#   systemd.service.list-running
+systemd.service.list-running() { [[ "$#" -eq 0 ]] || return 64; _docker.run-command systemctl list-units --type=service --state=running; }
 
 # @description Write the failed systemd services.
 #
@@ -169,8 +169,8 @@ systemd::service::list-running() { [[ "$#" -eq 0 ]] || return 64; docker::_run-c
 # @exitcode 69 systemctl is unavailable.
 # @exitcode other The status of systemctl.
 # @example
-#   systemd::service::list-failed
-systemd::service::list-failed() { [[ "$#" -eq 0 ]] || return 64; docker::_run-command systemctl list-units --type=service --state=failed; }
+#   systemd.service.list-failed
+systemd.service.list-failed() { [[ "$#" -eq 0 ]] || return 64; _docker.run-command systemctl list-units --type=service --state=failed; }
 
 # @description Write every systemd service unit file and its enablement state.
 #
@@ -181,5 +181,5 @@ systemd::service::list-failed() { [[ "$#" -eq 0 ]] || return 64; docker::_run-co
 # @exitcode 69 systemctl is unavailable.
 # @exitcode other The status of systemctl.
 # @example
-#   systemd::service::list-files | grep enabled
-systemd::service::list-files() { [[ "$#" -eq 0 ]] || return 64; docker::_run-command systemctl list-unit-files --type=service; }
+#   systemd.service.list-files | grep enabled
+systemd.service.list-files() { [[ "$#" -eq 0 ]] || return 64; _docker.run-command systemctl list-unit-files --type=service; }

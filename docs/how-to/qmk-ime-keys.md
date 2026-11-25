@@ -14,18 +14,18 @@ Ubuntu／Fedora の GNOME と IBus Mozc では、どちらのキーマップも�
 IBus Mozc を導入済みの GNOME セッションで BashStock を読み込み、次の順番で実行してください。
 
 ```bash
-gnome::keyboard-layout::set-us
-mozc::ibus::set-hiragana-as-default
-keyboard::setup-ime-keys
-gnome::input-source::setup-ime-keys
+gnome.keyboard-layout.set-us
+mozc.ibus.set-hiragana-as-default
+keyboard.setup-ime-keys
+gnome.input-source.setup-ime-keys
 ```
 
 キーの対応付けには管理者権限を使います。GNOME と Mozc の設定は、普段デスクトップを使用する利用者の権限で実行してください。設定後は USB キーボードを接続し直してください。
 
-`keyboard::setup-ime-keys` はすべての USB キーボードを対象にします。特定のキーボードだけを対象にする場合は、ベンダー ID と製品 ID をそれぞれ 4 桁の 16 進数で指定します。
+`keyboard.setup-ime-keys` はすべての USB キーボードを対象にします。特定のキーボードだけを対象にする場合は、ベンダー ID と製品 ID をそれぞれ 4 桁の 16 進数で指定します。
 
 ```bash
-keyboard::setup-ime-keys 4653 0001
+keyboard.setup-ime-keys 4653 0001
 ```
 
-Ubuntu では、`ubuntu::setup-desktop` でも一連の設定を行えます。
+Ubuntu では、`ubuntu.setup-desktop` でも一連の設定を行えます。

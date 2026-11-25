@@ -7,7 +7,7 @@
 
 # @description Create a non-login macOS role account.
 # @internal
-platform::_create-system-user() {
+_platform.create-system-user() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
@@ -29,7 +29,7 @@ platform::_create-system-user() {
 
 # @description Create a macOS login account and roll it back after password failure.
 # @internal
-platform::_create-login-user() {
+_platform.create-login-user() {
   if [[ "$#" -ne 2 ]]; then
     return 64
   fi
@@ -42,7 +42,7 @@ platform::_create-login-user() {
 
   if id -u "$1" >/dev/null 2>&1; then
     if ! sysadminctl -deleteUser "$1" -secure </dev/tty >/dev/tty 2>/dev/tty; then
-      console::_write-error \
+      _console.write-error \
         "Failed to restore the account after password setup: $1, /Users/$1"
       return 74
     fi
@@ -52,7 +52,7 @@ platform::_create-login-user() {
 
 # @description Change ownership recursively without crossing macOS mount points.
 # @internal
-platform::_change-owner-recursively() {
+_platform.change-owner-recursively() {
   if [[ "$#" -lt 2 || "$#" -gt 3 ]]; then
     return 64
   fi
@@ -68,7 +68,7 @@ platform::_change-owner-recursively() {
 
 # @description Write a path's permission mode with BSD stat.
 # @internal
-platform::_path-mode() {
+_platform.path-mode() {
   if [[ "$#" -ne 1 || -z "$1" ]]; then
     return 64
   fi

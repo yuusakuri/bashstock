@@ -7,7 +7,7 @@
 
 # @description Require a keyboard layout name accepted by XKB.
 # @internal
-keyboard::_require-layout() {
+_keyboard.require-layout() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[a-z][a-z0-9_]*(\+[A-Za-z0-9_-]+)?$ ]] ) || return 64
 }
 
@@ -22,16 +22,16 @@ keyboard::_require-layout() {
 # @exitcode 69 Neither /etc/default/keyboard nor localectl is available.
 # @exitcode other The status of the file update or localectl.
 # @example
-#   keyboard::system-layout::set us
-keyboard::system-layout::set() {
+#   keyboard.system-layout.set us
+keyboard.system-layout.set() {
   [[ "$#" -eq 1 ]] || return 64
-  keyboard::_require-layout "$1" || return "$?"
+  _keyboard.require-layout "$1" || return "$?"
   if [[ -f /etc/default/keyboard ]]; then
-    file::replace-text-or-append /etc/default/keyboard '^XKBLAYOUT=.*$' "XKBLAYOUT=\"$1\""
+    file.replace-text-or-append /etc/default/keyboard '^XKBLAYOUT=.*$' "XKBLAYOUT=\"$1\""
     return
   fi
-  command::require localectl || return "$?"
-  command::run-as-root localectl set-x11-keymap "$1"
+  command.require localectl || return "$?"
+  command.run-as-root localectl set-x11-keymap "$1"
 }
 
 # @description Map USB Convert, Nonconvert, LANG1, and LANG2 keys to henkan and muhenkan.
@@ -41,7 +41,7 @@ keyboard::system-layout::set() {
 # alt_convert_non_convert and alt_lang keymaps in
 # https://github.com/yuusakuri/qmk_firmware without remapping held Alt keys.
 # The hwdb entry applies to every USB keyboard, or only to VENDOR_ID and
-# PRODUCT_ID. Use gnome::input-source::setup-ime-keys to bind the keys to
+# PRODUCT_ID. Use gnome.input-source.setup-ime-keys to bind the keys to
 # US and Mozc.
 #
 # @arg $1 string Optional vendor ID as four hexadecimal digits. Requires PRODUCT_ID.
@@ -51,21 +51,21 @@ keyboard::system-layout::set() {
 # @exitcode 69 The system is not Linux, or systemd-hwdb or udevadm is unavailable.
 # @exitcode other The status of the file write, systemd-hwdb, or udevadm.
 # @example
-#   keyboard::setup-ime-keys 4653 0001
-keyboard::setup-ime-keys() {
+#   keyboard.setup-ime-keys 4653 0001
+keyboard.setup-ime-keys() {
   [[ "$#" -eq 0 || "$#" -eq 2 ]] || return 64
   local match='evdev:input:b0003v*p*' content=''
   if [[ "$#" -eq 2 ]]; then
     ( [[ "$1" =~ ^[0-9A-Fa-f]{4}$ && "$2" =~ ^[0-9A-Fa-f]{4}$ ]] ) || return 64
     match="evdev:input:b0003v$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')p$(printf '%s' "$2" | tr '[:lower:]' '[:upper:]')*"
   fi
-  [[ "$(system::operating-system)" == 'linux' ]] || return 69
-  command::require systemd-hwdb || return "$?"
-  command::require udevadm || return "$?"
-  content='# Managed by BashStock keyboard::setup-ime-keys.'$'\n'"${match}"$'\n'
+  [[ "$(system.operating-system)" == 'linux' ]] || return 69
+  command.require systemd-hwdb || return "$?"
+  command.require udevadm || return "$?"
+  content='# Managed by BashStock keyboard.setup-ime-keys.'$'\n'"${match}"$'\n'
   content+=' KEYBOARD_KEY_7008a=henkan'$'\n'' KEYBOARD_KEY_7008b=muhenkan'$'\n'
   content+=' KEYBOARD_KEY_70090=henkan'$'\n'' KEYBOARD_KEY_70091=muhenkan'$'\n'
-  file::write-text /etc/udev/hwdb.d/90-bashstock-ime-keys.hwdb "${content}" || return "$?"
-  command::run-as-root systemd-hwdb update || return "$?"
-  command::run-as-root udevadm trigger --subsystem-match=input --action=change
+  file.write-text /etc/udev/hwdb.d/90-bashstock-ime-keys.hwdb "${content}" || return "$?"
+  command.run-as-root systemd-hwdb update || return "$?"
+  command.run-as-root udevadm trigger --subsystem-match=input --action=change
 }

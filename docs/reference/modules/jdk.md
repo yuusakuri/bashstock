@@ -8,18 +8,18 @@ The JDK is installed from the platform package source.
 
 ## Index
 
-* [jdk::version::list](#jdkversionlist)
-* [jdk::version::latest](#jdkversionlatest)
-* [jdk::install](#jdkinstall)
+* [jdk.version.list](#jdkversionlist)
+* [jdk.version.latest](#jdkversionlatest)
+* [jdk.install](#jdkinstall)
 
-### jdk::version::list
+### jdk.version.list
 
 Write JDK feature release numbers available to the current platform.
 
 #### Example
 
 ```bash
-jdk::version::list
+jdk.version.list
 ```
 
 _Function has no arguments._
@@ -35,14 +35,14 @@ _Function has no arguments._
 
 * JDK feature release numbers such as 17 and 21, one per line, oldest first.
 
-### jdk::version::latest
+### jdk.version.latest
 
 Write the newest JDK feature release number available to the current platform.
 
 #### Example
 
 ```bash
-jdk::install "$(jdk::version::latest)"
+jdk.install "$(jdk.version.latest)"
 ```
 
 _Function has no arguments._
@@ -58,20 +58,20 @@ _Function has no arguments._
 
 * The newest JDK feature release number.
 
-### jdk::install
+### jdk.install
 
 Install a JDK, select it as the default Java, and persist JAVA_HOME and PATH.
 
 #### Example
 
 ```bash
-jdk::install 21
+jdk.install 21
 java -version
 ```
 
 #### Arguments
 
-* **$1** (string): Optional feature release number such as 21. Defaults to jdk::version::latest.
+* **$1** (string): Optional feature release number such as 21. Defaults to jdk.version.latest.
 
 #### Exit codes
 

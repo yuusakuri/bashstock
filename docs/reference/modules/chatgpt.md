@@ -8,9 +8,9 @@ The application is installed on macOS.
 
 ## Index
 
-* [chatgpt::install](#chatgptinstall)
+* [chatgpt.install](#chatgptinstall)
 
-### chatgpt::install
+### chatgpt.install
 
 Install the newest ChatGPT desktop app, which also runs Codex.
 
@@ -22,7 +22,7 @@ package upgrades.
 #### Example
 
 ```bash
-chatgpt::install
+chatgpt.install
 ```
 
 _Function has no arguments._

@@ -4,25 +4,25 @@ load test_helper
 bats_require_minimum_version 1.5.0
 
 @test "IPv4 validation accepts canonical addresses and rejects malformed values" {
-  run net::_is-ipv4 0.0.0.0
+  run _net.is-ipv4 0.0.0.0
   [ "${status}" -eq 0 ]
-  run net::_is-ipv4 192.168.10.250
+  run _net.is-ipv4 192.168.10.250
   [ "${status}" -eq 0 ]
-  run net::_is-ipv4 255.255.255.255
+  run _net.is-ipv4 255.255.255.255
   [ "${status}" -eq 0 ]
 
-  run net::_is-ipv4 192.168.1
+  run _net.is-ipv4 192.168.1
   [ "${status}" -eq 1 ]
-  run net::_is-ipv4 256.1.1.1
+  run _net.is-ipv4 256.1.1.1
   [ "${status}" -eq 1 ]
-  run net::_is-ipv4 01.2.3.4
+  run _net.is-ipv4 01.2.3.4
   [ "${status}" -eq 1 ]
-  run net::_is-ipv4 '1.2.3.4; command'
+  run _net.is-ipv4 '1.2.3.4; command'
   [ "${status}" -eq 1 ]
 }
 
 @test "static IPv4 rendering emits validated Netplan YAML" {
-  run net::_render-static-ipv4 \
+  run _net.render-static-ipv4 \
     enp0s3 192.168.1.20 24 192.168.1.1 1.1.1.1,8.8.8.8 networkd
   [ "${status}" -eq 0 ]
   [ "${output}" = "$(cat <<'EOF'
@@ -42,35 +42,35 @@ network:
 EOF
 )" ]
 
-  run net::_render-static-ipv4 eth0 192.168.1.20 33 192.168.1.1 1.1.1.1 ''
+  run _net.render-static-ipv4 eth0 192.168.1.20 33 192.168.1.1 1.1.1.1 ''
   [ "${status}" -eq 64 ]
-  run net::_render-static-ipv4 'eth0: invalid' 192.168.1.20 24 192.168.1.1 1.1.1.1 ''
+  run _net.render-static-ipv4 'eth0: invalid' 192.168.1.20 24 192.168.1.1 1.1.1.1 ''
   [ "${status}" -eq 64 ]
-  run net::_render-static-ipv4 eth0 192.168.1.20 24 192.168.1.1 '1.1.1.1, 8.8.8.8' ''
+  run _net.render-static-ipv4 eth0 192.168.1.20 24 192.168.1.1 '1.1.1.1, 8.8.8.8' ''
   [ "${status}" -eq 64 ]
-  run net::_render-static-ipv4 eth0 192.168.1.20 24 192.168.1.1 1.1.1.1 invalid
+  run _net.render-static-ipv4 eth0 192.168.1.20 24 192.168.1.1 1.1.1.1 invalid
   [ "${status}" -eq 64 ]
 }
 
 @test "static IPv4 setup uses explicit values without remote downloads" {
-  platform::_identifier() {
+  _platform.identifier() {
     printf 'ubuntu\n'
   }
-  command::require() {
+  command.require() {
     return 0
   }
   netplan() {
     [ "$1" = 'generate' ]
   }
-  net::_install-static-ipv4() {
+  _net.install-static-ipv4() {
     printf '%s\n' "$2" "$3"
     cat "$1"
   }
-  net::_require-netplan-file() {
+  _net.require-netplan-file() {
     return 0
   }
 
-  run net::ip::set-static \
+  run net.ip.set-static \
     --interface enp0s3 \
     --address 10.0.0.20 \
     --prefix-length 24 \
@@ -93,7 +93,7 @@ EOF
   local temporary_root=''
   temporary_root="$(mktemp -d "${BATS_TEST_TMPDIR}/netplan.XXXXXX")"
   mkdir -p "${temporary_root}/etc/netplan"
-  net::_render-static-ipv4 \
+  _net.render-static-ipv4 \
     enp0s3 192.0.2.20 24 192.0.2.1 1.1.1.1,8.8.8.8 '' \
     >"${temporary_root}/etc/netplan/50-bashstock.yaml"
 
@@ -105,33 +105,33 @@ EOF
   local directory="${BATS_TEST_TMPDIR}/netplan"
   mkdir -p "${directory}"
 
-  run --separate-stderr net::_only-netplan-file "${directory}"
+  run --separate-stderr _net.only-netplan-file "${directory}"
   [ "${status}" -eq 69 ]
   [[ "${stderr}" == *'No Netplan file'* ]]
 
   : >"${directory}/01-network-manager-all.yaml"
-  run net::_only-netplan-file "${directory}"
+  run _net.only-netplan-file "${directory}"
   [ "${status}" -eq 0 ]
   [ "${output}" = "${directory}/01-network-manager-all.yaml" ]
 
   # NetworkManager on Ubuntu 23.10 and later adds its own file next to the installer's.
   : >"${directory}/90-NM-eecf78b5-6103-3db4-827f-39fcb745991c.yaml"
-  run --separate-stderr net::_only-netplan-file "${directory}"
+  run --separate-stderr _net.only-netplan-file "${directory}"
   [ "${status}" -eq 69 ]
   [ -z "${output}" ]
   [[ "${stderr}" == *'Several Netplan files'*'--file'* ]]
 }
 
 @test "static IPv4 setup rejects unsupported systems and invalid options" {
-  platform::_identifier() {
+  _platform.identifier() {
     printf 'darwin\n'
   }
-  run net::ip::set-static
+  run net.ip.set-static
   [ "${status}" -eq 69 ]
 
-  run net::ip::set-static -Unknown value
+  run net.ip.set-static -Unknown value
   [ "${status}" -eq 64 ]
-  run net::ip::set-static --address
+  run net.ip.set-static --address
   [ "${status}" -eq 64 ]
 }
 
@@ -148,7 +148,7 @@ EOF
     return 1
   }
 
-  run net::_install-static-ipv4 "${candidate}" "${destination}" server-1
+  run _net.install-static-ipv4 "${candidate}" "${destination}" server-1
   [ "${status}" -eq 75 ]
   [ "$(cat "${destination}")" = 'previous' ]
   [ "$(cat "${BATS_TEST_TMPDIR}/netplan.log")" = $'generate new\napply new\ngenerate previous\napply previous' ]

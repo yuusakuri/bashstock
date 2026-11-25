@@ -3,9 +3,9 @@
 load test_helper
 
 @test "the selected platform provider defines every internal operation" {
-  declare -F platform::_create-system-user >/dev/null
-  declare -F platform::_create-login-user >/dev/null
-  declare -F platform::_change-owner-recursively >/dev/null
+  declare -F _platform.create-system-user >/dev/null
+  declare -F _platform.create-login-user >/dev/null
+  declare -F _platform.change-owner-recursively >/dev/null
 }
 
 @test "the Ubuntu provider creates a non-login system account" {
@@ -14,7 +14,7 @@ load test_helper
     printf '%s\n' "$*"
   }
 
-  run platform::_create-system-user _service
+  run _platform.create-system-user _service
   [ "${status}" -eq 0 ]
   [ "${output}" = '--system --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin _service' ]
 }
@@ -25,7 +25,7 @@ load test_helper
     printf '%s\n' "$*"
   }
 
-  run platform::_create-system-user _service
+  run _platform.create-system-user _service
   [ "${status}" -eq 0 ]
   [ "${output}" = '--system --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin _service' ]
 }
@@ -39,7 +39,7 @@ load test_helper
     printf '%s\n' "$*" >"${BATS_TEST_TMPDIR}/sysadminctl-arguments"
   }
 
-  run platform::_create-system-user _service
+  run _platform.create-system-user _service
   [ "${status}" -eq 0 ]
   run command cat "${BATS_TEST_TMPDIR}/sysadminctl-arguments"
   [[ "${output}" == *'-addUser _service -UID 450'* ]]

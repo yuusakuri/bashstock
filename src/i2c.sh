@@ -14,8 +14,8 @@
 # @exitcode 69 i2cdetect is unavailable.
 # @exitcode other The status of i2cdetect.
 # @example
-#   i2c::bus::list
-i2c::bus::list() { [[ "$#" -eq 0 ]] || return 64; docker::_run-command i2cdetect -l; }
+#   i2c.bus.list
+i2c.bus.list() { [[ "$#" -eq 0 ]] || return 64; _docker.run-command i2cdetect -l; }
 
 # @description Write the devices on one I2C bus with i2cdetect -y.
 #
@@ -26,5 +26,5 @@ i2c::bus::list() { [[ "$#" -eq 0 ]] || return 64; docker::_run-command i2cdetect
 # @exitcode 69 i2cdetect is unavailable.
 # @exitcode other The status of i2cdetect.
 # @example
-#   i2c::device::list 1
-i2c::device::list() { ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] ) || return 64; docker::_run-command i2cdetect -y "$1"; }
+#   i2c.device.list 1
+i2c.device.list() { ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] ) || return 64; _docker.run-command i2cdetect -y "$1"; }

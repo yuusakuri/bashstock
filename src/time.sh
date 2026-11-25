@@ -7,20 +7,20 @@
 
 # @description Write milliseconds from the requested monotonic clock.
 # @internal
-time::_clock-milliseconds() {
+_time.clock-milliseconds() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
 
 
   local operating_system=''
-  operating_system="$(system::operating-system)" || return 69
+  operating_system="$(system.operating-system)" || return 69
   case "${operating_system}:$1" in
     linux:monotonic)
-      python::run -c 'import time; print(int(time.clock_gettime(time.CLOCK_MONOTONIC) * 1000))' 2>/dev/null || return 69
+      python.run -c 'import time; print(int(time.clock_gettime(time.CLOCK_MONOTONIC) * 1000))' 2>/dev/null || return 69
       ;;
     linux:boot-time)
-      python::run -c '
+      python.run -c '
 import re
 try:
     with open("/proc/uptime", encoding="ascii") as stream:
@@ -36,11 +36,11 @@ except (OSError, ValueError):
       ;;
     darwin:monotonic)
       # Python 3.8 added CLOCK_UPTIME_RAW; earlier versions take its value 8 from macOS <time.h>.
-      python::run -c 'import time; print(int(time.clock_gettime(getattr(time, "CLOCK_UPTIME_RAW", 8)) * 1000))' 2>/dev/null || return 69
+      python.run -c 'import time; print(int(time.clock_gettime(getattr(time, "CLOCK_UPTIME_RAW", 8)) * 1000))' 2>/dev/null || return 69
       ;;
     darwin:boot-time)
       # Python builds without CLOCK_MONOTONIC_RAW take its value 4 from macOS <time.h>.
-      python::run -c 'import time; print(int(time.clock_gettime(getattr(time, "CLOCK_MONOTONIC_RAW", 4)) * 1000))' 2>/dev/null || return 69
+      python.run -c 'import time; print(int(time.clock_gettime(getattr(time, "CLOCK_MONOTONIC_RAW", 4)) * 1000))' 2>/dev/null || return 69
       ;;
     *)
       return 69
@@ -50,22 +50,22 @@ except (OSError, ValueError):
 
 # @description Write Unix-epoch milliseconds from the real-time clock.
 # @internal
-time::_realtime-milliseconds() {
+_time.realtime-milliseconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
-  python::run -c 'import time; print(int(time.time() * 1000))' 2>/dev/null ||
+  python.run -c 'import time; print(int(time.time() * 1000))' 2>/dev/null ||
     return 69
 }
 
 # @description Format an epoch-millisecond value in a fixed date-time form.
 # @internal
-time::_format-milliseconds() {
-  if [[ "$#" -ne 2 ]] || ! number::_is-non-negative-integer "$1"; then
+_time.format-milliseconds() {
+  if [[ "$#" -ne 2 ]] || ! _number.is-non-negative-integer "$1"; then
     return 64
   fi
 
-  python::run -c '
+  python.run -c '
 import datetime
 import re
 import sys
@@ -112,8 +112,8 @@ else:
 
 # @description Report that the portable time provider is unavailable.
 # @internal
-time::_provider-error() {
-  console::_write-error 'The portable time provider is unavailable.'
+_time.provider-error() {
+  _console.write-error 'The portable time provider is unavailable.'
   return 69
 }
 
@@ -128,14 +128,14 @@ time::_provider-error() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
-#   start="$(time::monotonic-milliseconds)"
+#   start="$(time.monotonic-milliseconds)"
 #   make build
-#   printf '%s ms\n' "$(( $(time::monotonic-milliseconds) - start ))"
-time::monotonic-milliseconds() {
+#   printf '%s ms\n' "$(( $(time.monotonic-milliseconds) - start ))"
+time.monotonic-milliseconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
-  time::_clock-milliseconds monotonic || time::_provider-error
+  _time.clock-milliseconds monotonic || _time.provider-error
 }
 
 # @description Write milliseconds since boot including suspended time.
@@ -146,12 +146,12 @@ time::monotonic-milliseconds() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
-#   time::boot-time-milliseconds
-time::boot-time-milliseconds() {
+#   time.boot-time-milliseconds
+time.boot-time-milliseconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
-  time::_clock-milliseconds boot-time || time::_provider-error
+  _time.clock-milliseconds boot-time || _time.provider-error
 }
 
 # @description Write Unix-epoch milliseconds.
@@ -162,13 +162,13 @@ time::boot-time-milliseconds() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
-#   time::unix-milliseconds
+#   time.unix-milliseconds
 #   # 1791900000123
-time::unix-milliseconds() {
+time.unix-milliseconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
-  time::_realtime-milliseconds || time::_provider-error
+  _time.realtime-milliseconds || _time.provider-error
 }
 
 # @description Write Unix-epoch seconds rounded down.
@@ -179,14 +179,14 @@ time::unix-milliseconds() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
-#   expires=$(( $(time::unix-seconds) + 3600 ))
-time::unix-seconds() {
+#   expires=$(( $(time.unix-seconds) + 3600 ))
+time.unix-seconds() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
   local milliseconds=''
-  milliseconds="$(time::_realtime-milliseconds)" || {
-    time::_provider-error
+  milliseconds="$(_time.realtime-milliseconds)" || {
+    _time.provider-error
     return 69
   }
   printf '%s\n' "$((milliseconds / 1000))"
@@ -200,15 +200,15 @@ time::unix-seconds() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
-#   time::unix-days
+#   time.unix-days
 #   # 20739
-time::unix-days() {
+time.unix-days() {
   if [[ "$#" -ne 0 ]]; then
     return 64
   fi
   local milliseconds=''
-  milliseconds="$(time::_realtime-milliseconds)" || {
-    time::_provider-error
+  milliseconds="$(_time.realtime-milliseconds)" || {
+    _time.provider-error
     return 69
   }
   printf '%s\n' "$((milliseconds / 86400000))"
@@ -216,19 +216,19 @@ time::unix-days() {
 
 # @description Format the current real-time clock in a requested date-time form.
 # @internal
-time::_date-time() {
+_time.date-time() {
   if [[ "$#" -ne 1 ]]; then
     return 64
   fi
   local milliseconds=''
-  milliseconds="$(time::_realtime-milliseconds)" || {
-    time::_provider-error
+  milliseconds="$(_time.realtime-milliseconds)" || {
+    _time.provider-error
     return 69
   }
-  time::_format-milliseconds "${milliseconds}" "$1" || {
+  _time.format-milliseconds "${milliseconds}" "$1" || {
     local status="$?"
     [[ "${status}" -eq 64 ]] && return 64
-    time::_provider-error
+    _time.provider-error
     return 69
   }
 }
@@ -241,11 +241,11 @@ time::_date-time() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
-#   time::utc-date-time-milliseconds-extended
+#   time.utc-date-time-milliseconds-extended
 #   # 2026-10-14T03:04:05.678Z
-time::utc-date-time-milliseconds-extended() {
+time.utc-date-time-milliseconds-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time utc-ms-extended
+  _time.date-time utc-ms-extended
 }
 
 # @description Write the current UTC date and time in ISO 8601 extended format with seconds.
@@ -256,11 +256,11 @@ time::utc-date-time-milliseconds-extended() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
-#   time::utc-date-time-seconds-extended
+#   time.utc-date-time-seconds-extended
 #   # 2026-10-14T03:04:05Z
-time::utc-date-time-seconds-extended() {
+time.utc-date-time-seconds-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time utc-s-extended
+  _time.date-time utc-s-extended
 }
 
 # @description Write the current UTC date in ISO 8601 extended format.
@@ -271,11 +271,11 @@ time::utc-date-time-seconds-extended() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
-#   time::utc-date-extended
+#   time.utc-date-extended
 #   # 2026-10-14
-time::utc-date-extended() {
+time.utc-date-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time utc-date-extended
+  _time.date-time utc-date-extended
 }
 
 # @description Write the current local date and time in ISO 8601 extended format with milliseconds and an offset.
@@ -286,11 +286,11 @@ time::utc-date-extended() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
-#   time::local-date-time-milliseconds-extended
+#   time.local-date-time-milliseconds-extended
 #   # 2026-10-14T12:04:05.678+09:00
-time::local-date-time-milliseconds-extended() {
+time.local-date-time-milliseconds-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time local-ms-extended
+  _time.date-time local-ms-extended
 }
 
 # @description Write the current local date and time in ISO 8601 extended format with seconds and an offset.
@@ -301,10 +301,10 @@ time::local-date-time-milliseconds-extended() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
-#   log_line="$(time::local-date-time-seconds-extended) started"
-time::local-date-time-seconds-extended() {
+#   log_line="$(time.local-date-time-seconds-extended) started"
+time.local-date-time-seconds-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time local-s-extended
+  _time.date-time local-s-extended
 }
 
 # @description Write the current local date in ISO 8601 extended format.
@@ -315,10 +315,10 @@ time::local-date-time-seconds-extended() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
-#   mkdir -p "backup/$(time::local-date-extended)"
-time::local-date-extended() {
+#   mkdir -p "backup/$(time.local-date-extended)"
+time.local-date-extended() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time local-date-extended
+  _time.date-time local-date-extended
 }
 
 # @description Write the current local date and time in ISO 8601 basic format with seconds.
@@ -331,10 +331,10 @@ time::local-date-extended() {
 # @exitcode 64 An argument was given.
 # @exitcode 69 Python 3 or the requested clock provider is unavailable.
 # @example
-#   cp config.yaml "config.yaml.$(time::local-date-time-seconds-basic)"
-time::local-date-time-seconds-basic() {
+#   cp config.yaml "config.yaml.$(time.local-date-time-seconds-basic)"
+time.local-date-time-seconds-basic() {
   [[ "$#" -eq 0 ]] || return 64
-  time::_date-time local-s-basic
+  _time.date-time local-s-basic
 }
 
 # @description Sleep for a non-negative integer number of hours.
@@ -344,8 +344,8 @@ time::local-date-time-seconds-basic() {
 # @exitcode 64 The value is not a non-negative integer.
 # @exitcode 69 sleep is unavailable.
 # @example
-#   time::sleep-hours 2 && make release
-time::sleep-hours() {
+#   time.sleep-hours 2 && make release
+time.sleep-hours() {
   if ( [[ "$#" -ne 1 || ! "$1" =~ ^(0|[1-9][0-9]*)$ ]] ); then return 64; fi
   command -v sleep >/dev/null 2>&1 || return 69
   sleep "$((10#$1 * 3600))"
@@ -361,9 +361,9 @@ time::sleep-hours() {
 # @exitcode 0 The value was written.
 # @exitcode 64 The offset is malformed or out of range.
 # @example
-#   time::posix-timezone +09:00
+#   time.posix-timezone +09:00
 #   # UTC-9
-time::posix-timezone() {
+time.posix-timezone() {
   [[ "$#" -eq 1 ]] || return 64
   local sign='' hours=0 minutes=0 text=''
   if [[ "$1" == Z ]]; then
@@ -393,13 +393,13 @@ time::posix-timezone() {
 # @exitcode 74 sleep failed.
 # @exitcode other The status of the clock function that failed.
 # @example
-#   time::status-continuous   # Stop with Ctrl-C.
-time::status-continuous() {
+#   time.status-continuous   # Stop with Ctrl-C.
+time.status-continuous() {
   [[ "$#" -eq 0 ]] || return 64
   local milliseconds='' now=''
   while :; do
-    milliseconds="$(time::boot-time-milliseconds)" || return "$?"
-    now="$(time::local-date-time-seconds-extended)" || return "$?"
+    milliseconds="$(time.boot-time-milliseconds)" || return "$?"
+    now="$(time.local-date-time-seconds-extended)" || return "$?"
     printf 'Seconds since boot: %d.%03d\nLocal date and time: %s\n' \
       "$((milliseconds / 1000))" "$((milliseconds % 1000))" "${now}"
     sleep 3 || return 74

@@ -7,19 +7,19 @@
 
 # @description Write the major.minor.patch version of the Python 3 interpreter.
 # @internal
-pipx::_python-version() {
+_pipx.python-version() {
   [[ "$#" -eq 0 ]] || return 64
-  command::require python3 || return "$?"
+  command.require python3 || return "$?"
   python3 -c 'import sys; print("%d.%d.%d" % sys.version_info[:3])' || return 74
 }
 
 # @description Write pipx releases on PyPI whose Requires-Python accepts PYTHON_VERSION.
 # @internal
-pipx::_official-versions() {
+_pipx.official-versions() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ) || return 64
   local json='' versions=''
-  json="$(package::_fetch https://pypi.org/pypi/pipx/json)" || return "$?"
-  versions="$(printf '%s' "${json}" | python::_run-json 74 '
+  json="$(_package.fetch https://pypi.org/pypi/pipx/json)" || return "$?"
+  versions="$(printf '%s' "${json}" | _python.run-json 74 '
 import re
 import sys
 python_version = [int(part) for part in sys.argv[1].split(".")]
@@ -69,7 +69,7 @@ for release, files in data["releases"].items():
     if files and re.fullmatch(r"[0-9]+(?:\.[0-9]+)*", release) and accepts(files[0].get("requires_python") or ""):
         print(release)
 ' "$1")" || return "$?"
-  printf '%s\n' "${versions}" | package::_sort-stable-versions
+  printf '%s\n' "${versions}" | _package.sort-stable-versions
 }
 
 # @description Write pipx versions available from the selected source.
@@ -84,17 +84,17 @@ for release, files in data["releases"].items():
 # @exitcode 69 Python 3 is missing for the official source.
 # @exitcode 74 The PyPI index could not be downloaded or read.
 # @example
-#   pipx::versions official | tail -n 1
-pipx::versions() {
+#   pipx.versions official | tail -n 1
+pipx.versions() {
   [[ "$#" -le 1 ]] || return 64
   local source="${1:-os}" python_version=''
   [[ "${source}" == os || "${source}" == official ]] || return 64
   if [[ "${source}" == os ]]; then
-    package::_versions pipx
+    _package.versions pipx
     return
   fi
-  python_version="$(pipx::_python-version)" || return "$?"
-  pipx::_official-versions "${python_version}"
+  python_version="$(_pipx.python-version)" || return "$?"
+  _pipx.official-versions "${python_version}"
 }
 
 # @description Succeed when PEP 668 marks the Python 3 interpreter as managed by the system.
@@ -102,7 +102,7 @@ pipx::versions() {
 # Ubuntu 23.04 and later mark their Python this way, and pip then refuses
 # pip install --user.
 # @internal
-pipx::_python-is-externally-managed() {
+_pipx.python-is-externally-managed() {
   [[ "$#" -eq 0 ]] || return 64
   python3 -c 'import os, sys, sysconfig
 sys.exit(0 if os.path.isfile(os.path.join(sysconfig.get_path("stdlib"), "EXTERNALLY-MANAGED")) else 1)'
@@ -115,7 +115,7 @@ sys.exit(0 if os.path.isfile(os.path.join(sysconfig.get_path("stdlib"), "EXTERNA
 # Environments that the launcher no longer uses are removed afterwards.
 # @internal
 # @arg $1 string pipx version.
-pipx::_install-official-venv() {
+_pipx.install-official-venv() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local root="${HOME}/.local/lib/pipx-official" venv='' old='' status=0
   mkdir -p -- "${root}" "${HOME}/.local/bin" || return 74
@@ -148,7 +148,7 @@ pipx::_install-official-venv() {
 # the other source. On Ubuntu, python3-venv is installed with either source,
 # because pipx creates a virtual environment for every application.
 #
-# @arg $1 string Optional version from pipx::versions for the same source.
+# @arg $1 string Optional version from pipx.versions for the same source.
 # @arg $2 string Optional source: os (default) or official.
 # @stderr A message when the source cannot provide pipx.
 # @exitcode 0 pipx is installed and ~/.local/bin is on PATH.
@@ -157,49 +157,49 @@ pipx::_install-official-venv() {
 # @exitcode 74 The application directory could not be created.
 # @exitcode other The status of the package manager or pip.
 # @example
-#   pipx::install
+#   pipx.install
 #   pipx install pycowsay
-pipx::install() {
+pipx.install() {
   [[ "$#" -le 2 ]] || return 64
   local version="${1:-}" source="${2:-os}" platform='' versions='' installed=''
   [[ "${source}" == os || "${source}" == official ]] || return 64
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   if [[ "${source}" == os ]]; then
-    versions="$(pipx::versions os)" || return "$?"
+    versions="$(pipx.versions os)" || return "$?"
     if [[ -z "${versions}" ]]; then
-      console::_write-error 'The system packages do not provide pipx; use the official source.'
+      _console.write-error 'The system packages do not provide pipx; use the official source.'
       return 69
     fi
     if [[ -n "${version}" ]]; then
-      version="$(package::_select-listed-version "${versions}" "${version}" pipx)" || return "$?"
+      version="$(_package.select-listed-version "${versions}" "${version}" pipx)" || return "$?"
     fi
-    package::_install-version pipx "${version}" || return "$?"
+    _package.install-version pipx "${version}" || return "$?"
     if [[ "${platform}" == ubuntu ]]; then
       # Ubuntu ships venv separately, and the pipx package of 20.04 does not require it.
-      package::_install python3-venv || return "$?"
+      _package.install python3-venv || return "$?"
     fi
   else
     case "${platform}" in
-      ubuntu) package::_refresh && package::_install python3-pip python3-venv || return "$?" ;;
-      fedora) package::_install python3-pip || return "$?" ;;
+      ubuntu) _package.refresh && _package.install python3-pip python3-venv || return "$?" ;;
+      fedora) _package.install python3-pip || return "$?" ;;
       *)
-        console::_write-error 'Install pipx from Homebrew with the os source on macOS.'
+        _console.write-error 'Install pipx from Homebrew with the os source on macOS.'
         return 69
         ;;
     esac
-    versions="$(pipx::versions official)" || return "$?"
-    version="$(package::_select-listed-version "${versions}" "${version}" pipx)" || return "$?"
-    if pipx::_python-is-externally-managed; then
-      pipx::_install-official-venv "${version}" || return "$?"
+    versions="$(pipx.versions official)" || return "$?"
+    version="$(_package.select-listed-version "${versions}" "${version}" pipx)" || return "$?"
+    if _pipx.python-is-externally-managed; then
+      _pipx.install-official-venv "${version}" || return "$?"
     else
       python3 -m pip install --user "pipx==${version}" || return "$?"
     fi
     installed="$("${HOME}/.local/bin/pipx" --version)" || return 69
     if [[ "${installed}" != "${version}" ]]; then
-      console::_write-error "pip installed pipx ${installed} instead of ${version}."
+      _console.write-error "pip installed pipx ${installed} instead of ${version}."
       return 69
     fi
   fi
   mkdir -p -- "${HOME}/.local/bin" || return 74
-  env::add-path "${HOME}/.local/bin"
+  env.add-path "${HOME}/.local/bin"
 }

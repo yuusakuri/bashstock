@@ -17,27 +17,27 @@
 # @exitcode 74 The package could not be downloaded.
 # @exitcode other The status of the package manager.
 # @example
-#   discord::install
-discord::install() {
+#   discord.install
+discord.install() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' directory='' file='' status=0
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   case "${platform}" in
     darwin)
-      package::_install-cask discord
+      _package.install-cask discord
       ;;
     ubuntu)
-      apt::deb::install-from-url \
+      apt.deb.install-from-url \
         'https://discord.com/api/download?platform=linux&format=deb'
       ;;
     fedora)
-      command::require dnf || return "$?"
-      directory="$(package::_temporary-directory)" || return "$?"
+      command.require dnf || return "$?"
+      directory="$(_package.temporary-directory)" || return "$?"
       file="${directory}/discord.rpm"
-      package::_download 'https://discord.com/api/download?platform=linux&format=rpm' \
+      _package.download 'https://discord.com/api/download?platform=linux&format=rpm' \
         "${file}" || status="$?"
       if [[ "${status}" -eq 0 ]]; then
-        command::run-as-root dnf install -y "${file}" || status="$?"
+        command.run-as-root dnf install -y "${file}" || status="$?"
       fi
       rm -rf -- "${directory}"
       return "${status}"

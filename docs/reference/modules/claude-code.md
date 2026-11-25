@@ -8,9 +8,9 @@ Claude Code is installed with Anthropic's native installer.
 
 ## Index
 
-* [claude-code::install](#claude-codeinstall)
+* [claude-code.install](#claude-codeinstall)
 
-### claude-code::install
+### claude-code.install
 
 Install the newest Claude Code CLI.
 
@@ -22,7 +22,7 @@ the first run of claude.
 #### Example
 
 ```bash
-claude-code::install && claude --version
+claude-code.install && claude --version
 ```
 
 _Function has no arguments._

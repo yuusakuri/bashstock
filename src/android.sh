@@ -16,19 +16,19 @@
 # @exitcode 0 The directory was written.
 # @exitcode 64 An argument was given, or ANDROID_HOME and ANDROID_SDK_ROOT name different SDKs.
 # @example
-#   ls "$(android::sdk::directory)/platforms"
-android::sdk::directory() {
+#   ls "$(android.sdk.directory)/platforms"
+android.sdk.directory() {
   [[ "$#" -eq 0 ]] || return 64
   if [[ -n "${ANDROID_HOME:-}" && -n "${ANDROID_SDK_ROOT:-}" &&
     "${ANDROID_HOME}" != "${ANDROID_SDK_ROOT}" ]]; then
-    console::_write-error 'ANDROID_HOME and ANDROID_SDK_ROOT identify different SDKs.'
+    _console.write-error 'ANDROID_HOME and ANDROID_SDK_ROOT identify different SDKs.'
     return 64
   fi
   if [[ -n "${ANDROID_HOME:-}" ]]; then
     printf '%s\n' "${ANDROID_HOME}"
   elif [[ -n "${ANDROID_SDK_ROOT:-}" ]]; then
     printf '%s\n' "${ANDROID_SDK_ROOT}"
-  elif [[ "$(package::_platform)" == darwin ]]; then
+  elif [[ "$(_package.platform)" == darwin ]]; then
     printf '%s\n' "${HOME}/Library/Android/sdk"
   else
     printf '%s\n' "${HOME}/Android/Sdk"
@@ -37,21 +37,21 @@ android::sdk::directory() {
 
 # @description Write the official Android CLI artifact path for this OS and CPU.
 # @internal
-android::_cli-artifact() {
+_android.cli-artifact() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' architecture=''
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   architecture="$(uname -m)" || return 74
   case "${platform}:${architecture}" in
     darwin:arm64 | darwin:aarch64) printf 'darwin_arm64\n' ;;
     ubuntu:x86_64 | fedora:x86_64) printf 'linux_x86_64\n' ;;
-    *) console::_write-error "Android CLI does not provide ${platform}/${architecture}."; return 69 ;;
+    *) _console.write-error "Android CLI does not provide ${platform}/${architecture}."; return 69 ;;
   esac
 }
 
 # @description Write the usable Android CLI command, preferring this user's local installation.
 # @internal
-android::_cli-command() {
+_android.cli-command() {
   [[ "$#" -eq 0 ]] || return 64
   if [[ -x "${HOME}/.local/bin/android" ]]; then
     printf '%s\n' "${HOME}/.local/bin/android"
@@ -71,16 +71,16 @@ android::_cli-command() {
 # @exitcode 69 Google publishes no CLI for this OS and CPU, or the downloaded CLI does not start or has another version.
 # @exitcode 74 The download or installation failed.
 # @example
-#   android::cli::install
+#   android.cli.install
 #   android --version
-android::cli::install() {
+android.cli.install() {
   [[ "$#" -le 1 ]] || return 64
   local version="${1:-}" artifact='' temporary='' actual='' path=''
   ( [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ) || return 64
-  artifact="$(android::_cli-artifact)" || return "$?"
-  temporary="$(package::_temporary-directory)" || return "$?"
+  artifact="$(_android.cli-artifact)" || return "$?"
+  temporary="$(_package.temporary-directory)" || return "$?"
   if [[ -n "${version}" ]]; then path="${version}"; else path='latest'; fi
-  package::_download "https://dl.google.com/android/cli/${path}/${artifact}/android" \
+  _package.download "https://dl.google.com/android/cli/${path}/${artifact}/android" \
     "${temporary}/android" || { rm -rf -- "${temporary}"; return 74; }
   chmod 0755 "${temporary}/android" || { rm -rf -- "${temporary}"; return 74; }
   actual="$("${temporary}/android" --version 2>/dev/null |
@@ -92,45 +92,45 @@ android::cli::install() {
   mv -f -- "${temporary}/android" "${HOME}/.local/bin/android" ||
     { rm -rf -- "${temporary}"; return 74; }
   rm -rf -- "${temporary}"
-  env::add-path "${HOME}/.local/bin"
+  env.add-path "${HOME}/.local/bin"
 }
 
 # @description Create and configure the selected SDK directory and Android CLI.
 #
 # ANDROID_HOME is written to the Bash and Zsh startup files and the current process.
 #
-# @arg $1 string Optional absolute SDK directory. Defaults to android::sdk::directory.
+# @arg $1 string Optional absolute SDK directory. Defaults to android.sdk.directory.
 # @arg $2 string Optional complete Android CLI version. Defaults to the latest.
 # @exitcode 0 The SDK directory and CLI are ready.
 # @exitcode 64 The directory is not absolute or differs from ANDROID_HOME or ANDROID_SDK_ROOT.
 # @exitcode 69 The Android CLI is unavailable for this OS and CPU.
 # @exitcode 74 The directory could not be created or the CLI could not be installed.
 # @example
-#   android::sdk::install "${HOME}/Android/Sdk"
-android::sdk::install() {
+#   android.sdk.install "${HOME}/Android/Sdk"
+android.sdk.install() {
   [[ "$#" -le 2 ]] || return 64
   local directory='' selected=''
-  selected="$(android::sdk::directory)" || return "$?"
+  selected="$(android.sdk.directory)" || return "$?"
   directory="${1:-${selected}}"
   [[ -n "${directory}" && "${directory}" == /* ]] || return 64
   if [[ -n "${ANDROID_HOME:-}" && "${ANDROID_HOME}" != "${directory}" ]]; then return 64; fi
   if [[ -n "${ANDROID_SDK_ROOT:-}" && "${ANDROID_SDK_ROOT}" != "${directory}" ]]; then return 64; fi
-  android::cli::install "${2:-}" || return "$?"
+  android.cli.install "${2:-}" || return "$?"
   mkdir -p -- "${directory}" || return 74
-  env::set-variable ANDROID_HOME "${directory}"
+  env.set-variable ANDROID_HOME "${directory}"
 }
 
 # @description Install one stable SDK package, accepting its license from standard input.
 # @internal
-android::_sdk-install() {
+_android.sdk-install() {
   [[ "$#" -eq 2 && -n "$1" ]] || return 64
   local package="$1" revision="$2" command='' directory='' specification=''
   ( [[ -z "${revision}" || "${revision}" =~ ^[0-9]+(\.[0-9]+)*$ ]] ) || return 64
-  android::_cli-artifact >/dev/null || return "$?"
-  directory="$(android::sdk::directory)" || return "$?"
+  _android.cli-artifact >/dev/null || return "$?"
+  directory="$(android.sdk.directory)" || return "$?"
   [[ "${directory}" == /* ]] || return 64
-  command="$(android::_cli-command)" ||
-    { android::cli::install || return "$?"; command="$(android::_cli-command)" || return "$?"; }
+  command="$(_android.cli-command)" ||
+    { android.cli.install || return "$?"; command="$(_android.cli-command)" || return "$?"; }
   mkdir -p -- "${directory}" || return 74
   specification="${package}${revision:+@${revision}}"
   if [[ -n "${revision}" ]]; then
@@ -140,7 +140,7 @@ android::_sdk-install() {
     "${command}" --no-metrics "--sdk=${directory}" sdk install "${specification}" < <(yes) ||
       return "$?"
   fi
-  env::set-variable ANDROID_HOME "${directory}"
+  env.set-variable ANDROID_HOME "${directory}"
 }
 
 # @description Install Android Platform Tools and add adb and fastboot to PATH.
@@ -153,16 +153,16 @@ android::_sdk-install() {
 # @exitcode 69 The Android CLI is unavailable, or adb or fastboot is missing after installation.
 # @exitcode other The status of the Android CLI.
 # @example
-#   android::platform-tools::install
+#   android.platform-tools.install
 #   adb devices
-android::platform-tools::install() {
+android.platform-tools.install() {
   [[ "$#" -le 1 ]] || return 64
-  android::_sdk-install platform-tools "${1:-}" || return "$?"
+  _android.sdk-install platform-tools "${1:-}" || return "$?"
   local directory=''
-  directory="$(android::sdk::directory)" || return "$?"
+  directory="$(android.sdk.directory)" || return "$?"
   [[ -x "${directory}/platform-tools/adb" && -x "${directory}/platform-tools/fastboot" ]] ||
     return 69
-  env::add-path "${directory}/platform-tools"
+  env.add-path "${directory}/platform-tools"
 }
 
 # @description Install an Android SDK Platform and verify its android.jar file.
@@ -174,12 +174,12 @@ android::platform-tools::install() {
 # @exitcode 69 The Android CLI is unavailable, or android.jar is missing after installation.
 # @exitcode other The status of the Android CLI.
 # @example
-#   android::sdk-platform::install 35
-android::sdk-platform::install() {
+#   android.sdk-platform.install 35
+android.sdk-platform.install() {
   ( [[ "$#" -ge 1 && "$#" -le 2 && "$1" =~ ^[0-9]+$ ]] ) || return 64
-  android::_sdk-install "platforms/android-$1" "${2:-}" || return "$?"
+  _android.sdk-install "platforms/android-$1" "${2:-}" || return "$?"
   local directory=''
-  directory="$(android::sdk::directory)" || return "$?"
+  directory="$(android.sdk.directory)" || return "$?"
   [[ -s "${directory}/platforms/android-$1/android.jar" ]] || return 69
 }
 
@@ -192,17 +192,17 @@ android::sdk-platform::install() {
 # @exitcode 69 The Android CLI is unavailable, or aapt2 is missing after installation.
 # @exitcode other The status of the Android CLI.
 # @example
-#   android::build-tools::install 35.0.0
+#   android.build-tools.install 35.0.0
 #   aapt2 version
-android::build-tools::install() {
+android.build-tools.install() {
   [[ "$#" -le 2 ]] || return 64
   local version="${1:-}" directory=''
   ( [[ -z "${version}" || "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ) || return 64
-  [[ -n "${version}" ]] || version="$(android::build-tools::latest-version)" || return "$?"
-  android::_sdk-install "build-tools/${version}" "${2:-}" || return "$?"
-  directory="$(android::sdk::directory)" || return "$?"
+  [[ -n "${version}" ]] || version="$(android.build-tools.latest-version)" || return "$?"
+  _android.sdk-install "build-tools/${version}" "${2:-}" || return "$?"
+  directory="$(android.sdk.directory)" || return "$?"
   [[ -x "${directory}/build-tools/${version}/aapt2" ]] || return 69
-  env::add-path "${directory}/build-tools/${version}"
+  env.add-path "${directory}/build-tools/${version}"
 }
 
 # @description Install the Android Emulator into the selected SDK.
@@ -218,55 +218,55 @@ android::build-tools::install() {
 # @exitcode 69 The Android CLI is unavailable for this OS and CPU, or the emulator does not start.
 # @exitcode other The status of the package manager or the Android CLI.
 # @example
-#   android::emulator::install
-android::emulator::install() {
+#   android.emulator.install
+android.emulator.install() {
   [[ "$#" -le 1 ]] || return 64
   local platform='' directory=''
-  android::_cli-artifact >/dev/null || return "$?"
-  platform="$(package::_platform)" || return "$?"
+  _android.cli-artifact >/dev/null || return "$?"
+  platform="$(_package.platform)" || return "$?"
   case "${platform}" in
     ubuntu)
-      package::_install libpulse0 libnss3 libpng16-16 libx11-6 libx11-xcb1 libxext6 libxi6 libice6 libsm6 \
+      _package.install libpulse0 libnss3 libpng16-16 libx11-6 libx11-xcb1 libxext6 libxi6 libice6 libsm6 \
         libxcb1 libxkbfile1 libbsd0 libdbus-1-3 libdrm2 libgbm1 libexpat1 libuuid1 zlib1g || return "$?"
       ;;
     fedora)
-      package::_install pulseaudio-libs nss nspr libpng libX11 libX11-xcb libXext libXi libICE libSM \
+      _package.install pulseaudio-libs nss nspr libpng libX11 libX11-xcb libXext libXi libICE libSM \
         libxcb libxkbfile libbsd dbus-libs libdrm mesa-libgbm expat libuuid zlib || return "$?"
       ;;
   esac
-  android::_sdk-install emulator "${1:-}" || return "$?"
-  directory="$(android::sdk::directory)" || return "$?"
+  _android.sdk-install emulator "${1:-}" || return "$?"
+  directory="$(android.sdk.directory)" || return "$?"
   [[ -x "${directory}/emulator/emulator" ]] || return 69
   if ! "${directory}/emulator/emulator" -version >/dev/null; then
-    console::_write-error 'The Android Emulator does not start on this system.'
+    _console.write-error 'The Android Emulator does not start on this system.'
     return 69
   fi
 }
 
 # @description Install SDK Command-line Tools and verify sdkmanager and avdmanager.
 #
-# sdkmanager and avdmanager run on Java, so a JDK is installed with jdk::install
+# sdkmanager and avdmanager run on Java, so a JDK is installed with jdk.install
 # when neither JAVA_HOME nor PATH provides java.
 #
 # @arg $1 string Optional package revision. Defaults to the latest stable one.
 # @exitcode 0 sdkmanager and avdmanager are installed and on PATH.
 # @exitcode 64 The revision is malformed.
 # @exitcode 69 The Android CLI is unavailable, or a tool is missing after installation.
-# @exitcode other The status of the Android CLI or jdk::install.
+# @exitcode other The status of the Android CLI or jdk.install.
 # @example
-#   android::command-line-tools::install
+#   android.command-line-tools.install
 #   avdmanager list device -c
-android::command-line-tools::install() {
+android.command-line-tools.install() {
   [[ "$#" -le 1 ]] || return 64
-  android::_sdk-install cmdline-tools/latest "${1:-}" || return "$?"
+  _android.sdk-install cmdline-tools/latest "${1:-}" || return "$?"
   local directory=''
-  directory="$(android::sdk::directory)" || return "$?"
+  directory="$(android.sdk.directory)" || return "$?"
   [[ -x "${directory}/cmdline-tools/latest/bin/sdkmanager" &&
     -x "${directory}/cmdline-tools/latest/bin/avdmanager" ]] || return 69
-  if [[ ! -x "${JAVA_HOME:-/nonexistent}/bin/java" ]] && ! command::exists java; then
-    jdk::install || return "$?"
+  if [[ ! -x "${JAVA_HOME:-/nonexistent}/bin/java" ]] && ! command.exists java; then
+    jdk.install || return "$?"
   fi
-  env::add-path "${directory}/cmdline-tools/latest/bin"
+  env.add-path "${directory}/cmdline-tools/latest/bin"
 }
 
 # @description List AVD names in the selected Android SDK environment.
@@ -278,11 +278,11 @@ android::command-line-tools::install() {
 # @exitcode 69 The emulator is not installed.
 # @exitcode other The status of emulator -list-avds.
 # @example
-#   android::avd::list | grep -Fqx pixel_api35 || android::avd::create pixel_api35 35
-android::avd::list() {
+#   android.avd.list | grep -Fqx pixel_api35 || android.avd.create pixel_api35 35
+android.avd.list() {
   [[ "$#" -eq 0 ]] || return 64
   local directory=''
-  directory="$(android::sdk::directory)" || return "$?"
+  directory="$(android.sdk.directory)" || return "$?"
   [[ -x "${directory}/emulator/emulator" ]] || return 69
   "${directory}/emulator/emulator" -list-avds
 }
@@ -296,11 +296,11 @@ android::avd::list() {
 # @exitcode 69 Command-line Tools are not installed.
 # @exitcode other The status of avdmanager.
 # @example
-#   android::avd::profiles | grep pixel
-android::avd::profiles() {
+#   android.avd.profiles | grep pixel
+android.avd.profiles() {
   [[ "$#" -eq 0 ]] || return 64
   local directory=''
-  directory="$(android::sdk::directory)" || return "$?"
+  directory="$(android.sdk.directory)" || return "$?"
   [[ -x "${directory}/cmdline-tools/latest/bin/avdmanager" ]] || return 69
   "${directory}/cmdline-tools/latest/bin/avdmanager" list device -c
 }
@@ -316,16 +316,16 @@ android::avd::profiles() {
 # @exitcode 69 The Android CLI is unavailable.
 # @exitcode other The status of the Android CLI.
 # @example
-#   android::system-images::versions 35 google_apis x86_64
+#   android.system-images.versions 35 google_apis x86_64
 #   # 35 google_apis x86_64 9
-android::system-images::versions() {
+android.system-images.versions() {
   [[ "$#" -le 3 ]] || return 64
   local api="${1:-}" tag="${2:-}" abi="${3:-}" directory='' command='' listing=''
   ( [[ -z "${api}" || "${api}" =~ ^[0-9]+$ ]] ) || return 64
   ( [[ -z "${tag}" || "${tag}" =~ ^[a-z0-9_]+$ ]] ) || return 64
   ( [[ -z "${abi}" || "${abi}" =~ ^[A-Za-z0-9_-]+$ ]] ) || return 64
-  directory="$(android::sdk::directory)" || return "$?"
-  command="$(android::_cli-command)" || return "$?"
+  directory="$(android.sdk.directory)" || return "$?"
+  command="$(_android.cli-command)" || return "$?"
   listing="$("${command}" --no-metrics "--sdk=${directory}" sdk list 'system-images/*' \
     --all --all-versions)" || return "$?"
   printf '%s\n' "${listing}" | awk -v wanted_api="${api}" -v wanted_tag="${tag}" \
@@ -343,7 +343,7 @@ android::system-images::versions() {
 
 # @description Write the ABI matching the host CPU.
 # @internal
-android::avd::_abi() {
+_android.avd.abi() {
   [[ "$#" -eq 0 ]] || return 64
   case "$(uname -m)" in
     x86_64 | amd64) printf 'x86_64\n' ;;
@@ -354,7 +354,7 @@ android::avd::_abi() {
 
 # @description Write the directory containing Android Virtual Device definitions.
 # @internal
-android::avd::_directory() {
+_android.avd.directory() {
   [[ "$#" -eq 0 ]] || return 64
   if [[ -n "${ANDROID_AVD_HOME:-}" ]]; then
     printf '%s\n' "${ANDROID_AVD_HOME}"
@@ -365,7 +365,7 @@ android::avd::_directory() {
 
 # @description Compare SDK revision values while ignoring zero-only trailing components.
 # @internal
-android::avd::_same-revision() {
+_android.avd.same-revision() {
   [[ "$#" -eq 2 ]] || return 64
   local first="$1" second="$2"
   ( [[ "${first}" =~ ^[0-9]+(\.[0-9]+)*$ &&
@@ -395,9 +395,9 @@ android::avd::_same-revision() {
 # @exitcode 74 The existing AVD could not be backed up or restored.
 # @exitcode other The status of the Android CLI or avdmanager.
 # @example
-#   android::avd::create pixel_api35 35 pixel_8
-#   android::avd::create pixel_api35 35 pixel_8 google_apis arm64-v8a '' --replace
-android::avd::create() {
+#   android.avd.create pixel_api35 35 pixel_8
+#   android.avd.create pixel_api35 35 pixel_8 google_apis arm64-v8a '' --replace
+android.avd.create() {
   [[ "$#" -ge 1 && "$#" -le 7 ]] || return 64
   local replace='' count=0
   if [[ "$#" -gt 1 && "${!#}" == --replace ]]; then
@@ -413,22 +413,22 @@ android::avd::create() {
   ( [[ "${profile}" =~ ^[A-Za-z0-9._-]+$ && "${tag}" =~ ^[a-z0-9_]+$ ]] ) || return 64
   ( [[ -z "${revision}" || "${revision}" =~ ^[0-9]+(\.[0-9]+)*$ ]] ) || return 64
   [[ -z "${replace}" || "${replace}" == --replace ]] || return 64
-  [[ -n "${abi}" ]] || abi="$(android::avd::_abi)" || return "$?"
+  [[ -n "${abi}" ]] || abi="$(_android.avd.abi)" || return "$?"
   ( [[ "${abi}" =~ ^[A-Za-z0-9_-]+$ ]] ) || return 64
-  directory="$(android::sdk::directory)" || return "$?"
-  root="$(android::avd::_directory)" || return "$?"
+  directory="$(android.sdk.directory)" || return "$?"
+  root="$(_android.avd.directory)" || return "$?"
   [[ -x "${directory}/cmdline-tools/latest/bin/avdmanager" &&
     -x "${directory}/emulator/emulator" ]] || return 69
-  android::avd::profiles | grep -Fqx -- "${profile}" || return 69
+  android.avd.profiles | grep -Fqx -- "${profile}" || return 69
   if [[ "${replace}" != --replace ]] &&
-    android::avd::list | grep -Fqx -- "${name}"; then
+    android.avd.list | grep -Fqx -- "${name}"; then
     return 73
   fi
-  candidates="$(android::system-images::versions "${api}" "${tag}" "${abi}")" || return "$?"
+  candidates="$(android.system-images.versions "${api}" "${tag}" "${abi}")" || return "$?"
   [[ -n "${candidates}" ]] || return 69
   if [[ -z "${api}" ]]; then
     api="$(printf '%s\n' "${candidates}" | awk '{print $1}' |
-      package::_sort-versions | tail -n 1)" || return "$?"
+      _package.sort-versions | tail -n 1)" || return "$?"
   fi
   package="system-images/android-${api}/${tag}/${abi}"
   if [[ -f "${directory}/${package}/source.properties" ]]; then
@@ -439,30 +439,30 @@ android::avd::create() {
     # Other AVDs may use the installed image, so its revision is never changed.
     if [[ -z "${revision}" ]]; then
       revision="${installed}"
-    elif ! android::avd::_same-revision "${installed}" "${revision}"; then
-      console::_write-error "System image ${package} ${installed} is installed and is not changed to ${revision}."
+    elif ! _android.avd.same-revision "${installed}" "${revision}"; then
+      _console.write-error "System image ${package} ${installed} is installed and is not changed to ${revision}."
       return 69
     fi
   else
     if [[ -z "${revision}" ]]; then
       revision="$(printf '%s\n' "${candidates}" | awk -v api="${api}" '$1 == api {print $4}' |
-        package::_sort-versions | tail -n 1)" || return "$?"
+        _package.sort-versions | tail -n 1)" || return "$?"
     fi
     selected="${api} ${tag} ${abi} ${revision}"
     grep -Fqx -- "${selected}" <<<"${candidates}" || return 69
-    command="$(android::_cli-command)" || return "$?"
+    command="$(_android.cli-command)" || return "$?"
     "${command}" --no-metrics "--sdk=${directory}" sdk install "${package}@${revision}" < <(yes) ||
       return "$?"
     [[ -f "${directory}/${package}/source.properties" ]] || return 69
     installed="$(awk -F= '$1 == "Pkg.Revision" {gsub(/[[:space:]]/, "", $2); print $2; exit}' \
       "${directory}/${package}/source.properties")"
-    android::avd::_same-revision "${installed}" "${revision}" || return 69
+    _android.avd.same-revision "${installed}" "${revision}" || return 69
   fi
 
   mkdir -p -- "${root}" || return 74
-  if android::avd::list | grep -Fqx -- "${name}"; then
+  if android.avd.list | grep -Fqx -- "${name}"; then
     [[ -f "${root}/${name}.ini" && -d "${root}/${name}.avd" ]] || return 69
-    backup="$(package::_temporary-directory)" || return "$?"
+    backup="$(_package.temporary-directory)" || return "$?"
     mv -- "${root}/${name}.ini" "${backup}/" ||
       { rm -rf -- "${backup}"; return 74; }
     mv -- "${root}/${name}.avd" "${backup}/" ||
@@ -479,7 +479,7 @@ android::avd::create() {
     return "${status}"
   fi
   [[ -z "${backup}" ]] || rm -rf -- "${backup}"
-  android::avd::list | grep -Fqx -- "${name}"
+  android.avd.list | grep -Fqx -- "${name}"
 }
 
 # @description Report whether an even emulator console port and its ADB port are both free.
@@ -491,8 +491,8 @@ android::avd::create() {
 # @exitcode 69 Neither lsof nor ss is available.
 # @exitcode 74 ss failed.
 # @example
-#   android::avd::port::available 5556 && android::avd::start pixel_api35 5556
-android::avd::port::available() {
+#   android.avd.port.available 5556 && android.avd.start pixel_api35 5556
+android.avd.port.available() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] ) || return 64
   local port="$1" occupied=''
   (( port >= 5554 && port <= 5682 && port % 2 == 0 )) || return 64
@@ -517,12 +517,12 @@ android::avd::port::available() {
 # @exitcode 69 Neither lsof nor ss is available.
 # @exitcode 75 Every emulator port is in use.
 # @example
-#   port="$(android::avd::port::first)"
-android::avd::port::first() {
+#   port="$(android.avd.port.first)"
+android.avd.port.first() {
   [[ "$#" -eq 0 ]] || return 64
   local port=0 status=0
   for ((port=5554; port<=5682; port+=2)); do
-    android::avd::port::available "${port}" && { printf '%s\n' "${port}"; return 0; }
+    android.avd.port.available "${port}" && { printf '%s\n' "${port}"; return 0; }
     status="$?"
     [[ "${status}" -eq 1 ]] || return "${status}"
   done
@@ -531,12 +531,12 @@ android::avd::port::first() {
 
 # @description Succeed while a process runs; a zombie that its parent has not reaped counts as ended.
 #
-# android::avd::start waits in a subshell, and its parent shell reaps the
+# android.avd.start waits in a subshell, and its parent shell reaps the
 # emulator only after the subshell ends, so kill -0 alone would still find an
 # emulator that has already exited.
 # @internal
 # @arg $1 integer Process ID.
-android::avd::_process-running() {
+_android.avd.process-running() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] ) || return 64
   local state='' stat=''
   if [[ -d /proc/self ]]; then
@@ -552,7 +552,7 @@ android::avd::_process-running() {
   [[ -n "${state}" && "${state}" != Z* ]]
 }
 
-# @description Stop an emulator that android::avd::start launched, leaving other emulators and the ADB server alone.
+# @description Stop an emulator that android.avd.start launched, leaving other emulators and the ADB server alone.
 #
 # The emulator is asked to stop through its console first, then sent TERM,
 # and finally KILL if it is still running.
@@ -560,11 +560,11 @@ android::avd::_process-running() {
 # @arg $1 integer Process ID of the emulator.
 # @arg $2 string adb command.
 # @arg $3 string ADB serial of the emulator.
-android::avd::_stop-started() {
+_android.avd.stop-started() {
   [[ "$#" -eq 3 ]] || return 64
   local process_id="$1" adb="$2" serial="$3" signal='' waited=0
   local signals=(TERM KILL)
-  android::avd::_process-running "${process_id}" || return 0
+  _android.avd.process-running "${process_id}" || return 0
   # Waiting for the console's answer only makes sense when the console took the command.
   if "${adb}" -s "${serial}" emu kill >/dev/null 2>&1; then
     signals=('' TERM KILL)
@@ -572,11 +572,11 @@ android::avd::_stop-started() {
   for signal in "${signals[@]}"; do
     [[ -z "${signal}" ]] || kill "-${signal}" "${process_id}" 2>/dev/null || true
     waited=0
-    while android::avd::_process-running "${process_id}" && (( waited < 10 )); do
+    while _android.avd.process-running "${process_id}" && (( waited < 10 )); do
       sleep 1
       waited=$((waited + 1))
     done
-    android::avd::_process-running "${process_id}" || return 0
+    _android.avd.process-running "${process_id}" || return 0
   done
   return 75
 }
@@ -603,25 +603,25 @@ android::avd::_stop-started() {
 # @exitcode 75 The emulator exited or Android did not boot before the timeout.
 # @exitcode 130 The wait was interrupted, and the started emulator was stopped.
 # @example
-#   serial="$(android::avd::start pixel_api35 '' 300 --headless)"
+#   serial="$(android.avd.start pixel_api35 '' 300 --headless)"
 #   adb -s "${serial}" install app.apk
-android::avd::start() {
+android.avd.start() {
   [[ "$#" -le 4 ]] || return 64
   local name="${1:-}" port="${2:-}" timeout="${3:-180}" headless="${4:-}"
   local directory='' avds='' serial=''
   local started='' process_id='' state='' completed='' log=''
   ( [[ "${timeout}" =~ ^[1-9][0-9]*$ ]] ) || return 64
   [[ -z "${headless}" || "${headless}" == --headless ]] || return 64
-  directory="$(android::sdk::directory)" || return "$?"
+  directory="$(android.sdk.directory)" || return "$?"
   [[ -x "${directory}/emulator/emulator" && -x "${directory}/platform-tools/adb" ]] || return 69
-  avds="$(android::avd::list)" || return "$?"
+  avds="$(android.avd.list)" || return "$?"
   if [[ -z "${name}" ]]; then
     [[ -n "${avds}" && "${avds}" != *$'\n'* ]] || return 64
     name="${avds}"
   fi
   grep -Fqx -- "${name}" <<<"${avds}" || return 66
-  [[ -n "${port}" ]] || port="$(android::avd::port::first)" || return "$?"
-  android::avd::port::available "${port}" || return "$?"
+  [[ -n "${port}" ]] || port="$(android.avd.port.first)" || return "$?"
+  android.avd.port.available "${port}" || return "$?"
   serial="emulator-${port}"
   local emulator_options=()
   [[ -z "${headless}" ]] || emulator_options=(-no-window -no-audio)
@@ -634,10 +634,10 @@ android::avd::start() {
   # The wait runs in a subshell so that its traps stop only this emulator and
   # leave the caller's traps as they were.
   (
-    trap 'android::avd::_stop-started "${process_id}" "${adb}" "${serial}"; exit 130' INT TERM HUP
+    trap '_android.avd.stop-started "${process_id}" "${adb}" "${serial}"; exit 130' INT TERM HUP
     started="$(date +%s)" || exit 74
     while (( $(date +%s) - started < timeout )); do
-      android::avd::_process-running "${process_id}" || { cat -- "${log}" >&2; exit 75; }
+      _android.avd.process-running "${process_id}" || { cat -- "${log}" >&2; exit 75; }
       state="$("${adb}" -s "${serial}" get-state 2>/dev/null)" || state=''
       if [[ "${state}" == device ]]; then
         completed="$("${adb}" -s "${serial}" shell getprop sys.boot_completed 2>/dev/null)" || completed=''
@@ -649,13 +649,13 @@ android::avd::start() {
       sleep 1 || exit 74
     done
     cat -- "${log}" >&2
-    android::avd::_stop-started "${process_id}" "${adb}" "${serial}"
+    _android.avd.stop-started "${process_id}" "${adb}" "${serial}"
     exit 75
   ) || status="$?"
   rm -f -- "${log}"
   if [[ "${status}" -ne 0 ]]; then
     # A timeout or an interruption before the subshell started its trap still stops this emulator.
-    android::avd::_stop-started "${process_id}" "${adb}" "${serial}" || true
+    _android.avd.stop-started "${process_id}" "${adb}" "${serial}" || true
   fi
   return "${status}"
 }
@@ -673,12 +673,12 @@ android::avd::start() {
 # @exitcode 74 The clock could not be read.
 # @exitcode 75 The emulator refused to stop or did not stop within 60 seconds.
 # @example
-#   android::avd::stop pixel_api35
-android::avd::stop() {
+#   android.avd.stop pixel_api35
+android.avd.stop() {
   ( [[ "$#" -le 1 && ( "$#" -eq 0 || "$1" =~ ^[A-Za-z0-9._-]+$ ) ]] ) || return 64
   local directory='' name="${1:-}" serial='' state='' identity='' listing='' selected=''
   local started='' response=''
-  directory="$(android::sdk::directory)" || return "$?"
+  directory="$(android.sdk.directory)" || return "$?"
   [[ -x "${directory}/platform-tools/adb" ]] || return 69
   listing="$("${directory}/platform-tools/adb" devices)" || return "$?"
   while read -r serial state; do
@@ -711,13 +711,13 @@ android::avd::stop() {
 # @exitcode 69 Command-line Tools are not installed.
 # @exitcode other The status of avdmanager.
 # @example
-#   android::avd::delete pixel_api35
-android::avd::delete() {
+#   android.avd.delete pixel_api35
+android.avd.delete() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9._-]+$ ]] ) || return 64
   local directory='' avds=''
-  directory="$(android::sdk::directory)" || return "$?"
+  directory="$(android.sdk.directory)" || return "$?"
   [[ -x "${directory}/cmdline-tools/latest/bin/avdmanager" ]] || return 69
-  avds="$(android::avd::list)" || return "$?"
+  avds="$(android.avd.list)" || return "$?"
   grep -Fqx -- "$1" <<<"${avds}" || return 66
   "${directory}/cmdline-tools/latest/bin/avdmanager" delete avd -n "$1"
 }
@@ -734,8 +734,8 @@ android::avd::delete() {
 # @exitcode 69 Python 3, or both android and sdkmanager, are unavailable.
 # @exitcode other The status of the SDK command that failed.
 # @example
-#   android::build-tools::versions | tail -n 3
-android::build-tools::versions() {
+#   android.build-tools.versions | tail -n 3
+android.build-tools.versions() {
   [[ "$#" -eq 0 ]] || return 64
   local listing='' versions=''
   local arguments=(--no-metrics)
@@ -743,10 +743,10 @@ android::build-tools::versions() {
     [[ -z "${ANDROID_HOME:-}" ]] || arguments+=("--sdk=${ANDROID_HOME}")
     listing="$(android "${arguments[@]}" sdk list 'build-tools/*' --all --all-versions)" || return "$?"
   else
-    command::require sdkmanager || return "$?"
+    command.require sdkmanager || return "$?"
     listing="$(sdkmanager --list --channel=0)" || return "$?"
   fi
-  versions="$(printf '%s\n' "${listing}" | python::run -c '
+  versions="$(printf '%s\n' "${listing}" | python.run -c '
 import re
 import sys
 for line in sys.stdin:
@@ -755,7 +755,7 @@ for line in sys.stdin:
         match = re.match(r"^\s*build-tools/([0-9]+\.[0-9]+\.[0-9]+)\s+[0-9]+\.[0-9]+\.[0-9]+(?=\s|$)", line)
     if match:
         print(match.group(1))
-' | package::_sort-versions)" || return "$?"
+' | _package.sort-versions)" || return "$?"
   [[ -n "${versions}" ]] || return 1
   printf '%s\n' "${versions}"
 }
@@ -767,12 +767,12 @@ for line in sys.stdin:
 # @exitcode 0 The version was written.
 # @exitcode 1 No stable version was found.
 # @exitcode 64 An argument was given.
-# @exitcode other The status of android::build-tools::versions.
+# @exitcode other The status of android.build-tools.versions.
 # @example
-#   sdkmanager "build-tools;$(android::build-tools::latest-version)"
-android::build-tools::latest-version() {
+#   sdkmanager "build-tools;$(android.build-tools.latest-version)"
+android.build-tools.latest-version() {
   [[ "$#" -eq 0 ]] || return 64
   local versions=''
-  versions="$(android::build-tools::versions)" || return "$?"
+  versions="$(android.build-tools.versions)" || return "$?"
   printf '%s\n' "${versions##*$'\n'}"
 }

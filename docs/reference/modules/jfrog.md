@@ -8,19 +8,19 @@ Server configurations are managed with jf config.
 
 ## Index
 
-* [jfrog::config::clear](#jfrogconfigclear)
-* [jfrog::config::clear-all](#jfrogconfigclear-all)
-* [jfrog::config::list](#jfrogconfiglist)
-* [jfrog::setup](#jfrogsetup)
+* [jfrog.config.clear](#jfrogconfigclear)
+* [jfrog.config.clear-all](#jfrogconfigclear-all)
+* [jfrog.config.list](#jfrogconfiglist)
+* [jfrog.setup](#jfrogsetup)
 
-### jfrog::config::clear
+### jfrog.config.clear
 
 Remove one JFrog CLI server configuration.
 
 #### Example
 
 ```bash
-jfrog::config::clear artifactory-prod
+jfrog.config.clear artifactory-prod
 ```
 
 #### Arguments
@@ -34,14 +34,14 @@ jfrog::config::clear artifactory-prod
 * **69**: jf is unavailable.
 * other The status of jf config remove.
 
-### jfrog::config::clear-all
+### jfrog.config.clear-all
 
 Remove every JFrog CLI server configuration.
 
 #### Example
 
 ```bash
-jfrog::config::clear-all
+jfrog.config.clear-all
 ```
 
 _Function has no arguments._
@@ -53,14 +53,14 @@ _Function has no arguments._
 * **69**: jf is unavailable.
 * other The status of jf config clean.
 
-### jfrog::config::list
+### jfrog.config.list
 
 Display JFrog CLI server configurations.
 
 #### Example
 
 ```bash
-jfrog::config::list
+jfrog.config.list
 ```
 
 _Function has no arguments._
@@ -76,7 +76,7 @@ _Function has no arguments._
 
 * The output of jf config show.
 
-### jfrog::setup
+### jfrog.setup
 
 Register and verify a JFrog CLI server.
 
@@ -85,7 +85,7 @@ The access token is read from JFROG_ACCESS_TOKEN and passed to jf on standard in
 #### Example
 
 ```bash
-JFROG_ACCESS_TOKEN="$(pass show jfrog/token)" jfrog::setup prod https://example.jfrog.io builder
+JFROG_ACCESS_TOKEN="$(pass show jfrog/token)" jfrog.setup prod https://example.jfrog.io builder
 ```
 
 #### Arguments

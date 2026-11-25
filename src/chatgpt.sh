@@ -7,25 +7,25 @@
 
 # @description Write the package architecture for the ChatGPT desktop app on Linux after checking the release.
 # @internal
-chatgpt::_architecture() {
+_chatgpt.architecture() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' architecture=''
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   case "${platform}" in
     ubuntu)
-      package::_require-release ubuntu 24 'The ChatGPT desktop app' || return "$?"
-      architecture="$(package::_deb-architecture)" || return "$?"
+      _package.require-release ubuntu 24 'The ChatGPT desktop app' || return "$?"
+      architecture="$(_package.deb-architecture)" || return "$?"
       [[ "${architecture}" == amd64 || "${architecture}" == arm64 ]] || architecture=''
       ;;
     fedora)
-      package::_require-release fedora 43 'The ChatGPT desktop app' || return "$?"
-      architecture="$(package::_rpm-architecture)" || return "$?"
+      _package.require-release fedora 43 'The ChatGPT desktop app' || return "$?"
+      architecture="$(_package.rpm-architecture)" || return "$?"
       [[ "${architecture}" == x86_64 || "${architecture}" == aarch64 ]] || architecture=''
       ;;
     *) return 64 ;;
   esac
   if [[ -z "${architecture}" ]]; then
-    console::_write-error 'The ChatGPT desktop app provides Linux packages only for x86_64 and arm64.'
+    _console.write-error 'The ChatGPT desktop app provides Linux packages only for x86_64 and arm64.'
     return 69
   fi
   printf '%s\n' "${architecture}"
@@ -46,28 +46,28 @@ chatgpt::_architecture() {
 # @exitcode 74 The package could not be downloaded.
 # @exitcode other The status of the package manager.
 # @example
-#   chatgpt::install
-chatgpt::install() {
+#   chatgpt.install
+chatgpt.install() {
   [[ "$#" -eq 0 ]] || return 64
   local platform='' architecture='' directory='' file='' status=0
-  platform="$(package::_platform)" || return "$?"
+  platform="$(_package.platform)" || return "$?"
   if [[ "${platform}" == 'darwin' ]]; then
-    package::_install-cask chatgpt
+    _package.install-cask chatgpt
     return
   fi
-  architecture="$(chatgpt::_architecture)" || return "$?"
+  architecture="$(_chatgpt.architecture)" || return "$?"
   if [[ "${platform}" == 'ubuntu' ]]; then
-    apt::deb::install-from-url \
+    apt.deb.install-from-url \
       "https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_${architecture}.deb" "${architecture}"
     return
   fi
-  command::require dnf || return "$?"
-  directory="$(package::_temporary-directory)" || return "$?"
+  command.require dnf || return "$?"
+  directory="$(_package.temporary-directory)" || return "$?"
   file="${directory}/chatgpt.${architecture}.rpm"
-  package::_download "https://persistent.oaistatic.com/codex-app-prod/linux/rpm/latest/chatgpt.${architecture}.rpm" \
+  _package.download "https://persistent.oaistatic.com/codex-app-prod/linux/rpm/latest/chatgpt.${architecture}.rpm" \
     "${file}" || status="$?"
   if [[ "${status}" -eq 0 ]]; then
-    command::run-as-root dnf install -y "${file}" || status="$?"
+    command.run-as-root dnf install -y "${file}" || status="$?"
   fi
   rm -rf -- "${directory}"
   return "${status}"

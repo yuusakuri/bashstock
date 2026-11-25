@@ -8,11 +8,11 @@ Versions come from apt-cache policy; Debian packages are downloaded over HTTPS a
 
 ## Index
 
-* [apt::package::candidates](#aptpackagecandidates)
-* [apt::package::latest](#aptpackagelatest)
-* [apt::deb::install-from-url](#aptdebinstall-from-url)
+* [apt.package.candidates](#aptpackagecandidates)
+* [apt.package.latest](#aptpackagelatest)
+* [apt.deb.install-from-url](#aptdebinstall-from-url)
 
-### apt::package::candidates
+### apt.package.candidates
 
 Write APT packages whose names start with PREFIX followed by a digit, with candidate versions.
 
@@ -21,7 +21,7 @@ Each line contains a package name and its candidate version separated by a tab.
 #### Example
 
 ```bash
-apt::package::candidates gcc-
+apt.package.candidates gcc-
 # gcc-12	12.3.0-1ubuntu1~22.04
 ```
 
@@ -40,14 +40,14 @@ apt::package::candidates gcc-
 
 * Lines of package name and candidate version separated by a tab, ordered by version.
 
-### apt::package::latest
+### apt.package.latest
 
 Write the APT package name with the newest version suffix after PREFIX.
 
 #### Example
 
 ```bash
-package::_install "$(apt::package::latest gcc-)"
+_package.install "$(apt.package.latest gcc-)"
 ```
 
 #### Arguments
@@ -66,14 +66,14 @@ package::_install "$(apt::package::latest gcc-)"
 
 * The package name with the newest version, such as gcc-14.
 
-### apt::deb::install-from-url
+### apt.deb.install-from-url
 
 Download a Debian package and install it with its dependencies through APT.
 
 #### Example
 
 ```bash
-apt::deb::install-from-url https://example.com/tool_1.2.3_amd64.deb
+apt.deb.install-from-url https://example.com/tool_1.2.3_amd64.deb
 ```
 
 #### Arguments

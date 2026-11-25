@@ -17,13 +17,13 @@
 # @exitcode 69 The system is not Linux or ltrace is unavailable.
 # @exitcode other The status of ltrace.
 # @example
-#   ltrace::attach-pid 4242
-ltrace::attach-pid() {
+#   ltrace.attach-pid 4242
+ltrace.attach-pid() {
   ( [[ "$#" -eq 1 && "$1" =~ ^[0-9]+$ ]] ) || return 64
-  [[ "$(system::operating-system)" == linux ]] || return 69
-  command::require ltrace || return "$?"
-  if process::_trace-needs-root "$1"; then
-    command::run-as-root ltrace -p "$1"
+  [[ "$(system.operating-system)" == linux ]] || return 69
+  command.require ltrace || return "$?"
+  if _process.trace-needs-root "$1"; then
+    command.run-as-root ltrace -p "$1"
   else
     ltrace -p "$1"
   fi
@@ -36,12 +36,12 @@ ltrace::attach-pid() {
 # @exitcode 0 ltrace ended successfully.
 # @exitcode 1 No process has the name.
 # @exitcode 64 The argument count is not one.
-# @exitcode other The status of ltrace::attach-pid.
+# @exitcode other The status of ltrace.attach-pid.
 # @example
-#   ltrace::attach-name myapp
-ltrace::attach-name() {
+#   ltrace.attach-name myapp
+ltrace.attach-name() {
   [[ "$#" -eq 1 && -n "$1" ]] || return 64
   local id=''
-  id="$(process::_first-id-by-name "$1")" || return "$?"
-  ltrace::attach-pid "${id}"
+  id="$(_process.first-id-by-name "$1")" || return "$?"
+  ltrace.attach-pid "${id}"
 }

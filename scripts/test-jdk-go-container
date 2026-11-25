@@ -8,10 +8,10 @@ source /opt/bashstock.sh
 directory="$(mktemp -d)"
 trap 'rm -rf -- "$directory"' EXIT
 
-version="$(jdk::version::latest)"
+version="$(jdk.version.latest)"
 [[ -n "${version}" ]]
-jdk::install "${version}"
-jdk::install "${version}"
+jdk.install "${version}"
+jdk.install "${version}"
 [[ -x "${JAVA_HOME}/bin/java" && -x "${JAVA_HOME}/bin/javac" ]]
 cat >"${directory}/Hello.java" <<'JAVA'
 public class Hello {
@@ -24,8 +24,8 @@ JAVA
 [[ "$("${JAVA_HOME}/bin/java" -cp "${directory}" Hello)" == jdk-ok ]]
 printf 'JDK %s compiled and ran Java.\n' "${version}"
 
-go::install
-go::install
+go.install
+go.install
 cat >"${directory}/hello.go" <<'GO'
 package main
 import "fmt"

@@ -8,11 +8,11 @@ Links point to absolute paths and use administrator execution only when needed.
 
 ## Index
 
-* [symlink::create](#symlinkcreate)
-* [symlink::remove](#symlinkremove)
-* [symlink::create-in-local-bin](#symlinkcreate-in-local-bin)
+* [symlink.create](#symlinkcreate)
+* [symlink.remove](#symlinkremove)
+* [symlink.create-in-local-bin](#symlinkcreate-in-local-bin)
 
-### symlink::create
+### symlink.create
 
 Create or replace a symbolic link that points to the absolute path of an existing SOURCE.
 
@@ -23,7 +23,7 @@ directory of LINK is not writable.
 #### Example
 
 ```bash
-symlink::create ./dotfiles/.vimrc "${HOME}/.vimrc"
+symlink.create ./dotfiles/.vimrc "${HOME}/.vimrc"
 ```
 
 #### Arguments
@@ -39,14 +39,14 @@ symlink::create ./dotfiles/.vimrc "${HOME}/.vimrc"
 * **73**: LINK exists and is not a symbolic link.
 * **74**: The link could not be created.
 
-### symlink::remove
+### symlink.remove
 
 Remove a symbolic link, using administrator execution only when its directory is not writable.
 
 #### Example
 
 ```bash
-symlink::remove "${HOME}/.vimrc"
+symlink.remove "${HOME}/.vimrc"
 ```
 
 #### Arguments
@@ -59,14 +59,14 @@ symlink::remove "${HOME}/.vimrc"
 * **64**: The path is not a symbolic link, or the argument count is not one.
 * **74**: The link could not be removed.
 
-### symlink::create-in-local-bin
+### symlink.create-in-local-bin
 
 Create a symbolic link in a user's local bin directory.
 
 #### Example
 
 ```bash
-symlink::create-in-local-bin /opt/flutter/bin/flutter
+symlink.create-in-local-bin /opt/flutter/bin/flutter
 ```
 
 #### Arguments
@@ -80,5 +80,5 @@ symlink::create-in-local-bin /opt/flutter/bin/flutter
 * **0**: The link was created.
 * **64**: The arguments are invalid or the source does not exist.
 * **74**: The bin directory could not be created.
-* other The status of symlink::create.
+* other The status of symlink.create.
 

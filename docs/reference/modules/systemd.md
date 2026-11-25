@@ -8,27 +8,27 @@ Functions wrap systemctl and journalctl.
 
 ## Index
 
-* [systemd::file](#systemdfile)
-* [systemd::dependencies](#systemddependencies)
-* [systemd::restart](#systemdrestart)
-* [systemd::start](#systemdstart)
-* [systemd::stop](#systemdstop)
-* [systemd::enable](#systemdenable)
-* [systemd::disable](#systemddisable)
-* [systemd::status](#systemdstatus)
-* [systemd::service::list](#systemdservicelist)
-* [systemd::service::list-running](#systemdservicelist-running)
-* [systemd::service::list-failed](#systemdservicelist-failed)
-* [systemd::service::list-files](#systemdservicelist-files)
+* [systemd.file](#systemdfile)
+* [systemd.dependencies](#systemddependencies)
+* [systemd.restart](#systemdrestart)
+* [systemd.start](#systemdstart)
+* [systemd.stop](#systemdstop)
+* [systemd.enable](#systemdenable)
+* [systemd.disable](#systemddisable)
+* [systemd.status](#systemdstatus)
+* [systemd.service.list](#systemdservicelist)
+* [systemd.service.list-running](#systemdservicelist-running)
+* [systemd.service.list-failed](#systemdservicelist-failed)
+* [systemd.service.list-files](#systemdservicelist-files)
 
-### systemd::file
+### systemd.file
 
 Write the path of the file that defines a systemd unit.
 
 #### Example
 
 ```bash
-systemd::file ssh.service
+systemd.file ssh.service
 ```
 
 #### Arguments
@@ -46,14 +46,14 @@ systemd::file ssh.service
 
 * The path of the unit file; empty for a unit without a file.
 
-### systemd::dependencies
+### systemd.dependencies
 
 Write the After, Requires, and Wants dependencies of a systemd unit as KEY=VALUE lines.
 
 #### Example
 
 ```bash
-systemd::dependencies docker.service
+systemd.dependencies docker.service
 ```
 
 #### Arguments
@@ -71,14 +71,14 @@ systemd::dependencies docker.service
 
 * After=, Requires=, and Wants= lines.
 
-### systemd::restart
+### systemd.restart
 
 Restart a systemd unit through administrator execution.
 
 #### Example
 
 ```bash
-systemd::restart nginx.service
+systemd.restart nginx.service
 ```
 
 #### Arguments
@@ -92,14 +92,14 @@ systemd::restart nginx.service
 * **69**: The system is not Linux or systemctl is unavailable.
 * other The status of systemctl.
 
-### systemd::start
+### systemd.start
 
 Start a systemd unit through administrator execution.
 
 #### Example
 
 ```bash
-systemd::start docker.service
+systemd.start docker.service
 ```
 
 #### Arguments
@@ -113,14 +113,14 @@ systemd::start docker.service
 * **69**: The system is not Linux or systemctl is unavailable.
 * other The status of systemctl.
 
-### systemd::stop
+### systemd.stop
 
 Stop a systemd unit through administrator execution.
 
 #### Example
 
 ```bash
-systemd::stop docker.service
+systemd.stop docker.service
 ```
 
 #### Arguments
@@ -134,14 +134,14 @@ systemd::stop docker.service
 * **69**: The system is not Linux or systemctl is unavailable.
 * other The status of systemctl.
 
-### systemd::enable
+### systemd.enable
 
 Enable a systemd unit at boot through administrator execution.
 
 #### Example
 
 ```bash
-systemd::enable ssh.service
+systemd.enable ssh.service
 ```
 
 #### Arguments
@@ -155,14 +155,14 @@ systemd::enable ssh.service
 * **69**: The system is not Linux or systemctl is unavailable.
 * other The status of systemctl.
 
-### systemd::disable
+### systemd.disable
 
 Disable a systemd unit at boot through administrator execution.
 
 #### Example
 
 ```bash
-systemd::disable cups.service
+systemd.disable cups.service
 ```
 
 #### Arguments
@@ -176,14 +176,14 @@ systemd::disable cups.service
 * **69**: The system is not Linux or systemctl is unavailable.
 * other The status of systemctl.
 
-### systemd::status
+### systemd.status
 
 Write the current state of a systemd unit and return the status of systemctl status.
 
 #### Example
 
 ```bash
-systemd::status ssh.service
+systemd.status ssh.service
 ```
 
 #### Arguments
@@ -201,14 +201,14 @@ systemd::status ssh.service
 
 * The output of systemctl status.
 
-### systemd::service::list
+### systemd.service.list
 
 Write every loaded systemd service, including stopped ones.
 
 #### Example
 
 ```bash
-systemd::service::list
+systemd.service.list
 ```
 
 _Function has no arguments._
@@ -224,14 +224,14 @@ _Function has no arguments._
 
 * The output of systemctl list-units --type=service.
 
-### systemd::service::list-running
+### systemd.service.list-running
 
 Write the running systemd services.
 
 #### Example
 
 ```bash
-systemd::service::list-running
+systemd.service.list-running
 ```
 
 _Function has no arguments._
@@ -247,14 +247,14 @@ _Function has no arguments._
 
 * The running services.
 
-### systemd::service::list-failed
+### systemd.service.list-failed
 
 Write the failed systemd services.
 
 #### Example
 
 ```bash
-systemd::service::list-failed
+systemd.service.list-failed
 ```
 
 _Function has no arguments._
@@ -270,14 +270,14 @@ _Function has no arguments._
 
 * The failed services.
 
-### systemd::service::list-files
+### systemd.service.list-files
 
 Write every systemd service unit file and its enablement state.
 
 #### Example
 
 ```bash
-systemd::service::list-files | grep enabled
+systemd.service.list-files | grep enabled
 ```
 
 _Function has no arguments._
