@@ -8,31 +8,51 @@ BashStockは、macOS、Ubuntu、FedoraのBashスクリプトと対話型Bashか�
 
 ## インストール
 
-[Releases](https://github.com/yuusakuri/bashstock/releases)から`bashstock.sh`を取得します。
-このファイルには全機能とMIT Licenseの本文が含まれ、単独で配置できます。
+次のコードブロックを端末へ貼り付けて実行します。
+初回はインストール、2回目以降は[最新のリリース](https://github.com/yuusakuri/bashstock/releases/latest)への更新になります。
+新しく開いたBashとZshの端末から、すべての公開関数を使えます。
 
 ```bash
-installation_directory="${XDG_DATA_HOME:-$HOME/.local/share}/bashstock"
-mkdir -p "${installation_directory}"
+bash <<'BASHSTOCK'
+set -eu
+directory="${XDG_DATA_HOME:-$HOME/.local/share}/bashstock"
+mkdir -p "${directory}"
 curl --fail --location \
-  --output "${installation_directory}/bashstock.sh.download" \
-  https://github.com/yuusakuri/bashstock/releases/latest/download/bashstock.sh &&
-  mv "${installation_directory}/bashstock.sh.download" "${installation_directory}/bashstock.sh"
+  --output "${directory}/bashstock.sh.download" \
+  https://github.com/yuusakuri/bashstock/releases/latest/download/bashstock.sh
+mv "${directory}/bashstock.sh.download" "${directory}/bashstock.sh"
+
+# ZshはBashのライブラリを直接読み込めないため、各関数をBashで実行するファイルを作る。
+cat >"${directory}/bashstock.zsh" <<'ZSH'
+_bashstock_file="${${(%):-%x}:A:h}/bashstock.sh"
+_bashstock() { bash -c 'source "$1" && "${@:2}"' bashstock "${_bashstock_file}" "$@"; }
+() {
+  local name
+  for name in $(_bashstock declare -F); do
+    [[ "${name}" != *::* || "${name}" == *::_* ]] || functions[$name]="_bashstock ${name} \"\$@\""
+  done
+}
+ZSH
+
+# .bashrcと.zshrcに次の行を追記する。追記済みの場合は何もしない。
+#   .bashrc: source ~/.local/share/bashstock/bashstock.sh
+#   .zshrc:  source ~/.local/share/bashstock/bashstock.zsh
+register() {
+  local line
+  printf -v line 'source %q' "$2"
+  grep -Fqsx -- "${line}" "$1" || printf '\n# BashStock\n%s\n' "${line}" >>"$1"
+}
+register "$HOME/.bashrc" "${directory}/bashstock.sh"
+register "$HOME/.zshrc" "${directory}/bashstock.zsh"
+BASHSTOCK
 ```
 
-スクリプトからは、配置したファイルを読み込みます。
-読み込みが失敗した場合は、そのスクリプトを終了します。
+対話型BashではTab補完も有効になります。
+macOSのターミナルなどでBashをログインシェルとして使う場合は、`.bash_profile`から`.bashrc`を読み込みます。
+Zshの関数は別プロセスのBashで動作するため、環境変数やカレントディレクトリの変更はZshへ反映されません。
+Zshから管理者権限が必要な関数を呼び出す場合は、先に`sudo -v`で認証します。
 
-```bash
-source "${XDG_DATA_HOME:-$HOME/.local/share}/bashstock/bashstock.sh" || exit "$?"
-```
-
-対話型Bashでは、`.bashrc`から読み込むとTab補完も自動で有効になります。
-
-```bash
-source "${XDG_DATA_HOME:-$HOME/.local/share}/bashstock/bashstock.sh"
-```
-
+`bashstock.sh`には全機能とMIT Licenseの本文が含まれ、単独で配置できます。
 自動化で使用するバージョンを固定する場合は、特定のリリースから取得した`bashstock.sh`をスクリプトと一緒に管理します。
 配布ファイルの実行権限は必要ありません。
 
@@ -65,7 +85,7 @@ help::show string::trim
 | 対象 | 対応範囲 |
 | --- | --- |
 | シェル | Bash 3.2以上 |
-| Python | 3.6.9以上（Pythonを使う関数とSetup） |
+| Python | 3.6.9以上 |
 | OS | macOS、Ubuntu、Fedora |
 
 外部コマンドを使う関数は、そのコマンドがない場合に終了状態69を返します。
