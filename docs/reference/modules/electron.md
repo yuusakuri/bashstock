@@ -32,10 +32,14 @@ _Function has no arguments._
 
 #### Exit codes
 
-* **0**: The setting was written, or the current session is not Wayland.
+* **0**: The setting was written, the session is not Wayland, or systemd cannot persist it.
 * **64**: An argument was given.
 * **69**: The operating system is not Linux or mkdir is unavailable.
 * **74**: The setting could not be written.
+
+#### Output on stderr
+
+* How to force Wayland for an application that overrides the shared preference.
 
 ### electron::wayland::disable
 

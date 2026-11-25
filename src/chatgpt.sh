@@ -31,19 +31,46 @@ chatgpt::_architecture() {
   printf '%s\n' "${architecture}"
 }
 
+# @description Configure the ChatGPT desktop launchers to use native Wayland in the current Wayland session.
+# @internal
+chatgpt::_configure-wayland-launchers() {
+  [[ "$#" -eq 0 ]] || return 64
+  [[ "${XDG_SESSION_TYPE:-}" == 'wayland' && -n "${WAYLAND_DISPLAY:-}" ]] || return 0
+
+  local system_entry='/usr/share/applications/chatgpt.desktop'
+  local user_entry="${HOME}/.local/share/applications/chatgpt.desktop"
+  local autostart_entry="${HOME}/.config/autostart/chatgpt.desktop"
+  if [[ ! -e "${user_entry}" && ! -L "${user_entry}" ]]; then
+    [[ -f "${system_entry}" ]] || return 74
+    mkdir -p "${HOME}/.local/share/applications" || return 74
+    cp -p -- "${system_entry}" "${user_entry}" || return 74
+  fi
+  [[ -f "${user_entry}" && ! -L "${user_entry}" ]] || return 66
+  file::replace-text "${user_entry}" '^Exec=(/usr/bin/)?chatgpt([[:space:]].*)?$' \
+    'Exec=chatgpt --ozone-platform=wayland %U' || return 74
+
+  if [[ -e "${autostart_entry}" || -L "${autostart_entry}" ]]; then
+    [[ -f "${autostart_entry}" && ! -L "${autostart_entry}" ]] || return 66
+    file::replace-text "${autostart_entry}" '^Exec=(/usr/bin/)?chatgpt([[:space:]].*)?$' \
+      'Exec=chatgpt --ozone-platform=wayland' || return 74
+  fi
+}
+
 # @description Install the newest ChatGPT desktop app, which also runs Codex.
 #
 # macOS installs the Homebrew cask chatgpt. Ubuntu 24.04 or later and
 # Fedora 43 or later install OpenAI's newest package, which registers
 # OpenAI's signed repository so later releases arrive with the system's
-# package upgrades.
+# package upgrades. In a Wayland session, Linux also configures the app's
+# desktop launcher and existing autostart entry to start with native Wayland.
 #
 # @noargs
 # @exitcode 0 The ChatGPT desktop app is installed.
 # @exitcode 64 An argument was given.
 # @exitcode 65 The downloaded package is for another CPU or is not a valid package.
 # @exitcode 69 The platform, release, or CPU is unsupported.
-# @exitcode 74 The package could not be downloaded.
+# @exitcode 66 A ChatGPT launcher exists but is not a regular file.
+# @exitcode 74 The package could not be downloaded or the Wayland launcher could not be configured.
 # @exitcode other The status of the package manager.
 # @example
 #   chatgpt::install
@@ -58,8 +85,10 @@ chatgpt::install() {
   architecture="$(chatgpt::_architecture)" || return "$?"
   if [[ "${platform}" == 'ubuntu' ]]; then
     apt::deb::install-from-url \
-      "https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_${architecture}.deb" "${architecture}"
-    return
+      "https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_${architecture}.deb" "${architecture}" ||
+      return "$?"
+    chatgpt::_configure-wayland-launchers
+    return "$?"
   fi
   command::require dnf || return "$?"
   directory="$(package::_temporary-directory)" || return "$?"
@@ -70,5 +99,6 @@ chatgpt::install() {
     command::run-as-root dnf install -y "${file}" || status="$?"
   fi
   rm -rf -- "${directory}"
-  return "${status}"
+  [[ "${status}" -eq 0 ]] || return "${status}"
+  chatgpt::_configure-wayland-launchers
 }

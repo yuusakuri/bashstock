@@ -15,10 +15,11 @@
 # Wayland session.
 #
 # @noargs
-# @exitcode 0 The setting was written, or the current session is not Wayland.
+# @exitcode 0 The setting was written, the session is not Wayland, or systemd cannot persist it.
 # @exitcode 64 An argument was given.
 # @exitcode 69 The operating system is not Linux or mkdir is unavailable.
 # @exitcode 74 The setting could not be written.
+# @stderr How to force Wayland for an application that overrides the shared preference.
 # @example
 #   electron::wayland::enable
 electron::wayland::enable() {
@@ -33,8 +34,11 @@ electron::wayland::enable() {
     systemd_version="${systemd_version#systemd }"
     systemd_version="${systemd_version%% *}"
   fi
-  ( [[ "${systemd_version}" =~ ^[0-9]+$ ]] ) || return 0
-  ((systemd_version >= 246)) || return 0
+  if ! ( [[ "${systemd_version}" =~ ^[0-9]+$ ]] ) || ((systemd_version < 246)); then
+    console::_write-error \
+      'This systemd version cannot persist a shared Electron Wayland setting. Add --ozone-platform=wayland to the user-level .desktop Exec= line and autostart entry for each affected app, then fully restart it.'
+    return 0
+  fi
 
   mkdir -p "${directory}" || return 74
   file::write-text "${directory}/90-bashstock-electron-wayland.conf" \
@@ -45,6 +49,8 @@ electron::wayland::enable() {
       ELECTRON_OZONE_PLATFORM_HINT=wayland \
       >/dev/null 2>&1 || :
   fi
+  console::_write-error \
+    'Some Electron apps force XWayland and ignore the shared setting. For one that stays blurry, add --ozone-platform=wayland to its user-level .desktop Exec= line and matching autostart entry, then fully quit and restart it.'
 }
 
 # @description Remove BashStock's native Wayland preference for Electron applications.
