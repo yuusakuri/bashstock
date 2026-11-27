@@ -89,7 +89,7 @@
 
 `user::create-system`は、サービス実行とファイル所有のためのアカウントを作成します。`NAME`は、macOSの役割アカウントとLinuxのシステムアカウントで共通して使用できる`_[a-z][a-z0-9_-]*`形式に限定します。このアカウントは人のログインに使用できません。
 
-`user::create-login`は、人がログインするための一般利用者を作成します。`NAME`は`[a-z][a-z0-9_-]*`形式、`FULL_NAME`は空でなく、改行、コロン、制御文字を含まない文字列とします。macOSではホームを`/Users/NAME`、UbuntuとFedoraでは`/home/NAME`に作成します。パスワード設定に失敗した場合は、同じ関数呼び出しで作成した利用者とホームディレクトリを削除して元の状態へ戻します。復元にも失敗した場合は終了状態74を返し、残った利用者名とホームディレクトリを標準エラー出力へ書きます。macOSのSecure TokenとFileVault解除権限は、この関数の契約に含めません。
+`user::create-login`は、人がログインするための一般利用者を作成します。`NAME`は`[a-z][a-z0-9_-]*`形式、`FULL_NAME`は空でなく、改行、コロン、制御文字を含まない文字列とします。macOSではホームを`/Users/NAME`、UbuntuとFedoraでは`/home/NAME`に作成します。パスワード設定に失敗した場合は、同じ関数呼び出しで作成した利用者とホームディレクトリを削除して元の状態へ戻します。復元にも失敗した場合は終了状態74を返し、残った利用者名とホームディレクトリを標準エラー出力へ書きます。macOSでは、sudoで実行した利用者（`SUDO_USER`）のログインシェルと管理者グループへの所属を引き継ぎます。その利用者が管理者でSecure Tokenを持つ場合は、その利用者のパスワードを入力させて新しい利用者にもSecure Tokenを付与します。引き継ぐ利用者がいない場合は、シェルを`/bin/zsh`とした一般利用者を作成します。
 
 ### 管理者実行とOS別実装
 
@@ -104,7 +104,7 @@
 
 | 内部プロバイダー | システムアカウント作成 | ログイン用アカウント作成 | 再帰的な所有者変更 |
 |---|---|---|---|
-| macOS | `sysadminctl`の役割アカウントを使用し、UIDを450から499、ホームを`/var/empty`、シェルを`/usr/bin/false`の範囲で設定します。 | `sysadminctl`で一般利用者とホームを作成し、制御端末からパスワードを設定します。管理者グループとSecure Tokenは付与しません。 | BSD版の`find`と`chown -h`を使用し、別のファイルシステムとリンク先へ進みません。 |
+| macOS | `sysadminctl`の役割アカウントを使用し、UIDを450から499、ホームを`/var/empty`、シェルを`/usr/bin/false`の範囲で設定します。 | `sysadminctl`で利用者とホームを作成し、制御端末からパスワードを設定します。シェル、管理者グループ、Secure Tokenは実行した利用者に合わせます。 | BSD版の`find`と`chown -h`を使用し、別のファイルシステムとリンク先へ進みません。 |
 | Ubuntu | `useradd --system --no-create-home`を使用し、ホームを`/nonexistent`、シェルを`/usr/sbin/nologin`に設定します。 | `useradd --create-home`で一般利用者を作成し、`passwd`で制御端末からパスワードを設定します。 | GNU版の`find`と`chown --no-dereference`を使用し、別のファイルシステムとリンク先へ進みません。 |
 | Fedora | `useradd --system --no-create-home`を使用し、ホームを`/nonexistent`、シェルを`/usr/sbin/nologin`に設定します。 | `useradd --create-home`で一般利用者を作成し、`passwd`で制御端末からパスワードを設定します。 | GNU版の`find`と`chown --no-dereference`を使用し、別のファイルシステムとリンク先へ進みません。 |
 
