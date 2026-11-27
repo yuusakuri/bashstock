@@ -200,8 +200,7 @@ _Function has no arguments._
 
 Let a tap on built-in and external trackpads act as a click.
 
-The setting applies after logging in again. The login window keeps its own
-setting.
+The setting applies after logging in again.
 
 #### Example
 

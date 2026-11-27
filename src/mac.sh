@@ -148,8 +148,7 @@ mac::trackpad::disable-smart-zoom() {
 
 # @description Let a tap on built-in and external trackpads act as a click.
 #
-# The setting applies after logging in again. The login window keeps its own
-# setting.
+# The setting applies after logging in again.
 #
 # @noargs
 # @exitcode 0 The settings were written.
@@ -497,6 +496,7 @@ mac::setup() {
   command::_run-step mac::keyboard::set-repeat || status="${status/#0/$?}"
   command::_run-step mac::dock::set-autohide-instant || status="${status/#0/$?}"
   command::_run-step mac::trackpad::disable-smart-zoom || status="${status/#0/$?}"
+  command::_run-step mac::trackpad::enable-tap-to-click || status="${status/#0/$?}"
   command::_run-step mac::dock::hide-recent-applications || status="${status/#0/$?}"
   command::_run-step mac::dock::set-minimize-effect || status="${status/#0/$?}"
   command::_run-step mac::dock::set-position || status="${status/#0/$?}"

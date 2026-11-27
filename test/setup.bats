@@ -1462,6 +1462,7 @@ gsettings_value() {
   [ "$(head -n 1 "${STEP_LOG}")" = 'sudo::passwordless::enable' ]
   grep -Fqx "shell::editor::set-default code --wait bash,zsh" "${STEP_LOG}"
   grep -Fqx 'mac::dock::set-position' "${STEP_LOG}"
+  grep -Fqx 'mac::trackpad::enable-tap-to-click' "${STEP_LOG}"
   grep -Fqx 'brew install --cask antigravity-ide' "${STEP_LOG}"
   grep -Fqx 'mac::gatekeeper::disable' "${STEP_LOG}"
   [ "$(tail -n 1 "${STEP_LOG}")" = 'iina::set-default-app' ]
