@@ -408,6 +408,85 @@ sys.exit(1)
 ' "$1" "$2" 2>/dev/null
 }
 
+# @description Replace Python regular-expression matches on each file line, with group references.
+#
+# Every match on every line is replaced. The replacement follows Python's
+# re.sub: \1 and \g<name> insert a group, and \n inserts a newline. Each line
+# is matched without its newline. The file is rewritten through a temporary
+# file only when a line matched, and root is used only when the current user
+# cannot write it.
+#
+# @arg $1 string Regular text file to update; a symbolic link is refused.
+# @arg $2 string Python regular expression without newlines.
+# @arg $3 string One-line Python replacement template.
+# @exitcode 0 At least one match was replaced.
+# @exitcode 1 No line matched, so the file is unchanged.
+# @exitcode 64 The expression or replacement is invalid, the file contains NUL bytes, or the argument count is not three.
+# @exitcode 66 The file is missing, unreadable, not a regular file, or a symbolic link.
+# @exitcode 69 Python 3 is unavailable.
+# @exitcode 74 The file could not be rewritten.
+# @exitcode other The status of the root helper when elevation was needed.
+# @example
+#   file::replace-matches app.desktop '^(Exec=\S+)(.*)$' '\1 --verbose\2'
+file::replace-matches() {
+  if [[ "$#" -ne 3 ]] || ! string::_require-one-line "$3"; then
+    return 64
+  fi
+  file::_require-regular-target "$1" || return "$?"
+  file::_require-python-expression "$2" || return "$?"
+  if file::_requires-root "$1"; then
+    bashstock::_run-as-root replace-matches "$@"
+    return
+  fi
+  file::_require-existing "$1" || return "$?"
+  file::_require-no-nul "$1" || return "$?"
+
+  local temporary='' status=0
+  temporary="$(file::_temporary-path "$1")" || return "$?"
+  if ! file::_copy-metadata-and-content "$1" "${temporary}"; then
+    rm -f -- "${temporary}"
+    return 74
+  fi
+  python::run -c '
+import re
+import sys
+path, temporary, expression, replacement = sys.argv[1:]
+try:
+    pattern = re.compile(expression)
+except re.error:
+    sys.exit(64)
+count = 0
+lines = []
+try:
+    with open(path, encoding="utf-8", errors="surrogateescape", newline="") as stream:
+        for line in stream:
+            ending = "\n" if line.endswith("\n") else ""
+            try:
+                line, replaced = pattern.subn(replacement, line[:len(line) - len(ending)])
+            except (re.error, IndexError):
+                sys.exit(64)
+            count += replaced
+            lines.append(line + ending)
+except OSError:
+    sys.exit(66)
+if count == 0:
+    sys.exit(1)
+try:
+    with open(temporary, "w", encoding="utf-8", errors="surrogateescape", newline="") as stream:
+        stream.write("".join(lines))
+except OSError:
+    sys.exit(74)
+' "$1" "${temporary}" "$2" "$3" 2>/dev/null || status="$?"
+  if [[ "${status}" -ne 0 ]]; then
+    rm -f -- "${temporary}"
+    return "${status}"
+  fi
+  if ! mv -f -- "${temporary}" "$1" 2>/dev/null; then
+    rm -f -- "${temporary}"
+    return 74
+  fi
+}
+
 # @description Test a file against an expected SHA-256 digest.
 #
 # sha256sum is used on Linux and shasum on macOS; the digest is compared without regard to case.

@@ -199,6 +199,7 @@ BashStockが公開する関数を名前空間ごとに示します。
 |---|---|
 | [`file::ensure-exists`](modules/file.md#fileensure-exists) | Create an empty regular file when it does not exist. |
 | [`file::contains-match`](modules/file.md#filecontains-match) | Test whether any file line matches a Python regular expression. |
+| [`file::replace-matches`](modules/file.md#filereplace-matches) | Replace Python regular-expression matches on each file line, with group references. |
 | [`file::verify-sha256`](modules/file.md#fileverify-sha256) | Test a file against an expected SHA-256 digest. |
 | [`file::append-text`](modules/file.md#fileappend-text) | Append text without conversion, elevating only when permissions require it. |
 | [`file::replace-text`](modules/file.md#filereplace-text) | Replace the first Bash ERE match on every file line. |

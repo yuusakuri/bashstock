@@ -25,6 +25,45 @@ load test_helper
   ! file::contains-match "${file}" '^name=別$'
 }
 
+@test "replace-matches inserts groups and keeps the rest of each line" {
+  local file="${BATS_TEST_TMPDIR}/input"
+  printf '[Main]\nExec=/usr/bin/app --hidden\nExec=app\n# 日本語\nlast=1' >"${file}"
+  export LC_ALL=C PYTHONUTF8=0
+
+  file::replace-matches "${file}" '^(Exec=\S+)(?!.*--flag)(.*)$' '\1 --flag\2'
+  [ "$(<"${file}")" = $'[Main]\nExec=/usr/bin/app --flag --hidden\nExec=app --flag\n# 日本語\nlast=1' ]
+
+  # A second run finds nothing to change and leaves the file as it is.
+  run file::replace-matches "${file}" '^(Exec=\S+)(?!.*--flag)(.*)$' '\1 --flag\2'
+  [ "${status}" -eq 1 ]
+  [ "$(<"${file}")" = $'[Main]\nExec=/usr/bin/app --flag --hidden\nExec=app --flag\n# 日本語\nlast=1' ]
+
+  file::replace-matches "${file}" '^\[Main\]$' '[Main]\nadded=日本語'
+  [ "$(head -n 2 "${file}")" = $'[Main]\nadded=日本語' ]
+  [ "$(tail -c 6 "${file}")" = 'last=1' ]
+}
+
+@test "replace-matches rejects invalid input without changing the file" {
+  local file="${BATS_TEST_TMPDIR}/input"
+  printf 'alpha=1\n' >"${file}"
+
+  run file::replace-matches "${file}" '[' 'x'
+  [ "${status}" -eq 64 ]
+  run file::replace-matches "${file}" '^(alpha)' '\2'
+  [ "${status}" -eq 64 ]
+  run file::replace-matches "${file}" 'alpha' $'two\nlines'
+  [ "${status}" -eq 64 ]
+  run file::replace-matches "${file}" 'alpha'
+  [ "${status}" -eq 64 ]
+  run file::replace-matches "${BATS_TEST_TMPDIR}/missing" 'alpha' 'beta'
+  [ "${status}" -eq 66 ]
+  ln -s "${file}" "${BATS_TEST_TMPDIR}/link"
+  run file::replace-matches "${BATS_TEST_TMPDIR}/link" 'alpha' 'beta'
+  [ "${status}" -eq 66 ]
+  [ "$(<"${file}")" = 'alpha=1' ]
+  [ -z "$(find "${BATS_TEST_TMPDIR}" -name '.input.bashstock.*')" ]
+}
+
 @test "SHA-256 verification is case-insensitive" {
   local file="${BATS_TEST_TMPDIR}/input"
   local expected=''

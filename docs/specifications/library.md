@@ -160,6 +160,7 @@ Docコメントに`TODO`は残しません。
 | `regex::capture-group` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 入力文字列 |
 | `regex::capture-groups` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 入力文字列 |
 | `file::contains-match` | Pythonの`re`が解釈する正規表現 | ファイルの各行 |
+| `file::replace-matches` | Pythonの`re`が解釈する正規表現 | 各行のすべての一致 |
 | `file::replace-text` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の最初の一致 |
 | `file::replace-text-as-root` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の最初の一致 |
 | `file::replace-text-in-files` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各ファイルの各行にある最初の一致 |
@@ -168,6 +169,7 @@ Docコメントに`TODO`は残しません。
 | `file::replace-or-append-text-as-root` | Bashの`[[ =~ ]]`が解釈するPOSIX拡張正規表現 | 各行の最初の一致 |
 
 ファイル置換関数は置換値をリテラル文字列として扱います。
+ただし`file::replace-matches`は置換値をPythonの`re.sub`の置換テンプレートとして扱い、`\1`や`\g<name>`でグループを、`\n`で改行を挿入します。
 
 ## シェル状態
 

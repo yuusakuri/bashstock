@@ -15,10 +15,13 @@ Configure the rendering platform used by Electron applications.
 
 Prefer native Wayland rendering for Electron applications in a Wayland session.
 
-The setting is stored in systemd's per-user environment directory and
-imported into the running systemd user manager when available. Applications
-that are already running must be restarted. The function is a no-op outside
-a supported Linux Wayland session.
+The legacy ELECTRON_OZONE_PLATFORM_HINT is stored in systemd's per-user
+environment directory and imported into the running systemd user manager.
+Electron 38 and later ignore it and already select Wayland from the
+XDG_SESSION_TYPE that a Wayland login sets, so an app that still uses
+XWayland forces it itself and needs --ozone-platform=wayland in its
+launcher. Applications that are already running must be restarted. The
+function is a no-op outside a supported Linux Wayland session.
 
 #### Example
 
@@ -30,10 +33,14 @@ _Function has no arguments._
 
 #### Exit codes
 
-* **0**: The setting was written, or the current session is not Wayland.
+* **0**: The setting was written, the session is not Wayland, or systemd cannot persist it.
 * **64**: An argument was given.
 * **69**: The operating system is not Linux or mkdir is unavailable.
 * **74**: The setting could not be written.
+
+#### Output on stderr
+
+* How to force Wayland for an application that overrides the shared preference.
 
 ### electron::wayland::disable
 
