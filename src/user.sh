@@ -113,7 +113,9 @@ user::_validate-login-creation() {
 # @description Create a local login account in a separate root process.
 #
 # The new password is read from the controlling terminal; a failed password
-# entry removes the new account again.
+# entry removes the new account again. On macOS the account takes the calling
+# user's login shell and administrator membership, and when the calling user
+# has a Secure Token, it gets one too after that user's password is entered.
 #
 # @arg $1 string Account name: a lowercase letter followed by lowercase letters, digits, - or _.
 # @arg $2 string Full name; it must not contain : or control characters.
@@ -146,7 +148,9 @@ user::create-system() {
 # @description Create a local login account.
 #
 # The new password is read from the controlling terminal; a failed password
-# entry removes the new account again.
+# entry removes the new account again. On macOS the account takes the calling
+# user's login shell and administrator membership, and when the calling user
+# has a Secure Token, it gets one too after that user's password is entered.
 #
 # @arg $1 string Account name: a lowercase letter followed by lowercase letters, digits, - or _.
 # @arg $2 string Full name; it must not contain : or control characters.
