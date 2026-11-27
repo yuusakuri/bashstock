@@ -454,7 +454,7 @@ chmod +x "${HOME}/.local/bin/codex"'
   [[ "${stderr}" == *'The ChatGPT launcher was not found'* ]]
 }
 
-@test "Electron Wayland preference persists for Wayland logins and disable restores the display's session type" {
+@test "Electron Wayland preference stores only the legacy hint and never the session type" {
   local file="${HOME}/.config/environment.d/90-bashstock-electron-wayland.conf"
   SYSTEMCTL_LOG="${BATS_TEST_TMPDIR}/systemctl.log"
   system::operating-system() { printf 'linux\n'; }
@@ -466,26 +466,14 @@ chmod +x "${HOME}/.local/bin/codex"'
   XDG_SESSION_TYPE=x11 WAYLAND_DISPLAY='' electron::wayland::enable
   [ ! -e "${file}" ]
 
-  XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY=wayland-0 electron::wayland::enable
-  [ "$(<"${file}")" = $'XDG_SESSION_TYPE=wayland\nELECTRON_OZONE_PLATFORM_HINT=wayland' ]
-  grep -Fxq -- '--user set-environment XDG_SESSION_TYPE=wayland ELECTRON_OZONE_PLATFORM_HINT=wayland' "${SYSTEMCTL_LOG}"
+  XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY=wayland-0 electron::wayland::enable 2>/dev/null
+  [ "$(<"${file}")" = 'ELECTRON_OZONE_PLATFORM_HINT=wayland' ]
+  grep -Fxq -- '--user set-environment ELECTRON_OZONE_PLATFORM_HINT=wayland' "${SYSTEMCTL_LOG}"
 
-  # Over SSH there is no display, so the manager's session type is left for the next login.
   : >"${SYSTEMCTL_LOG}"
-  XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY='' DISPLAY='' electron::wayland::disable
+  electron::wayland::disable
   [ ! -e "${file}" ]
-  ! grep -q 'XDG_SESSION_TYPE' "${SYSTEMCTL_LOG}"
   grep -Fxq -- '--user unset-environment ELECTRON_OZONE_PLATFORM_HINT' "${SYSTEMCTL_LOG}"
-
-  # In an X11 session the inherited wayland value is replaced by x11.
-  XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY=wayland-0 electron::wayland::enable
-  : >"${SYSTEMCTL_LOG}"
-  XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY='' DISPLAY=:0 electron::wayland::disable
-  grep -Fxq -- '--user set-environment XDG_SESSION_TYPE=x11' "${SYSTEMCTL_LOG}"
-
-  # Without a setting file, disable leaves the session type alone.
-  : >"${SYSTEMCTL_LOG}"
-  WAYLAND_DISPLAY='' DISPLAY=:0 electron::wayland::disable
   ! grep -q 'XDG_SESSION_TYPE' "${SYSTEMCTL_LOG}"
 
   # Without systemd nothing is written and the manual step is reported.

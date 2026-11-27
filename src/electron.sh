@@ -7,13 +7,13 @@
 
 # @description Prefer native Wayland rendering for Electron applications in a Wayland session.
 #
-# The setting persists the Wayland session type for Electron versions that
-# select their Ozone backend from XDG_SESSION_TYPE, and keeps the legacy
-# ELECTRON_OZONE_PLATFORM_HINT for older versions. It is also imported into
-# the running systemd user manager. Applications that are already running
-# must be restarted. The function is a no-op outside a supported Linux
-# Wayland session. The setting assumes Wayland logins: before switching to an
-# X11 session, run electron::wayland::disable.
+# The legacy ELECTRON_OZONE_PLATFORM_HINT is stored in systemd's per-user
+# environment directory and imported into the running systemd user manager.
+# Electron 38 and later ignore it and already select Wayland from the
+# XDG_SESSION_TYPE that a Wayland login sets, so an app that still uses
+# XWayland forces it itself and needs --ozone-platform=wayland in its
+# launcher. Applications that are already running must be restarted. The
+# function is a no-op outside a supported Linux Wayland session.
 #
 # @noargs
 # @exitcode 0 The setting was written, the session is not Wayland, or systemd cannot persist it.
@@ -48,11 +48,10 @@ electron::wayland::enable() {
 
   mkdir -p "${directory}" || return 74
   file::write-text "${directory}/90-bashstock-electron-wayland.conf" \
-    $'XDG_SESSION_TYPE=wayland\nELECTRON_OZONE_PLATFORM_HINT=wayland\n' || return "$?"
+    $'ELECTRON_OZONE_PLATFORM_HINT=wayland\n' || return "$?"
 
   if systemctl --user show-environment >/dev/null 2>&1; then
-    systemctl --user set-environment XDG_SESSION_TYPE=wayland \
-      ELECTRON_OZONE_PLATFORM_HINT=wayland \
+    systemctl --user set-environment ELECTRON_OZONE_PLATFORM_HINT=wayland \
       >/dev/null 2>&1 || :
   fi
   console::_write-error \
@@ -61,11 +60,8 @@ electron::wayland::enable() {
 
 # @description Remove BashStock's native Wayland preference for Electron applications.
 #
-# The BashStock-owned environment file is removed and the legacy hint is unset
-# in the running systemd user manager when available. When the file existed,
-# the manager's XDG_SESSION_TYPE is set to the display the calling shell uses:
-# wayland with WAYLAND_DISPLAY, otherwise x11 with DISPLAY. Without either, as
-# over SSH, it is left for the next graphical login to set. Already-running
+# The BashStock-owned environment file is removed and the variable is unset in
+# the running systemd user manager when available. Already-running
 # applications are unchanged; start them again to use their default backend.
 #
 # @noargs
@@ -81,26 +77,15 @@ electron::wayland::disable() {
   [[ "$(system::operating-system)" == 'linux' ]] || return 69
 
   local file="${HOME}/.config/environment.d/90-bashstock-electron-wayland.conf"
-  local had_setting=0 session_type=''
   if [[ -e "${file}" || -L "${file}" ]]; then
     [[ -f "${file}" || -L "${file}" ]] || return 66
     command -v rm >/dev/null 2>&1 || return 69
     rm -f -- "${file}" || return 74
-    had_setting=1
   fi
 
   if command -v systemctl >/dev/null 2>&1 &&
     systemctl --user show-environment >/dev/null 2>&1; then
     systemctl --user unset-environment ELECTRON_OZONE_PLATFORM_HINT \
       >/dev/null 2>&1 || :
-    # The shell's XDG_SESSION_TYPE may be the persisted value, so the display decides.
-    if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
-      session_type='wayland'
-    elif [[ -n "${DISPLAY:-}" ]]; then
-      session_type='x11'
-    fi
-    if [[ "${had_setting}" -eq 1 && -n "${session_type}" ]]; then
-      systemctl --user set-environment "XDG_SESSION_TYPE=${session_type}" >/dev/null 2>&1 || :
-    fi
   fi
 }

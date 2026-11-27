@@ -15,13 +15,13 @@ Configure the rendering platform used by Electron applications.
 
 Prefer native Wayland rendering for Electron applications in a Wayland session.
 
-The setting persists the Wayland session type for Electron versions that
-select their Ozone backend from XDG_SESSION_TYPE, and keeps the legacy
-ELECTRON_OZONE_PLATFORM_HINT for older versions. It is also imported into
-the running systemd user manager. Applications that are already running
-must be restarted. The function is a no-op outside a supported Linux
-Wayland session. The setting assumes Wayland logins: before switching to an
-X11 session, run electron::wayland::disable.
+The legacy ELECTRON_OZONE_PLATFORM_HINT is stored in systemd's per-user
+environment directory and imported into the running systemd user manager.
+Electron 38 and later ignore it and already select Wayland from the
+XDG_SESSION_TYPE that a Wayland login sets, so an app that still uses
+XWayland forces it itself and needs --ozone-platform=wayland in its
+launcher. Applications that are already running must be restarted. The
+function is a no-op outside a supported Linux Wayland session.
 
 #### Example
 
@@ -46,11 +46,8 @@ _Function has no arguments._
 
 Remove BashStock's native Wayland preference for Electron applications.
 
-The BashStock-owned environment file is removed and the legacy hint is unset
-in the running systemd user manager when available. When the file existed,
-the manager's XDG_SESSION_TYPE is set to the display the calling shell uses:
-wayland with WAYLAND_DISPLAY, otherwise x11 with DISPLAY. Without either, as
-over SSH, it is left for the next graphical login to set. Already-running
+The BashStock-owned environment file is removed and the variable is unset in
+the running systemd user manager when available. Already-running
 applications are unchanged; start them again to use their default backend.
 
 #### Example
