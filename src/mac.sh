@@ -146,6 +146,47 @@ mac::trackpad::disable-smart-zoom() {
   defaults write NSGlobalDomain com.apple.trackpad.twoFingerDoubleTapGesture -int 0
 }
 
+# @description Let a tap on built-in and external trackpads act as a click.
+#
+# The setting applies after logging in again. The login window keeps its own
+# setting.
+#
+# @noargs
+# @exitcode 0 The settings were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS.
+# @exitcode other The status of defaults.
+# @example
+#   mac::trackpad::enable-tap-to-click
+mac::trackpad::enable-tap-to-click() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true || return "$?"
+  defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true || return "$?"
+  defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1 || return "$?"
+  defaults write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+}
+
+# @description Make built-in and external trackpads click only when pressed, not when tapped.
+#
+# The setting applies after logging in again.
+#
+# @noargs
+# @exitcode 0 The settings were written.
+# @exitcode 64 An argument was given.
+# @exitcode 69 The system is not macOS.
+# @exitcode other The status of defaults.
+# @example
+#   mac::trackpad::disable-tap-to-click
+mac::trackpad::disable-tap-to-click() {
+  [[ "$#" -eq 0 ]] || return 64
+  package::_require-platform darwin || return "$?"
+  defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool false || return "$?"
+  defaults write com.apple.AppleMultitouchTrackpad Clicking -bool false || return "$?"
+  defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 0 || return "$?"
+  defaults write NSGlobalDomain com.apple.mouse.tapBehavior -int 0
+}
+
 # @description Restart the Dock so that it reads changed preferences.
 # @internal
 mac::dock::_restart() {

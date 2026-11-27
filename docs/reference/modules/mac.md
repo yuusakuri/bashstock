@@ -16,6 +16,8 @@ Settings are written with defaults and take effect after the related process res
 * [mac::keyboard::use-function-keys](#mackeyboarduse-function-keys)
 * [mac::keyboard::set-repeat](#mackeyboardset-repeat)
 * [mac::trackpad::disable-smart-zoom](#mactrackpaddisable-smart-zoom)
+* [mac::trackpad::enable-tap-to-click](#mactrackpadenable-tap-to-click)
+* [mac::trackpad::disable-tap-to-click](#mactrackpaddisable-tap-to-click)
 * [mac::dock::set-autohide-instant](#macdockset-autohide-instant)
 * [mac::dock::hide-recent-applications](#macdockhide-recent-applications)
 * [mac::dock::set-minimize-effect](#macdockset-minimize-effect)
@@ -183,6 +185,49 @@ Turn off smart zoom, the two-finger double tap, on built-in and external trackpa
 
 ```bash
 mac::trackpad::disable-smart-zoom
+```
+
+_Function has no arguments._
+
+#### Exit codes
+
+* **0**: The settings were written.
+* **64**: An argument was given.
+* **69**: The system is not macOS.
+* other The status of defaults.
+
+### mac::trackpad::enable-tap-to-click
+
+Let a tap on built-in and external trackpads act as a click.
+
+The setting applies after logging in again. The login window keeps its own
+setting.
+
+#### Example
+
+```bash
+mac::trackpad::enable-tap-to-click
+```
+
+_Function has no arguments._
+
+#### Exit codes
+
+* **0**: The settings were written.
+* **64**: An argument was given.
+* **69**: The system is not macOS.
+* other The status of defaults.
+
+### mac::trackpad::disable-tap-to-click
+
+Make built-in and external trackpads click only when pressed, not when tapped.
+
+The setting applies after logging in again.
+
+#### Example
+
+```bash
+mac::trackpad::disable-tap-to-click
 ```
 
 _Function has no arguments._
