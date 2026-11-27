@@ -1462,6 +1462,7 @@ gsettings_value() {
   [ "$(head -n 1 "${STEP_LOG}")" = 'sudo::passwordless::enable' ]
   grep -Fqx "shell::editor::set-default code --wait bash,zsh" "${STEP_LOG}"
   grep -Fqx 'mac::dock::set-position' "${STEP_LOG}"
+  grep -Fqx 'mac::trackpad::enable-tap-to-click' "${STEP_LOG}"
   grep -Fqx 'brew install --cask antigravity-ide' "${STEP_LOG}"
   grep -Fqx 'mac::gatekeeper::disable' "${STEP_LOG}"
   [ "$(tail -n 1 "${STEP_LOG}")" = 'iina::set-default-app' ]
@@ -1486,6 +1487,14 @@ gsettings_value() {
   [ "${status}" -eq 64 ]
   run mac::trackpad::disable-smart-zoom
   [ "${status}" -eq 0 ]
+  run mac::trackpad::enable-tap-to-click
+  [ "${status}" -eq 0 ]
+  run mac::trackpad::enable-tap-to-click unexpected
+  [ "${status}" -eq 64 ]
+  run mac::trackpad::disable-tap-to-click
+  [ "${status}" -eq 0 ]
+  run mac::trackpad::disable-tap-to-click unexpected
+  [ "${status}" -eq 64 ]
   run mac::dock::set-autohide-instant
   [ "${status}" -eq 0 ]
   run mac::dock::hide-recent-applications
@@ -1521,6 +1530,14 @@ write NSGlobalDomain KeyRepeat -int 2
 write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadTwoFingerDoubleTapGesture -int 0
 write com.apple.AppleMultitouchTrackpad TrackpadTwoFingerDoubleTapGesture -int 0
 write NSGlobalDomain com.apple.trackpad.twoFingerDoubleTapGesture -int 0
+write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
+write com.apple.AppleMultitouchTrackpad Clicking -bool true
+-currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool false
+write com.apple.AppleMultitouchTrackpad Clicking -bool false
+-currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 0
+write NSGlobalDomain com.apple.mouse.tapBehavior -int 0
 write com.apple.dock autohide-time-modifier -float 0
 write com.apple.dock autohide-delay -float 0
 write com.apple.dock show-recents -bool false
@@ -1535,6 +1552,10 @@ defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstal
 
   use_platform ubuntu 24.04 noble
   run mac::dock::set-position
+  [ "${status}" -eq 69 ]
+  run mac::trackpad::enable-tap-to-click
+  [ "${status}" -eq 69 ]
+  run mac::trackpad::disable-tap-to-click
   [ "${status}" -eq 69 ]
   run mac::sleep::disable-automatic
   [ "${status}" -eq 69 ]

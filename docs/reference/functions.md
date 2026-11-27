@@ -677,6 +677,8 @@ BashStockが公開する関数を名前空間ごとに示します。
 | [`mac::keyboard::use-function-keys`](modules/mac.md#mackeyboarduse-function-keys) | Make F1 to F12 act as function keys without the fn key. |
 | [`mac::keyboard::set-repeat`](modules/mac.md#mackeyboardset-repeat) | Set the delay before key repeat starts and the repeat interval. |
 | [`mac::trackpad::disable-smart-zoom`](modules/mac.md#mactrackpaddisable-smart-zoom) | Turn off smart zoom, the two-finger double tap, on built-in and external trackpads. |
+| [`mac::trackpad::enable-tap-to-click`](modules/mac.md#mactrackpadenable-tap-to-click) | Let a tap on built-in and external trackpads act as a click. |
+| [`mac::trackpad::disable-tap-to-click`](modules/mac.md#mactrackpaddisable-tap-to-click) | Make built-in and external trackpads click only when pressed, not when tapped. |
 | [`mac::dock::set-autohide-instant`](modules/mac.md#macdockset-autohide-instant) | Show and hide the Dock immediately, without a delay or an animation. |
 | [`mac::dock::hide-recent-applications`](modules/mac.md#macdockhide-recent-applications) | Hide recently used applications in the Dock. |
 | [`mac::dock::set-minimize-effect`](modules/mac.md#macdockset-minimize-effect) | Set the effect used when a window is minimized into the Dock. |

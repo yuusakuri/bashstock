@@ -96,6 +96,10 @@ check output_is scale defaults read com.apple.dock mineffect
 check output_is left defaults read com.apple.dock orientation
 check output_is 0 defaults read com.apple.AppleMultitouchTrackpad TrackpadTwoFingerDoubleTapGesture
 check output_is 0 defaults read NSGlobalDomain com.apple.trackpad.twoFingerDoubleTapGesture
+check output_is 1 defaults read com.apple.AppleMultitouchTrackpad Clicking
+check output_is 1 defaults read com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking
+check output_is 1 defaults -currentHost read NSGlobalDomain com.apple.mouse.tapBehavior
+check output_is 1 defaults read NSGlobalDomain com.apple.mouse.tapBehavior
 pmset -g | grep -i womp || printf 'pmset reports no wake-on-LAN setting on this runner\n'
 
 printf '== key binding\n'
