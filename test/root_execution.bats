@@ -7,6 +7,7 @@ load test_helper
   file::replace-text() { printf '<%s>' "$@"; }
   file::replace-text-in-files() { printf '<%s>' "$@"; }
   file::replace-or-append-text() { printf '<%s>' "$@"; }
+  file::replace-matches() { printf '<%s>' "$@"; }
 
   run bashstock::_dispatch-root append-text '/protected file' $'text\nvalue'
   [ "${status}" -eq 0 ]
@@ -23,6 +24,10 @@ load test_helper
   run bashstock::_dispatch-root replace-or-append-text '/protected file' '^name=' 'name=value'
   [ "${status}" -eq 0 ]
   [ "${output}" = '</protected file><^name=><name=value>' ]
+
+  run bashstock::_dispatch-root replace-matches '/protected file' '^(name)=' '\1: '
+  [ "${status}" -eq 0 ]
+  [ "${output}" = '</protected file><^(name)=><\1: >' ]
 }
 
 @test "account and ownership operations validate inputs before reaching the provider" {

@@ -45,6 +45,9 @@ bashstock::_dispatch-root() {
     replace-or-append-text)
       file::replace-or-append-text "$@"
       ;;
+    replace-matches)
+      file::replace-matches "$@"
+      ;;
     create-system-user)
       user::_validate-system-creation "$@" || return "$?"
       platform::_create-system-user "$@"
@@ -76,7 +79,7 @@ bashstock::_main() {
   fi
   case "$2" in
     append-text | write-text | replace-text | replace-all-text | \
-      replace-text-in-files | replace-all-text-in-files | replace-or-append-text | \
+      replace-text-in-files | replace-all-text-in-files | replace-or-append-text | replace-matches | \
       create-system-user | create-login-user | change-owner-recursively) ;;
     *) return 64 ;;
   esac

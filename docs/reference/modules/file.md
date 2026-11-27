@@ -10,6 +10,7 @@ Text is written to a temporary file in the target directory and then moved into 
 
 * [file::ensure-exists](#fileensure-exists)
 * [file::contains-match](#filecontains-match)
+* [file::replace-matches](#filereplace-matches)
 * [file::verify-sha256](#fileverify-sha256)
 * [file::append-text](#fileappend-text)
 * [file::replace-text](#filereplace-text)
@@ -79,6 +80,38 @@ file::contains-match /etc/hosts '^127\.0\.0\.1\s+localhost\b'
 * **64**: The expression is invalid, or the argument count is not two.
 * **66**: The file is missing, unreadable, or a symbolic link.
 * **69**: Python 3 is unavailable.
+
+### file::replace-matches
+
+Replace Python regular-expression matches on each file line, with group references.
+
+Every match on every line is replaced. The replacement follows Python's
+re.sub: \1 and \g<name> insert a group, and \n inserts a newline. Each line
+is matched without its newline. The file is rewritten through a temporary
+file only when a line matched, and root is used only when the current user
+cannot write it.
+
+#### Example
+
+```bash
+file::replace-matches app.desktop '^(Exec=\S+)(.*)$' '\1 --verbose\2'
+```
+
+#### Arguments
+
+* **$1** (string): Regular text file to update; a symbolic link is refused.
+* **$2** (string): Python regular expression without newlines.
+* **$3** (string): One-line Python replacement template.
+
+#### Exit codes
+
+* **0**: At least one match was replaced.
+* **1**: No line matched, so the file is unchanged.
+* **64**: The expression or replacement is invalid, the file contains NUL bytes, or the argument count is not three.
+* **66**: The file is missing, unreadable, not a regular file, or a symbolic link.
+* **69**: Python 3 is unavailable.
+* **74**: The file could not be rewritten.
+* other The status of the root helper when elevation was needed.
 
 ### file::verify-sha256
 
