@@ -406,6 +406,101 @@ chmod +x "${HOME}/.local/bin/codex"'
   [ ! -s "${ROOT_LOG}" ]
 }
 
+@test "ChatGPT launchers get native Wayland while keeping their arguments and actions" {
+  local applications="${BATS_TEST_TMPDIR}/applications"
+  local user_entry="${HOME}/.local/share/applications/chatgpt.desktop"
+  local autostart="${HOME}/.config/autostart/chatgpt.desktop"
+  mkdir -p "${applications}" "${HOME}/.config/autostart"
+  printf '%s\n' '[Desktop Entry]' 'Name=ChatGPT' 'Exec=/usr/bin/chatgpt %U' '' \
+    '[Desktop Action new-chat]' 'Exec=/usr/bin/chatgpt --new-chat' >"${applications}/chatgpt.desktop"
+  printf '%s\n' '[Desktop Entry]' 'Exec=chatgpt --hidden' >"${autostart}"
+
+  # Outside a Wayland session nothing is written.
+  XDG_SESSION_TYPE=x11 WAYLAND_DISPLAY='' chatgpt::_configure-wayland-launchers "${applications}"
+  [ ! -e "${user_entry}" ]
+
+  export XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY=wayland-0
+  chatgpt::_configure-wayland-launchers "${applications}"
+  [ "$(<"${user_entry}")" = $'[Desktop Entry]\nX-BashStock-Managed=true\nName=ChatGPT\nExec=/usr/bin/chatgpt --ozone-platform=wayland %U\n\n[Desktop Action new-chat]\nExec=/usr/bin/chatgpt --ozone-platform=wayland --new-chat' ]
+  [ "$(<"${autostart}")" = $'[Desktop Entry]\nExec=chatgpt --ozone-platform=wayland --hidden' ]
+
+  # A package update reaches BashStock's copy, and a second run adds no second flag.
+  printf '%s\n' '[Desktop Entry]' 'Name=ChatGPT 2' 'Exec=/usr/bin/chatgpt %U' '' \
+    '[Desktop Action new-chat]' 'Exec=/usr/bin/chatgpt --new-chat' >"${applications}/chatgpt.desktop"
+  chatgpt::_configure-wayland-launchers "${applications}"
+  grep -Fxq 'Name=ChatGPT 2' "${user_entry}"
+  [ "$(grep -c -- '--ozone-platform' "${user_entry}")" -eq 2 ]
+  [ "$(<"${autostart}")" = $'[Desktop Entry]\nExec=chatgpt --ozone-platform=wayland --hidden' ]
+
+  # A launcher the user wrote is edited in place, not replaced.
+  printf '%s\n' '[Desktop Entry]' 'Name=Mine' 'Exec=/opt/ChatGPT/chatgpt --profile work' >"${user_entry}"
+  chatgpt::_configure-wayland-launchers "${applications}"
+  [ "$(<"${user_entry}")" = $'[Desktop Entry]\nName=Mine\nExec=/opt/ChatGPT/chatgpt --ozone-platform=wayland --profile work' ]
+
+  # An unrecognized command is reported without failing.
+  printf '%s\n' '[Desktop Entry]' 'Exec=env FOO=1 /opt/other %U' >"${user_entry}"
+  run --separate-stderr chatgpt::_configure-wayland-launchers "${applications}"
+  [ "${status}" -eq 0 ]
+  [[ "${stderr}" == *"No ChatGPT Exec= line was found in ${user_entry}"* ]]
+
+  # A package without the expected launcher name is still found, and none at all is only reported.
+  rm -f "${user_entry}"
+  mv "${applications}/chatgpt.desktop" "${applications}/com.openai.ChatGPT.desktop"
+  chatgpt::_configure-wayland-launchers "${applications}"
+  grep -Fxq 'Exec=/usr/bin/chatgpt --ozone-platform=wayland %U' "${HOME}/.local/share/applications/com.openai.ChatGPT.desktop"
+  rm -f "${applications}/com.openai.ChatGPT.desktop"
+  run --separate-stderr chatgpt::_configure-wayland-launchers "${applications}"
+  [ "${status}" -eq 0 ]
+  [[ "${stderr}" == *'The ChatGPT launcher was not found'* ]]
+}
+
+@test "Electron Wayland preference persists for Wayland logins and disable restores the display's session type" {
+  local file="${HOME}/.config/environment.d/90-bashstock-electron-wayland.conf"
+  SYSTEMCTL_LOG="${BATS_TEST_TMPDIR}/systemctl.log"
+  system::operating-system() { printf 'linux\n'; }
+  systemctl() {
+    if [[ "$1" == '--version' ]]; then printf 'systemd 255 (255.4)\n'; return 0; fi
+    printf '%s\n' "$*" >>"${SYSTEMCTL_LOG}"
+  }
+
+  XDG_SESSION_TYPE=x11 WAYLAND_DISPLAY='' electron::wayland::enable
+  [ ! -e "${file}" ]
+
+  XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY=wayland-0 electron::wayland::enable
+  [ "$(<"${file}")" = $'XDG_SESSION_TYPE=wayland\nELECTRON_OZONE_PLATFORM_HINT=wayland' ]
+  grep -Fxq -- '--user set-environment XDG_SESSION_TYPE=wayland ELECTRON_OZONE_PLATFORM_HINT=wayland' "${SYSTEMCTL_LOG}"
+
+  # Over SSH there is no display, so the manager's session type is left for the next login.
+  : >"${SYSTEMCTL_LOG}"
+  XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY='' DISPLAY='' electron::wayland::disable
+  [ ! -e "${file}" ]
+  ! grep -q 'XDG_SESSION_TYPE' "${SYSTEMCTL_LOG}"
+  grep -Fxq -- '--user unset-environment ELECTRON_OZONE_PLATFORM_HINT' "${SYSTEMCTL_LOG}"
+
+  # In an X11 session the inherited wayland value is replaced by x11.
+  XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY=wayland-0 electron::wayland::enable
+  : >"${SYSTEMCTL_LOG}"
+  XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY='' DISPLAY=:0 electron::wayland::disable
+  grep -Fxq -- '--user set-environment XDG_SESSION_TYPE=x11' "${SYSTEMCTL_LOG}"
+
+  # Without a setting file, disable leaves the session type alone.
+  : >"${SYSTEMCTL_LOG}"
+  WAYLAND_DISPLAY='' DISPLAY=:0 electron::wayland::disable
+  ! grep -q 'XDG_SESSION_TYPE' "${SYSTEMCTL_LOG}"
+
+  # Without systemd nothing is written and the manual step is reported.
+  command() {
+    if [[ "$1" == '-v' && "$2" == 'systemctl' ]]; then return 1; fi
+    builtin command "$@"
+  }
+  export XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY=wayland-0
+  run --separate-stderr electron::wayland::enable
+  unset -f command
+  [ "${status}" -eq 0 ]
+  [[ "${stderr}" == *'systemd is not available'* ]]
+  [ ! -e "${file}" ]
+}
+
 @test "Docker on Fedora accepts the engine epoch without imposing it on the CLI" {
   use_platform fedora 43
   record_root_commands

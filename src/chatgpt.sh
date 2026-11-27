@@ -31,29 +31,68 @@ chatgpt::_architecture() {
   printf '%s\n' "${architecture}"
 }
 
-# @description Configure the ChatGPT desktop launchers to use native Wayland in the current Wayland session.
+# @description Add the native Wayland flag to the ChatGPT command on every Exec line of a launcher.
+#
+# The command's own arguments are kept, so desktop actions and autostart
+# flags such as --hidden keep working. A line that already has
+# --ozone-platform is left alone.
 # @internal
+chatgpt::_add-wayland-flag() {
+  [[ "$#" -eq 1 ]] || return 64
+  local status=0
+  file::replace-matches "$1" \
+    '^(Exec=\S*[Cc]hat[Gg][Pp][Tt]"?)(?=\s|$)(?!.*\s--ozone-platform=)(.*)$' \
+    '\1 --ozone-platform=wayland\2' || status="$?"
+  [[ "${status}" -eq 1 ]] || return "${status}"
+  file::contains-match "$1" '^Exec=\S*[Cc]hat[Gg][Pp][Tt]"?\s.*--ozone-platform=' && return 0
+  console::_write-error \
+    "No ChatGPT Exec= line was found in ${1}. Add --ozone-platform=wayland to its command to start it with native Wayland."
+}
+
+# @description Configure the ChatGPT desktop launchers to use native Wayland in the current Wayland session.
+#
+# The package's launcher is copied to the user's applications directory and
+# marked as BashStock's, so each install refreshes the copy from the package.
+# A user's own launcher there and existing autostart entries are edited in
+# place. A missing package launcher is reported and does not fail the install.
+# @internal
+# @arg $1 string Optional directory of the package's launchers. Defaults to /usr/share/applications.
 chatgpt::_configure-wayland-launchers() {
-  [[ "$#" -eq 0 ]] || return 64
+  [[ "$#" -le 1 ]] || return 64
   [[ "${XDG_SESSION_TYPE:-}" == 'wayland' && -n "${WAYLAND_DISPLAY:-}" ]] || return 0
 
-  local system_entry='/usr/share/applications/chatgpt.desktop'
-  local user_entry="${HOME}/.local/share/applications/chatgpt.desktop"
-  local autostart_entry="${HOME}/.config/autostart/chatgpt.desktop"
-  if [[ ! -e "${user_entry}" && ! -L "${user_entry}" ]]; then
-    [[ -f "${system_entry}" ]] || return 74
-    mkdir -p "${HOME}/.local/share/applications" || return 74
-    cp -p -- "${system_entry}" "${user_entry}" || return 74
+  local applications="${1:-/usr/share/applications}"
+  local system_entry='' candidate='' name='' user_entry='' entry='' status=0
+  for candidate in "${applications}/chatgpt.desktop" "${applications}/"*[Cc]hat[Gg][Pp][Tt]*.desktop; do
+    if [[ -f "${candidate}" ]]; then
+      system_entry="${candidate}"
+      break
+    fi
+  done
+  if [[ -z "${system_entry}" ]]; then
+    console::_write-error \
+      "The ChatGPT launcher was not found in ${applications}, so ChatGPT still starts with XWayland. Add --ozone-platform=wayland to its Exec= line."
+    return 0
   fi
-  [[ -f "${user_entry}" && ! -L "${user_entry}" ]] || return 66
-  file::replace-text "${user_entry}" '^Exec=(/usr/bin/)?chatgpt([[:space:]].*)?$' \
-    'Exec=chatgpt --ozone-platform=wayland %U' || return 74
 
-  if [[ -e "${autostart_entry}" || -L "${autostart_entry}" ]]; then
-    [[ -f "${autostart_entry}" && ! -L "${autostart_entry}" ]] || return 66
-    file::replace-text "${autostart_entry}" '^Exec=(/usr/bin/)?chatgpt([[:space:]].*)?$' \
-      'Exec=chatgpt --ozone-platform=wayland' || return 74
+  name="${system_entry##*/}"
+  user_entry="${HOME}/.local/share/applications/${name}"
+  if [[ -e "${user_entry}" || -L "${user_entry}" ]]; then
+    [[ -f "${user_entry}" && ! -L "${user_entry}" ]] || return 66
   fi
+  if [[ ! -e "${user_entry}" ]] || file::contains-match "${user_entry}" '^X-BashStock-Managed=true$'; then
+    mkdir -p "${user_entry%/*}" || return 74
+    cp -- "${system_entry}" "${user_entry}" || return 74
+    file::replace-matches "${user_entry}" '^\[Desktop Entry\]$' '[Desktop Entry]\nX-BashStock-Managed=true' ||
+      status="$?"
+    [[ "${status}" -eq 0 || "${status}" -eq 1 ]] || return "${status}"
+  fi
+
+  for entry in "${user_entry}" "${HOME}/.config/autostart/chatgpt.desktop" "${HOME}/.config/autostart/${name}"; do
+    [[ -e "${entry}" || -L "${entry}" ]] || continue
+    [[ -f "${entry}" && ! -L "${entry}" ]] || return 66
+    chatgpt::_add-wayland-flag "${entry}" || return "$?"
+  done
 }
 
 # @description Install the newest ChatGPT desktop app, which also runs Codex.
@@ -62,7 +101,9 @@ chatgpt::_configure-wayland-launchers() {
 # Fedora 43 or later install OpenAI's newest package, which registers
 # OpenAI's signed repository so later releases arrive with the system's
 # package upgrades. In a Wayland session, Linux also configures the app's
-# desktop launcher and existing autostart entry to start with native Wayland.
+# desktop launcher and existing autostart entry to start with native Wayland,
+# keeping their arguments. A launcher that cannot be found or changed is
+# reported on stderr without failing the install.
 #
 # @noargs
 # @exitcode 0 The ChatGPT desktop app is installed.
@@ -70,7 +111,8 @@ chatgpt::_configure-wayland-launchers() {
 # @exitcode 65 The downloaded package is for another CPU or is not a valid package.
 # @exitcode 69 The platform, release, or CPU is unsupported.
 # @exitcode 66 A ChatGPT launcher exists but is not a regular file.
-# @exitcode 74 The package could not be downloaded or the Wayland launcher could not be configured.
+# @exitcode 74 The package could not be downloaded or a ChatGPT launcher could not be written.
+# @stderr Each ChatGPT launcher that could not be set to native Wayland.
 # @exitcode other The status of the package manager.
 # @example
 #   chatgpt::install
